@@ -2,6 +2,8 @@
 
 PR1은 설치·화면·AI 없이 실행하는 Node ESM 처리 모듈이다. 기준 자료는 리치오 문서이며 ReqIF는 파생물이다. [설계](docs/design.md)와 [실제 확인 기록](docs/pr1-validation.md)을 따른다.
 
+교정본 인계 v1.1은 [소비 검증](docs/corrected-handoff.md), 상위 연결 후보·관계 판단·양방향 누락·새 제안 문서는 [상위 연결 파일 절차](docs/upstream.md)를 따른다. 모두 초안이며 자동 확정하지 않는다.
+
 ## 실행
 
 Node 24에서 이 폴더를 작업 디렉터리로 사용한다.

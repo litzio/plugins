@@ -19,6 +19,7 @@
   "defaults": { "level": "system", "kind": "unknown", "verification": "undecided" },
   "levelLabels": { "stakeholder": "상위 이해관계자", "system": "시스템" },
   "allowedRefinesLevels": [["system", "stakeholder"]],
+  "linking": { "topK": 5, "roles": ["refines", "relatesTo"], "eligibleUpperStatuses": ["reviewed", "confirmed"], "synonyms": {}, "allowedUnlinked": ["out-of-scope", "independent"], "gapClasses": ["missing", "out-of-scope", "independent", "hold"] },
   "transformations": ["keep", "split", "merge"],
   "quality": ["same", "intended-difference", "conflict", "ambiguous", "undetermined"]
 }

@@ -2,6 +2,7 @@ import { create } from 'xmlbuilder2';
 import { createHash } from 'node:crypto';
 import { policy, canonical, sha256, validate, semantic } from './model.mjs';
 import { inlineFields, inlineTags } from './inline.mjs';
+import {exportCatalogIssues,requirementClassification,setClassification} from './export-classification.mjs';
 
 const NS = 'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd';
 const XHTML = 'http://www.w3.org/1999/xhtml';
@@ -79,7 +80,20 @@ function body(parent, blocks, context) {
 }
 
 export function exportReqif(sets, { testOnly = false, previous, now = new Date().toISOString() } = {}) {
+  const catalogIssues=exportCatalogIssues();
+  if(catalogIssues.length)throw Object.assign(new Error('내보내기 필드 분류 누락'),{diagnostics:catalogIssues});
   const diagnostics = validate(sets, { formal: !testOnly });
+  const requirementFields=new Set(Object.keys(requirementClassification));
+  const setFields=new Set(Object.keys(setClassification));
+  for(const s of sets) {
+    for(const key of Object.keys(s))if(!setFields.has(key))diagnostics.push({file:s.file??'',location:[1],severity:'error',code:'unmapped-export-field',message:'미분류 문서 필드: '+key});
+    for(const r of s.requirements)for(const key of Object.keys(r))if(!requirementFields.has(key))diagnostics.push({file:s.file??'',location:r.location??[1],severity:'error',code:'unmapped-export-field',message:'미분류 요구사항 필드: '+key});
+    const lists=blocks=>{for(const b of blocks)if(b.kind==='list') {
+      if(b.ordered&&b.style&&!['decimal','lower-alpha','upper-alpha','lower-roman','upper-roman'].includes(b.style))diagnostics.push({file:s.file??'',location:[1],severity:'error',code:'unsupported-export-list-style',message:'지원하지 않는 번호 목록 style: '+b.style});
+      for(const i of b.items??[])if(i.list)lists([{kind:'list',...i.list}]);
+    }};
+    for(const r of s.requirements)lists(r.body);
+  }
   if (testOnly) diagnostics.push({ file: '', location: [1], severity: 'warning', code: 'test-export', message: '시험 전용 ReqIF: 실사용 금지' });
   if (diagnostics.some(d => d.severity === 'error')) throw Object.assign(new Error('내보내기 차단'), { diagnostics });
   const namespace = sets[0].exportNamespace, id = key => stableId(namespace, key);
@@ -112,8 +126,8 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
   }
   const types = content.ele('SPEC-TYPES');
   const attributes = { 'ReqIF.Name': 'XHTML', 'ReqIF.Text': 'XHTML', ...Object.fromEntries(Object.keys(policy).map(k => [k, 'ENUMERATION'])), rationale: 'XHTML', SourceReferences: 'STRING', SourcePages: 'STRING' };
-  function type(kind, key, attrs) {
-    const t = types.ele(kind, ident(key, key, attrs));
+  function type(kind, key, attrs, name=key) {
+    const t = types.ele(kind, ident(key, name, attrs));
     const definitions = t.ele('SPEC-ATTRIBUTES');
     for (const [name, dt] of Object.entries(attrs)) {
       const d = definitions.ele('ATTRIBUTE-DEFINITION-' + dt, { ...ident('attr:' + key + ':' + name, name, dt), ...(dt === 'ENUMERATION' ? { 'MULTI-VALUED': false } : {}) });
@@ -121,13 +135,15 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
     }
   }
   type('SPEC-OBJECT-TYPE', 'object-type', attributes);
-  type('SPECIFICATION-TYPE', 'specification-type', { 'ReqIF.Name': 'XHTML' });
-  for (const role of ['refines', 'relatesTo']) types.ele('SPEC-RELATION-TYPE', ident('relation-type:' + role, role, role));
+  const specificationAttributes={'ReqIF.Name':'XHTML',SourceRegistry:'STRING',DocumentProfile:'STRING'};
+  type('SPECIFICATION-TYPE', 'specification-type', specificationAttributes);
+  const relationAttributes={RelationJudgments:'STRING'};
+  for (const role of ['refines', 'relatesTo']) type('SPEC-RELATION-TYPE','relation-type:'+role,relationAttributes,role);
   function values(parent, typeKey, attrs, data, setId) {
     const vals = parent.ele('VALUES');
     for (const [name, dt] of Object.entries(attrs)) {
       const value = data[name];
-      if (dt === 'STRING' && value.length > 65535) throw new Error(name + ': 65535자 초과');
+      if (dt === 'STRING' && value.length > 65535) throw Object.assign(new Error(name + ': 65535자 초과'),{diagnostics:[...diagnostics,{file:'',location:[1],code:'export-attribute-too-long',severity:'error',message:name+': 65535자 초과. 자르지 않고 내보내기를 차단합니다'}]});
       const a = vals.ele('ATTRIBUTE-VALUE-' + dt, dt === 'STRING' ? { 'THE-VALUE': value } : {});
       a.ele('DEFINITION').ele('ATTRIBUTE-DEFINITION-' + dt + '-REF').txt(id('attr:' + typeKey + ':' + name));
       if (dt === 'XHTML') body(a.ele('THE-VALUE').ele(XHTML, 'div', name === 'ReqIF.Text' ? { id: anchor(setId, data.id) } : {}), value, contexts.get(setId));
@@ -143,19 +159,25 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
     values(o, 'object-type', attributes, { ...r, 'ReqIF.Name': r.titleContent ? [{ kind: 'paragraph', content: r.titleContent }] : text(r.title), 'ReqIF.Text': [...r.body, ...notes], rationale: text(r.rationale), SourceReferences: canonical(r.sources), SourcePages: pages }, s.setId);
     o.ele('TYPE').ele('SPEC-OBJECT-TYPE-REF').txt(id('object-type'));
   }
-  const rels = content.ele('SPEC-RELATIONS'), seen = new Set();
+  const rels = content.ele('SPEC-RELATIONS'), relations = new Map();
   for (const s of sets) for (const r of s.requirements) for (const rel of r.relations) {
     const [from, to] = rel.role === 'relatesTo' ? [r.id, rel.targetId].sort() : [r.id, rel.targetId];
     const key = 'relation:' + rel.role + ':' + from + ':' + to;
-    if (seen.has(key)) continue; seen.add(key);
-    const e = rels.ele('SPEC-RELATION', ident(key, rel.role, { from, to, role: rel.role }));
-    e.ele('TYPE').ele('SPEC-RELATION-TYPE-REF').txt(id('relation-type:' + rel.role));
+    if(!relations.has(key))relations.set(key,{from,to,role:rel.role,assertions:[]});
+    relations.get(key).assertions.push({sourceId:r.id,...rel});
+  }
+  for(const [key,{from,to,role,assertions}] of relations) {
+    assertions.sort((a,b)=>canonical(a).localeCompare(canonical(b)));
+    const e = rels.ele('SPEC-RELATION', ident(key, role, { from, to, role, assertions }));
+    values(e,'relation-type:'+role,relationAttributes,{RelationJudgments:canonical(assertions)});
+    e.ele('TYPE').ele('SPEC-RELATION-TYPE-REF').txt(id('relation-type:' + role));
     e.ele('SOURCE').ele('SPEC-OBJECT-REF').txt(from); e.ele('TARGET').ele('SPEC-OBJECT-REF').txt(to);
   }
   const specs = content.ele('SPECIFICATIONS');
   for (const s of sets) {
-    const spec = specs.ele('SPECIFICATION', ident('specification:' + s.setId, s.title, { title: s.title, ids: s.requirements.map(r => r.id) }));
-    values(spec, 'specification-type', { 'ReqIF.Name': 'XHTML' }, { 'ReqIF.Name': text(s.title) }, s.setId);
+    const documentProfile={profile:s.profile,defaultLevel:s.defaultLevel,exportNamespace:s.exportNamespace};
+    const spec = specs.ele('SPECIFICATION', ident('specification:' + s.setId, s.title, { title: s.title, ids: s.requirements.map(r => r.id),registry:s.registry,documentProfile }));
+    values(spec, 'specification-type', specificationAttributes, { 'ReqIF.Name': text(s.title),SourceRegistry:canonical(s.registry),DocumentProfile:canonical(documentProfile) }, s.setId);
     spec.ele('TYPE').ele('SPECIFICATION-TYPE-REF').txt(id('specification-type'));
     const children = spec.ele('CHILDREN');
     for (const r of s.requirements) children.ele('SPEC-HIERARCHY', ident('hierarchy:' + s.setId + ':' + r.id, r.id, r.id)).ele('OBJECT').ele('SPEC-OBJECT-REF').txt(r.id);
