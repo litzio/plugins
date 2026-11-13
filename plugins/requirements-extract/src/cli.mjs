@@ -22,7 +22,7 @@ export function sourceCli({ node = process.execPath, tsx, entry, root }) {
     return absolute;
   };
   const run = (...args) => {
-    const r = spawnSync(node, ['--import', pathToFileURL(tsx).href, entry, ...args], { encoding: 'utf8', timeout: 60000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+    const r = spawnSync(node, [...(tsx ? ['--import', pathToFileURL(tsx).href] : []), entry, ...args], { encoding: 'utf8', timeout: 60000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
     if (r.status !== 0) throw new Error(r.stderr || r.stdout || String(r.error));
     const line = r.stdout.trim().split('\n').findLast(l => l.trim().startsWith('{'));
     return line ? JSON.parse(line) : r.stdout;
@@ -32,7 +32,7 @@ export function sourceCli({ node = process.execPath, tsx, entry, root }) {
     writeFileSync(input, JSON.stringify({ authoring: authoring(s), images: [] }), { flag: 'wx' });
     run('create', file, '--input', input, '--format', 'json');
     const inspect = run('inspect', file, '--format', 'json');
-    const heads = inspect.nodes.filter(n => n.type === 'heading' && n.level === 2).reverse();
+    const heads = inspect.nodes.filter(n => n.type === 'heading' && n.level === 2 && !inspect.nodes.some(t => t.type === 'target' && t.path[0] === n.path[0] - 1)).reverse();
     const operations = heads.map((n, i) => ({ command: 'insert-target', at: n.path[0], label: s.requirements[s.requirements.length - i - 1].id }));
     if (operations.length) {
       const ops = scoped(randomUUID() + '.json'); writeFileSync(ops, JSON.stringify(operations), { flag: 'wx' });

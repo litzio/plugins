@@ -28,6 +28,12 @@ for (const [name, change] of Object.entries(variants)) {
   const file = cli.scoped(name + '.md'); writeFileSync(file, change(baseline), { flag: 'wx' });
   assert.equal(cli.run('check', file, '--format', 'json').validation.valid, true);
   const read = cli.read(name + '.md');
+  if (['caption', 'endnote', 'nestedList'].includes(name)) {
+    assert.deepEqual(read.diagnostics, []);
+    for (const r of read.requirements) r.confirmedDigest = (await import('../src/model.mjs')).digest(r);
+    assert.match(exportReqif([upper, read]).xml, /85 °C/);
+    console.log('PASS native supported with semantic preservation: ' + name); continue;
+  }
   assert.ok(read.diagnostics.some(d => d.severity === 'error'), name + ' silently accepted');
   assert.throws(() => exportReqif([upper, read]), name + ' formal export succeeded');
   assert.throws(() => exportReqif([upper, read], { testOnly: true }), name + ' test export succeeded');

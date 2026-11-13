@@ -74,6 +74,7 @@ for (const [name, command] of [
 ]) {
   const x = capture(name, base, command); inventory[name] = x.snapshot;
   const s = readInspection(x.inspection, name + '.md', x.snapshot);
+  if (['delete', 'break'].includes(name)) { for (const r of s.requirements) r.confirmedDigest = digest(r); assert.deepEqual(validate([upper, s], { formal: true }), []); exportReqif([upper, s]); console.log('PASS newly supported operation: ' + name); continue; }
   assert.ok(s.diagnostics.some(d => d.severity === 'error'));
   assert.throws(() => exportReqif([upper, s], { testOnly: true }));
   console.log('PASS native operation type diagnosed: ' + name);
