@@ -1,0 +1,139 @@
+{
+  "source": {
+    "file": "../../LSR-1.1-standards-answer-key.pdf",
+    "sha256": "ac3dcf2284dcb8ce59e0adfe3c33689b1f813e56abf81cde7ed54442a0c36cf6",
+    "bytes": 251892
+  },
+  "actual_request": {
+    "target_type": "inbody",
+    "from_formats": [
+      "pdf"
+    ],
+    "to_formats": [
+      "json"
+    ],
+    "image_export_mode": "embedded",
+    "pipeline": "standard",
+    "pdf_backend": "docling_parse",
+    "do_ocr": true,
+    "force_ocr": false,
+    "ocr_preset": "rapidocr",
+    "ocr_lang": [
+      "en"
+    ],
+    "do_table_structure": true,
+    "table_structure_preset": "tableformer_v1_accurate",
+    "table_mode": "accurate",
+    "table_cell_matching": true,
+    "layout_preset": "default",
+    "do_pdf_heading_hierarchy": true,
+    "pdf_heading_hierarchy_options": {
+      "use_bookmarks": true,
+      "use_numbering": true,
+      "use_style": true,
+      "use_font_style": true,
+      "style_size_tolerance": 0.05,
+      "max_level": 6,
+      "bookmark_match_threshold": 0.8
+    },
+    "include_images": true,
+    "include_page_images": true,
+    "images_scale": 1,
+    "do_code_enrichment": true,
+    "do_formula_enrichment": true,
+    "code_formula_preset": "codeformulav2",
+    "do_picture_classification": false,
+    "picture_classification_preset": "document_figure_classifier_v2",
+    "do_chart_extraction": false,
+    "do_picture_description": false,
+    "abort_on_error": false
+  },
+  "overrides_from_default": {},
+  "server": {
+    "docling-serve": "1.38.2",
+    "docling-jobkit": "3.9.1",
+    "docling": "2.142.1",
+    "docling-core": "2.104.0",
+    "docling-ibm-models": "4.0.4",
+    "docling-parse": "7.23.0",
+    "python": "cpython-312 (3.12.15)",
+    "plaform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.34"
+  },
+  "openapi_sha256": "53fd2c42c9b33ef71b298c16e765f20044d8fa9d826a7c16af4e99fc98f38341",
+  "profile": {
+    "profile_id": "pdf-en-v2",
+    "validated_servers": [
+      "1.38.2"
+    ],
+    "headers": {},
+    "request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 1,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": false,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    }
+  },
+  "profile_sha256": "41207009ca13ad77d7730e3b1d645951449bf22a4e2de2c464478bf8fd75158d",
+  "task": {
+    "task_id": "a40e4e3c-6983-449c-8f44-b1c6faab537d",
+    "task_type": "convert",
+    "task_status": "success",
+    "task_position": null,
+    "task_meta": null,
+    "error_message": null,
+    "failure": null
+  },
+  "started_at": "2026-11-13T08:12:16.397Z",
+  "completed_at": "2026-11-13T08:12:35.791Z",
+  "elapsed_ms": 19394,
+  "result": {
+    "status": "success",
+    "errors": [],
+    "response_sha256": "2c2bc530a83ef92def2fd6df87eacd7d51f9e04b1391fea0aaab851969a94ab7"
+  },
+  "document": {
+    "sha256": "b88aa57b50206b142c15f7ba69f9ede81fc48cd7eacfcf9cd0792368ed456445",
+    "schema": "DoclingDocument",
+    "version": "1.10.0",
+    "page_count": 13
+  },
+  "execution_profile_sha256": "852aff338c55614d9046baa2d9cede967ca47266c935563e59ac48990695e2ce"
+}
