@@ -5,5 +5,5 @@
 | 만드는 쪽 | 파일 | 읽는 쪽 | 설명 |
 | --- | --- | --- | --- |
 | docling-convert | Docling 변환 결과 | docling-to-litzio | [변환 계약](docling-convert/README.md): 권장 기본 프로필·조정 옵션, 원본 PDF·DoclingDocument JSON·변환 기록. 서버 없이 읽는다. |
-| docling-to-litzio | 리치오 문서 | requirements-extract | 리치오의 문서 형식을 그대로 쓴다. 원문과의 대응을 어떻게 남기는지는 문서화 플러그인을 만들 때 적는다. |
+| docling-to-litzio | 리치오 문서·그림·provenance·손실·완료 표지 | requirements-extract | [인계 계약 v1](docling-to-litzio/README.md): 원본 bytes/digest와 생성 revision을 결합한다. 생성 완결과 검수 완료는 구분한다. |
 | requirements-extract | 요구사항 결과 | 사람, 요구사항 관리 시스템 | 설계 때 정한다. |

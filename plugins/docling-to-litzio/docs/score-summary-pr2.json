@@ -1,0 +1,337 @@
+{
+  "lsr": {
+    "schemaVersion": "1.0.0",
+    "generatorVersion": "0.3.0",
+    "source": {
+      "pdf": {
+        "relativePath": "source/source.pdf",
+        "sha256": "63cda884de96dfd0357843a534895f1beb7a10b24f3244398d930817a32b82ea"
+      },
+      "docling": {
+        "relativePath": "source/document.json",
+        "sha256": "85af7bbf425fa0a0119c1e7ad1488cc3fd0fa12483bb396d9672769c114eb83a"
+      },
+      "conversionRecord": {
+        "relativePath": "source/conversion-record.json",
+        "sha256": "182364e3b4a2f0ffca801b349f5b56fbe3fb49db068bf3250e66e9ea8fe18e8d"
+      },
+      "documentSchemaVersion": "1.10.0"
+    },
+    "coverage": {
+      "sourceItems": 171,
+      "blocks": 120,
+      "cells": 180,
+      "assets": 2
+    },
+    "lossCategories": {
+      "native-format": 29,
+      "authoring-input": 8,
+      "plugin-pending": 1
+    },
+    "lossKinds": {
+      "table-header-role": 12,
+      "toc-static-table": 1,
+      "group-role": 1,
+      "merged-cell-repeated": 10,
+      "compound-header-flattened": 2,
+      "table-caption-separate": 7,
+      "dedicated-table-note": 4,
+      "footnote-as-paragraph": 1
+    },
+    "sourceNativeMismatches": 0,
+    "mergedTables": 2,
+    "oracleMetrics": {
+      "furniture": {
+        "match": 65,
+        "conversion": 0,
+        "representation": 0,
+        "generation": 0,
+        "total": 65
+      },
+      "heading": {
+        "match": 19,
+        "conversion": 0,
+        "representation": 0,
+        "generation": 0,
+        "total": 19
+      },
+      "literal": {
+        "match": 75,
+        "conversion": 55,
+        "representation": 0,
+        "generation": 0,
+        "total": 130
+      },
+      "prose_role": {
+        "match": 42,
+        "conversion": 29,
+        "representation": 0,
+        "generation": 0,
+        "total": 71
+      },
+      "heading_level": {
+        "match": 16,
+        "conversion": 1,
+        "representation": 0,
+        "generation": 0,
+        "total": 17
+      },
+      "numeric_units_literal": {
+        "match": 42,
+        "conversion": 25,
+        "representation": 0,
+        "generation": 0,
+        "total": 67
+      },
+      "footnote": {
+        "match": 0,
+        "conversion": 7,
+        "representation": 5,
+        "generation": 0,
+        "total": 12
+      },
+      "table_dimensions": {
+        "match": 6,
+        "conversion": 0,
+        "representation": 2,
+        "generation": 0,
+        "total": 8
+      },
+      "cell_span": {
+        "match": 127,
+        "conversion": 2,
+        "representation": 10,
+        "generation": 0,
+        "total": 139
+      },
+      "cell_text": {
+        "match": 121,
+        "conversion": 4,
+        "representation": 14,
+        "generation": 0,
+        "total": 139
+      },
+      "numeric_cell": {
+        "match": 55,
+        "conversion": 4,
+        "representation": 0,
+        "generation": 0,
+        "total": 59
+      },
+      "formula": {
+        "match": 1,
+        "conversion": 2,
+        "representation": 0,
+        "generation": 0,
+        "total": 3
+      },
+      "figure": {
+        "match": 2,
+        "conversion": 0,
+        "representation": 0,
+        "generation": 0,
+        "total": 2
+      },
+      "caption_link": {
+        "match": 2,
+        "conversion": 1,
+        "representation": 7,
+        "generation": 0,
+        "total": 10
+      },
+      "adjacent_order": {
+        "match": 123,
+        "conversion": 7,
+        "representation": 0,
+        "generation": 0,
+        "total": 130
+      }
+    }
+  },
+  "no-bookmarks": {
+    "schemaVersion": "1.0.0",
+    "generatorVersion": "0.3.0",
+    "source": {
+      "pdf": {
+        "relativePath": "source/source.pdf",
+        "sha256": "5146aab7534e5befbec27a127fa3f910defc1d6dca05d917f2aeadf3151c2b07"
+      },
+      "docling": {
+        "relativePath": "source/document.json",
+        "sha256": "128ae5ad86ff18b41606bf415619573cac58fc33b22a1cf39c1467cfd487c36e"
+      },
+      "conversionRecord": {
+        "relativePath": "source/conversion-record.json",
+        "sha256": "8f24b17fd0939c5a571204606070e9f47ffbdc659553e711efe281378688c324"
+      },
+      "documentSchemaVersion": "1.10.0"
+    },
+    "coverage": {
+      "sourceItems": 171,
+      "blocks": 120,
+      "cells": 180,
+      "assets": 2
+    },
+    "lossCategories": {
+      "native-format": 29,
+      "authoring-input": 8,
+      "plugin-pending": 1
+    },
+    "lossKinds": {
+      "table-header-role": 12,
+      "toc-static-table": 1,
+      "group-role": 1,
+      "merged-cell-repeated": 10,
+      "compound-header-flattened": 2,
+      "table-caption-separate": 7,
+      "dedicated-table-note": 4,
+      "footnote-as-paragraph": 1
+    },
+    "sourceNativeMismatches": 0,
+    "mergedTables": 2,
+    "oracleMetrics": {
+      "furniture": {
+        "match": 65,
+        "conversion": 0,
+        "representation": 0,
+        "generation": 0,
+        "total": 65
+      },
+      "heading": {
+        "match": 19,
+        "conversion": 0,
+        "representation": 0,
+        "generation": 0,
+        "total": 19
+      },
+      "literal": {
+        "match": 75,
+        "conversion": 55,
+        "representation": 0,
+        "generation": 0,
+        "total": 130
+      },
+      "prose_role": {
+        "match": 42,
+        "conversion": 29,
+        "representation": 0,
+        "generation": 0,
+        "total": 71
+      },
+      "heading_level": {
+        "match": 3,
+        "conversion": 14,
+        "representation": 0,
+        "generation": 0,
+        "total": 17
+      },
+      "numeric_units_literal": {
+        "match": 42,
+        "conversion": 25,
+        "representation": 0,
+        "generation": 0,
+        "total": 67
+      },
+      "footnote": {
+        "match": 0,
+        "conversion": 7,
+        "representation": 5,
+        "generation": 0,
+        "total": 12
+      },
+      "table_dimensions": {
+        "match": 6,
+        "conversion": 0,
+        "representation": 2,
+        "generation": 0,
+        "total": 8
+      },
+      "cell_span": {
+        "match": 127,
+        "conversion": 2,
+        "representation": 10,
+        "generation": 0,
+        "total": 139
+      },
+      "cell_text": {
+        "match": 121,
+        "conversion": 4,
+        "representation": 14,
+        "generation": 0,
+        "total": 139
+      },
+      "numeric_cell": {
+        "match": 55,
+        "conversion": 4,
+        "representation": 0,
+        "generation": 0,
+        "total": 59
+      },
+      "formula": {
+        "match": 1,
+        "conversion": 2,
+        "representation": 0,
+        "generation": 0,
+        "total": 3
+      },
+      "figure": {
+        "match": 2,
+        "conversion": 0,
+        "representation": 0,
+        "generation": 0,
+        "total": 2
+      },
+      "caption_link": {
+        "match": 2,
+        "conversion": 1,
+        "representation": 7,
+        "generation": 0,
+        "total": 10
+      },
+      "adjacent_order": {
+        "match": 123,
+        "conversion": 7,
+        "representation": 0,
+        "generation": 0,
+        "total": 130
+      }
+    }
+  },
+  "nist": {
+    "schemaVersion": "1.0.0",
+    "generatorVersion": "0.3.0",
+    "source": {
+      "pdf": {
+        "relativePath": "source/source.pdf",
+        "sha256": "5be90726ae6ff9cf0383fbb5ad76167c0f51328545782c37411fb27892143820"
+      },
+      "docling": {
+        "relativePath": "source/document.json",
+        "sha256": "644dad098585c657633d77d1e5576f567b8ecd8c9c4608945f896c47a6442fc3"
+      },
+      "conversionRecord": {
+        "relativePath": "source/conversion-record.json",
+        "sha256": "2980beba4e797bc349dba7ea7d3ce5a4960fa9d5e90f66d9b2f5dde80ee0b10c"
+      },
+      "documentSchemaVersion": "1.10.0"
+    },
+    "coverage": {
+      "sourceItems": 440,
+      "blocks": 410,
+      "cells": 60,
+      "assets": 8
+    },
+    "lossCategories": {
+      "native-format": 0,
+      "authoring-input": 14,
+      "plugin-pending": 0
+    },
+    "lossKinds": {
+      "footnote-as-paragraph": 7,
+      "table-caption-separate": 3,
+      "list-marker-or-depth": 4
+    },
+    "sourceNativeMismatches": 0,
+    "mergedTables": 0
+  }
+}

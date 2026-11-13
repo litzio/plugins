@@ -1,6 +1,6 @@
 # docling-to-litzio 범위와 구현 계획
 
-상태: PR 1 생성·채점 구현 및 CLI 검증 완료, PR 2 이후는 계획. 작성·근거 확인: 2026-11-13. 이 문서의 수치는 별도 표시가 없으면 **제안 합격선**이며 측정 결과가 아니다. 소유자 부재 중 구현을 시작할 수 있도록 결정을 내렸고, 바뀔 수 있는 결정은 마지막 절에 모았다.
+상태: PR 1과 PR 2의 설치/화면 제외 범위 구현·CLI 검증 완료. 설치/화면과 PR 3 이후는 계획이다. 수치는 별도 표시가 없으면 제안 합격선이며, 실측은 results-pr2.md를 따른다.
 
 ## 1. 목표와 경계
 
@@ -58,21 +58,23 @@
 
 ### 출력과 저장 경로
 
-출력 디렉터리의 논리 구성(아래 이름은 **제안**, 아직 상호 계약으로 확정되지 않음):
+출력 디렉터리의 논리 구성(PR 2에서 생성·인계 v1로 확정, 검수 이력은 후속):
 
 | 파일 | 책임과 내용 |
 | --- | --- |
 | `document.md` | 공식 입력으로 만든 valid native 문서. 여기만 교정 정본. 검수 상태·Docling 표식을 본문에 끼우지 않음 |
 | `assets/…` | 공식 이미지 저장 경로가 게시한 그림 bytes. 원본 hash와 최종 상대 URI 연결 |
 | `provenance.json` | 버전 있는 원본↔문서 다대다 대응, 원본/생성기/문서 hash, 항목별 제외·표현 손실, 자산 대응 |
+| `losses.json` | version 1.0.0 손실 전부, generation/revision으로 대응 파일과 결합 |
+| `complete.json` | 마지막 wx 게시, 원본/문서/그림/대응/손실/snapshot/receipt digest. 생성 완결이며 검수 완료 아님 |
 | `review.json` | 검사 범위·문제 묶음·교정 전후/근거/되돌리기 참조·사람 판단·완료 revision. DoclingDocument 확장 아님 |
-| `generation.json` | 생성기 버전·규칙 버전·입력 hash·공식 저장 receipt와 완료/부분 실패 상태. 파일 묶음의 인계 표지 |
+| `generation.json` | 생성기 버전·규칙 버전·입력 hash·공식 저장 receipt와 완료/부분 실패 진단. 인계 권위는 별도 complete.json |
 
 초기 저장은 Host 처리 코드가 공개 작성 입력을 만들고 `litzio create document.md --input request.json --format json`의 공식 경로로 게시한다. 입력은 `{authoring:{title?,inputs:[{key,blocks:[]}]},images:[{key,mime,base64}]}`다. 파일은 artifact 밖에 준비한다. literal text를 Markdown처럼 다시 해석하지 않는다. 공개 SDK `authorDocument`는 사전 검증용이고 실제 저장 receipt가 아니다. 최종 대응은 create receipt의 `inputs[].targets`와 `revision`에 결합한다. `litzio check document.md --format json`으로 재검사한다. 임의 `.md` 조립·내부 Core import·직접 overwrite를 하지 않는다.
 
 화면 `saveDocument({name,authoring,folder?,open?})`는 새 문서만 배타적으로 저장하며 현재 props에는 images 입력이 없다. **그림이 있는 문서를 화면 saveDocument만으로 완성할 수 있다고 가정하지 않는다.** 1단계는 CLI 생성으로 그림까지 검증한다. 화면 저장에 images가 필요하면 범용 확장 필요로 분리한다. 응답 유실은 같은 이름 재생성으로 해결하지 않고 파일/receipt를 확인한다.
 
-부속 JSON은 플러그인 소유 파일이다. `.md`와 다중 파일 원자 저장을 현재 플랫폼이 보장한다고 주장하지 않는다. 새 출력 디렉터리에서 문서/자산 저장→check→최종 receipt 대응 결합→부속 파일 검증→`generation.json` 완료 표지 순으로 게시한다. 중간 실패는 `incomplete`로 남기고 문서를 삭제하거나 원본에서 재생성하지 않는다. 소비자는 표지와 각 hash가 모두 일치해야 검수 완료 인계로 읽는다. 검수 단계의 여러 파일 갱신은 아래 플랫폼 능력으로 안전하게 묶어야 한다.
+부속 JSON은 플러그인 소유 파일이다. `.md`와 다중 파일 원자 저장을 현재 플랫폼이 보장한다고 주장하지 않는다. 새 출력 디렉터리에서 문서/자산 저장→check→최종 receipt 대응 결합→부속 파일 검증→`complete.json` 완료 표지 순으로 게시한다. 중간 실패는 `incomplete`로 남기고 문서를 삭제하거나 원본에서 재생성하지 않는다. 소비자는 마지막 complete.json과 각 hash가 모두 일치해야 생성 완결 묶음으로 읽는다. 이것은 검수 완료가 아니며 현 v1의 unreviewed 문서는 검수 완료 입력으로 채택할 수 없다. 검수 단계의 여러 파일 갱신은 아래 플랫폼 능력으로 안전하게 묶어야 한다.
 
 ### 대응 저장 방식의 결정
 
@@ -83,7 +85,7 @@
 | 문서 옆 버전 있는 JSON + revision별 공식 target | **채택**. 문서 자체 유효성과 독립 사용 유지, 다대다·셀·제외·편집 불확실성 표현 가능 |
 | Docling JSON에 검수/수정 확장 또는 내부 문서 ZIP 정본 | 폐기. 불변 원본과 native 교정 정본을 다시 혼동하고 인계에 전용 reader를 강제 |
 
-`provenance.json` v1의 최소 필드 설계(최종 버전·갱신 계약은 PR 2; PR 1 출력은 correspondence-draft.json):
+`provenance.json` v1의 최소 필드 설계(생성 v1은 PR 2에서 확정; 편집 후 갱신은 후속. PR 1 초안을 대체):
 
 ```text
 schemaVersion, generationId, generatorVersion, rulesVersion
@@ -124,10 +126,10 @@ native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구�
 | 제목 | title→H1, section_header level 1–6. 잘못된 level은 문단+손실 | 유지. 원문 번호를 literal로 보존하고 자동 제목 번호 끔. 번호만 보고 단계 추정 금지. frontmatter title은 명시 입력만 사용, 첫 H1과 혼동하지 않음 |
 | 문단 | text→literal 문단 | 유지. 원래 orig와 text 차이 보존. 한 항목의 여러 prov는 하나의 문단일 수 있음 |
 | 목록·중첩 | 연속 번호/종류 묶음, 100항목씩, 중첩 평탄화·비숫자 marker 손실 | 첫 생성은 동일 제한을 명시. 중첩/문자·로마 marker가 의미를 바꾸면 최종 완료 불가. 후속 공개 rich 작성 입력 또는 일반 목록 편집으로 복원하고 점검 |
-| 표·병합 | num_rows×num_cols, 첫 행 header, 병합 글자 반복, 다단 header/row role 손실, 잘못된 span/중복 점유 전체 실패 | 첫 생성은 반복 표현 유지하되 원본 셀 index/span과 모든 출력 위치 연결. 빈 칸은 빈 칸, 미점유는 누락 확정 아님. 구조 손실 표는 비서 검수 필수. 병합 셀 자체는 native 미지원이므로 손실을 승인해 인계하거나 플랫폼 표현 확장을 별도 요구 |
+| 표·병합 | num_rows×num_cols, 첫 행 header, 병합 글자 반복, 다단 header/row role 손실, 잘못된 span/중복 점유 전체 실패 | 첫 생성은 반복 표현 유지하되 원본 셀 index/span과 모든 출력 위치 연결. 빈 칸은 빈 칸, 미점유는 누락 확정 아님. 병합/복합 머리 표는 전부 검수 대상. 명시된 연속 머리 행을 ‘상위 머리 – 하위 머리’로 한 행에 합치고 원본 셀별 source span→출력 selector를 남긴다. 표 바로 아래에 원문 병합 좌표와 공통 조건/합계/범위일 수 있다는 설명 문단을 둔다. 병합 셀·복합 머리 역할은 형식을 바꾸지 않는 유지 한계이며 이 플러그인이 처리한다 |
 | 셀 수식·여러 줄 | 셀 text만 전달, inline 수식/서식 추출 안 함 | 수식을 plain text로 보존해도 의미 보존 성공으로 채점하지 않음. 줄바꿈/Core 거부는 진단하고 전체 생성 거부, 임의 공백 치환 금지. 후속 rich cell 입력 필요 |
-| 수식·번호 | formula.text→Equation, 수식 번호 연결 안 함 | LaTeX 원문 유지. 명시 연결 증거가 있는 번호만 fixed enumerator, 떨어진 번호는 비서가 원문 대조. 깨진/반복 formula·본문 오분류 후보. 렌더 성공은 의미 정확성 아님 |
-| 그림·캡션 | embedded PNG/JPEG/WebP→공식 images. 확실한 Arabic 번호만 fixed, 그 외 원문 caption+번호 없음/손실 | 유지. bytes hash 보존. missing ImageRef는 pending+차단 손실. NIST 미포함 자산은 미확인 처리. 잘못된 bytes는 거부하며 missing으로 낮추지 않음. 그래프를 수치 표로 추측 복원하지 않음 |
+| 수식·번호 | formula.text→Equation, 수식 번호 연결 안 함 | LaTeX 원문 유지. 같은 formula.orig의 명시적 괄호 접두 번호(예: (1))가 유일하고 LaTeX에 중복 tag/label이 없으면 fixed enumerator로 옮긴다. 번호 증거는 structure.numberEvidence에 보존한다. LaTeX는 그대로이며, 떨어진 번호는 추측 연결하지 않고 검수한다. 깨진/반복 formula·본문 오분류 후보. 렌더 성공은 의미 정확성 아님 |
+| 그림·캡션 | embedded PNG/JPEG/WebP→공식 images. 확실한 Arabic/대문자 절 번호(예: K.1) fixed, 그 외 원문 caption+번호 없음/손실 | 유지. bytes hash 보존. missing ImageRef는 pending+차단 손실. 현재 NIST의 embedded 자산도 검증한다. 잘못된 bytes는 거부하며 missing으로 낮추지 않음. 그래프를 수치 표로 추측 복원하지 않음 |
 | 표 캡션 | 번호는 표, 글자는 뒤 문단(작성 입력에 caption 없음) | 첫 생성 유지, 다대다 대응. 공개 caption 입력이 생기면 native caption으로 이동. 종류 불일치/중복/모호한 번호는 원문 보존+번호 없음 |
 | 주석·각주·위첨자 | footnote를 문단으로 유지, call site 추정 안 함. inline formatting/link 손실 | 유지하되 검수에 호출부·정의·표/쪽 적용 범위를 함께 제공. 번호/문자 같다고 연결 금지. 명시적 관계의 native 미주·위첨자 복원은 rich 입력 확보 뒤. 중요한 지수/주석 소실은 차단 손실 |
 | 코드 | code_language와 text→Code | 유지. 줄/공백 의미 보존, unknown language는 빈 값. 수식으로 추측 변환하지 않음 |
@@ -136,7 +138,7 @@ native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구�
 | 목차 | document_index 등 미지원 역할은 문단/자식 유지+손실 | 목차를 본문 제목으로 올리지 않음. 텍스트·페이지 번호 보존, native 자동 목차로 치환하지 않음. 구조가 표이면 표 규칙 적용 |
 | 미지원·미도달 | text는 문단, group은 자식 유지, 미도달/빈 내용 손실 | 유지. 잘못된 참조/순환/겹친 셀은 실패. 알려지지 않은 역할과 원문 없는 출력은 숨기지 않고 별도 집계 |
 
-그림/표는 확실한 `Figure/Fig./그림`, `Table/표` + Arabic 숫자(`2-1`, `2.1` 포함)만 접두어에서 fixed 번호로 옮긴다. Roman·alphabetic·접미사·중복·모호함은 원문 그대로와 `enumerated:false`. Equation에는 번호 없음 옵션이 없으므로 같은 옵션을 넣지 않는다.
+그림/표는 확실한 `Figure/Fig./그림`, `Table/표` + Arabic 숫자와 대문자 절 번호(`2-1`, `2.1`, `K.1` 포함)를 접두어에서 fixed 번호로 옮긴다. 독립 Roman·알파벳 표지·접미사·중복·여러 caption 등 모호함은 원문 그대로와 `enumerated:false`. Equation에는 번호 없음 옵션이 없으므로 같은 옵션을 넣지 않는다.
 
 표현 손실은 `sourceId, reasonCode, originalValue/structure, outputTargets, severity, resolution`으로 기록한다. 단순 강조 소실처럼 의미 영향이 낮은 손실과 주석/수식/표 의미를 바꾸는 차단 손실을 나눈다. 원본 PDF와 기록을 보관했다는 이유로 읽기 좋은 native 표현을 달성했다고 판정하지 않는다. 첫 단계는 손실 있는 초안으로 가치가 있고, 전체 완료 판정은 후속 복원/검수까지 기다린다.
 
@@ -223,7 +225,8 @@ furniture/그림/수식 영역 제외는 옛 구현의 한계다. 새 설계는 
 | --- | --- | --- | --- |
 | 공식 native 작성·이미지 게시·최종 targets·check | 첫 단계부터 필요(현재 CLI 경로 있음) | 모든 가져오기/보고서 작성 | create 입력과 receipt 사용. 내부 writer/asset 저장 구현 안 함 |
 | 새 화면 저장의 images 입력 | 없어도 됨(첫 단계 CLI), 화면 생성 완성 시 필요 | 보고서/HTML·Word 가져오기 | 현재 saveDocument만으로 그림 게시 불가. CLI 경로 유지 가능, 필요할 때 범용 images 확장 요청 |
-| rich inline/중첩 목록/셀 수식/표 캡션 작성 입력 | 검수 단계에서 필요(해당 차단 손실 해소 전) | 기술 문서 가져오기·번역 | native 일반 편집이 공개적으로 표현하면 그것 사용. 없으면 공개 authoring 확장 요청. AST/원문 Markdown 우회 금지 |
+| rich inline/위·아래첨자·미주 연결/중첩 목록·문자 표지/rich cell/표 캡션·레이블·상호 참조 작성 입력 | 검수 단계에서 필요(해당 차단 손실 해소 전) | 기술 문서 가져오기·번역 | native 일반 편집이 공개적으로 표현하면 그것 사용. 없으면 공개 authoring 확장 요청. AST/원문 Markdown 우회 금지 |
+| CLI 읽기 출력의 완전한 inline 구조 | 공식 rich 작성 입력 소비 시 필요 | 모든 문서 처리 | 현재 일부 구조 생략. 보강 전 구조를 추측하지 않고 원본 중간 표현에 보존 |
 | 문서 표시·특정 target 이동/강조·선택 알림 | 검수 단계에서 필요 | 번역 검토·문서 비교 | 일반 문서 탭 열기는 1단계 대안. native renderer 복제는 대안 아님 |
 | 원본 영역과 native target을 연결하는 대조 틀 | 검수 단계에서 필요(사람 판단 시작 전) | PDF/Word 가져오기·번역 원문 대조 | PDF.js로 원본만 그릴 수 있음. native 쪽·초안 보호·선택 연동이 없어 전체 대조를 혼자 완성할 수 없음 |
 | 일반 문서의 안전한 부분 편집/충돌·되돌리기 receipt와 변경 관계 | 검수 단계에서 필요 | 모든 AI 문서 교정 | CLI inspect/수정/if-revision이 가능한 범위는 사용. 플러그인 화면 수정 API와 편집 후 provenance 이동 증명은 현재 미확인. receipt가 없으면 uncertain으로 중단, 직접 파일 overwrite 금지 |
@@ -233,11 +236,13 @@ furniture/그림/수식 영역 제외는 옛 구현의 한계다. 새 설계는 
 | 영속 블록 ID·모든 편집 자동 재연결 | 없어도 됨 | 장기 출처 추적 | revision별 path+보수적 uncertain으로 시작. 특정 실패가 확인되기 전 범용 identity 엔진 요청 안 함 |
 | 저장소 폴더 설치 | 없어도 됨 | 모든 로컬 플러그인 | 현재 공개 artifact 설치/갱신 절차로 격리 Host에서 검증. URL 설치·배포 시스템 만들지 않음 |
 
+2026-11-13 플랫폼 조사 결론: 병합 셀/복합 머리·머리 열, 표 전용 주석 구역과 표지, 셀 안 줄바꿈·여러 블록·목록, 정적 목차 역할은 형식에 넣지 않는다. #597/#778의 단일 표 방침을 유지한다. 병합/복합 머리의 반복·합치기·원래 범위와 검수 설명은 이 플러그인의 책임이며 플랫폼 확장을 요청하지 않는다. 수식/그림 고정 번호는 이미 공개 작성 입력에서 된다.
+
 플랫폼에는 Docling ref·렌즈 이름·PDF 오류 규칙을 넣지 않는다. 원본 영역/문서 target/편집 receipt·수명만 중립 계약으로 요구한다. 보관 `workspace.js`의 SDK 내 parse/개별 연산을 봤다는 이유로 새 공개 경로라고 선언하지 않는다.
 
 ## 9. PR 순서와 검증
 
-크기 S/M/L은 대략 단일 책임의 소/중/대 변경량이며 일정 약속이 아니다. 단계마다 공개 계약을 확인하고 필요한 플랫폼 PR과 플러그인 PR을 분리한다. PR 1 실제 검증 결과는 results.md에 기록했고, PR 2 이후 검사는 미래 계획이다.
+크기 S/M/L은 대략 단일 책임의 소/중/대 변경량이며 일정 약속이 아니다. 단계마다 공개 계약을 확인하고 필요한 플랫폼 PR과 플러그인 PR을 분리한다. PR 1 실제 검증 결과는 results.md에 기록했고, PR 2 중 생성 대응/인계와 표 규칙 추가 검증은 results-pr2.md에 기록했고, 설치/화면 및 PR 3 이후는 미래 계획이다.
 
 | PR | 범위·크기 | 끝난 기준·고정 표본 단위 검사(리치오 없이) | 리치오 설치/화면 검사·선행 조건 |
 | --- | --- | --- | --- |
@@ -293,7 +298,7 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 | --- | --- | --- |
 | 대응/검수 sidecar 동반 전달 | 채택. native 유효성·가독성·다대다 대응을 함께 지키는 가장 단순한 방식 | 3절 출력 계약, requirements-extract 인계. 본문 ID 필요 시 먼저 범용 identity 계약 논의 |
 | 교정 후 재생성 정책 | 새 generation만 생성, 교정 자동 이식 없음. 수동 수정 유실 방지 | 3절 재생성/비교·채택, 이후 실제 병합 요구가 있을 때만 확장 |
-| 표 병합/중첩·셀 수식의 첫 단계 손실 허용 | 초안에서는 명시적으로 허용, 의미 손실이 남으면 최종 완료 차단 | 4절 규칙, 1·4단계 순서/필요 플랫폼 표현 능력 |
+| 표 병합/중첩·셀 수식의 첫 단계 손실 허용 — 2026-11-13 조사 반영 | 병합/복합 머리는 형식 유지 방침에 따라 반복/합치기+원본 범위+문서 설명+전수 검수. 중첩/rich cell은 작성 입력 보강 뒤 해소. 의미 손실이 남으면 최종 완료 차단 | 4절 규칙, 1·4단계 순서/필요 플랫폼 표현 능력 |
 | 비서/사람 분담 | 비서 먼저 즉시 교정, 사람은 판단 불가·대량 삭제·최종 확정. 모든 표/그림 전수 수동 확인 안 함 | 5–7절, 완료 gate와 실제 사람 부담 지표 |
 | 실사용 합격선과 측정 문서 | 200쪽 이상 1건, 사람 목록 ≤10%·100쪽당 30분을 잠정 목표로 진행. 대표성/밀도에 따라 조정 가능 | 1·10절 목표. 실제 자료 사용은 별도 허가 후 |
 | 변경 receipt가 없는 수동 편집 | 대응 uncertain·완료 무효화. 추측 연결보다 잘못된 출처 방지가 우선 | 3·8절. 더 강한 유지가 필수면 공개 편집 추적/identity 능력을 앞당김 |
@@ -302,3 +307,20 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 | 회전/인쇄 쪽·셀별 쪽 증거 부족 | null/표 전체 영역으로 명시, 정밀 대응은 추측하지 않음 | PR 2 대응 계약과 PR 3 PDF 증거 |
 
 이 문서에서 확정한 것은 플러그인의 범위와 구현 순서다. 플랫폼 기능의 구현 완료나 실제 품질 수락을 선언하지 않는다.
+
+## PR 2 생성 대응·인계 확정 (설치/화면 제외)
+
+[계약 v1](../../../../contracts/docling-to-litzio/README.md)과 schema/를 정본으로 삼는다. 기존 소유자 확인 필요 표는 유지한다.
+
+- provenance.json/losses.json/complete.json은 schemaVersion 1.0.0. 원본 PDF/Docling/record bytes를 source/에 함께 보관해 이동 가능한 인계를 택했다. record의 옛 상대 경로는 바꾸지 않고 provenance의 출력 기준 상대 참조로 찾는다.
+- generation.json은 진단으로 유지하고, 모든 파일의 실제 검증 뒤 complete.json을 마지막 배타적 쓰기로 게시한다. 표지 없음/손상/다른 revision/digest는 거부한다. 새 generation은 새 디렉터리만 사용한다. 미완성 출력과 사람의 교정은 보존한다.
+- 기존 필드 설계의 item별 pageSize는 pages로 모았다. regions에는 원래 prov를 함께 보존한다. targets에 kind가 있는 block/list-item/cell selector와 실제 native text를 넣었다. 셀 sourceCell span과 출력 range를 분리해 다대다 구조를 같은 v1로 표현한다. 병합 native 지원을 기다리는 계획은 폐기하고 반복/머리 합치기를 플러그인이 담당한다.
+- 검수 입력 요구는 유지한다. 생성 완료·current 위치는 검수 완료가 아니다. 현 v1은 unreviewed만 게시하며 requireReviewed 소비는 거부한다. 회전/인쇄 label·셀별 페이지/주석 적용 범위는 null/table precision으로 드러내고, 다음 PDF 증거/검수 단계에서 생산 측이 보강한다. 형식 유지 한계를 플랫폼 보강 예정과 혼동하지 않는다.
+- PR #6 비차단 리뷰를 따라 source→실제 snapshot 독립 검사를 추가했다. 이미 oracle과 다른 source를 추가 손상시키는 변형 검사, 목록 start·code language·fixed enumerator 비교도 추가했다. 기존 oracle metric 귀속 정의는 유지하고 별도 source-audit로 생성 손상을 계수한다.
+- 문서/그림 묶음의 동시 편집 원자 snapshot, 편집 후 receipt 기반 대응 갱신, review.json 이력·검수 완료, 실제 플러그인 설치/화면은 여전히 후속이다. 스키마 const unreviewed를 넘는 검수 상태 계약은 해당 단계에서 버전 규칙을 정한다.
+
+### 2026-11-13 추가 조사 반영 — 별도 커밋
+
+병합의 의미는 자동 추론하지 않는다. 모든 병합 표를 검수 대상으로 하고, risks에 열 묶음/행 간 공유/열 간 공유 및 합계·범위·공통 조건 가능성을 표시한다. 키워드는 판단이 아니라 추가 위험 표지다. 빈 칸으로 바꾸면 누락으로 오해하기 쉬워 값을 반복하며, 원문 좌표를 명시한 설명 문단을 바로 아래에 둔다. 설명 target의 role=explanation으로 원문 인용과 구분한다. 명시 column_header인 완전한 연속 머리 행만 합치며, 근거 없는 두 번째 머리를 추측하지 않는다. 실제 표본 전후는 table-examples.md에 있다.
+
+손실 category는 native-format(유지되는 형식 한계), authoring-input(플랫폼 보강 예정), plugin-pending(보수적 미인식/아직 하지 않음)으로 나눈다. items.structure에 원본 parent/children·formatting/hyperlink/meta·caption/footnote/reference 관계를 들고 있으며 sourceCell은 원본 전체다. 지금은 평문으로 내보내도 앞으로 작성 요청 필드를 채울 근거를 버리지 않는다. table/figure/equation/caption 규칙은 1.1.0, 생성기는 0.3.0이다.

@@ -1,0 +1,451 @@
+{
+  "schemaVersion": "1.0.0",
+  "generationId": "d297c17f-726d-455e-96b9-a3116595ea6c",
+  "generatorVersion": "0.3.0",
+  "rulesVersion": {
+    "validation": "1.0.0",
+    "order": "1.0.0",
+    "heading": "1.0.0",
+    "paragraph": "1.0.0",
+    "list": "1.0.0",
+    "table": "1.1.0",
+    "equation": "1.1.0",
+    "figure": "1.1.0",
+    "caption": "1.1.0",
+    "footnote": "1.0.0",
+    "code": "1.0.0",
+    "furniture": "1.0.0",
+    "fallback": "1.0.0",
+    "coordinates": "1.0.0",
+    "formulaHints": "1.0.0"
+  },
+  "reviewState": "unreviewed",
+  "diagnostics": [],
+  "source": {
+    "pdf": {
+      "relativePath": "source/source.pdf",
+      "sha256": "63cda884de96dfd0357843a534895f1beb7a10b24f3244398d930817a32b82ea"
+    },
+    "docling": {
+      "relativePath": "source/document.json",
+      "sha256": "85af7bbf425fa0a0119c1e7ad1488cc3fd0fa12483bb396d9672769c114eb83a"
+    },
+    "conversionRecord": {
+      "relativePath": "source/conversion-record.json",
+      "sha256": "182364e3b4a2f0ffca801b349f5b56fbe3fb49db068bf3250e66e9ea8fe18e8d"
+    },
+    "documentSchemaVersion": "1.10.0"
+  },
+  "document": {
+    "relativePath": "document.md",
+    "revision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+    "blocks": [
+      {
+        "path": [
+          2
+        ],
+        "kind": "paragraph",
+        "text": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements."
+      },
+      {
+        "path": [
+          26
+        ],
+        "kind": "table",
+        "text": null
+      },
+      {
+        "path": [
+          27
+        ],
+        "kind": "paragraph",
+        "text": "원문 표 구조 안내: 원문 R1–2/C1, R1/C2–4, R1/C5–7 칸은 병합돼 있었습니다. 원문의 머리 2행은 ‘상위 머리 – 하위 머리’로 합쳤습니다. 좌표는 원문 기준입니다. 반복된 값은 행별 독립 값이 아니라 공통 조건·범위·합계일 수 있으므로 원문 구조를 검수해야 합니다."
+      }
+    ]
+  },
+  "pages": [
+    {
+      "pageNo": 1,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 4,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    }
+  ],
+  "items": [
+    {
+      "sourceId": "d7e216dc509116ed2a71a386ec28eccddeeaa3dcfc4c7e9f12c6ebf4fdfc852b",
+      "selfRef": "#/texts/2",
+      "label": "text",
+      "structure": {
+        "parent": {
+          "$ref": "#/body"
+        },
+        "children": [],
+        "contentLayer": "body",
+        "formatting": null,
+        "hyperlink": null,
+        "meta": null,
+        "captions": [],
+        "footnotes": [],
+        "references": [],
+        "codeLanguage": null,
+        "marker": null,
+        "enumerated": null,
+        "level": null
+      },
+      "sourceText": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements.",
+      "originalText": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements.",
+      "reviewState": "unreviewed",
+      "regions": [
+        {
+          "pageNo": 1,
+          "bbox": [
+            54,
+            141.2822268,
+            538.3840353999999,
+            164.2822268
+          ],
+          "unit": "pt",
+          "origin": "TOPLEFT",
+          "original": {
+            "page_no": 1,
+            "bbox": {
+              "l": 54,
+              "t": 650.7177732,
+              "r": 538.3840353999999,
+              "b": 627.7177732,
+              "coord_origin": "BOTTOMLEFT"
+            },
+            "charspan": [
+              0,
+              194
+            ]
+          }
+        }
+      ],
+      "disposition": "mapped",
+      "targets": [
+        {
+          "role": "content",
+          "path": [
+            2
+          ],
+          "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+          "bindingState": "current",
+          "selector": {
+            "kind": "block"
+          },
+          "text": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements."
+        }
+      ],
+      "cells": [],
+      "losses": []
+    },
+    {
+      "sourceId": "a5a4b07de7927b5b2cf6446aa18484f336b61664a7e417b3d277e741617d96f9",
+      "selfRef": "#/tables/2",
+      "label": "table",
+      "structure": {
+        "parent": {
+          "$ref": "#/body"
+        },
+        "children": [
+          {
+            "$ref": "#/texts/34"
+          }
+        ],
+        "contentLayer": "body",
+        "formatting": null,
+        "hyperlink": null,
+        "meta": null,
+        "captions": [
+          {
+            "$ref": "#/texts/34"
+          }
+        ],
+        "footnotes": [],
+        "references": [],
+        "codeLanguage": null,
+        "marker": null,
+        "enumerated": null,
+        "level": null,
+        "tableModel": {
+          "headerRows": 2,
+          "headerContributions": [
+            {
+              "column": 0,
+              "sourceCellIndices": [
+                0
+              ],
+              "text": "Parameter"
+            },
+            {
+              "column": 1,
+              "sourceCellIndices": [
+                1,
+                3
+              ],
+              "text": "Steady observations – Accuracy"
+            },
+            {
+              "column": 2,
+              "sourceCellIndices": [
+                1,
+                4
+              ],
+              "text": "Steady observations – Window"
+            },
+            {
+              "column": 3,
+              "sourceCellIndices": [
+                1,
+                5
+              ],
+              "text": "Steady observations – Range"
+            },
+            {
+              "column": 4,
+              "sourceCellIndices": [
+                2,
+                6
+              ],
+              "text": "Transient observations – Accuracy"
+            },
+            {
+              "column": 5,
+              "sourceCellIndices": [
+                2,
+                7
+              ],
+              "text": "Transient observations – Window"
+            },
+            {
+              "column": 6,
+              "sourceCellIndices": [
+                2,
+                8
+              ],
+              "text": "Transient observations – Range"
+            }
+          ],
+          "rowHeaderRoles": [],
+          "mergedRanges": [
+            {
+              "cellIndex": 0,
+              "row": 0,
+              "column": 0,
+              "rowSpan": 2,
+              "columnSpan": 1,
+              "role": "column-group",
+              "risks": [
+                "column-group-becomes-flat",
+                "shared-across-rows"
+              ]
+            },
+            {
+              "cellIndex": 1,
+              "row": 0,
+              "column": 1,
+              "rowSpan": 1,
+              "columnSpan": 3,
+              "role": "column-group",
+              "risks": [
+                "column-group-becomes-flat"
+              ]
+            },
+            {
+              "cellIndex": 2,
+              "row": 0,
+              "column": 4,
+              "rowSpan": 1,
+              "columnSpan": 3,
+              "role": "column-group",
+              "risks": [
+                "column-group-becomes-flat"
+              ]
+            }
+          ],
+          "reviewRequired": true,
+          "note": "원문 표 구조 안내: 원문 R1–2/C1, R1/C2–4, R1/C5–7 칸은 병합돼 있었습니다. 원문의 머리 2행은 ‘상위 머리 – 하위 머리’로 합쳤습니다. 좌표는 원문 기준입니다. 반복된 값은 행별 독립 값이 아니라 공통 조건·범위·합계일 수 있으므로 원문 구조를 검수해야 합니다."
+        }
+      },
+      "sourceText": null,
+      "originalText": null,
+      "reviewState": "unreviewed",
+      "regions": [
+        {
+          "pageNo": 4,
+          "bbox": [
+            52.66168975830078,
+            199.92620849609375,
+            558.7369384765625,
+            491.4291687011719
+          ],
+          "unit": "pt",
+          "origin": "TOPLEFT",
+          "original": {
+            "page_no": 4,
+            "bbox": {
+              "l": 52.66168975830078,
+              "t": 592.0737915039062,
+              "r": 558.7369384765625,
+              "b": 300.5708312988281,
+              "coord_origin": "BOTTOMLEFT"
+            },
+            "charspan": [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "disposition": "mapped",
+      "targets": [
+        {
+          "role": "content",
+          "path": [
+            26
+          ],
+          "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+          "bindingState": "current",
+          "selector": {
+            "kind": "block"
+          },
+          "text": null
+        },
+        {
+          "role": "explanation",
+          "path": [
+            27
+          ],
+          "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+          "bindingState": "current",
+          "selector": {
+            "kind": "block"
+          },
+          "text": "원문 표 구조 안내: 원문 R1–2/C1, R1/C2–4, R1/C5–7 칸은 병합돼 있었습니다. 원문의 머리 2행은 ‘상위 머리 – 하위 머리’로 합쳤습니다. 좌표는 원문 기준입니다. 반복된 값은 행별 독립 값이 아니라 공통 조건·범위·합계일 수 있으므로 원문 구조를 검수해야 합니다."
+        }
+      ],
+      "cells": [
+        {
+          "sourceId": "1601c22d439d69165286a2bf6d89f50c5addbf5872528a80938d75fef40c02b6",
+          "cellIndex": 0,
+          "sourceCell": {
+            "bbox": {
+              "l": 59,
+              "t": 228.04992208,
+              "r": 107.33114932,
+              "b": 236.24992207999992,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 2,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "Parameter",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          "regionPrecision": "table",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                26
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 0,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "Parameter"
+            }
+          ]
+        }
+      ],
+      "losses": [
+        {
+          "sourceId": "a5a4b07de7927b5b2cf6446aa18484f336b61664a7e417b3d277e741617d96f9",
+          "category": "native-format",
+          "reasonCode": "merged-cell-repeated",
+          "severity": "blocking",
+          "resolution": "unreviewed",
+          "originalValue": {
+            "cellIndex": 0,
+            "cell": {
+              "bbox": {
+                "l": 59,
+                "t": 228.04992208,
+                "r": 107.33114932,
+                "b": 236.24992207999992,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 2,
+              "col_span": 1,
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "Parameter",
+              "column_header": true,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            },
+            "risks": [
+              "column-group-becomes-flat",
+              "shared-across-rows"
+            ]
+          },
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                26
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "block"
+              },
+              "text": null
+            },
+            {
+              "role": "explanation",
+              "path": [
+                27
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "block"
+              },
+              "text": "원문 표 구조 안내: 원문 R1–2/C1, R1/C2–4, R1/C5–7 칸은 병합돼 있었습니다. 원문의 머리 2행은 ‘상위 머리 – 하위 머리’로 합쳤습니다. 좌표는 원문 기준입니다. 반복된 값은 행별 독립 값이 아니라 공통 조건·범위·합계일 수 있으므로 원문 구조를 검수해야 합니다."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": []
+}

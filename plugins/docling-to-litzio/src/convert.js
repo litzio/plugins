@@ -1,3 +1,4 @@
+import { projectTable, lossCategory, sourceStructure } from "./table-rule.js";
 import { formulaHints } from "./formula.js";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -21,7 +22,12 @@ export const RULES = Object.freeze(
       "fallback",
       "coordinates",
       "formulaHints",
-    ].map((k) => [k, "1.0.0"]),
+    ].map((k) => [
+      k,
+      ["table", "equation", "figure", "caption"].includes(k)
+        ? "1.1.0"
+        : "1.0.0",
+    ]),
   ),
 );
 const fail = (code, ref = "") => {
@@ -161,6 +167,7 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
     const l = {
       selfRef: ref,
       reasonCode,
+      category: lossCategory(reasonCode),
       originalValue,
       severity,
       resolution: "unreviewed",
@@ -192,6 +199,7 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
       sourceId: hash(`${source.doclingSha256}:${ref}`),
       selfRef: ref,
       label: n.label,
+      structure: sourceStructure(n),
       sourceText: n.text ?? null,
       originalText: n.orig ?? null,
       regions: regions(n.prov ?? [], doc),
@@ -226,12 +234,39 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
           .map((c) => nodes.get(c.$ref).text ?? "")
           .join(" ");
       const m =
-        /^\s*(Figure|Fig\.?|Table|그림|표)\s+([0-9]+(?:[.-][0-9]+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
+        /^\s*(Figure|Fig\.?|Table|그림|표)\s+((?:[A-Z]\.)?[0-9]+(?:[.-][0-9]+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
           caption,
         );
-      if (m && /^(Table|표)$/i.test(m[1]) === (kind === "table")) {
+      if (
+        m &&
+        n.captions.length === 1 &&
+        /^(Table|표)$/i.test(m[1]) === (kind === "table")
+      ) {
         numbers.set(ref, { enumerator: m[2], caption: m[3] });
         const key = kind + ":" + m[2];
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    }
+  for (const [ref, n] of nodes)
+    if (n.label === "formula") {
+      const m = /^\s*\(((?:[A-Z]\.)?[0-9]+(?:[.-][0-9]+)*)\)\s+/.exec(
+        n.orig ?? "",
+      );
+      if (
+        m &&
+        n.text?.includes("=") &&
+        !n.text.trimStart().startsWith(m[0].trim()) &&
+        !/\\(?:tag|label)\s*\{/.test(n.text)
+      ) {
+        numbers.set(ref, {
+          enumerator: m[1],
+          evidence: {
+            field: "orig",
+            marker: m[0],
+            rule: "same-element-parenthesized-prefix",
+          },
+        });
+        const key = "equation:" + m[1];
         counts.set(key, (counts.get(key) ?? 0) + 1);
       }
     }
@@ -271,71 +306,55 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
       return;
     }
     if (ref.startsWith("#/tables/")) {
-      const t = n.data;
-      if (
-        !Number.isInteger(t?.num_rows) ||
-        !Number.isInteger(t?.num_cols) ||
-        t.num_rows < 1 ||
-        t.num_rows > 100 ||
-        t.num_cols < 1 ||
-        t.num_cols > 32
-      )
-        fail("table-limit", ref);
-      const rows = Array.from({ length: t.num_rows }, () =>
-          Array(t.num_cols).fill(""),
-        ),
-        occupied = new Set(),
-        cells = [];
+      const t = n.data,
+        projection = projectTable(t);
+      entry.structure.tableModel = projection.model;
+      entry.cellRegionPrecision = "table regions; cell page not inferred";
+      entry.cells = projection.cells.map((c) => ({
+        ...c,
+        sourceId: hash(`${source.doclingSha256}:${ref}:${c.cellIndex}`),
+      }));
       for (const [i, c] of t.table_cells.entries()) {
-        const r0 = c.start_row_offset_idx,
-          r1 = c.end_row_offset_idx,
-          c0 = c.start_col_offset_idx,
-          c1 = c.end_col_offset_idx;
-        if (
-          ![r0, r1, c0, c1].every(Number.isInteger) ||
-          r0 < 0 ||
-          c0 < 0 ||
-          r1 > t.num_rows ||
-          c1 > t.num_cols ||
-          r1 <= r0 ||
-          c1 <= c0 ||
-          r1 - r0 !== c.row_span ||
-          c1 - c0 !== c.col_span
-        )
-          fail("cell-span", ref);
-        const selectors = [];
-        for (let r = r0; r < r1; r++)
-          for (let col = c0; col < c1; col++) {
-            const pos = `${r}:${col}`;
-            if (occupied.has(pos)) fail("overlapping-cells", ref);
-            occupied.add(pos);
-            rows[r][col] = c.text;
-            selectors.push({ row: r, column: col });
-          }
-        cells.push({
-          sourceId: hash(`${source.doclingSha256}:${ref}:${i}`),
-          cellIndex: i,
-          sourceCell: c,
-          selectors,
-        });
         if (c.row_span > 1 || c.col_span > 1)
-          note(ref, "merged-cell-repeated", { cellIndex: i, cell: c });
-        if (c.row_header || c.row_section || c.column_header !== (r0 === 0))
+          note(ref, "merged-cell-repeated", {
+            cellIndex: i,
+            cell: c,
+            risks: projection.model.mergedRanges.find((m) => m.cellIndex === i)
+              .risks,
+          });
+        if (
+          c.row_header ||
+          c.row_section ||
+          c.column_header !==
+            c.start_row_offset_idx < Math.max(1, projection.model.headerRows)
+        )
           note(ref, "table-header-role", { cellIndex: i, cell: c });
         if (c.text?.includes("\\") || c.text?.includes("$"))
           note(ref, "cell-rich-content-unavailable", {
             cellIndex: i,
             text: c.text,
           });
+        if (/[\r\n]/.test(c.text ?? ""))
+          note(ref, "cell-block-structure", { cellIndex: i, text: c.text });
       }
-      entry.cellRegionPrecision = "table regions; cell page not inferred";
-      entry.cells = cells;
+      if (projection.model.headerRows > 1)
+        note(ref, "compound-header-flattened", {
+          headerRows: projection.model.headerRows,
+          contributions: projection.model.headerContributions,
+        });
       const number = numbering(ref, "table");
       emit(ref, {
         kind: "table",
-        rows,
+        rows: projection.rows,
         ...(number ? { enumerator: number.enumerator } : { enumerated: false }),
       });
+      if (projection.model.note) {
+        const key = emit(ref, {
+          kind: "paragraph",
+          text: projection.model.note,
+        });
+        entry.links.find((l) => l.key === key).role = "explanation";
+      }
       if ((n.captions ?? []).length)
         note(ref, "table-caption-separate", n.captions);
       if (n.label === "document_index")
@@ -380,8 +399,14 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
         note(ref, "heading-level", level);
       }
     } else if (n.label === "formula") {
-      emit(ref, { kind: "equation", latex: n.text });
-      note(ref, "equation-number-unbound", n.text, "advisory");
+      const number = numbering(ref, "equation");
+      entry.structure.numberEvidence = number?.evidence ?? null;
+      emit(ref, {
+        kind: "equation",
+        latex: n.text,
+        ...(number ? { enumerator: number.enumerator } : {}),
+      });
+      if (!number) note(ref, "equation-number-unbound", n.text, "advisory");
     } else if (n.label === "code")
       emit(ref, {
         kind: "code",
@@ -431,8 +456,20 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
         });
     } else if (typeof n.text === "string") {
       emit(ref, { kind: "paragraph", text: n.text });
-      if (n.label === "footnote") note(ref, "footnote-as-paragraph", n.text);
-      else if (!["text", "paragraph", "caption"].includes(n.label))
+      if (n.label === "footnote") {
+        const tableOwned =
+          n.parent?.$ref?.startsWith("#/tables/") ||
+          [...nodes.values()].some(
+            (t) =>
+              t.self_ref?.startsWith("#/tables/") &&
+              t.footnotes?.some((r) => r.$ref === ref),
+          );
+        note(
+          ref,
+          tableOwned ? "dedicated-table-note" : "footnote-as-paragraph",
+          n.text,
+        );
+      } else if (!["text", "paragraph", "caption"].includes(n.label))
         note(ref, "role-as-paragraph", n.label);
     } else {
       entry.disposition = "unsupported";
@@ -484,7 +521,7 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
   return {
     headingReview,
     formulaReview,
-    generatorVersion: "0.1.0",
+    generatorVersion: "0.3.0",
     rulesVersion: RULES,
     source,
     request,
