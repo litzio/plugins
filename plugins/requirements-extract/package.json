@@ -1,0 +1,1 @@
+{"name":"requirements-extract-processing","private":true,"type":"module","scripts":{"test":"node --test test/*.test.mjs"},"dependencies":{"xmlbuilder2":"4.0.3"}}

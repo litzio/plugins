@@ -1,0 +1,279 @@
+{
+  "text": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "plain A & B < C > D 끝."
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "plain A & B < C > D 끝.",
+      "content": [
+        {
+          "kind": "text",
+          "text": "plain A & B < C > D 끝."
+        }
+      ],
+      "editable": true
+    }
+  },
+  "strong": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "앞 굵게 뒤."
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "앞 굵게 뒤.",
+      "content": [
+        {
+          "kind": "text",
+          "text": "앞 "
+        },
+        {
+          "kind": "strong",
+          "children": [
+            {
+              "kind": "text",
+              "text": "굵게"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": " 뒤."
+        }
+      ],
+      "editable": true
+    }
+  },
+  "emphasis": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "앞 기울임 뒤."
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "앞 기울임 뒤.",
+      "content": [
+        {
+          "kind": "text",
+          "text": "앞 "
+        },
+        {
+          "kind": "emphasis",
+          "children": [
+            {
+              "kind": "text",
+              "text": "기울임"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": " 뒤."
+        }
+      ],
+      "editable": true
+    }
+  },
+  "subscript": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "H2O"
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "H2O",
+      "content": [
+        {
+          "kind": "text",
+          "text": "H"
+        },
+        {
+          "kind": "subscript",
+          "children": [
+            {
+              "kind": "text",
+              "text": "2"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": "O"
+        }
+      ],
+      "editable": true
+    }
+  },
+  "superscript": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "m2"
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "m2",
+      "content": [
+        {
+          "kind": "text",
+          "text": "m"
+        },
+        {
+          "kind": "superscript",
+          "children": [
+            {
+              "kind": "text",
+              "text": "2"
+            }
+          ]
+        }
+      ],
+      "editable": true
+    }
+  },
+  "code": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "차단 출력은 `0 ≤ t ≤ 10 ms` 동안 유지해야 한다."
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "차단 출력은 `0 ≤ t ≤ 10 ms` 동안 유지해야 한다.",
+      "content": [
+        {
+          "kind": "text",
+          "text": "차단 출력은 "
+        },
+        {
+          "kind": "code",
+          "value": "0 ≤ t ≤ 10 ms"
+        },
+        {
+          "kind": "text",
+          "text": " 동안 유지해야 한다."
+        }
+      ],
+      "editable": true
+    }
+  },
+  "codeEscape": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "앞 `Signal_A < B & C > D | \\` 뒤."
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "앞 `Signal_A < B & C > D | \\` 뒤.",
+      "content": [
+        {
+          "kind": "text",
+          "text": "앞 "
+        },
+        {
+          "kind": "code",
+          "value": "Signal_A < B & C > D | \\"
+        },
+        {
+          "kind": "text",
+          "text": " 뒤."
+        }
+      ],
+      "editable": true
+    }
+  },
+  "nested": {
+    "node": {
+      "path": [
+        8
+      ],
+      "type": "paragraph",
+      "editable": true,
+      "text": "앞 강조 안의 `Signal_A < B & C` 값 뒤."
+    },
+    "block": {
+      "block": "paragraph",
+      "path": [
+        8
+      ],
+      "text": "앞 강조 안의 `Signal_A < B & C` 값 뒤.",
+      "content": [
+        {
+          "kind": "text",
+          "text": "앞 "
+        },
+        {
+          "kind": "strong",
+          "children": [
+            {
+              "kind": "text",
+              "text": "강조 안의 "
+            },
+            {
+              "kind": "code",
+              "value": "Signal_A < B & C"
+            },
+            {
+              "kind": "text",
+              "text": " 값"
+            }
+          ]
+        },
+        {
+          "kind": "text",
+          "text": " 뒤."
+        }
+      ],
+      "editable": true
+    }
+  }
+}

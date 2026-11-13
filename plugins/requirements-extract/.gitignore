@@ -1,0 +1,4 @@
+node_modules/
+*.reqif
+*.roundtrip.reqif
+__pycache__/
