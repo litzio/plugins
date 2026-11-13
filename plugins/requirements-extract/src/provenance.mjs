@@ -183,7 +183,8 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
   check(readFileSync(markerPath).equals(markerBytes), 'marker-changed', '읽는 동안 완료 표지가 바뀌었습니다');
   check(!requireReviewed, 'source-review-required', 'v1 생성물은 unreviewed이므로 확정 출처로 채택할 수 없습니다');
   if (!corrected) return { provenance: p, snapshot, complete, reviewState: 'unreviewed', eligibleConfirmed: false };
-  const projected = structuredClone(p); projected.document.revision = current.revision;
+  const projected = structuredClone(p); projected.schemaVersion = '1.1.0'; projected.document.revision = current.revision;
+  for (const block of projected.document.blocks) block.text = selected(current, {path:block.path,selector:{kind:'block'}});
   for (const item of projected.items) for (const t of [...item.targets, ...item.cells.flatMap(c => c.targets)]) { t.documentRevision = current.revision; t.text = selected(current, t); }
   return { provenance: projected, baseline:p, snapshot:current, history, complete, reviewState:'unreviewed', eligibleConfirmed:false };
 }
