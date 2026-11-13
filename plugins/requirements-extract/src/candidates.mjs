@@ -6,6 +6,7 @@ export const keyOf = value => sha256(canonical(value)).slice(7);
 export function collectCandidates(inputs, profile) {
   if (!(profile.limits.candidates > 0 && profile.limits.characters > 0)) throw new Error('프로파일 구획 상한이 필요합니다');
   const sources = {}, units = [], sections = [];
+  const reviewedContract=inputs.some(i=>i.bundle.complete.schemaVersion==='1.2.0');
   const intern = source => { const key = keyOf({ sourceKey: source.sourceKey, sourceId: source.trace?.sourceId??source.nativeLocation?.sourceId, selector: source.selector, quoteDigest: source.quoteDigest }); sources[key] = source; return key; };
   for (const input of inputs) {
     const { bundle, key: documentKey } = input, p = bundle.provenance, nodes = bundle.snapshot.nodes;
@@ -26,6 +27,7 @@ export function collectCandidates(inputs, profile) {
       for (const item of p.items) {
         if (selector.kind === 'cell') {
           for (const c of item.cells) if (c.targets.some(t => t.role === 'content' && t.path[0] === node.path[0] && t.selector.kind === 'cell' && selector.row >= t.selector.row && selector.row < t.selector.row + t.selector.rowSpan && selector.column >= t.selector.column && selector.column < t.selector.column + t.selector.columnSpan)) found.push(resolveSource(bundle, { sourceKey: documentKey, elementRef: item.selfRef, selector: 'cell:' + c.sourceCell.start_row_offset_idx + ':' + c.sourceCell.start_col_offset_idx }).source);
+          if(bundle.complete.schemaVersion==='1.2.0'&&bundle.gapTargets.some(f=>f.sourceIds.includes(item.sourceId)&&f.targets.some(t=>t.path[0]===node.path[0]&&t.selector.kind==='cell'&&t.selector.row===selector.row&&t.selector.column===selector.column))&&bundle.history?.changes.some(c=>c.evidence.kind==='human-source-region'&&c.target.kind==='cell'&&c.target.path[0]===node.path[0]&&c.target.row===selector.row&&c.target.column===selector.column))found.push(resolveSource(bundle,{sourceKey:documentKey,elementRef:item.selfRef,selector:'cell:'+selector.row+':'+selector.column}).source);
         } else if (typeof item.sourceText === 'string' && item.targets.some(t => t.role === 'content' && t.path[0] === node.path[0] && (selector.kind === 'block' ? t.selector.kind === 'block' : t.selector.kind === 'list-item' && t.selector.index === selector.index))) found.push(resolveSource(bundle, { sourceKey: documentKey, elementRef: item.selfRef }).source);
       }
       return [...new Set(found.filter(Boolean).map(intern))];
@@ -97,6 +99,11 @@ export function collectCandidates(inputs, profile) {
     }
   }
   // Include repeated context/quotes in the text budget. Never truncate a condition.
+  const candidateBudgets=new Map();
+  if(reviewedContract)for(const u of units.filter(u=>u.reasons.length)) {
+    const key=candidateKey(u,sources,profile),previous=candidateBudgets.get(key);
+    candidateBudgets.set(key,previous?new Map([...previous,...u.contexts.map(c=>[c.key,c]),[u.key,{text:u.text}]]):new Map(u.contexts.map(c=>[c.key,c])));
+  }
   const bounded=[];
   for(const section of sections) {
     if(!section.units.length) { bounded.push(section);continue; }
@@ -104,8 +111,11 @@ export function collectCandidates(inputs, profile) {
     const push=()=>{if(!chunk.length)return;bounded.push({...section,key:keyOf({section:section.key,units:chunk.map(u=>u.key)}),units:chunk,candidateKeys:[],oversized:chunk.some(u=>u.inputCharacters>profile.limits.characters)});chunk=[];chars=count=0;};
     for(const u of section.units) {
       u.inputCharacters=u.text.length+u.contexts.reduce((n,c)=>n+c.text.length,0)+u.sourceKeys.reduce((n,k)=>n+sources[k].quote.length,0);
-      if(chunk.length&&(chars+u.inputCharacters>profile.limits.characters||count+Number(!!u.reasons.length)>profile.limits.candidates)) push();
-      chunk.push(u);chars+=u.inputCharacters;count+=Number(!!u.reasons.length);
+      // Match the final batch budget, including candidate-context copies.
+      // Legacy handoff grouping remains unchanged.
+      const budget=u.inputCharacters+(reviewedContract&&u.reasons.length?[...candidateBudgets.get(candidateKey(u,sources,profile)).values()].reduce((n,c)=>n+c.text.length,0):0);
+      if(chunk.length&&(chars+budget>profile.limits.characters||count+Number(!!u.reasons.length)>profile.limits.candidates)) push();
+      chunk.push(u);chars+=budget;count+=Number(!!u.reasons.length);
     }
     push();
   }
@@ -130,5 +140,6 @@ export function collectCandidates(inputs, profile) {
   return { sections, candidates, sources, units, comparisons };
 }
 export function candidateKey(unit, sources, profile) {
-  return keyOf({ ruleVersion: profile.ruleVersion, sources: unit.sourceKeys.map(key => { const s = sources[key]; return { artifact: s.trace?.sourceId??s.nativeLocation?.sourceId, elementRef: s.elementRef, selector: s.selector, quoteDigest: s.quoteDigest }; }).sort((a, b) => canonical(a).localeCompare(canonical(b))), ...(unit.sourceKeys.length ? {} : { provisionalLocator: unit.key }), kind: unit.kind });
+  const correctedV12=unit.sourceKeys.some(k=>sources[k].trace?.contract==='docling-to-litzio/1.2.0'&&sources[k].trace.corrections?.length);
+  return keyOf({ ruleVersion: profile.ruleVersion, sources: unit.sourceKeys.map(key => { const s = sources[key]; return { artifact: s.trace?.sourceId??s.nativeLocation?.sourceId, elementRef: s.elementRef, selector: s.selector, quoteDigest: s.quoteDigest }; }).sort((a, b) => canonical(a).localeCompare(canonical(b))), ...(unit.sourceKeys.length ? {} : { provisionalLocator: unit.key }), kind: unit.kind,...(correctedV12?{currentBody:unit.bodyBlocks}:{}) });
 }

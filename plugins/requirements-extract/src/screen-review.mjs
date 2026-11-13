@@ -13,7 +13,7 @@ export function checkReviewed(payload,current) {
  if(!Array.isArray(payload.reviewed)||payload.reviewed.length!==payload.ids.length)fail();
  for(const [index,value] of current.entries())if(value.id!==payload.ids[index]||canonical(payload.reviewed[index])!==canonical(value))fail();
 }
-const labels={'source-review-required':'출처 검수 필요','source-corrected':'교정된 출처','output-context-excluded':'조건 제외','hold':'보류','context-needed':'문맥 부족','unprocessed-section':'미판단 구획','lower-without-upper':'상위 없음','upper-without-lower':'하위 없음','partial-fulfillment':'부분 충족','source-region-proof':'값·조건 보호 위반','source-region-order':'원문 순서 차이','incomplete-review':'비서 검토 대기','upper-changed-ineligible-status':'상위 상태 변경','unprocessed-lower':'연결 미판단','out-of-scope-unverified':'선택 범위 밖','more':'후보 추가 요청','judgment-difference':'판단 차이','possible-duplicate':'중복 후보','possible-conflict':'충돌 후보'};
+const labels={'source-human-correction':'사람으로 기록된 교정','source-expression-confirmed':'표현 보존 확인','source-reviewed':'출처 검수 완료','source-review-required':'출처 검수 필요','source-corrected':'교정된 출처','output-context-excluded':'조건 제외','hold':'보류','context-needed':'문맥 부족','unprocessed-section':'미판단 구획','lower-without-upper':'상위 없음','upper-without-lower':'하위 없음','partial-fulfillment':'부분 충족','source-region-proof':'값·조건 보호 위반','source-region-order':'원문 순서 차이','incomplete-review':'비서 검토 대기','upper-changed-ineligible-status':'상위 상태 변경','unprocessed-lower':'연결 미판단','out-of-scope-unverified':'선택 범위 밖','more':'후보 추가 요청','judgment-difference':'판단 차이','possible-duplicate':'중복 후보','possible-conflict':'충돌 후보'};
 const decisionLabels={adopt:'채택',hold:'보류','context-needed':'문맥 부족','non-requirement':'제외',duplicate:'중복'};
 function list(rows) {
  const numbered=rows.map((r,i)=>({...r,number:i+1})),pages=[];
@@ -31,7 +31,7 @@ export function reviewLists(c,summary) {
   if(p.requirementId)return byId(p.requirementId);
   if(p.id)return byId(p.id);
   if(p.candidateKey||p.candidateKeys)return byCandidate(p.candidateKeys??[p.candidateKey]);
-  if(p.sourceKey)return byCandidate(candidates.filter(v=>v.sourceKeys.includes(p.sourceKey)).map(v=>v.candidateKey));
+  if(p.sourceKey||p.sourceKeys){const keys=p.sourceKeys??[p.sourceKey];return byCandidate(candidates.filter(v=>v.sourceKeys.some(k=>keys.includes(k))).map(v=>v.candidateKey));}
   if(p.unitKey)return byCandidate(candidates.filter(v=>v.occurrences.some(o=>o.unitKey===p.unitKey)).map(v=>v.candidateKey));
   if(p.sectionKey||p.sectionKeys){const keys=p.sectionKeys??[p.sectionKey];return byCandidate(candidates.filter(v=>v.occurrences.some(o=>keys.includes(o.sectionKey))).map(v=>v.candidateKey));}
   return [];

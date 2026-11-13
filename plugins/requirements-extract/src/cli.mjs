@@ -4,6 +4,7 @@ import { resolve, relative, isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { readInspection, authoring } from './document.mjs';
+import {verifyReviewedSources} from './provenance.mjs';
 
 // Caller explicitly supplies a source-checkout tsx executable/CLI entry and a
 // scratch root. No installed CLI, daemon discovery or implicit user-folder access.
@@ -47,6 +48,7 @@ export function sourceCli({ node = process.execPath, tsx, entry, launcher, root,
     const comparison = run('compare', file, file, '--json');
     if (comparison.receipt?.beforeRevision !== inspection.revision || comparison.receipt?.afterRevision !== inspection.revision) throw new Error('의미 읽기 revision 불일치');
     const s = readInspection(inspection, name, comparison.before);
+    s.diagnostics.push(...verifyReviewedSources(s,{scope:scoped,inspect:file=>run('inspect',file,'--format','json')}));
     // Guard against an inspect/compare race, including metadata changes.
     if (inspection.revision !== run('inspect', file, '--format', 'json').revision) throw new Error('읽는 동안 문서가 변경되었습니다');
     return s;
