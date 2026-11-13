@@ -28,7 +28,7 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 
 ## 변환 규칙
 
-각 규칙 버전은 `src/convert.js`의 RULES에 있다(현재 모두 1.0.0). 숫자·부호·단위·공백을 자체 정규화하지 않으며 Core가 문자열을 바꿨으면 재읽기 불일치로 남긴다.
+각 규칙 버전은 `src/convert.js`의 RULES에 있다(table/equation/figure/caption은 1.1.0, 나머지는 1.0.0). 숫자·부호·단위·공백을 자체 정규화하지 않으며 Core가 문자열을 바꿨으면 재읽기 불일치로 남긴다.
 
 | 요소 | 옮기는 방식 | 단순화/막힌 표현 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 | 표 | 모든 셀 범위 검증, 직사각형 격자; 병합 글자 반복 | 병합·복합 header/row role·rich cell은 손실; 첫 행 header 강제; 명시 복합 머리는 합치고 병합 표 아래 설명+검수 |
 | 수식 | LaTeX 그대로; 전부 위치가 있는 검수 목록 | 같은 요소의 명시 번호는 fixed로 연결; 의미 정확성 판정 없음 |
 | 그림 | data URI → 공식 images; byte digest 보존 | 누락은 pending+손실, 손상은 거부; child 텍스트도 보존 |
-| 캡션·번호 | 그림 caption, 표 caption 별도 문단; 유일한 Arabic 번호만 fixed | Roman/문자/모호한 번호는 literal+번호 없음; table caption 입력 필요 |
+| 캡션·번호 | 그림 caption, 표 caption 별도 문단; 유일하고 명시된 Arabic/절 번호(예: K.1)만 fixed | Roman/문자/모호한 번호는 literal+번호 없음; table caption 입력 필요 |
 | 각주·위첨자 | footnote 문단; 원문 글자 보존 | call site 추정 없음; inline 서식/링크는 손실 |
 | 코드 | language와 원문 줄/공백 | unknown language는 빈 값 |
 | furniture | layer 또는 page_header/page_footer 명시 분류만 제외 | 제외 항목도 inventory와 위치 유지 |
@@ -88,3 +88,6 @@ loadHandoff는 marker→파일 bytes/digest→schema→원본/문서 revision→
 
 
 2026-11-13 추가 조사: 병합/복합 머리·머리 열은 플랫폼 형식 유지 한계이며, 이 플러그인이 반복·머리 합치기·원문 범위·표 아래 설명·전수 검수 표시로 처리한다. 손실 category는 native-format/authoring-input/plugin-pending. 원본 inline/관계는 items.structure, rich cell은 sourceCell에 보존한다. [표본 전후](docs/table-examples.md)에 실제 생성 전후와 선택 이유가 있다. 이미 지원되는 수식/그림 fixed 번호를 사용해, LSR의 식 번호 3개와 K.1/K.2 미이관 손실은 제거했다. LaTeX는 그대로다.
+
+
+PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.

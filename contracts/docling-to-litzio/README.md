@@ -77,3 +77,6 @@ JSON Schema 2020-12의 기계 판독 정의는 설치 단위 안의 다음 파�
 이미 제공되는 equation/figure.enumerator는 플러그인이 사용한다. 같은 formula.orig에 유일한 괄호 접두 번호가 있고 LaTeX에 tag/label이 없을 때 fixed 번호로 옮긴다. LaTeX는 바꾸지 않는다. 단일 그림 caption의 Arabic 또는 K.1 같은 명시 절 번호는 prefix를 떼어 fixed 번호로 둔다. 중복·접미사·다중 caption·불명확한 번호는 literal/unbound+검수 손실이다. 번호 미인식은 authoring-input 한계가 아니라 plugin-pending이다.
 
 items.structure는 원본 parent/children/formatting/hyperlink/meta/captions/footnotes/references/codeLanguage를 그대로 보존하는 중간 표현이다. tableModel과 numberEvidence는 생성 규칙의 근거를 더한다. sourceCell은 raw 셀 전체이므로 추후 rich 작성 필드를 채울 때 plain 문자열로부터 구조를 복원할 필요가 없다.
+
+
+PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.

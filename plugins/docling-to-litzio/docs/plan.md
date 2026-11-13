@@ -147,7 +147,7 @@ native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구�
 
 - 제목: 북마크가 있는 문서는 정확한 계층이 중요하고, 없는 문서의 한계는 감수한다. level은 그대로 보존한다. 선택적 pypdf outline 검사 결과를 PDF hash로 묶고 생성 보고에 present/absent/unknown을 기록한다. use_bookmarks=true만으로 실제 북마크 존재나 개별 제목의 근거를 단정하지 않는다. absent/unknown은 신뢰도 낮음·검수 대상으로 남긴다. 두 LSR 판은 각각 16/17, 3/17이며 합산하지 않는다.
 - **2026-11-13 소유자 답: 수식은 사람이 검토하되 기계적 오류 점검은 한다.** 모든 수식에 원문 쪽·bbox와 검수 필요를 붙인다. LaTeX는 변경하지 않는다. 빈/해독 실패·괄호/환경 짝·intertext 문장 혼입 점검을 PR 3에서 앞당겼다. LSR 세 번째 실패의 문장 혼입을 검출하고 첫 두 수식에는 의심 표시가 없다. 이는 내용의 정확성 보증이 아니다. PDF 글자 층 숫자 대조는 parser/좌표 대응 범위를 줄이기 위해 PR 3에 둔다. 묶음·화면·비서 연동도 PR 3 이후다.
-- 그림/표 번호는 유일한 Arabic 번호만 fixed로 쓰며, 그림에서는 해당 prefix를 caption에서 옮긴다. 표 caption은 원문 전체 별도 문단으로 보존한다. 새로 자동 번호를 붙이지 않는다. 식 번호는 연결을 추측하지 않는다.
+- 그림/표 번호는 유일하고 명시된 Arabic/절 번호(예: K.1)만 fixed로 쓰며, 그림에서는 해당 prefix를 caption에서 옮긴다. 표 caption은 원문 전체 별도 문단으로 보존한다. 새로 자동 번호를 붙이지 않는다. 식 번호는 연결을 추측하지 않는다.
 - 원문 bbox는 Docling 쪽 좌표를 보존하며 TOPLEFT pt를 함께 낸다. 회전/인쇄 label은 명시 자료가 없으면 null이다. 셀 페이지를 추측하지 않고 원본 cell bbox와 표 전체 영역을 유지한다.
 - 초안 대응/표지는 PR 1 생성 증거일 뿐, PR 2의 소비자용 인계/수정 후 갱신 규칙을 확정하지 않는다. rich 작성 입력 부족은 숨기지 않고 후속 플랫폼 요구로 남긴다.
 
@@ -324,3 +324,6 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 병합의 의미는 자동 추론하지 않는다. 모든 병합 표를 검수 대상으로 하고, risks에 열 묶음/행 간 공유/열 간 공유 및 합계·범위·공통 조건 가능성을 표시한다. 키워드는 판단이 아니라 추가 위험 표지다. 빈 칸으로 바꾸면 누락으로 오해하기 쉬워 값을 반복하며, 원문 좌표를 명시한 설명 문단을 바로 아래에 둔다. 설명 target의 role=explanation으로 원문 인용과 구분한다. 명시 column_header인 완전한 연속 머리 행만 합치며, 근거 없는 두 번째 머리를 추측하지 않는다. 실제 표본 전후는 table-examples.md에 있다.
 
 손실 category는 native-format(유지되는 형식 한계), authoring-input(플랫폼 보강 예정), plugin-pending(보수적 미인식/아직 하지 않음)으로 나눈다. items.structure에 원본 parent/children·formatting/hyperlink/meta·caption/footnote/reference 관계를 들고 있으며 sourceCell은 원본 전체다. 지금은 평문으로 내보내도 앞으로 작성 요청 필드를 채울 근거를 버리지 않는다. table/figure/equation/caption 규칙은 1.1.0, 생성기는 0.3.0이다.
+
+
+PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.
