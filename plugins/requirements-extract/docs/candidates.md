@@ -80,7 +80,7 @@ python validation/standard.py verify <schema-cache> <empty-scratch>/candidates-t
 
 이 절이 위의 토큰 비교만으로 통과할 수 있었던 초기 판정을 대체한다. 전각 숫자/식별자 변경과 범위 뒤집기가 초기 head에서 모델·시험 ReqIF까지 통과하는 것을 먼저 재현했다.
 
-선택 응답·작업 상태의 schemaVersion은 **2**, 보호 정책은 ordered-source-regions/2다. 원장 컨테이너·완료 표지는 기존 형식을 유지하고 제안 완료 표지에 protectionVersion을 명시한다. policyDigest에는 프로파일과 보호 정책 버전을 함께 결합한다. 이전 checkpoint는 resume에서 판단을 모두 무효화하고 history로만 보존한다. 기존 응답을 재승인하지 않는다. proposal도 저장된 모든 응답을 현재 검사로 다시 검증한 뒤에만 디렉터리/완료 표지를 만들 수 있다.
+선택 응답·작업 상태의 schemaVersion은 **2**, 보호 정책은 ordered-source-regions/3다. 원장 컨테이너·완료 표지는 기존 형식을 유지하고 제안 완료 표지에 protectionVersion을 명시한다. policyDigest에는 프로파일과 보호 정책 버전을 함께 결합한다. 이전 checkpoint는 resume에서 판단을 모두 무효화하고 history로만 보존한다. 기존 응답을 재승인하지 않는다. proposal도 저장된 모든 응답을 현재 검사로 다시 검증한 뒤에만 디렉터리/완료 표지를 만들 수 있다.
 
 - batch의 후보/문맥 regions에는 전체 블록의 구조, 원래 문자열 fields의 path와 UTF-16 [start,end), 정규 비교값이 있다. **모든 문자와 구조가 보호 대상**이므로 전각·분수·한글 단위·새 신호명처럼 tokenizer가 모르는 표기도 보호 대상 없음으로 지나가지 않는다.
 - sourceRegionMappings의 각 항목은 `{outputRegionKey,sourceRegionKey}`다. tokens 명령의 출력 regions를 실제 선택 후보/적용 문맥의 regions에 연결한다. 출력의 모든 본문/미주 구간을 정확히 한 번 연결하고, 선택한 원문/적용 문맥의 모든 구간도 결과들에서 보존해야 한다. 제목은 코드의 중립 제목 `요구사항 제안` 또는 같은 방식으로 증명된 원문 전체 구간만 허용한다.
@@ -101,3 +101,16 @@ python validation/standard.py verify <schema-cache> <empty-scratch>/candidates-t
 회귀 검사는 기계 생성한 **696개 변형**을 quoted/derived 본문과 출처가 있는 제목에 적용한다. 치환·삭제·복제·인접 자리 바꿈·범위 뒤집기·전각/반각·지수/분수·한글 단위·신호/문서 번호 변형은 전부 거부한다. 변경 없는 대조군, 허용 정규화, 전체 블록 순서, 잘못된 proof, 저장된 옛 판단의 재검사를 별도로 검사한다.
 
 실제 CLI 검사도 별도다: `node validation/value-proof.mjs <built-cli.mjs> <empty-scratch>`. 공식 CLI로 합성 native 문서를 작성/읽고 완전한 합성 인계 파일로 세 사례 × 두 origin을 확인한다. 변형 제출과 저장된 변형 판단은 결과 디렉터리 생성 전에 차단되고, 바꾸지 않은 6대조군은 새 문서·완료 표지·시험 ReqIF까지 원문을 보존한다. 이 합성 인계의 PDF bytes는 처리 검사용이므로 실제 producer/PDF 대응 품질 증거가 아니다. 실제 LSR 인계 경로도 v2 schema로 재실행해 23구획/122후보의 결정적 가짜 판단과 1초안 왕복·공식 XSD/50 ID/참조·독립 파서 왕복을 확인했다. 합성 대조군 6건의 ReqIF도 각각 공식 XSD/54 ID/참조·독립 파서 왕복을 통과했다. native 재읽기는 ID뿐 아니라 본문/출처/미주/상태의 의미 전체를 대조한 뒤 완료 표지를 쓴다.
+
+
+## 결과별 공통 조건 보존(PR14 재검토)
+
+후보의 apply 판단은 해당 후보에서 나오는 **모든 결과**에 상속한다. 통합에서는 모든 출처 후보의 apply 문맥을 같은 원칙으로 검사한다. 표 머리글·절 전제·단위·미주·캡션·부모 항목·행·참조 등 kind와 토큰 인식 여부에 의존하지 않는다. contextKeys에 적는 것뿐 아니라 각 결과 본문/미주에 전체 원문 구간 증거가 있어야 한다. 다른 형제 결과의 조건 보존으로 대신할 수 없다. 미주 끝 주석에 실제 보존된 것은 정상이다.
+
+결과에서 조건을 뺄 때는 선택 schema v2의 선택 필드 `contextExclusions: [{contextKey,reason}]`에 **그 결과의 비해당 판단과 구체적인 이유**를 적는다. 이유 없는 누락, 빈 이유, 알 수 없는/미적용 키, 포함과 제외의 중복·모순을 거부한다. 모든 결과가 제외하더라도 각각 이유가 있어야 하며 각각 사람 검토 대상이다. 이 예외는 원래 후보 본문 값의 삭제나 기존 프로파일 검사 우회를 허용하지 않는다.
+
+`report.reviewFirst`에 output-context-excluded를 따로 모으고 problems의 맨 앞에도 놓는다. 결과 outputKey/요구사항 ID, 조건 key/kind/text, 출처 후보, 제외 이유, needsHumanReview=true를 싣는다. 완료 표지에도 같은 보고가 남는다. 채택 초안은 계속 draft이며 사람이 확인됐다는 뜻이 아니다. 스킬은 일반 채택안보다 이 묶음을 먼저 보도록 한다.
+
+보호 정책 ordered-source-regions/3을 policyDigest에 결합한다. 이전 /2 판단은 resume에서 무효화하며, 저장된 응답도 제안 생성 전에 결과별 조건을 재검사한다. 이 수정은 schema v2에 선택 필드를 추가한 것이며 정상적으로 모든 조건을 보존한 응답에는 빈 제외 배열을 추가할 필요가 없다.
+
+검증: 수정 전 온도 머리글을 한 분해 결과에서만 빠뜨려도 모델·시험 ReqIF까지 통과함을 회귀 검사로 재현했다. 머리글/절 전제/단위/미주/캡션/목록 부모/표 행/참조 8종에서 두 출력 각각의 누락과 허위 포함, 정상 보존·명시적 제외·우선 검토 보고, 통합의 각 출처 조건 및 저장 판단을 검사한다. 추가 45개는 결정적 합성 처리 검사이며 이번 수정에서 실제 CLI/AI 시험을 새로 수행했다고 주장하지 않는다.

@@ -72,7 +72,7 @@ function regionCheck(job,decision,originals,applied) {
   // The source catalog defines order; the assistant cannot reorder its catalog keys
   // to manufacture a new order of values. Context appendices follow the source body.
   const ordered=[...originals].sort((a,b)=>job.corpus.units.findIndex(u=>u.key===a.key)-job.corpus.units.findIndex(u=>u.key===b.key));
-  const entries=[...ordered.flatMap(sourceRegions),...applied.flatMap(c=>evidenceRegions(c.bodyBlocks,c.key))];
+  const entries=[...ordered.flatMap(sourceRegions),...applied.filter(c=>decision.outputs.some(o=>o.contextKeys.includes(c.key))).flatMap(c=>evidenceRegions(c.bodyBlocks,c.key))];
   const unique=[...new Map(entries.map(r=>[r.key,r])).values()];
   const pool=new Map(unique.map((r,index)=>[r.key,{...r,rank:index}])),covered=new Set();
   for(const [index,output] of decision.outputs.entries()) {
@@ -81,14 +81,15 @@ function regionCheck(job,decision,originals,applied) {
       ...output.sourceCandidateKeys.flatMap(k=>sourceRegions(job.corpus.candidates[k])),
       ...applied.filter(c=>output.contextKeys.includes(c.key)).flatMap(c=>evidenceRegions(c.bodyBlocks,c.key)),
     ].map(r=>r.key));
-    const seen=new Set();
+    const seen=new Set(),localCovered=new Set();
     for(const mapping of output.sourceRegionMappings) {
       const region=regions.find(r=>r.key===mapping.outputRegionKey),source=pool.get(mapping.sourceRegionKey);
       if(!region||!source||!allowed.has(source.key)||seen.has(region.key)||region.value!==source.value) reject('source-region-proof','원문 전체 구간과 일치한다는 증거가 없습니다. 자유 재작성/미확인 표기는 사람 확인이 필요합니다',[mapping.outputRegionKey]);
-      seen.add(region.key);if(region.role!=='title') covered.add(source.key);
+      seen.add(region.key);if(region.role!=='title') {covered.add(source.key);localCovered.add(source.key);}
     }
     // Check order by output location, NEVER by assistant-supplied mapping array order.
     for(const role of ['body','notes']) {let last=-1;for(const region of regions.filter(r=>r.role===role)) {const m=output.sourceRegionMappings.find(m=>m.outputRegionKey===region.key),rank=pool.get(m?.sourceRegionKey)?.rank;if(rank===undefined||rank<=last) reject('source-region-order','출력 위치가 원문 구간 순서를 보존하지 않습니다',[region.key]);last=rank;}}
+    for(const context of applied.filter(c=>output.contextKeys.includes(c.key))) if(evidenceRegions(context.bodyBlocks,context.key).some(r=>!localCovered.has(r.key))) reject('output-context-proof','이 결과의 본문/미주에 적용 조건 전체가 보존되지 않았습니다',[output.outputKey,context.key]);
     if(seen.size!==regions.length) reject('source-region-proof','대응하지 않은 출력 구간이 있습니다. 보호 토큰이 없어도 통과하지 않습니다');
   }
   if(unique.some(r=>!covered.has(r.key))) reject('source-region-proof','선택한 원문/적용 문맥의 문자 구간이 누락됐습니다');
@@ -152,12 +153,15 @@ function submitChecked(job, response) {
       for(const a of pd.contextAssessments) {reason(a.reason); const context=partner.contexts.find(c=>c.key===a.contextKey); if(['header','caption','footnote','list-parent','row','unresolved-reference'].includes(context.kind)&&(context.bodyBlocks.length||context.kind==='unresolved-reference')&&a.outcome!=='apply') reject('context-needed','통합 출처의 공통 문맥을 생략할 수 없습니다'); if(a.outcome==='needs-more') reject('context-needed','통합 출처의 문맥이 부족합니다');}
       applied.push(...partner.contexts.filter(c=>pd.contextAssessments.some(a=>a.contextKey===c.key&&a.outcome==='apply')));
     }
-    if(applied.some(a=>!d.outputs.some(o=>o.contextKeys.includes(a.key)))) reject('context-coverage','적용 문맥은 출력에 연결해야 합니다');
-    const required = [...originals.flatMap(c => c.tokens), ...applied.flatMap(c => c.tokens)];
+    const required = [...originals.flatMap(c => c.tokens), ...applied.filter(c=>d.outputs.some(o=>o.contextKeys.includes(c.key))).flatMap(c => c.tokens)];
     const pool = new Map(required.map(t => [t.key,t]));
     for (const output of d.outputs) {
       reason(output.title); reason(output.rationale);
       if (!output.sourceCandidateKeys.length || output.sourceCandidateKeys.some(k => !selected.has(k))) reject('source-candidate', '각 결과에 출처 후보가 필요합니다');
+      const exclusions=output.contextExclusions??[];
+      if(new Set(exclusions.map(e=>e.contextKey)).size!==exclusions.length) reject('output-context-exclusion','결과별 문맥 제외 판단이 중복됐습니다',[output.outputKey]);
+      for(const e of exclusions) {reason(e.reason);if(!applied.some(c=>c.key===e.contextKey)||output.contextKeys.includes(e.contextKey)) reject('output-context-exclusion','적용 문맥만 포함과 배타적인 결과별 제외 판단을 할 수 있습니다',[output.outputKey,e.contextKey]);}
+      for(const context of applied) if(!output.contextKeys.includes(context.key)&&!exclusions.some(e=>e.contextKey===context.key)) reject('output-context-required','모든 결과에 적용 조건을 보존하거나 결과별 비해당 판단과 이유를 기록해야 합니다',[output.outputKey,context.key]);
       if (output.contextKeys.some(k => !applied.some(a => a.key === k))) reject('context-source', '적용했다고 판단한 문맥만 사용할 수 있습니다');
       if (d.choices.origin === 'quoted' && !originals.some(o => canonical(normalizeEvidence(o.bodyBlocks)) === canonical(normalizeEvidence(output.bodyBlocks.slice(0,o.bodyBlocks.length))))) reject('quoted-changed', 'quoted는 원문 구조를 그대로 사용해야 합니다');
       const r = newRequirement({ ...d.choices, body:output.bodyBlocks, title:output.title, rationale:output.rationale, footnotes:outputNotes(output,{contexts:applied}), sources:[...new Set([...originals.flatMap(c=>c.sourceKeys),...applied.filter(c=>output.contextKeys.includes(c.key)).flatMap(c=>c.sourceKeys??[])])].map(k=>job.corpus.sources[k]) });
@@ -207,7 +211,7 @@ export function supplement(job, sectionKey, unitKeys) {
   return next;
 }
 export function report(job) {
-  const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[];
+  const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[],reviewFirst=[];
   if(job.protectionVersion!==protectionVersion) problems.unshift({code:'protection-version',message:'이전 판단은 무효입니다. resume 후 재검토해야 합니다'});
   for (const s of job.corpus.sections) {
     const response=job.responses[s.key];
@@ -216,6 +220,7 @@ export function report(job) {
     for (const u of s.units.filter(u=>u.unsupported)) problems.push({sectionKey:s.key,unitKey:u.key,code:'unsupported-segment',kind:u.kind});
     for (const d of response?.decisions ?? []) {
       if (d.decision==='adopt') {
+        for(const [index,output] of d.outputs.entries()) for(const exclusion of output.contextExclusions??[]) {const candidates=d.outputs.flatMap(o=>o.sourceCandidateKeys).map(k=>job.corpus.candidates[k]);const context=candidates.flatMap(c=>c.contexts).find(c=>c.key===exclusion.contextKey);reviewFirst.push({code:'output-context-excluded',needsHumanReview:true,sectionKey:s.key,candidateKey:d.candidateKey,outputKey:output.outputKey,requirementId:job.ids[identity(d,index)],contextKey:exclusion.contextKey,contextKind:context?.kind,contextText:context?.text,sourceCandidateKeys:[...new Set(candidates.filter(c=>c.contexts.some(c=>c.key===exclusion.contextKey)).map(c=>c.candidateKey))],reason:exclusion.reason});}
         accepted.push({sectionKey:s.key,candidateKey:d.candidateKey,outputCount:d.outputs.length,decisionDigest:sha256(canonical(d))});
         problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'source-review-required',message:'후보 판단은 출처 검수 완료가 아닙니다'});
         if(d.choices.quality!=='same') problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'judgment-difference',reason:d.reason});
@@ -223,7 +228,7 @@ export function report(job) {
       for (const key of job.corpus.candidates[d.candidateKey].sourceKeys) for (const diagnostic of job.corpus.sources[key].trace.diagnostics) if(diagnostic.code!=='source-review-required') problems.push({sectionKey:s.key,candidateKey:d.candidateKey,...diagnostic});
     }
   }
-  return {jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,blocked:job.blocked??null,counts:{sections:job.corpus.sections.length,checkedSections:Object.keys(job.responses).length,candidates:Object.keys(job.corpus.candidates).length,decisions:Object.values(job.responses).reduce((n,r)=>n+r.decisions.length,0),adopted:accepted.length},problems,accepted,reviewState:'draft-only'};
+  return {jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,blocked:job.blocked??null,counts:{sections:job.corpus.sections.length,checkedSections:Object.keys(job.responses).length,candidates:Object.keys(job.corpus.candidates).length,decisions:Object.values(job.responses).reduce((n,r)=>n+r.decisions.length,0),adopted:accepted.length},reviewFirst,problems:[...reviewFirst,...problems],accepted,reviewState:'draft-only'};
 }
 export function proposal(job) {
   if(job.protectionVersion!==protectionVersion) reject('protection-version','이전 보호 정책의 제안은 다시 검토해야 합니다');

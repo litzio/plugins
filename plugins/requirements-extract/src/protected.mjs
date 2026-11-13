@@ -1,5 +1,5 @@
 import { canonical } from './model.mjs';
-export const protectionVersion = 'ordered-source-regions/2';
+export const protectionVersion = 'ordered-source-regions/3';
 export const neutralTitle = '요구사항 제안';
 
 // Recognition is advisory. Equality evidence always covers the ENTIRE block,
