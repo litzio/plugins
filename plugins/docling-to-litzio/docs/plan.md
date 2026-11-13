@@ -1,6 +1,6 @@
 # docling-to-litzio 범위와 구현 계획
 
-상태: 구현 전 설계. 작성·근거 확인: 2026-11-13. 이 문서의 수치는 별도 표시가 없으면 **제안 합격선**이며 측정 결과가 아니다. 소유자 부재 중 구현을 시작할 수 있도록 결정을 내렸고, 바뀔 수 있는 결정은 마지막 절에 모았다.
+상태: PR 1 생성·채점 구현 및 CLI 검증 완료, PR 2 이후는 계획. 작성·근거 확인: 2026-11-13. 이 문서의 수치는 별도 표시가 없으면 **제안 합격선**이며 측정 결과가 아니다. 소유자 부재 중 구현을 시작할 수 있도록 결정을 내렸고, 바뀔 수 있는 결정은 마지막 절에 모았다.
 
 ## 1. 목표와 경계
 
@@ -33,7 +33,7 @@
 | [ADR-0022](https://github.com/litzio/litzio/blob/4e7db394855dfbb5af806d9425f746a32c87d0c6/docs/adr/0022-plugin-screen-code.md), [화면 계약](https://github.com/litzio/litzio/blob/4e7db394855dfbb5af806d9425f746a32c87d0c6/docs/design/plugin-screens-v1.md) | React·ui·invoke·새 문서 saveDocument, 외부 라이브러리 제작 시 번들. 화면 저장은 기존 문서 수정 API가 아님 |
 | [ADR-0006](https://github.com/litzio/litzio/blob/4e7db394855dfbb5af806d9425f746a32c87d0c6/docs/adr/0006-native-document-boundary.md), [문서 형식](https://github.com/litzio/litzio/blob/4e7db394855dfbb5af806d9425f746a32c87d0c6/docs/design/document-support-v1.md), [공개 작성 입력](https://github.com/litzio/litzio/blob/4e7db394855dfbb5af806d9425f746a32c87d0c6/docs/design/plugin-stage1-v1.md), [README CLI](https://github.com/litzio/litzio/blob/4e7db394855dfbb5af806d9425f746a32c87d0c6/README.md#cli개발-실행http) | valid native 문서, 작성 입력과 최종 targets, create/check/inspect 및 revision 보호 |
 | [#1462와 댓글](https://github.com/litzio/litzio/issues/1462), [#1450와 댓글](https://github.com/litzio/litzio/issues/1450), [Discussion #766](https://github.com/litzio/litzio/discussions/766) | 국소 검수·LSR 기대 구조·불변 원본의 역사. 11-12 결정은 이전의 Docling patch/replay와 사람 사전 승인 방식을 대체 |
-| [LSR README](../../../fixtures/lsr-1.1/README.md), [NIST README](../../../fixtures/nist-sp1108r4/README.md) | 기존 JSON만 재사용. 기대 구조는 변환 출력 정답이나 대표 정확도 표본이 아님. NIST 그림/쪽 PNG는 보관본에 없음 |
+| [LSR README](../../../fixtures/lsr-1.1/README.md), [NIST README](../../../fixtures/nist-sp1108r4/README.md) | 기존 JSON만 재사용. 기대 구조는 변환 출력 정답이나 대표 정확도 표본이 아님. 현재 계약 v2에는 NIST 그림/쪽 data URI도 포함 |
 
 이하 `보관:` 경로는 모두 공개 저장소 태그 [`archive/2026-11-13-plugins-declarative`](https://github.com/litzio/litzio/tree/archive/2026-11-13-plugins-declarative), 대상 commit `f2c07204b2927f1e0c31a7aaa604a4aa9c2157d1` 기준이다.
 
@@ -50,7 +50,7 @@
 
 ### 입력
 
-변환 결과 묶음 1건: DoclingDocument JSON, 원본 PDF 또는 hash로 식별되는 원본 참조, 변환 기록, 포함된 그림·쪽 이미지. 묶음 구성/이름/압축 여부·실패 쪽 표기·이미지 경로 규칙·최신 schema 버전은 **변환 계약 확정 뒤 확인**한다. 현재는 두 fixtures의 `converted/document.json`·`conversion-record.json`과 별도 PDF를 읽는 개발 입력을 기준으로 한다. 두 기존 JSON의 `schema_name=DoclingDocument`, `version=1.10.0`을 확인했다. 라이브 서버 상태로 해석하지 않는다.
+변환 결과 묶음 1건: DoclingDocument JSON, 원본 PDF 또는 hash로 식별되는 원본 참조, 변환 기록, 포함된 그림·쪽 이미지. 계약 v2에 따라 document.json(schema 1.10.0), conversion-record.json, record.source.file의 PDF를 받는다. 이미지는 JSON 안 embedded data URI이며 task/result 실패·부분 성공은 record와 페이지 목록으로 진단한다. 현재는 두 fixtures의 `converted/document.json`·`conversion-record.json`과 별도 PDF를 읽는 개발 입력을 기준으로 한다. 두 기존 JSON의 `schema_name=DoclingDocument`, `version=1.10.0`을 확인했다. 라이브 서버 상태로 해석하지 않는다.
 
 보관 형식은 STORE ZIP `.docling`에 manifest/document/source PDF와 내장 ImageRef, 나중 버전에는 검수와 내부 문서까지 담았다. 새 입력은 변환 산출물만 읽는다. 이전 workspace의 교정·캐시를 가져오거나 그 ZIP 형식을 새 계약으로 고정하지 않는다. importer는 계약 확정 후 그 파일 모양 하나만 지원한다.
 
@@ -83,7 +83,7 @@
 | 문서 옆 버전 있는 JSON + revision별 공식 target | **채택**. 문서 자체 유효성과 독립 사용 유지, 다대다·셀·제외·편집 불확실성 표현 가능 |
 | Docling JSON에 검수/수정 확장 또는 내부 문서 ZIP 정본 | 폐기. 불변 원본과 native 교정 정본을 다시 혼동하고 인계에 전용 reader를 강제 |
 
-`provenance.json` v1의 최소 필드 설계:
+`provenance.json` v1의 최소 필드 설계(최종 버전·갱신 계약은 PR 2; PR 1 출력은 correspondence-draft.json):
 
 ```text
 schemaVersion, generationId, generatorVersion, rulesVersion
@@ -114,7 +114,9 @@ selector: {listItem?} 또는 {row,column} (블록 경로에 임의 숫자를 이
 
 **추출 오류를 추측해서 고치지 않는다**를 유지한다. 생성기는 Docling이 명시한 구조를 native에 옮기고 표현 손실을 드러낸다. PDF와 문맥으로 추출 자체를 고치는 일은 증거 있는 검수로 분리한다. 원문 오탈자는 그대로 두며 숫자·부호·단위는 정규화하지 않는다.
 
-native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구분한다. 현재 native는 중첩 목록·inline math·위첨자·미주 등을 지원하지만 공개 작성 입력은 plain string/평면 목록/직사각형 표다. 계약이 없는데 AST나 Markdown을 조립해 넣지 않는다.
+native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구분한다. 2026-11-13 PR 1 구현: JavaScript ESM 처리 모듈(런타임 Node 의존성 없음), 선택적 Python/pypdf 북마크 사전 검사만 별도 제공한다. 실제 실행과 세부 규칙은 ../README.md, 측정은 results.md를 따른다.
+
+현재 native는 중첩 목록·inline math·위첨자·미주 등을 지원하지만 공개 작성 입력은 plain string/평면 목록/직사각형 표다. 계약이 없는데 AST나 Markdown을 조립해 넣지 않는다.
 
 | 요소 | 보관 document.js가 한 일 / 한계 | 새 결정과 검수 기준 |
 | --- | --- | --- |
@@ -130,13 +132,22 @@ native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구�
 | 주석·각주·위첨자 | footnote를 문단으로 유지, call site 추정 안 함. inline formatting/link 손실 | 유지하되 검수에 호출부·정의·표/쪽 적용 범위를 함께 제공. 번호/문자 같다고 연결 금지. 명시적 관계의 native 미주·위첨자 복원은 rich 입력 확보 뒤. 중요한 지수/주석 소실은 차단 손실 |
 | 코드 | code_language와 text→Code | 유지. 줄/공백 의미 보존, unknown language는 빈 값. 수식으로 추측 변환하지 않음 |
 | 페이지 경계 | 서로 다른 문단/표를 자동 병합하지 않음 | 유지. 인접 양쪽을 검수 묶음으로 읽음. 같은 항목의 다중 prov는 그대로 유지. 별개 항목 병합은 원문 증거·읽기 순서·표 열 일치 확인 뒤 native 교정, 반복 header 제거도 기록 |
-| 머리글·바닥글·쪽 번호 | furniture layer 또는 page_header/page_footer 제외 | 명시 분류만 자동 제외. 반복/숫자/가장자리 휴리스틱만으로 본문 삭제 금지. 제외한 항목도 원문 대조 가능. 최신 머리글·쪽 번호 표기는 변환 계약 확정 뒤 확인 |
+| 머리글·바닥글·쪽 번호 | furniture layer 또는 page_header/page_footer 제외 | 명시 분류만 자동 제외. 반복/숫자/가장자리 휴리스틱만으로 본문 삭제 금지. 제외한 항목도 원문 대조 가능. 계약 v2 고정본의 furniture/page_header/page_footer만 제외; NIST 측면 출처 포함 |
 | 목차 | document_index 등 미지원 역할은 문단/자식 유지+손실 | 목차를 본문 제목으로 올리지 않음. 텍스트·페이지 번호 보존, native 자동 목차로 치환하지 않음. 구조가 표이면 표 규칙 적용 |
 | 미지원·미도달 | text는 문단, group은 자식 유지, 미도달/빈 내용 손실 | 유지. 잘못된 참조/순환/겹친 셀은 실패. 알려지지 않은 역할과 원문 없는 출력은 숨기지 않고 별도 집계 |
 
 그림/표는 확실한 `Figure/Fig./그림`, `Table/표` + Arabic 숫자(`2-1`, `2.1` 포함)만 접두어에서 fixed 번호로 옮긴다. Roman·alphabetic·접미사·중복·모호함은 원문 그대로와 `enumerated:false`. Equation에는 번호 없음 옵션이 없으므로 같은 옵션을 넣지 않는다.
 
 표현 손실은 `sourceId, reasonCode, originalValue/structure, outputTargets, severity, resolution`으로 기록한다. 단순 강조 소실처럼 의미 영향이 낮은 손실과 주석/수식/표 의미를 바꾸는 차단 손실을 나눈다. 원본 PDF와 기록을 보관했다는 이유로 읽기 좋은 native 표현을 달성했다고 판정하지 않는다. 첫 단계는 손실 있는 초안으로 가치가 있고, 전체 완료 판정은 후속 복원/검수까지 기다린다.
+
+
+### 2026-11-13 소유자 답과 PR 1 구현 결정
+
+- 제목: 북마크가 있는 문서는 정확한 계층이 중요하고, 없는 문서의 한계는 감수한다. level은 그대로 보존한다. 선택적 pypdf outline 검사 결과를 PDF hash로 묶고 생성 보고에 present/absent/unknown을 기록한다. use_bookmarks=true만으로 실제 북마크 존재나 개별 제목의 근거를 단정하지 않는다. absent/unknown은 신뢰도 낮음·검수 대상으로 남긴다. 두 LSR 판은 각각 16/17, 3/17이며 합산하지 않는다.
+- **2026-11-13 소유자 답: 수식은 사람이 검토하되 기계적 오류 점검은 한다.** 모든 수식에 원문 쪽·bbox와 검수 필요를 붙인다. LaTeX는 변경하지 않는다. 빈/해독 실패·괄호/환경 짝·intertext 문장 혼입 점검을 PR 3에서 앞당겼다. LSR 세 번째 실패의 문장 혼입을 검출하고 첫 두 수식에는 의심 표시가 없다. 이는 내용의 정확성 보증이 아니다. PDF 글자 층 숫자 대조는 parser/좌표 대응 범위를 줄이기 위해 PR 3에 둔다. 묶음·화면·비서 연동도 PR 3 이후다.
+- 그림/표 번호는 유일한 Arabic 번호만 fixed로 쓰며, 그림에서는 해당 prefix를 caption에서 옮긴다. 표 caption은 원문 전체 별도 문단으로 보존한다. 새로 자동 번호를 붙이지 않는다. 식 번호는 연결을 추측하지 않는다.
+- 원문 bbox는 Docling 쪽 좌표를 보존하며 TOPLEFT pt를 함께 낸다. 회전/인쇄 label은 명시 자료가 없으면 null이다. 셀 페이지를 추측하지 않고 원본 cell bbox와 표 전체 영역을 유지한다.
+- 초안 대응/표지는 PR 1 생성 증거일 뿐, PR 2의 소비자용 인계/수정 후 갱신 규칙을 확정하지 않는다. rich 작성 입력 부족은 숨기지 않고 후속 플랫폼 요구로 남긴다.
 
 ## 5. 문제 탐지와 묶음
 
@@ -226,11 +237,11 @@ furniture/그림/수식 영역 제외는 옛 구현의 한계다. 새 설계는 
 
 ## 9. PR 순서와 검증
 
-크기 S/M/L은 대략 단일 책임의 소/중/대 변경량이며 일정 약속이 아니다. 단계마다 공개 계약을 확인하고 필요한 플랫폼 PR과 플러그인 PR을 분리한다. 아래 검사는 미래 계획으로 이번 문서 PR에서 실행하지 않았다.
+크기 S/M/L은 대략 단일 책임의 소/중/대 변경량이며 일정 약속이 아니다. 단계마다 공개 계약을 확인하고 필요한 플랫폼 PR과 플러그인 PR을 분리한다. PR 1 실제 검증 결과는 results.md에 기록했고, PR 2 이후 검사는 미래 계획이다.
 
 | PR | 범위·크기 | 끝난 기준·고정 표본 단위 검사(리치오 없이) | 리치오 설치/화면 검사·선행 조건 |
 | --- | --- | --- | --- |
-| 1 생성과 채점(M) | importer·명시 변환 규칙·공개 authoring 요청·손실/대응 보고·CLI 생성 안내. AI/대조/교정 없음 | 두 고정 JSON의 schema/참조·요소 변환·전수 inventory, 잘못된 참조/표 겹침 거부, literal 숫자/단위 보존, 규칙별 score. NIST 없는 이미지 기대는 부재로 고정 | 현재 CLI create+images→check→inspect→재열기·원본 hash·기존 파일 충돌. 새 플랫폼 능력 없이 문서 초안과 손실을 얻음. fixture 전체가 거부되면 성공을 꾸미지 않고 원인/지원 범위를 제출 |
+| 1 생성과 채점(M) | importer·명시 변환 규칙·공개 authoring 요청·손실/대응 보고·CLI 생성 안내. AI/대조/교정 없음 | 두 고정 JSON의 schema/참조·요소 변환·전수 inventory, 잘못된 참조/표 겹침 거부, literal 숫자/단위 보존, 규칙별 score. 현재 계약 v2의 NIST embedded 이미지 사용 | 현재 CLI create+images→check→inspect→재열기·원본 hash·기존 파일 충돌. 새 플랫폼 능력 없이 문서 초안과 손실을 얻음. fixture 전체가 거부되면 성공을 꾸미지 않고 원인/지원 범위를 제출 |
 | 2 대응·인계와 생성 화면(M) | versioned sidecar와 generation 표지, 최종 receipt 결합, 결과/손실 요약 | 다대다·셀 selector·미포함 자산·중간 실패/잘못된 hash/다른 revision 인계 거부, 재생성 시 기존 교정 보존 | 격리 Host artifact 설치→실제 invoke→결과 열기. 그림 화면 생성은 현재 공식 경로 가능 여부 확인 후 필요 시 images 확장. 설치됨은 화면 수락 아님 |
 | 3 탐지·PDF 증거(M) | 7종 자료+독립 token 비교+문제 묶음. AI는 아직 없음 | 고정 오류 주입/오경보·제외 범위·스캔/회전·셀 교환·S20 음성 반례. PDF.js 번들 호환·원본 미변경 | read 작업/CLI로 현재 문서와 evidence 연결 확인. 긴 작업 수명 필요 여부를 이 단계에서 실측 |
 | 4 비서 교정·되돌리기(L, 필요하면 범위별 분할) | 스킬·1–3쪽 묶음·진행·native 교정·후검증 | fake 응답으로 before 충돌·부분 실패·재개·응답 유실·역연산·출처 이동·완료 무효화. fake 통과를 AI 품질로 주장하지 않음 | 일반 편집/변경 receipt·부속 기록 일관성·rich 표현 부족분 확보가 선행. 허가된 실제 AI로 LSR 일부→전체, 즉시 교정→Undo→재교정. 모델 응답 확인은 가장 저렴한 모델 |
@@ -243,7 +254,7 @@ furniture/그림/수식 영역 제외는 옛 구현의 한계다. 새 설계는 
 
 ## 10. 측정과 책임 분리
 
-변환 서버 담당자의 `tools/`는 **PDF 기대 구조→Docling 결과**를 채점한다. 여기의 채점은 **그 Docling 결과→native 결과**와 **검수 전→검수 후**를 담당한다. 코드를 다른 플러그인에서 import하지 않고, 고정 입력/hash/기대 구조·가능하면 버전 있는 score 파일만 공유한다. score 파일의 이름/schema는 변환 계약 확정 뒤 확인한다. 이번 PR에서는 tools/contracts/fixtures를 수정하지 않는다.
+변환 서버 담당자의 `tools/`는 **PDF 기대 구조→Docling 결과**를 채점한다. 여기의 채점은 **그 Docling 결과→native 결과**와 **검수 전→검수 후**를 담당한다. 코드를 다른 플러그인에서 import하지 않고, 고정 입력/hash/기대 구조·가능하면 버전 있는 score 파일만 공유한다. 변환 채점기는 tools/score_lsr.py의 지표별 [일치, 비교] 진단이다. PR 1은 독립 native snapshot 채점기를 사용하며 그 코드를 가져오지 않는다. 이번 PR에서는 tools/contracts/fixtures를 수정하지 않는다.
 
 | 층 | 측정 | 오류 귀속 |
 | --- | --- | --- |
@@ -270,11 +281,11 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 
 ### 미확인
 
-- **변환 계약 확정 뒤 확인:** 묶음 구성·Docling schema 버전·원본/이미지 제공·실패 쪽·머리글/쪽 번호 관찰·새 score 파일. 현재 고정본과 최신 결과의 차이는 측정하지 않았다.
+- **계약 v2 확인:** schema 1.10.0·record/PDF digest·embedded 그림/쪽 이미지·furniture 관찰·북마크 두 판이 확정됐다. 고정본으로만 검사하며 재변환하지 않았다.
 - 삭제 이후 공개 SDK·화면 props·작성 상한·일반 편집/비서 CLI·설치 절차. 옛 review/workspace 제공은 계획의 전제가 아니다.
 - PDF.js bundled Node 실행/worker·한글·회전, native rich 작성의 실제 공개 입력, 그림 저장의 화면 경로, 문서 편집 receipt와 sidecar 결합·복구 능력.
-- 실제 생성/check/설치·화면·AI 호출·변환·수백 쪽 성능/정확도/사람 부담. **이번 작업은 읽기와 문서 작성뿐이며 모두 미실행**이다.
-- NIST 없는 이미지 원본 확보, 북마크 없는 입력의 대응 변환 결과 유무, holdout 표본·실제 오류 주석의 충분성.
+- PR 1 CLI 생성/check/inspect와 자산 bytes·충돌·원본 보존은 실행했다. 설치·화면·AI 호출·새 변환·수백 쪽 성능/정확도/사람 부담은 미실행이다.
+- NIST의 현 계약 v2에는 그림과 쪽 이미지가 있다. 북마크 없는 고정 입력도 검사했다. holdout 표본·실제 오류 주석의 충분성은 미확인이다.
 
 ### 소유자 확인 필요(기다리지 않고 아래 가정으로 진행)
 
@@ -286,5 +297,8 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 | 비서/사람 분담 | 비서 먼저 즉시 교정, 사람은 판단 불가·대량 삭제·최종 확정. 모든 표/그림 전수 수동 확인 안 함 | 5–7절, 완료 gate와 실제 사람 부담 지표 |
 | 실사용 합격선과 측정 문서 | 200쪽 이상 1건, 사람 목록 ≤10%·100쪽당 30분을 잠정 목표로 진행. 대표성/밀도에 따라 조정 가능 | 1·10절 목표. 실제 자료 사용은 별도 허가 후 |
 | 변경 receipt가 없는 수동 편집 | 대응 uncertain·완료 무효화. 추측 연결보다 잘못된 출처 방지가 우선 | 3·8절. 더 강한 유지가 필수면 공개 편집 추적/identity 능력을 앞당김 |
+| 제목 계층 — 2026-11-13 소유자 답 | 북마크 있으면 정확성이 중요, 없으면 한계 감수. level 보존·북마크 증거 보고·없는 경우 검수 표시 | 4절 headingReview, 두 판 별도 측정 |
+| 수식 — 2026-11-13 소유자 답 | 사람이 검토하되 기계적 오류 점검은 한다. 전수 검수 목록+값싼 의심 이유, 추측 수정 없음 | 4절 formulaReview, PDF 숫자 대조/묶음은 PR 3 |
+| 회전/인쇄 쪽·셀별 쪽 증거 부족 | null/표 전체 영역으로 명시, 정밀 대응은 추측하지 않음 | PR 2 대응 계약과 PR 3 PDF 증거 |
 
 이 문서에서 확정한 것은 플러그인의 범위와 구현 순서다. 플랫폼 기능의 구현 완료나 실제 품질 수락을 선언하지 않는다.
