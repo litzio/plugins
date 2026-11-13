@@ -1,0 +1,4140 @@
+[
+  {
+    "name": "baseline",
+    "sample": "bookmarks",
+    "elapsed_ms": 28507,
+    "bytes": 3099091,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {}
+  },
+  {
+    "name": "baseline",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 25454,
+    "bytes": 3099117,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {}
+  },
+  {
+    "name": "repeat",
+    "sample": "bookmarks",
+    "elapsed_ms": 21412,
+    "bytes": 3099090,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {}
+  },
+  {
+    "name": "repeat",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 19383,
+    "bytes": 3099114,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {}
+  },
+  {
+    "name": "ocr-off",
+    "sample": "bookmarks",
+    "elapsed_ms": 12581,
+    "bytes": 3095311,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        0,
+        3
+      ],
+      "caption_link": [
+        8,
+        10
+      ],
+      "adjacent_order": [
+        123,
+        130
+      ]
+    },
+    "items_with_prov": 158,
+    "items": 158,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": false,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_ocr": false
+    }
+  },
+  {
+    "name": "ocr-off",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 19212,
+    "bytes": 3095337,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        0,
+        3
+      ],
+      "caption_link": [
+        8,
+        10
+      ],
+      "adjacent_order": [
+        123,
+        130
+      ]
+    },
+    "items_with_prov": 158,
+    "items": 158,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": false,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_ocr": false
+    }
+  },
+  {
+    "name": "force-ocr",
+    "sample": "bookmarks",
+    "elapsed_ms": 77757,
+    "bytes": 3100817,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        64,
+        65
+      ],
+      "literal_text": [
+        107,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        44,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        121,
+        130
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": true,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "force_ocr": true
+    }
+  },
+  {
+    "name": "force-ocr",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 46828,
+    "bytes": 3100843,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        64,
+        65
+      ],
+      "literal_text": [
+        107,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        44,
+        71
+      ],
+      "heading_level": [
+        1,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        121,
+        130
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": true,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "force_ocr": true
+    }
+  },
+  {
+    "name": "table-fast",
+    "sample": "bookmarks",
+    "elapsed_ms": 21606,
+    "bytes": 3098107,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        7,
+        8
+      ],
+      "cell_span": [
+        125,
+        139
+      ],
+      "cell_text": [
+        102,
+        139
+      ],
+      "numeric_cell": [
+        43,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_fast",
+      "table_mode": "fast",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "table_structure_preset": "tableformer_v1_fast",
+      "table_mode": "fast"
+    }
+  },
+  {
+    "name": "table-fast",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 22825,
+    "bytes": 3098133,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        7,
+        8
+      ],
+      "cell_span": [
+        125,
+        139
+      ],
+      "cell_text": [
+        102,
+        139
+      ],
+      "numeric_cell": [
+        43,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_fast",
+      "table_mode": "fast",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "table_structure_preset": "tableformer_v1_fast",
+      "table_mode": "fast"
+    }
+  },
+  {
+    "name": "cell-off",
+    "sample": "bookmarks",
+    "elapsed_ms": 23903,
+    "bytes": 3099091,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": false,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "table_cell_matching": false
+    }
+  },
+  {
+    "name": "cell-off",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 28206,
+    "bytes": 3099117,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": false,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "table_cell_matching": false
+    }
+  },
+  {
+    "name": "enrichment-off",
+    "sample": "bookmarks",
+    "elapsed_ms": 18329,
+    "bytes": 3098778,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        0,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": false,
+      "do_formula_enrichment": false,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_code_enrichment": false,
+      "do_formula_enrichment": false
+    }
+  },
+  {
+    "name": "enrichment-off",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 16673,
+    "bytes": 3098802,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        0,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": false,
+      "do_formula_enrichment": false,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_code_enrichment": false,
+      "do_formula_enrichment": false
+    }
+  },
+  {
+    "name": "classifier-off",
+    "sample": "bookmarks",
+    "elapsed_ms": 20362,
+    "bytes": 3089704,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": false,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_picture_classification": false
+    }
+  },
+  {
+    "name": "classifier-off",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 17445,
+    "bytes": 3089731,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": false,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_picture_classification": false
+    }
+  },
+  {
+    "name": "scale-one",
+    "sample": "bookmarks",
+    "elapsed_ms": 16409,
+    "bytes": 1389652,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 1,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "images_scale": 1
+    }
+  },
+  {
+    "name": "scale-one",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 17744,
+    "bytes": 1389677,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 1,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "images_scale": 1
+    }
+  },
+  {
+    "name": "heading-off",
+    "sample": "bookmarks",
+    "elapsed_ms": 20357,
+    "bytes": 3099090,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": false,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_pdf_heading_hierarchy": false
+    }
+  },
+  {
+    "name": "heading-off",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 22614,
+    "bytes": 3099117,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": false,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "do_pdf_heading_hierarchy": false
+    }
+  },
+  {
+    "name": "pages-off",
+    "sample": "bookmarks",
+    "elapsed_ms": 18321,
+    "bytes": 274149,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": false,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "include_page_images": false
+    }
+  },
+  {
+    "name": "pages-off",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 20648,
+    "bytes": 274175,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": false,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "include_page_images": false
+    }
+  },
+  {
+    "name": "combined",
+    "sample": "bookmarks",
+    "elapsed_ms": 19960,
+    "bytes": 1380276,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        16,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 1,
+        "extra_numeric_tokens": 12
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 3
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      }
+    ],
+    "missing_numeric_candidates": 1,
+    "extra_numeric_candidates": 19,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 1,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": false,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "images_scale": 1,
+      "do_picture_classification": false
+    }
+  },
+  {
+    "name": "combined",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 17289,
+    "bytes": 1380302,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        65,
+        65
+      ],
+      "literal_text": [
+        109,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        3,
+        17
+      ],
+      "note_label": [
+        5,
+        12
+      ],
+      "table_dimensions": [
+        8,
+        8
+      ],
+      "cell_span": [
+        134,
+        139
+      ],
+      "cell_text": [
+        135,
+        139
+      ],
+      "numeric_cell": [
+        55,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        122,
+        130
+      ]
+    },
+    "items_with_prov": 167,
+    "items": 167,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 1,
+        "extra_numeric_tokens": 12
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 3
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      }
+    ],
+    "missing_numeric_candidates": 1,
+    "extra_numeric_candidates": 19,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "standard",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 1,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": false,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false
+    },
+    "changes_from_baseline": {
+      "images_scale": 1,
+      "do_picture_classification": false
+    }
+  },
+  {
+    "name": "vlm",
+    "sample": "bookmarks",
+    "elapsed_ms": 151045,
+    "bytes": 3145277,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        39,
+        65
+      ],
+      "literal_text": [
+        116,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        0,
+        12
+      ],
+      "table_dimensions": [
+        5,
+        8
+      ],
+      "cell_span": [
+        107,
+        139
+      ],
+      "cell_text": [
+        67,
+        139
+      ],
+      "numeric_cell": [
+        22,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        125,
+        127
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 19,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 7,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 5,
+        "extra_numeric_tokens": 14
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 9
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 15,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 2,
+        "extra_numeric_tokens": 11
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      }
+    ],
+    "missing_numeric_candidates": 54,
+    "extra_numeric_candidates": 42,
+    "gpu_peak_mib": 4711,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "vlm",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false,
+      "vlm_pipeline_preset": "granite_docling"
+    },
+    "changes_from_baseline": {
+      "pipeline": "vlm",
+      "vlm_pipeline_preset": "granite_docling"
+    }
+  },
+  {
+    "name": "vlm",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 125444,
+    "bytes": 3145277,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        39,
+        65
+      ],
+      "literal_text": [
+        116,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        0,
+        12
+      ],
+      "table_dimensions": [
+        5,
+        8
+      ],
+      "cell_span": [
+        107,
+        139
+      ],
+      "cell_text": [
+        67,
+        139
+      ],
+      "numeric_cell": [
+        22,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        125,
+        127
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 19,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 7,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 5,
+        "extra_numeric_tokens": 14
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 9
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 15,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 2,
+        "extra_numeric_tokens": 11
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      }
+    ],
+    "missing_numeric_candidates": 54,
+    "extra_numeric_candidates": 42,
+    "gpu_peak_mib": 4711,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "vlm",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false,
+      "vlm_pipeline_preset": "granite_docling"
+    },
+    "changes_from_baseline": {
+      "pipeline": "vlm",
+      "vlm_pipeline_preset": "granite_docling"
+    }
+  },
+  {
+    "name": "vlm-repeat",
+    "sample": "bookmarks",
+    "elapsed_ms": 131531,
+    "bytes": 3145277,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        39,
+        65
+      ],
+      "literal_text": [
+        116,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        0,
+        12
+      ],
+      "table_dimensions": [
+        5,
+        8
+      ],
+      "cell_span": [
+        107,
+        139
+      ],
+      "cell_text": [
+        67,
+        139
+      ],
+      "numeric_cell": [
+        22,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        125,
+        127
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 19,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 7,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 5,
+        "extra_numeric_tokens": 14
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 9
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 15,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 2,
+        "extra_numeric_tokens": 11
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      }
+    ],
+    "missing_numeric_candidates": 54,
+    "extra_numeric_candidates": 42,
+    "gpu_peak_mib": 4713,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "vlm",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false,
+      "vlm_pipeline_preset": "granite_docling"
+    },
+    "changes_from_baseline": {
+      "pipeline": "vlm",
+      "vlm_pipeline_preset": "granite_docling"
+    }
+  },
+  {
+    "name": "vlm-repeat",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 146974,
+    "bytes": 3145277,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        39,
+        65
+      ],
+      "literal_text": [
+        116,
+        195
+      ],
+      "numeric_literal": [
+        62,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        0,
+        12
+      ],
+      "table_dimensions": [
+        5,
+        8
+      ],
+      "cell_span": [
+        107,
+        139
+      ],
+      "cell_text": [
+        67,
+        139
+      ],
+      "numeric_cell": [
+        22,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        1,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        125,
+        127
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 19,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 7,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 5,
+        "extra_numeric_tokens": 14
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 9
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 15,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 2,
+        "extra_numeric_tokens": 11
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 0
+      }
+    ],
+    "missing_numeric_candidates": 54,
+    "extra_numeric_candidates": 42,
+    "gpu_peak_mib": 4713,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "vlm",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false,
+      "vlm_pipeline_preset": "granite_docling"
+    },
+    "changes_from_baseline": {
+      "pipeline": "vlm",
+      "vlm_pipeline_preset": "granite_docling"
+    }
+  },
+  {
+    "name": "vlm-backend",
+    "sample": "bookmarks",
+    "elapsed_ms": 158065,
+    "bytes": 3125305,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        39,
+        65
+      ],
+      "literal_text": [
+        39,
+        195
+      ],
+      "numeric_literal": [
+        25,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        0,
+        12
+      ],
+      "table_dimensions": [
+        5,
+        8
+      ],
+      "cell_span": [
+        107,
+        139
+      ],
+      "cell_text": [
+        67,
+        139
+      ],
+      "numeric_cell": [
+        22,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        0,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        125,
+        127
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 10
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 2,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 13,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 4,
+        "extra_numeric_tokens": 5
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 12,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 10,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 1
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 3,
+        "extra_numeric_tokens": 1
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 14,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 4,
+        "extra_numeric_tokens": 7
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 4,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 1
+      }
+    ],
+    "missing_numeric_candidates": 78,
+    "extra_numeric_candidates": 33,
+    "gpu_peak_mib": 5759,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "vlm",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false,
+      "vlm_pipeline_custom_config": "{\"engine_options\": {\"engine_type\": \"transformers\"}, \"model_spec\": {\"name\": \"Granite-Docling-258M\", \"default_repo_id\": \"ibm-granite/granite-docling-258M\", \"revision\": \"main\", \"prompt\": \"Convert this page to docling.\", \"response_format\": \"doctags\", \"supported_engines\": null, \"engine_overrides\": {\"mlx\": {\"repo_id\": \"ibm-granite/granite-docling-258M-mlx\", \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {}}, \"transformers\": {\"repo_id\": null, \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {\"transformers_model_type\": \"automodel-imagetexttotext\", \"extra_generation_config\": {\"skip_special_tokens\": false}}}}, \"api_overrides\": {}, \"trust_remote_code\": false, \"stop_strings\": [\"</doctag>\", \"<|end_of_text|>\"], \"temperature\": 0.0, \"max_new_tokens\": 8192, \"extra_generation_config\": {}}, \"scale\": 2.0, \"max_size\": null, \"batch_size\": 1, \"force_backend_text\": true}"
+    },
+    "changes_from_baseline": {
+      "pipeline": "vlm",
+      "vlm_pipeline_custom_config": "{\"engine_options\": {\"engine_type\": \"transformers\"}, \"model_spec\": {\"name\": \"Granite-Docling-258M\", \"default_repo_id\": \"ibm-granite/granite-docling-258M\", \"revision\": \"main\", \"prompt\": \"Convert this page to docling.\", \"response_format\": \"doctags\", \"supported_engines\": null, \"engine_overrides\": {\"mlx\": {\"repo_id\": \"ibm-granite/granite-docling-258M-mlx\", \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {}}, \"transformers\": {\"repo_id\": null, \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {\"transformers_model_type\": \"automodel-imagetexttotext\", \"extra_generation_config\": {\"skip_special_tokens\": false}}}}, \"api_overrides\": {}, \"trust_remote_code\": false, \"stop_strings\": [\"</doctag>\", \"<|end_of_text|>\"], \"temperature\": 0.0, \"max_new_tokens\": 8192, \"extra_generation_config\": {}}, \"scale\": 2.0, \"max_size\": null, \"batch_size\": 1, \"force_backend_text\": true}"
+    }
+  },
+  {
+    "name": "vlm-backend",
+    "sample": "no-bookmarks",
+    "elapsed_ms": 155089,
+    "bytes": 3125305,
+    "status": "success",
+    "errors": [],
+    "score": {
+      "furniture": [
+        39,
+        65
+      ],
+      "literal_text": [
+        39,
+        195
+      ],
+      "numeric_literal": [
+        25,
+        92
+      ],
+      "heading_label": [
+        17,
+        19
+      ],
+      "prose_label": [
+        42,
+        71
+      ],
+      "heading_level": [
+        9,
+        17
+      ],
+      "note_label": [
+        0,
+        12
+      ],
+      "table_dimensions": [
+        5,
+        8
+      ],
+      "cell_span": [
+        107,
+        139
+      ],
+      "cell_text": [
+        67,
+        139
+      ],
+      "numeric_cell": [
+        22,
+        59
+      ],
+      "formula_detection": [
+        3,
+        3
+      ],
+      "formula_literal": [
+        0,
+        3
+      ],
+      "caption_link": [
+        7,
+        10
+      ],
+      "adjacent_order": [
+        125,
+        127
+      ]
+    },
+    "items_with_prov": 169,
+    "items": 169,
+    "pdf_numeric_inventory": [
+      {
+        "page": 1,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 10
+      },
+      {
+        "page": 2,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 3,
+        "missing_numeric_tokens": 2,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 4,
+        "missing_numeric_tokens": 13,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 5,
+        "missing_numeric_tokens": 4,
+        "extra_numeric_tokens": 5
+      },
+      {
+        "page": 6,
+        "missing_numeric_tokens": 12,
+        "extra_numeric_tokens": 4
+      },
+      {
+        "page": 7,
+        "missing_numeric_tokens": 10,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 8,
+        "missing_numeric_tokens": 6,
+        "extra_numeric_tokens": 1
+      },
+      {
+        "page": 9,
+        "missing_numeric_tokens": 3,
+        "extra_numeric_tokens": 1
+      },
+      {
+        "page": 10,
+        "missing_numeric_tokens": 14,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 11,
+        "missing_numeric_tokens": 4,
+        "extra_numeric_tokens": 7
+      },
+      {
+        "page": 12,
+        "missing_numeric_tokens": 4,
+        "extra_numeric_tokens": 0
+      },
+      {
+        "page": 13,
+        "missing_numeric_tokens": 0,
+        "extra_numeric_tokens": 1
+      }
+    ],
+    "missing_numeric_candidates": 78,
+    "extra_numeric_candidates": 33,
+    "gpu_peak_mib": 5759,
+    "actual_request": {
+      "target_type": "inbody",
+      "from_formats": [
+        "pdf"
+      ],
+      "to_formats": [
+        "json"
+      ],
+      "image_export_mode": "embedded",
+      "pipeline": "vlm",
+      "pdf_backend": "docling_parse",
+      "do_ocr": true,
+      "force_ocr": false,
+      "ocr_preset": "rapidocr",
+      "ocr_lang": [
+        "en"
+      ],
+      "do_table_structure": true,
+      "table_structure_preset": "tableformer_v1_accurate",
+      "table_mode": "accurate",
+      "table_cell_matching": true,
+      "layout_preset": "default",
+      "do_pdf_heading_hierarchy": true,
+      "pdf_heading_hierarchy_options": {
+        "use_bookmarks": true,
+        "use_numbering": true,
+        "use_style": true,
+        "use_font_style": true,
+        "style_size_tolerance": 0.05,
+        "max_level": 6,
+        "bookmark_match_threshold": 0.8
+      },
+      "include_images": true,
+      "include_page_images": true,
+      "images_scale": 2,
+      "do_code_enrichment": true,
+      "do_formula_enrichment": true,
+      "code_formula_preset": "codeformulav2",
+      "do_picture_classification": true,
+      "picture_classification_preset": "document_figure_classifier_v2",
+      "do_chart_extraction": false,
+      "do_picture_description": false,
+      "abort_on_error": false,
+      "vlm_pipeline_custom_config": "{\"engine_options\": {\"engine_type\": \"transformers\"}, \"model_spec\": {\"name\": \"Granite-Docling-258M\", \"default_repo_id\": \"ibm-granite/granite-docling-258M\", \"revision\": \"main\", \"prompt\": \"Convert this page to docling.\", \"response_format\": \"doctags\", \"supported_engines\": null, \"engine_overrides\": {\"mlx\": {\"repo_id\": \"ibm-granite/granite-docling-258M-mlx\", \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {}}, \"transformers\": {\"repo_id\": null, \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {\"transformers_model_type\": \"automodel-imagetexttotext\", \"extra_generation_config\": {\"skip_special_tokens\": false}}}}, \"api_overrides\": {}, \"trust_remote_code\": false, \"stop_strings\": [\"</doctag>\", \"<|end_of_text|>\"], \"temperature\": 0.0, \"max_new_tokens\": 8192, \"extra_generation_config\": {}}, \"scale\": 2.0, \"max_size\": null, \"batch_size\": 1, \"force_backend_text\": true}"
+    },
+    "changes_from_baseline": {
+      "pipeline": "vlm",
+      "vlm_pipeline_custom_config": "{\"engine_options\": {\"engine_type\": \"transformers\"}, \"model_spec\": {\"name\": \"Granite-Docling-258M\", \"default_repo_id\": \"ibm-granite/granite-docling-258M\", \"revision\": \"main\", \"prompt\": \"Convert this page to docling.\", \"response_format\": \"doctags\", \"supported_engines\": null, \"engine_overrides\": {\"mlx\": {\"repo_id\": \"ibm-granite/granite-docling-258M-mlx\", \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {}}, \"transformers\": {\"repo_id\": null, \"revision\": null, \"torch_dtype\": null, \"min_engine_version\": null, \"extra_config\": {\"transformers_model_type\": \"automodel-imagetexttotext\", \"extra_generation_config\": {\"skip_special_tokens\": false}}}}, \"api_overrides\": {}, \"trust_remote_code\": false, \"stop_strings\": [\"</doctag>\", \"<|end_of_text|>\"], \"temperature\": 0.0, \"max_new_tokens\": 8192, \"extra_generation_config\": {}}, \"scale\": 2.0, \"max_size\": null, \"batch_size\": 1, \"force_backend_text\": true}"
+    }
+  }
+]
