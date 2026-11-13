@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { join, basename, relative } from "node:path";
 import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 
 const originalRead = fs.readFile.bind(fs);
 let afterRead;
@@ -17,7 +17,7 @@ syncBuiltinESMExports();
 const { syntheticGeneration, fakeCli } = await import(
   "./correction-fixture.js"
 );
-const { createReview } = await import("../src/review.js");
+const { createReview, readReview } = await import("../src/review.js");
 const { createCorrections } = await import("../src/corrections.js");
 const { loadHandoff } = await import("../src/provenance.js");
 const json = async (file) => JSON.parse(await originalRead(file));
@@ -248,4 +248,92 @@ test("finalize rechecks revision after a successful official check result", asyn
   assert(checked);
   for (const [name, bytes] of before)
     assert.deepEqual(await originalRead(join(x.root, name)), bytes);
+});
+
+test("schema reuse is bound to exact bytes even if a captured buffer and review marker change", async () => {
+  const x = await copy();
+  let reportBuffer,
+    injected = false;
+  afterRead = async (file, bytes) => {
+    if (basename(file) === "review-targets.json") reportBuffer = bytes;
+    if (basename(file) !== "review-complete.json" || injected) return;
+    injected = true;
+    const changed = reportBuffer
+      .toString()
+      .replace('"detectorVersion": "1.1.0"', '"detectorVersion": "9.9.9"');
+    assert.notEqual(changed, reportBuffer.toString());
+    assert.equal(Buffer.byteLength(changed), reportBuffer.length);
+    reportBuffer.write(changed);
+    const marker = JSON.parse(bytes);
+    marker.reportSha256 = createHash("sha256")
+      .update(reportBuffer)
+      .digest("hex");
+    const markerBytes = JSON.stringify(marker, null, 2) + "\n";
+    assert.equal(Buffer.byteLength(markerBytes), bytes.length);
+    bytes.write(markerBytes);
+    await fs.writeFile(
+      join(x.root, "review/review-targets.json"),
+      reportBuffer,
+    );
+    await fs.writeFile(file, bytes);
+  };
+  try {
+    await assert.rejects(
+      readReview(x.root, join(x.root, "review")),
+      /review-file-digest/,
+    );
+  } finally {
+    afterRead = null;
+  }
+  assert(injected);
+});
+
+test("reusing correction readback still checks fresh document bytes before publication", async () => {
+  const x = await copy();
+  const markerBefore = await originalRead(join(x.root, "complete.json"));
+  const report = await json(join(x.root, "review/review-targets.json"));
+  let documentReads = 0,
+    injected = false;
+  afterRead = async (file) => {
+    if (basename(file) === "document.md" && ++documentReads === 4) {
+      injected = true;
+      await fs.writeFile(
+        join(x.root, "document.md"),
+        "external edit after correction readback",
+      );
+    }
+  };
+  let row;
+  try {
+    row = await x.service.submit({
+      changeId: "late-publish",
+      generationId: x.h.provenance.generationId,
+      revision: x.h.snapshot.revision,
+      groupId: report.groups[0].id,
+      actor: "human",
+      decision: "correct",
+      reason: note,
+      target: { kind: "cell", path: [1], row: 0, column: 0 },
+      before: "0.12 s",
+      after: "0.13 s",
+      evidence: {
+        kind: "human-source-region",
+        refs: [],
+        scope: report.findings[0].regions.map((r) => ({
+          pageNo: r.pageNo,
+          bbox: r.bbox,
+        })),
+      },
+    });
+  } finally {
+    afterRead = null;
+  }
+  assert(injected);
+  assert.equal(x.applies(), 1);
+  assert.equal(row.status, "pending-reconcile");
+  assert((await json(join(x.root, "correction-ledger.json"))).pending);
+  assert.deepEqual(
+    await originalRead(join(x.root, "complete.json")),
+    markerBefore,
+  );
 });

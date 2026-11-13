@@ -1,3 +1,4 @@
+import { firstBy, snapshotLookup } from "./lookup.js";
 import { isDeepStrictEqual } from "node:util";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
@@ -9,6 +10,10 @@ import { validateSchema, schemas } from "./schema.js";
 export function validateReview(report, handoff, evidence) {
   validateSchema(report, schemas["review-targets"]);
   const p = handoff.provenance;
+  const lookup = snapshotLookup(handoff.snapshot);
+  const pagesByNo = firstBy(evidence.pages, (p) => p.pageNo);
+  const findingsById = firstBy(report.findings, (f) => f.id);
+  const groupsById = firstBy(report.groups, (g) => g.id);
   if (
     report.generationId !== p.generationId ||
     report.baselineRevision !== p.document.revision ||
@@ -48,6 +53,7 @@ export function validateReview(report, handoff, evidence) {
     tokens = new Set(evidence.pages.flatMap((p) => p.tokens.map((t) => t.id))),
     groups = new Set(report.groups.map((g) => g.id));
   const used = new Set();
+  const coveredPages = new Map();
   const requiredEvidence = {
     "formula-review-required": ["reason"],
     "meaning-loss": ["reasonCode", "category", "originalValue"],
@@ -86,7 +92,7 @@ export function validateReview(report, handoff, evidence) {
     )
       throw new Error("review-source-ref");
     for (const r of f.regions) {
-      const page = evidence.pages.find((p) => p.pageNo === r.pageNo);
+      const page = pagesByNo.get(r.pageNo);
       if (
         !page ||
         r.bbox.length !== 4 ||
@@ -99,12 +105,7 @@ export function validateReview(report, handoff, evidence) {
     for (const t of f.targets) {
       if (t.documentRevision !== report.documentRevision)
         throw new Error("review-target-revision");
-      if (
-        t.bindingState === "current" &&
-        !handoff.snapshot.nodes.some(
-          (n) => JSON.stringify(n.path) === JSON.stringify(t.path),
-        )
-      )
+      if (t.bindingState === "current" && !lookup.node(t.path))
         throw new Error("review-target-path");
     }
   }
@@ -117,22 +118,20 @@ export function validateReview(report, handoff, evidence) {
       (g.pageNos.length && g.pageNos.at(-1) - g.pageNos[0] > 2)
     )
       throw new Error("review-group");
-    g.findingIds.forEach((id) => used.add(id));
+    g.findingIds.forEach((id) => {
+      used.add(id);
+      if (!coveredPages.has(id)) coveredPages.set(id, new Set());
+      for (const page of g.pageNos) coveredPages.get(id).add(page);
+    });
   }
   for (const f of report.findings)
     for (const r of f.regions)
-      if (
-        !report.groups.some(
-          (g) => g.findingIds.includes(f.id) && g.pageNos.includes(r.pageNo),
-        )
-      )
+      if (!coveredPages.get(f.id)?.has(r.pageNo))
         throw new Error("review-page-coverage");
   if (used.size !== ids.size || groups.size !== report.groups.length)
     throw new Error("review-group-coverage");
   for (const g of report.groups) {
-    const members = g.findingIds.map((id) =>
-      report.findings.find((f) => f.id === id),
-    );
+    const members = g.findingIds.map((id) => findingsById.get(id));
     if (
       !isDeepStrictEqual(
         [...new Set(members.map((f) => f.kind))].sort(),
@@ -153,7 +152,7 @@ export function validateReview(report, handoff, evidence) {
     [
       ...new Set(
         g.findingIds.map((id) => {
-          const f = report.findings.find((f) => f.id === id);
+          const f = findingsById.get(id);
           return (
             f.kind +
             ":" +
@@ -176,7 +175,7 @@ export function validateReview(report, handoff, evidence) {
       throw new Error("review-series");
     for (const id of s.groupIds) {
       foldedMembers.add(id);
-      if (pattern(report.groups.find((g) => g.id === id)) !== s.pattern)
+      if (pattern(groupsById.get(id)) !== s.pattern)
         throw new Error("review-series-pattern");
     }
   }
@@ -211,15 +210,13 @@ export function validateReview(report, handoff, evidence) {
 export async function createReview(input, output) {
   const handoff = await loadHandoff(input),
     p = handoff.provenance,
-    doc = JSON.parse(await readRelative(input, p.source.docling.relativePath));
+    doc = handoff.sourceDocument;
   if (handoff.history) throw new Error("review-baseline-required");
   const evidence = await extractPdf(
     await readRelative(input, p.source.pdf.relativePath),
   );
   // generation.json is diagnostic, so absent/unverified bookmark evidence stays unknown.
-  const record = JSON.parse(
-    await readRelative(input, p.source.conversionRecord.relativePath),
-  );
+  const record = handoff.sourceRecord;
   const report = detectReview({
     handoff,
     doc,
@@ -282,12 +279,24 @@ export async function readReview(
   validateSchema(m, schemas["review-complete"]);
   const bytes = await read(output, "review-targets.json"),
     eb = await read(output, "pdf-evidence.json");
-  if (hash(bytes) !== m.reportSha256 || hash(eb) !== m.evidenceSha256)
+  const reportHash = hash(bytes),
+    evidenceHash = hash(eb);
+  if (reportHash !== m.reportSha256 || evidenceHash !== m.evidenceSha256)
     throw new Error("review-file-digest");
-  const report = JSON.parse(bytes),
+  let report, evidence;
+  if (loaded.validatedReview) {
+    if (
+      loaded.validatedReview.reportHash !== reportHash ||
+      loaded.validatedReview.evidenceHash !== evidenceHash
+    )
+      throw new Error("review-file-digest");
+    ({ report, evidence } = loaded.validatedReview);
+  } else {
+    report = JSON.parse(bytes);
     evidence = JSON.parse(eb);
-  validateSchema(evidence, schemas["pdf-evidence"]);
-  validateReview(report, handoff, evidence);
+    validateSchema(evidence, schemas["pdf-evidence"]);
+    validateReview(report, handoff, evidence);
+  }
   if (
     report.inputs.provenanceSha256 !==
       handoff.marker.files.find((f) => f.relativePath === "provenance.json")
@@ -295,7 +304,7 @@ export async function readReview(
     report.inputs.snapshotSha256 !==
       handoff.marker.files.find((f) => f.relativePath === "snapshot.json")
         .sha256 ||
-    report.evidenceFile.sha256 !== hash(eb) ||
+    report.evidenceFile.sha256 !== evidenceHash ||
     m.generationId !== report.generationId ||
     m.documentRevision !== report.documentRevision ||
     hash(await readRelative(output, "review-complete.json")) !== hash(raw)

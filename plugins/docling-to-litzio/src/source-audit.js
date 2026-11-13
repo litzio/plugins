@@ -1,5 +1,5 @@
 import {
-  sourceItemText,
+  createSourceReader,
   inlineSignature,
   noteContent,
 } from "./rich-content.js";
@@ -9,7 +9,8 @@ import { markerFormat } from "./list-rule.js";
 export function auditSourceNative(doc, provenance, snapshot) {
   const mismatches = [];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const node = (path) => snapshot.nodes.find((n) => same(n.path, path));
+  const reader = createSourceReader(snapshot, provenance);
+  const node = reader.node;
   for (const item of provenance.items) {
     const source = item.selfRef
       .slice(2)
@@ -19,7 +20,7 @@ export function auditSourceNative(doc, provenance, snapshot) {
       for (const t of item.targets) {
         if (t.bindingState !== "current" || t.role === "explanation") continue;
         const n = node(t.path),
-          actual = sourceItemText(snapshot, t, item, provenance);
+          actual = reader.text(t, item);
         let expected = source.text;
         if (item.structure.noteBinding)
           expected = /^(?:\d+|[a-z])\s+(\S[\s\S]*)$/.exec(source.text)?.[1];
@@ -201,7 +202,7 @@ export function auditSourceNative(doc, provenance, snapshot) {
                 ...t,
                 selector: { ...t.selector, row: r, column: col },
               };
-              const actual = sourceItemText(snapshot, ct, item, provenance);
+              const actual = reader.text(ct, item);
               const cell = node([...ct.path, r, col]);
               const bindings =
                 item.structure.noteReferences?.filter(

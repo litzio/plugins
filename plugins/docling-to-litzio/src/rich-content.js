@@ -1,3 +1,4 @@
+import { snapshotLookup } from "./lookup.js";
 // Public authoring/inspect InlineContent only; no native parser or SDK internals.
 export function inlineText(content, markers = {}) {
   if (typeof content === "string") return content;
@@ -230,31 +231,43 @@ export function noteContent(n, bindings = [], text = n.text ?? "") {
     content.push(...formatInline(n, text.slice(cursor)));
   return content;
 }
-export function sourceInlineText(content, provenance) {
-  const markers = Object.fromEntries(
-    provenance.items
-      .filter((i) => i.structure.noteBinding)
-      .map((i) => [
-        i.structure.noteBinding.label,
-        i.structure.noteBinding.marker,
-      ]),
-  );
+export function sourceInlineText(content, provenance, knownMarkers) {
+  const markers =
+    knownMarkers ??
+    Object.fromEntries(
+      provenance.items
+        .filter((i) => i.structure.noteBinding)
+        .map((i) => [
+          i.structure.noteBinding.label,
+          i.structure.noteBinding.marker,
+        ]),
+    );
   return inlineText(content, markers);
 }
-export function sourceItemText(snapshot, target, item, provenance) {
-  let n = snapshot.nodes.find(
-    (n) => JSON.stringify(n.path) === JSON.stringify(target.path),
-  );
+export function sourceItemText(snapshot, target, item, provenance, context) {
+  const inline = (content) =>
+    sourceInlineText(content, provenance, context?.markers);
+  let n = context
+    ? context.lookup.node(target.path)
+    : snapshot.nodes.find(
+        (n) => JSON.stringify(n.path) === JSON.stringify(target.path),
+      );
   if (target.selector?.kind === "cell")
-    n = snapshot.nodes.find(
-      (n) =>
-        JSON.stringify(n.path) ===
-        JSON.stringify([
+    n = context
+      ? context.lookup.node([
           ...target.path,
           target.selector.row,
           target.selector.column,
-        ]),
-    );
+        ])
+      : snapshot.nodes.find(
+          (n) =>
+            JSON.stringify(n.path) ===
+            JSON.stringify([
+              ...target.path,
+              target.selector.row,
+              target.selector.column,
+            ]),
+        );
   if (!n) return null;
   if (item.structure.listProjection) {
     let list = n,
@@ -263,23 +276,19 @@ export function sourceItemText(snapshot, target, item, provenance) {
       entry = list?.items?.[index];
       list = entry?.list;
     }
-    return entry ? sourceInlineText(entry.content, provenance) : null;
+    return entry ? inline(entry.content) : null;
   }
   if (target.selector?.kind === "list-item")
-    return sourceInlineText(
-      n.items?.[target.selector.index]?.content,
-      provenance,
-    );
-  if (n.content) return sourceInlineText(n.content, provenance);
-  if (n.type === "table" && item.label === "caption")
-    return sourceInlineText(n.caption, provenance);
+    return inline(n.items?.[target.selector.index]?.content);
+  if (n.content) return inline(n.content);
+  if (n.type === "table" && item.label === "caption") return inline(n.caption);
   if (n.type === "figure") {
-    const caption = snapshot.nodes.find(
-      (c) => c.type === "caption" && c.path[0] === n.path[0],
-    );
-    return caption?.content
-      ? sourceInlineText(caption.content, provenance)
-      : (caption?.text ?? "");
+    const caption = context
+      ? context.lookup.caption(n.path[0])
+      : snapshot.nodes.find(
+          (c) => c.type === "caption" && c.path[0] === n.path[0],
+        );
+    return caption?.content ? inline(caption.content) : (caption?.text ?? "");
   }
   return n.text ?? n.latex ?? n.code ?? null;
 }
@@ -318,4 +327,23 @@ export function inlineSignature(content) {
   }
   visit(content);
   return result;
+}
+
+export function createSourceReader(snapshot, provenance) {
+  const context = {
+    lookup: snapshotLookup(snapshot),
+    markers: Object.fromEntries(
+      provenance.items
+        .filter((i) => i.structure?.noteBinding)
+        .map((i) => [
+          i.structure.noteBinding.label,
+          i.structure.noteBinding.marker,
+        ]),
+    ),
+  };
+  return {
+    node: context.lookup.node,
+    text: (target, item) =>
+      sourceItemText(snapshot, target, item, provenance, context),
+  };
 }
