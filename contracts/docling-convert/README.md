@@ -59,3 +59,5 @@ fixtures는 기존 PDF를 중복 복사하지 않고 record.source.file의 상�
 ## 기본값과 옵션 조정
 
 권장 프로필은 플러그인의 기본값이다. [옵션 표](options.md)와 [기계 판독용 정의](options.json)의 고정/조정 구분, 허용값·기본값·영향·의존성을 따른다. 변환 기록에는 actual_request 전체와 overrides_from_default, 기본 프로필 hash를 추가로 남긴다. 임의 변환 결과의 채점은 [tools 사용법](../../tools/README.md)을 따른다.
+
+보관 프로필 파일은 LF로 정규화한다. profile_sha256은 보관된 파일의 hash이고 execution_profile_sha256은 실행 때 읽은 프로필 원문 바이트의 hash다. 두 값이 줄바꿈 때문에 달라도 actual_request의 값은 같으며 둘 다 보존한다.

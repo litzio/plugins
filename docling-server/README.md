@@ -19,7 +19,7 @@ GPU가 있는 PC를 전제로 한다. 공식 cu128 v1.38.2 이미지를 그대�
 docker compose -f docling-server/compose.yaml pull
 docker compose -f docling-server/compose.yaml up -d
 docker exec docling-serve nvidia-smi
-docker exec docling-serve python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="docling-project/CodeFormulaV2", revision="ecedbe111d15c2dc60bfd4a823cbe80127b58af4", local_dir="/opt/app-root/src/.cache/docling/models/docling-project--CodeFormulaV2")' 
+docker exec docling-serve python -c 'from huggingface_hub import snapshot_download; snapshot_download(repo_id="docling-project/CodeFormulaV2", revision="ecedbe111d15c2dc60bfd4a823cbe80127b58af4", local_dir="/opt/app-root/src/.cache/docling/models/docling-project--CodeFormulaV2")'
 ```
 
 빈 `docling-models` volume에는 Docker가 이미지의 기본 모델 디렉터리를 복사한다. artifacts 경로를 바꾸지 않으므로 기본 모델과 추가 모델을 함께 volume에 보관한다. 추가 모델은 실제 받은 revision으로 고정한다. 모델 준비 명령은 다음 준비 스크립트로도 제공한다. 재시작할 때마다 다운로드하지 않는다.
@@ -96,4 +96,3 @@ sudo systemctl restart docker
 - [ ] WSL과 Windows 양쪽 `/ready`, `/version`
 - [ ] 127.0.0.1:5001 바인딩 / 외부 미노출
 - [ ] 고정 프로필 실제 표본 변환 성공 / 종료 후 stop
-
