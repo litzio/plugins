@@ -212,6 +212,7 @@ export function supplement(job, sectionKey, unitKeys) {
 }
 export function report(job) {
   const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[],reviewFirst=[];
+  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace.correctionNotice) reviewFirst.push({code:'source-corrected',needsHumanReview:true,sourceKey,source, message:source.trace.correctionNotice,corrections:source.trace.corrections});
   if(job.protectionVersion!==protectionVersion) problems.unshift({code:'protection-version',message:'이전 판단은 무효입니다. resume 후 재검토해야 합니다'});
   for (const s of job.corpus.sections) {
     const response=job.responses[s.key];

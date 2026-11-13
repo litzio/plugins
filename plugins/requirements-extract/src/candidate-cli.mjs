@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync, copyFileSync, constants } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync, copyFileSync, lstatSync, constants } from 'node:fs';
 import { resolve, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sourceCli } from './cli.mjs';
@@ -62,6 +62,14 @@ export function execute(args) {
         if(sha256(readFileSync(destination)).slice(7)!==f.sha256) reject('source-changed','복사하는 동안 출처 bytes가 변경됐습니다');
       }
       copyFileSync(join(from,'complete.json'),join(target,'complete.json'),constants.COPYFILE_EXCL);
+      if(input.bundle.history) {
+        const ledger=join(from,'correction-ledger.json'),stat=lstatSync(ledger);
+        if(!stat.isFile()||stat.isSymbolicLink()) reject('source-ledger','일반 교정 원장 파일이 필요합니다');
+        copyFileSync(ledger,join(target,'correction-ledger.json'),constants.COPYFILE_EXCL);
+        const reviewMarker=join(from,'review/review-complete.json'),reviewStat=lstatSync(reviewMarker);
+        if(!reviewStat.isFile()||reviewStat.isSymbolicLink()) reject('source-review-marker','일반 검수 표지 파일이 필요합니다');
+        copyFileSync(reviewMarker,join(target,'review/review-complete.json'),constants.COPYFILE_EXCL);
+      }
       // Recheck marker and all bytes/revision after copying; no stale signed snapshot assumptions.
       const copiedCli=sourceCli({entry:c.cliEntry,root:target});
       loadProvenance(target,{inspect:file=>copiedCli.run('inspect',file,'--format','json')});

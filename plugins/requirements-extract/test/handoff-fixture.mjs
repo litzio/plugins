@@ -7,9 +7,9 @@ export const h = value => createHash('sha256').update(value).digest('hex');
 export const read = (root, name) => JSON.parse(readFileSync(join(root, name)));
 export const write = (root, name, value) => writeFileSync(join(root, name), JSON.stringify(value));
 export function reseal(root) { const c = read(root, 'complete.json'); for (const f of c.files) f.sha256 = h(readFileSync(join(root, f.relativePath))); write(root, 'complete.json', c); }
-export function handoff(root = mkdtempSync(join(tmpdir(), 'requirements-handoff-unit-'))) {
+export function handoff(root = mkdtempSync(join(tmpdir(), 'requirements-handoff-unit-')), {quote='Voltage ≤ 5 V'} = {}) {
   mkdirSync(join(root, 'source'));
-  const quote = 'Voltage ≤ 5 V', pdf = Buffer.from('%PDF-1.4\nsynthetic processing fixture\n'), document = Buffer.from('synthetic native bytes; official inspect is stubbed');
+  const pdf = Buffer.from('%PDF-1.4\nsynthetic processing fixture\n'), document = Buffer.from('synthetic native bytes; official inspect is stubbed');
   const prov = [{ page_no: 1, bbox: { l: 10, t: 10, r: 120, b: 30, coord_origin: 'TOPLEFT' } }];
   const rawCells = [0, 1].map(row => ({ start_row_offset_idx: row, end_row_offset_idx: row + 1, start_col_offset_idx: 0, end_col_offset_idx: 2, row_span: 1, col_span: 2, text: row ? '≤ 5 V' : 'Parameter' }));
   const raw = { schema_name: 'DoclingDocument', version: '1.10.0', body: { self_ref: '#/body', label: 'body' }, furniture: { self_ref: '#/furniture', label: 'furniture' }, texts: [{ self_ref: '#/texts/0', label: 'text', text: quote, orig: quote, prov }], tables: [{ self_ref: '#/tables/0', label: 'table', data: { table_cells: rawCells, num_rows: 2, num_cols: 2 }, prov: [...prov, { ...prov[0], page_no: 2 }] }], pages: { 1: { size: { width: 200, height: 300 } }, 2: { size: { width: 200, height: 300 } } } };
