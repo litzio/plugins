@@ -1,4 +1,47 @@
 import { canonical } from './model.mjs';
+export const protectionVersion = 'ordered-source-regions/2';
+export const neutralTitle = '요구사항 제안';
+
+// Recognition is advisory. Equality evidence always covers the ENTIRE block,
+// including unknown notation, identifiers, operators and their surrounding roles.
+// No width/case/sign/number/unit normalization. In particular, do not use NFKC.
+export const normalizeEvidenceText = value => value.replace(/\r\n/g, '\n');
+export function normalizeEvidence(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    const result=[];
+    for (const item of value.map(normalizeEvidence)) {
+      const last=result.at(-1);
+      // Adjacent plain runs are public serialization segmentation, not a text boundary.
+      if (item?.kind==='text' && last?.kind==='text' && Object.keys(item).length===2 && Object.keys(last).length===2) last.text=normalizeEvidenceText(last.text+item.text);
+      else result.push(item);
+    }
+    return result;
+  }
+  if (value && typeof value === 'object') {
+    const result=Object.fromEntries(Object.entries(value).map(([k,v])=>[k,normalizeEvidence(v)]));
+    if(result.kind==='text' && typeof result.text==='string') result.text=normalizeEvidenceText(result.text);
+    if (['paragraph','quote','admonition'].includes(result.kind)) {
+      if (!result.content && typeof result.text==='string') result.content=[{kind:'text',text:normalizeEvidenceText(result.text)}];
+      // text is the readable projection when authoritative content exists.
+      if (result.content) delete result.text;
+    }
+    return result;
+  }
+  return value;
+}
+export function evidenceRegions(blocks, prefix) {
+  return blocks.map((block,index)=>{
+    const fields=[];
+    const visit=(value,path)=>{
+      if(typeof value==='string') fields.push({path,start:0,end:value.length,text:value});
+      else if(Array.isArray(value)) value.forEach((v,i)=>visit(v,[...path,i]));
+      else if(value&&typeof value==='object') for(const [k,v] of Object.entries(value)) if(k!=='kind' && !(k==='text' && value.content)) visit(v,[...path,k]);
+    };
+    visit(block,[]);
+    return {key:prefix+'/region/'+index,index,fields,value:canonical(normalizeEvidence(block))};
+  });
+}
 const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function protectedTokens(text, profile, prefix = 'text') {
   const numbers = '[+−-]?\\d+(?:\\.\\d+)?(?:[eE][+−-]?\\d+)?';
@@ -18,6 +61,7 @@ export function protectedTokens(text, profile, prefix = 'text') {
 export function bodyTokens(blocks, profile, prefix = 'body') {
   const tokens = [];
   function inline(content, path) {
+    content=normalizeEvidence(content);
     for (const [i, c] of content.entries()) {
       const key = path + '/' + i;
       if (c.kind === 'math') tokens.push({ key: key + ':math', kind: 'math', value: c.value });

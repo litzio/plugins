@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { canonical, sha256, policy, newSet, newRequirement, validate } from './model.mjs';
 import { collectCandidates, candidateKey, keyOf } from './candidates.mjs';
 import { selectionSchema } from './selection-schema.mjs';
-import { bodyTokens } from './protected.mjs';
+import { bodyTokens, evidenceRegions, normalizeEvidence, protectionVersion, neutralTitle } from './protected.mjs';
 
 export function reject(code, message, location = []) {
   throw Object.assign(new Error(message), { diagnostics: [{ file: 'candidate-job', location, code, severity: 'error', message }] });
@@ -24,7 +24,7 @@ export function checkProfile(p) {
 export function fingerprints(inputs, profile) {
   checkProfile(profile);
   if (!inputs.length || new Set(inputs.map(i => i.key)).size !== inputs.length || inputs.some(i => !/^[a-zA-Z0-9_-]+$/.test(i.key))) reject('inputs', '고유한 입력 키와 하나 이상의 문서가 필요합니다');
-  return { policyDigest: sha256(canonical(profile)), inputDigest: sha256(canonical(inputs.map(i => ({ key: i.key, complete: i.bundle.complete, provenance: i.bundle.provenance, snapshot: i.bundle.snapshot })).sort((a,b) => a.key.localeCompare(b.key)))) };
+  return { policyDigest: sha256(canonical({profile,protectionVersion})), inputDigest: sha256(canonical(inputs.map(i => ({ key: i.key, complete: i.bundle.complete, provenance: i.bundle.provenance, snapshot: i.bundle.snapshot })).sort((a,b) => a.key.localeCompare(b.key)))) };
 }
 function tickets(job) {
   return Object.fromEntries(job.corpus.sections.map(s => [s.key, randomUUID()]));
@@ -34,12 +34,12 @@ export function prepare(inputs, profile) {
   let corpus;
   try { corpus = collectCandidates(inputs, profile); }
   catch (e) { if (e.diagnostics) throw e; reject('projection-shape', '공개 읽기 구조를 후보로 보존할 수 없습니다', e.location); }
-  const job = { schemaVersion: 1, jobId: randomUUID(), epoch: 1, ...f, profile, corpus, responses: {}, ids: {}, history: [], proposals: [], set: newSet({ title: '요구사항 제안' }), registry: inputs.map(i => ({ sourceKey: i.key, artifactDigest: 'sha256:' + i.bundle.provenance.source.docling.sha256, nativeDigest: 'sha256:' + i.bundle.provenance.document.revision, nativeFile: i.key + '/' + i.bundle.provenance.document.relativePath, mapFile: i.key + '/provenance.json' })) };
+  const job = { schemaVersion: 2, protectionVersion, jobId: randomUUID(), epoch: 1, ...f, profile, corpus, responses: {}, ids: {}, history: [], proposals: [], set: newSet({ title: '요구사항 제안' }), registry: inputs.map(i => ({ sourceKey: i.key, artifactDigest: 'sha256:' + i.bundle.provenance.source.docling.sha256, nativeDigest: 'sha256:' + i.bundle.provenance.document.revision, nativeFile: i.key + '/' + i.bundle.provenance.document.relativePath, mapFile: i.key + '/provenance.json' })) };
   job.tickets = tickets(job); return job;
 }
 export function refresh(job, inputs, profile) {
   const f = fingerprints(inputs, profile);
-  if (f.inputDigest === job.inputDigest && f.policyDigest === job.policyDigest && !job.blocked) return structuredClone(job);
+  if (job.protectionVersion===protectionVersion && f.inputDigest === job.inputDigest && f.policyDigest === job.policyDigest && !job.blocked) return structuredClone(job);
   const next = prepare(inputs, profile);
   return { ...next, jobId: job.jobId, epoch: job.epoch + 1, set: job.set, ids: job.ids, history: [...job.history, { epoch:job.epoch, inputDigest:job.inputDigest, policyDigest:job.policyDigest, responses:job.responses, reason:'input-or-policy-invalidated' }], proposals:job.proposals };
 }
@@ -47,17 +47,52 @@ export function invalidate(job, diagnostics) {
   return { ...job, epoch: job.epoch + 1, tickets: {}, responses: {}, blocked: diagnostics, history: [...job.history, { epoch:job.epoch, responses:job.responses, reason:'input-unreadable' }] };
 }
 export function batch(job, sectionKey) {
+  if(job.protectionVersion!==protectionVersion) reject('protection-version','resume으로 강화된 값 보호 정책을 적용해야 합니다');
   if (job.blocked) reject('input-blocked', '입력 무결성을 복구하고 resume해야 합니다');
   const section = job.corpus.sections.find(s => s.key === sectionKey);
   if (!section) reject('section', '없는 구획');
-  return { schemaVersion:1, requestId:job.tickets[sectionKey], inputDigest:job.inputDigest, policyDigest:job.policyDigest, epoch:job.epoch, sectionKey, section, candidates:section.candidateKeys.map(k => job.corpus.candidates[k]), sources:Object.fromEntries([...new Set([...section.units,...section.candidateKeys.map(k=>job.corpus.candidates[k])].flatMap(u=>[...u.sourceKeys,...u.contexts.flatMap(c=>c.sourceKeys??[])]))].map(k=>[k,job.corpus.sources[k]])), profile:job.profile, comparisonHints:(job.corpus.comparisons??[]).filter(h=>h.candidateKeys.some(k=>section.candidateKeys.includes(k))), previous:job.responses[sectionKey] ?? null };
+  return { protection:{version:protectionVersion,neutralTitle,mode:'whole-source-blocks'}, schemaVersion:2, requestId:job.tickets[sectionKey], inputDigest:job.inputDigest, policyDigest:job.policyDigest, epoch:job.epoch, sectionKey, section, candidates:section.candidateKeys.map(k => job.corpus.candidates[k]), sources:Object.fromEntries([...new Set([...section.units,...section.candidateKeys.map(k=>job.corpus.candidates[k])].flatMap(u=>[...u.sourceKeys,...u.contexts.flatMap(c=>c.sourceKeys??[])]))].map(k=>[k,job.corpus.sources[k]])), profile:job.profile, comparisonHints:(job.corpus.comparisons??[]).filter(h=>h.candidateKeys.some(k=>section.candidateKeys.includes(k))), previous:job.responses[sectionKey] ?? null };
 }
 function outputNotes(output, candidate) {
   const notes=candidate.contexts.filter(c => c.kind === 'footnote' && output.contextKeys.includes(c.key)).map(c => ({label:c.label, content:c.bodyBlocks[0].content ?? [{kind:'text',text:c.text}]}));
   const byLabel=new Map();for(const note of notes) {if(byLabel.has(note.label)&&canonical(byLabel.get(note.label))!==canonical(note)) reject('footnote-collision','서로 다른 출처의 같은 미주 레이블을 먼저 구분해야 합니다');byLabel.set(note.label,note);}return [...byLabel.values()];
 }
 export const outputTokens = (output, profile, index, notes=[]) => bodyTokens([{kind:'paragraph',text:output.title},...output.bodyBlocks,...notes.map(n=>({kind:'paragraph',content:n.content}))],profile,'output/' + index);
-export function previewTokens(job,response) { return response.decisions.filter(d=>d.decision==='adopt').map(d=>({candidateKey:d.candidateKey,outputs:d.outputs.map((o,i)=>outputTokens(o,job.profile,i,outputNotes(o,{contexts:[...new Map(o.sourceCandidateKeys.flatMap(k=>job.corpus.candidates[k].contexts).map(c=>[c.key,c])).values()]})))})); }
+export function outputRegions(output,index,notes=[]) {
+  const prefix='output/'+index;
+  return [
+    ...(output.title===neutralTitle?[]:evidenceRegions([{kind:'paragraph',text:output.title}],prefix+'/title').map(r=>({...r,role:'title'}))),
+    ...evidenceRegions(output.bodyBlocks,prefix+'/body').map(r=>({...r,role:'body'})),
+    ...evidenceRegions(notes.map(n=>({kind:'paragraph',content:n.content})),prefix+'/notes').map(r=>({...r,role:'notes'})),
+  ];
+}
+export function previewTokens(job,response) { return response.decisions.filter(d=>d.decision==='adopt').map(d=>({candidateKey:d.candidateKey,outputs:d.outputs.map((o,i)=>{const notes=outputNotes(o,{contexts:[...new Map(o.sourceCandidateKeys.flatMap(k=>job.corpus.candidates[k].contexts).map(c=>[c.key,c])).values()]});return {tokens:outputTokens(o,job.profile,i,notes),regions:outputRegions(o,i,notes)};})})); }
+export function sourceRegions(candidate) {return evidenceRegions(candidate.bodyBlocks,candidate.key);}
+function regionCheck(job,decision,originals,applied) {
+  // The source catalog defines order; the assistant cannot reorder its catalog keys
+  // to manufacture a new order of values. Context appendices follow the source body.
+  const ordered=[...originals].sort((a,b)=>job.corpus.units.findIndex(u=>u.key===a.key)-job.corpus.units.findIndex(u=>u.key===b.key));
+  const entries=[...ordered.flatMap(sourceRegions),...applied.flatMap(c=>evidenceRegions(c.bodyBlocks,c.key))];
+  const unique=[...new Map(entries.map(r=>[r.key,r])).values()];
+  const pool=new Map(unique.map((r,index)=>[r.key,{...r,rank:index}])),covered=new Set();
+  for(const [index,output] of decision.outputs.entries()) {
+    const regions=outputRegions(output,index,outputNotes(output,{contexts:applied}));
+    const allowed=new Set([
+      ...output.sourceCandidateKeys.flatMap(k=>sourceRegions(job.corpus.candidates[k])),
+      ...applied.filter(c=>output.contextKeys.includes(c.key)).flatMap(c=>evidenceRegions(c.bodyBlocks,c.key)),
+    ].map(r=>r.key));
+    const seen=new Set();
+    for(const mapping of output.sourceRegionMappings) {
+      const region=regions.find(r=>r.key===mapping.outputRegionKey),source=pool.get(mapping.sourceRegionKey);
+      if(!region||!source||!allowed.has(source.key)||seen.has(region.key)||region.value!==source.value) reject('source-region-proof','원문 전체 구간과 일치한다는 증거가 없습니다. 자유 재작성/미확인 표기는 사람 확인이 필요합니다',[mapping.outputRegionKey]);
+      seen.add(region.key);if(region.role!=='title') covered.add(source.key);
+    }
+    // Check order by output location, NEVER by assistant-supplied mapping array order.
+    for(const role of ['body','notes']) {let last=-1;for(const region of regions.filter(r=>r.role===role)) {const m=output.sourceRegionMappings.find(m=>m.outputRegionKey===region.key),rank=pool.get(m?.sourceRegionKey)?.rank;if(rank===undefined||rank<=last) reject('source-region-order','출력 위치가 원문 구간 순서를 보존하지 않습니다',[region.key]);last=rank;}}
+    if(seen.size!==regions.length) reject('source-region-proof','대응하지 않은 출력 구간이 있습니다. 보호 토큰이 없어도 통과하지 않습니다');
+  }
+  if(unique.some(r=>!covered.has(r.key))) reject('source-region-proof','선택한 원문/적용 문맥의 문자 구간이 누락됐습니다');
+}
 function mappingCheck(outputs, pool, required, profile, candidates, applied) {
   const covered = new Set();
   for (const [index, output] of outputs.entries()) {
@@ -78,6 +113,7 @@ export function submit(job, response) {
   catch(e) {if(e.diagnostics) throw e;reject('selection-shape','제안 본문의 구조를 보존할 수 없습니다',[response?.sectionKey??'selection']);}
 }
 function submitChecked(job, response) {
+  if(job.protectionVersion!==protectionVersion) reject('protection-version','예전 값 보호 판단은 resume 후 다시 검토해야 합니다');
   if (job.blocked) reject('input-blocked', '입력이 무효화됐습니다');
   const schemaCheck = new Ajv({ allErrors:true, strict:true }).compile(selectionSchema(job.profile));
   if (!schemaCheck(response)) reject('selection-schema', '선택 schema 위반: ' + new Ajv().errorsText(schemaCheck.errors));
@@ -100,7 +136,7 @@ function submitChecked(job, response) {
     if (c.provisional || c.unsupported || b.section.oversized) reject('candidate-blocked', '출처 없는/미지원/구획 상한 초과 후보는 채택할 수 없습니다');
     const assessments = d.contextAssessments;
     if (new Set(assessments.map(a => a.contextKey)).size !== assessments.length || canonical(assessments.map(a => a.contextKey).sort()) !== canonical(c.contexts.map(a => a.key).sort())) reject('context-coverage', '모든 문맥의 적용 여부와 이유를 기록해야 합니다');
-    for (const a of assessments) { reason(a.reason); const context=c.contexts.find(c=>c.key===a.contextKey); if(['header','caption','footnote','list-parent'].includes(context.kind)&&context.tokens.length&&a.outcome!=='apply') reject('context-needed','수치·단위·부정이 있는 공통 문맥을 생략할 수 없습니다'); if (a.outcome === 'needs-more' || c.contexts.find(c => c.key === a.contextKey).kind === 'unresolved-reference') reject('context-needed', '미확인 문맥·참조를 먼저 해결하세요'); }
+    for (const a of assessments) { reason(a.reason); const context=c.contexts.find(c=>c.key===a.contextKey); if(['header','caption','footnote','list-parent','row'].includes(context.kind)&&context.bodyBlocks.length&&a.outcome!=='apply') reject('context-needed','수치·단위·부정이 있는 공통 문맥을 생략할 수 없습니다'); if (a.outcome === 'needs-more' || c.contexts.find(c => c.key === a.contextKey).kind === 'unresolved-reference') reject('context-needed', '미확인 문맥·참조를 먼저 해결하세요'); }
     const applied = c.contexts.filter(c => assessments.some(a => a.contextKey === c.key && a.outcome === 'apply'));
     const selected = new Set(d.outputs.flatMap(o => o.sourceCandidateKeys));
     if (!selected.has(c.candidateKey) || [...selected].some(k => !decisions.has(k))) reject('source-candidate', '같은 묶음에서 제공한 출처 후보만 사용할 수 있습니다');
@@ -113,7 +149,7 @@ function submitChecked(job, response) {
     for (const partner of originals.filter(o=>o.candidateKey!==c.candidateKey)) {
       const pd=decisions.get(partner.candidateKey);
       if(canonical(pd.contextAssessments.map(a=>a.contextKey).sort())!==canonical(partner.contexts.map(c=>c.key).sort())) reject('context-coverage','통합 출처의 문맥도 모두 판단해야 합니다');
-      for(const a of pd.contextAssessments) {reason(a.reason); const context=partner.contexts.find(c=>c.key===a.contextKey); if(['header','caption','footnote','list-parent','unresolved-reference'].includes(context.kind)&&(context.tokens.length||context.kind==='unresolved-reference')&&a.outcome!=='apply') reject('context-needed','통합 출처의 공통 문맥을 생략할 수 없습니다'); if(a.outcome==='needs-more') reject('context-needed','통합 출처의 문맥이 부족합니다');}
+      for(const a of pd.contextAssessments) {reason(a.reason); const context=partner.contexts.find(c=>c.key===a.contextKey); if(['header','caption','footnote','list-parent','row','unresolved-reference'].includes(context.kind)&&(context.bodyBlocks.length||context.kind==='unresolved-reference')&&a.outcome!=='apply') reject('context-needed','통합 출처의 공통 문맥을 생략할 수 없습니다'); if(a.outcome==='needs-more') reject('context-needed','통합 출처의 문맥이 부족합니다');}
       applied.push(...partner.contexts.filter(c=>pd.contextAssessments.some(a=>a.contextKey===c.key&&a.outcome==='apply')));
     }
     if(applied.some(a=>!d.outputs.some(o=>o.contextKeys.includes(a.key)))) reject('context-coverage','적용 문맥은 출력에 연결해야 합니다');
@@ -123,12 +159,13 @@ function submitChecked(job, response) {
       reason(output.title); reason(output.rationale);
       if (!output.sourceCandidateKeys.length || output.sourceCandidateKeys.some(k => !selected.has(k))) reject('source-candidate', '각 결과에 출처 후보가 필요합니다');
       if (output.contextKeys.some(k => !applied.some(a => a.key === k))) reject('context-source', '적용했다고 판단한 문맥만 사용할 수 있습니다');
-      if (d.choices.origin === 'quoted' && !originals.some(o => canonical(o.bodyBlocks) === canonical(output.bodyBlocks))) reject('quoted-changed', 'quoted는 원문 구조를 그대로 사용해야 합니다');
+      if (d.choices.origin === 'quoted' && !originals.some(o => canonical(normalizeEvidence(o.bodyBlocks)) === canonical(normalizeEvidence(output.bodyBlocks.slice(0,o.bodyBlocks.length))))) reject('quoted-changed', 'quoted는 원문 구조를 그대로 사용해야 합니다');
       const r = newRequirement({ ...d.choices, body:output.bodyBlocks, title:output.title, rationale:output.rationale, footnotes:outputNotes(output,{contexts:applied}), sources:[...new Set([...originals.flatMap(c=>c.sourceKeys),...applied.filter(c=>output.contextKeys.includes(c.key)).flatMap(c=>c.sourceKeys??[])])].map(k=>job.corpus.sources[k]) });
       const v = validate([{ ...job.set, registry:job.registry, requirements:[r] }]).filter(x => x.severity === 'error');
       if (v.length) throw Object.assign(new Error('제안 본문 프로파일 위반'), {diagnostics:v});
     }
     mappingCheck(d.outputs, pool, required, job.profile, job.corpus.candidates, applied);
+    regionCheck(job,d,originals,applied);
   }
   // A duplicate must terminate at a real adopted item; cycles and chains to holds are rejected.
   for (const d of response.decisions.filter(d => d.decision === 'duplicate')) {
@@ -171,6 +208,7 @@ export function supplement(job, sectionKey, unitKeys) {
 }
 export function report(job) {
   const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[];
+  if(job.protectionVersion!==protectionVersion) problems.unshift({code:'protection-version',message:'이전 판단은 무효입니다. resume 후 재검토해야 합니다'});
   for (const s of job.corpus.sections) {
     const response=job.responses[s.key];
     if (!response) problems.push({sectionKey:s.key,code:'unprocessed-section',candidateCount:s.candidateKeys.length});
@@ -188,7 +226,10 @@ export function report(job) {
   return {jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,blocked:job.blocked??null,counts:{sections:job.corpus.sections.length,checkedSections:Object.keys(job.responses).length,candidates:Object.keys(job.corpus.candidates).length,decisions:Object.values(job.responses).reduce((n,r)=>n+r.decisions.length,0),adopted:accepted.length},problems,accepted,reviewState:'draft-only'};
 }
 export function proposal(job) {
+  if(job.protectionVersion!==protectionVersion) reject('protection-version','이전 보호 정책의 제안은 다시 검토해야 합니다');
   if(job.blocked || job.corpus.sections.some(s=>!job.responses[s.key])) reject('incomplete-review','모든 구획(후보 없는 곳 포함)을 비서가 확인해야 새 제안 문서를 만들 수 있습니다');
+  // Revalidate saved judgments before producing any document or completion marker.
+  for(const [sectionKey,response] of Object.entries(job.responses)) {const responses={...job.responses};delete responses[sectionKey];submit({...job,responses},response);}
   const requirements=[];
   for (const s of job.corpus.sections) for (const d of job.responses[s.key].decisions.filter(d=>d.decision==='adopt')) for (const [i,o] of d.outputs.entries()) {
     const selected=o.sourceCandidateKeys.map(k=>job.corpus.candidates[k]);

@@ -6,7 +6,8 @@ import { loadProvenance } from './provenance.mjs';
 import { prepare, refresh, invalidate, batch, previewTokens, submit, supplement, reopen, report, proposal, reject, fingerprints } from './workflow.mjs';
 import { selectionSchema } from './selection-schema.mjs';
 import { loadLedger, createLedger, saveLedger } from './ledger.mjs';
-import { canonical, sha256 } from './model.mjs';
+import { normalizeEvidence } from './protected.mjs';
+import { canonical, sha256, semantic } from './model.mjs';
 const json = path => JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(readFileSync(path)));
 // Configuration is local runtime input, never authority for a handoff's bytes/revision.
 export function configuration(path) {
@@ -67,10 +68,11 @@ export function execute(args) {
     }
     const outputCli=sourceCli({entry:c.cliEntry,root:output});outputCli.create(set,'proposal.md');
     const read=outputCli.read('proposal.md');
-    if(canonical(read.requirements.map(r=>r.id))!==canonical(set.requirements.map(r=>r.id)) || read.diagnostics.some(d=>d.severity==='error')) reject('proposal-roundtrip','생성 문서 재읽기가 일치하지 않습니다');
+    const meaning=r=>({ ...semantic(r), body:normalizeEvidence(r.body),footnotes:normalizeEvidence(r.footnotes??[]),status:r.status,confirmedDigest:r.confirmedDigest });
+    if(canonical(read.requirements.map(meaning))!==canonical(set.requirements.map(meaning)) || read.diagnostics.some(d=>d.severity==='error')) reject('proposal-roundtrip','생성 문서 재읽기가 일치하지 않습니다');
     const again=readInputs(c),f=fingerprints(again,c.profile);
     if(f.inputDigest!==job.inputDigest) reject('input-changed','생성 중 입력이 바뀌었습니다. 완료 결과로 게시하지 않습니다');
-    const receipt={schemaVersion:1,jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,proposalDigest:sha256(canonical(set)),file:'proposal.md',reviewState:'draft',report:report(job)};
+    const receipt={schemaVersion:1,protectionVersion:job.protectionVersion,jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,proposalDigest:sha256(canonical(set)),file:'proposal.md',reviewState:'draft',report:report(job)};
     // CAS ledger first; a crashed/contended writer never publishes a success marker.
     next=structuredClone(job);next.proposals.push({...receipt,folder:arg});saveLedger(c.job,next,current.head);
     writeFileSync(join(output,'proposal-complete.json'),canonical(receipt),{flag:'wx'});

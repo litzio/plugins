@@ -1,7 +1,7 @@
 import { canonical, sha256 } from './model.mjs';
 import { resolveSource } from './provenance.mjs';
 import { fromSnapshot, walkContent } from './body.mjs';
-import { bodyTokens, textOf } from './protected.mjs';
+import { bodyTokens, textOf, evidenceRegions } from './protected.mjs';
 export const keyOf = value => sha256(canonical(value)).slice(7);
 export function collectCandidates(inputs, profile) {
   if (!(profile.limits.candidates > 0 && profile.limits.characters > 0)) throw new Error('프로파일 구획 상한이 필요합니다');
@@ -37,7 +37,7 @@ export function collectCandidates(inputs, profile) {
       if (profile.includeNumeric && /\d/.test(text) && ['table-row', 'table-cell'].includes(kind)) reasons.push('table-number');
       if ((kind === 'table-row' && !profile.includeTableRows) || (kind === 'table-cell' && !profile.includeTableCells)) reasons.length = 0;
       const u = { projection:structuredClone(node), key, documentKey, locator: node.path, kind, text, bodyBlocks, sourceKeys, heading: [...heading], reasons, contexts: [], ...extra };
-      u.tokens = bodyTokens(bodyBlocks, profile, key); units.push(u); group.push(u); return u;
+      u.tokens = bodyTokens(bodyBlocks, profile, key); u.regions=evidenceRegions(bodyBlocks,key); units.push(u); group.push(u); return u;
     }
     for (const node of nodes.filter(n => n.path.length === 1)) {
       if (node.type === 'heading') { flush(); heading = heading.filter(h => h.level < node.level); heading.push({ level: node.level, text: node.text, content: node.content, path:node.path }); add(node,'heading',node.text,[{kind:'paragraph',...(node.content?{content:node.content}:{text:node.text})}],resolveAt(node,{kind:'block'})); continue; }
@@ -53,17 +53,17 @@ export function collectCandidates(inputs, profile) {
         for (const [row, values] of rows.entries()) {
           if (!row) continue;
           const rowSources = [...new Set(values.flatMap(c => resolveAt(node, { kind: 'cell', row, column: c.path[2] })))];
-          const shared = [{ key: keyOf({ documentKey, table: node.path, type: 'header' }), kind: 'header', text: header, bodyBlocks: headerBody, sourceKeys: rows[0]?.flatMap(c=>resolveAt(node,{kind:'cell',row:0,column:c.path[2]}))??[] }, ...(caption ? [{ key: keyOf({ documentKey, table: node.path, type: 'caption' }), kind: 'caption', text: caption, bodyBlocks: [{ kind: 'paragraph', content: captionContent }] }] : [])];
+          const shared = [{ key: keyOf({ documentKey, table: node.path, type: 'header' }), kind: 'header', text: header, bodyBlocks: headerBody, sourceKeys: rows[0]?.flatMap(c=>resolveAt(node,{kind:'cell',row:0,column:c.path[2]}))??[] }, ...(caption ? [{ key: keyOf({ documentKey, table: node.path, type: 'caption' }), kind: 'caption', text: caption, sourceKeys:resolveAt(node,{kind:'block'}), bodyBlocks: [{ kind: 'paragraph', content: captionContent }] }] : [])];
           const rowText = values.map(c => c.text).join(' | ');
           const rowBody = [{kind:'paragraph', content:values.flatMap((c,i) => [...(i ? [{kind:'text',text:' | '}] : []), ...(c.content ?? [{kind:'text',text:c.text}])])}];
           const ru = add(node, 'table-row', rowText, rowBody, rowSources, { locator: { row }, contexts: structuredClone(shared) });
-          for (const c of values) add(c, 'table-cell', c.text, [{ kind: 'paragraph', ...(c.content ? { content: c.content } : { text: c.text }) }], resolveAt(node, { kind: 'cell', row, column: c.path[2] }), { locator: { row, column: c.path[2] }, rowKey: ru.key, contexts: [...structuredClone(shared), { key: ru.key, kind: 'row', text: rowText, bodyBlocks: ru.bodyBlocks }] });
+          for (const c of values) add(c, 'table-cell', c.text, [{ kind: 'paragraph', ...(c.content ? { content: c.content } : { text: c.text }) }], resolveAt(node, { kind: 'cell', row, column: c.path[2] }), { locator: { row, column: c.path[2] }, rowKey: ru.key, contexts: [...structuredClone(shared), { key: ru.key, kind: 'row', text: rowText, bodyBlocks: ru.bodyBlocks,sourceKeys:ru.sourceKeys }] });
         }
       } else if (node.type === 'list') {
         const list = (items, ancestors = [], parents = []) => items.forEach((item, index) => {
           const path = [...ancestors, index];
           add(node, 'list-item', textOf(item.content), [{ kind: 'paragraph', content: item.content }], ancestors.length ? [] : resolveAt(node, { kind: 'list-item', index }), { locator: { item: path }, contexts: structuredClone(parents) });
-          if (item.list) list(item.list.items, path, [...parents, { key: keyOf({documentKey, parent:node.path, path}), kind:'list-parent', text:textOf(item.content), bodyBlocks:[{kind:'paragraph',content:item.content}] }]);
+          if (item.list) list(item.list.items, path, [...parents, { key: keyOf({documentKey, parent:node.path, path}), kind:'list-parent', text:textOf(item.content),sourceKeys:ancestors.length?[]:resolveAt(node,{kind:'list-item',index}), bodyBlocks:[{kind:'paragraph',content:item.content}] }]);
         });
         list(node.items);
       } else if (['paragraph', 'quote', 'admonition', 'code', 'footnote'].includes(node.type)) {
@@ -77,7 +77,7 @@ export function collectCandidates(inputs, profile) {
     const local = units.filter(u => u.documentKey === documentKey);
     for (const [index, u] of local.entries()) {
       for (const h of u.heading) u.contexts.push({key:keyOf({documentKey,heading:h}),kind:'heading',text:h.text,sourceKeys:resolveAt(h,{kind:'block'}),bodyBlocks:[{kind:'paragraph',...(h.content ? {content:h.content} : {text:h.text})}]});
-      for (const [kind, other] of [['before', local[index - 1]], ['after', local[index + 1]]]) if (other) u.contexts.push({ key: other.key, kind, text: other.text, bodyBlocks: other.bodyBlocks });
+      for (const [kind, other] of [['before', local[index - 1]], ['after', local[index + 1]]]) if (other) u.contexts.push({ key: other.key, kind, text: other.text, bodyBlocks: other.bodyBlocks,sourceKeys:other.sourceKeys });
       const atoms=[];walkContent(u.bodyBlocks,c=>atoms.push(c));
       for (const c of atoms) {
         const target=c.kind==='footnote'?definitions.get(c.label):c.kind==='reference'?references.get(c.label):null;
@@ -85,14 +85,14 @@ export function collectCandidates(inputs, profile) {
           let body;
           if(target.type==='table') {
             const rows=[];for(const cell of nodes.filter(n=>n.type==='cell'&&n.path[0]===target.path[0])) (rows[cell.path[1]]??=[])[cell.path[2]]=cell.content??cell.text;
-            body=[{kind:'table',rows,...(target.caption?{caption:Array.isArray(target.caption)?target.caption:target.caption.content}:{})}];
+            body=[{kind:'table',rows,...(target.label?{label:target.label}:{}),...(target.caption?{caption:Array.isArray(target.caption)?target.caption:target.caption.content}:{})}];
           } else if(['heading','footnote'].includes(target.type)) body=[{kind:'paragraph',...(target.content?{content:target.content}:{text:target.text??''})}];
           else body=[fromSnapshot({block:target.type,...target})];
-          u.contexts.push({key:keyOf({documentKey,target:target.path}),kind:c.kind,label:c.label,text:target.text??JSON.stringify(body),bodyBlocks:body,sourceKeys:resolveAt(target,{kind:'block'}),projection:target});
+          u.contexts.push({key:keyOf({documentKey,target:target.path}),kind:c.kind,label:c.label,text:target.text??JSON.stringify(body),bodyBlocks:body,sourceKeys:[...new Set([...resolveAt(target,{kind:'block'}),...(target.type==='table'?nodes.filter(n=>n.type==='cell'&&n.path[0]===target.path[0]).flatMap(cell=>resolveAt(target,{kind:'cell',row:cell.path[1],column:cell.path[2]})):[])])],projection:target});
         } else if(['footnote','reference'].includes(c.kind)) u.contexts.push({key:keyOf({documentKey,missing:c.label}),kind:'unresolved-reference',text:c.label,bodyBlocks:[]});
       }
-      u.contexts = [...new Map(u.contexts.map(c => [c.key, c])).values()];
-      for (const c of u.contexts) c.tokens = bodyTokens(c.bodyBlocks, profile, c.key);
+      const contextMap=new Map();for(const context of u.contexts) if(!contextMap.has(context.key)) contextMap.set(context.key,context);u.contexts=[...contextMap.values()];
+      for (const c of u.contexts) {c.tokens = bodyTokens(c.bodyBlocks, profile, c.key);c.regions=evidenceRegions(c.bodyBlocks,c.key);}
     }
   }
   // Include repeated context/quotes in the text budget. Never truncate a condition.
@@ -119,7 +119,7 @@ export function collectCandidates(inputs, profile) {
       const c=candidates[key];c.occurrences.push({unitKey:u.key,sectionKey:section.key,documentKey:u.documentKey,locator:u.locator});
       c.sourceKeys=[...new Set([...c.sourceKeys,...u.sourceKeys])];
       c.contexts=[...new Map([...c.contexts,...u.contexts,{key:u.key,kind:'alternate-occurrence',text:u.text,bodyBlocks:u.bodyBlocks,sourceKeys:u.sourceKeys}].map(c=>[c.key,c])).values()];
-      c.contexts.forEach(context=>{context.tokens??=bodyTokens(context.bodyBlocks,profile,context.key);});
+      c.contexts.forEach(context=>{context.tokens??=bodyTokens(context.bodyBlocks,profile,context.key);context.regions??=evidenceRegions(context.bodyBlocks,context.key);});
     }
 
   }

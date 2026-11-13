@@ -6,9 +6,10 @@ import { tmpdir } from 'node:os';
 import { exportReqif } from '../src/reqif.mjs';
 import { collectCandidates } from '../src/candidates.mjs';
 import { protectedTokens,bodyTokens } from '../src/protected.mjs';
-import { prepare,submit,refresh,proposal,report,batch,supplement,reopen,outputTokens,checkProfile,invalidate } from '../src/workflow.mjs';
+import { prepare,submit as rawSubmit,refresh,proposal,report,batch,supplement,reopen,outputTokens,checkProfile,invalidate } from '../src/workflow.mjs';
 import { createLedger,loadLedger,saveLedger } from '../src/ledger.mjs';
-import { profile,input,job,fake } from './candidate-fixture.mjs';
+import { profile,input,job,fake,withProof } from './candidate-fixture.mjs';
+const submit=(j,r)=>rawSubmit(j,withProof(j,r));
 const code=(fn,value)=>assert.throws(fn,e=>e.diagnostics?.some(d=>d.code===value));
 const temp=()=>mkdtempSync(join(tmpdir(),'requirements-candidates-unit-'));
 test('collects ranges and table rows/cells with original source chains and shared headers',()=>{
@@ -84,8 +85,8 @@ test('split supports one source into several stable logical IDs',()=>{
 });
 test('merge preserves every selected source occurrence and requires duplicate partners',()=>{
   const j=job(),r=fake(j),d=r.decisions[1],partner=r.decisions[2],a=j.corpus.candidates[d.candidateKey],b=j.corpus.candidates[partner.candidateKey];
-  d.choices.transformation='merge';const o=d.outputs[0];o.sourceCandidateKeys.push(b.candidateKey);o.bodyBlocks.push(...b.bodyBlocks);
-  o.protectedTokenMappings=[];const pool=[...a.tokens,...b.tokens],used=new Set();for(const t of outputTokens(o,profile,0)){const s=pool.find(s=>!used.has(s.key)&&s.kind===t.kind&&s.value===t.value);used.add(s.key);o.protectedTokenMappings.push({outputTokenKey:t.key,sourceTokenKey:s.key});}
+  d.choices.transformation='merge';const o=d.outputs[0];o.sourceCandidateKeys.push(b.candidateKey);o.contextKeys=[...new Set([...o.contextKeys,...b.contexts.filter(c=>['header','caption','footnote','list-parent','row'].includes(c.kind)).map(c=>c.key)])];o.bodyBlocks=[...a.bodyBlocks,...b.bodyBlocks,...a.contexts.filter(c=>o.contextKeys.includes(c.key)).flatMap(c=>c.bodyBlocks)];
+  o.protectedTokenMappings=[];const pool=[...a.tokens,...b.tokens],used=new Set();for(const t of outputTokens(o,profile,0)){const s=pool.find(s=>!used.has(s.key)&&s.kind===t.kind&&s.value===t.value)??pool.find(s=>s.kind===t.kind&&s.value===t.value);used.add(s.key);o.protectedTokenMappings.push({outputTokenKey:t.key,sourceTokenKey:s.key});}
   partner.decision='duplicate';partner.duplicateOf=d.candidateKey;partner.outputs=[];
   assert.equal(proposal(submit(j,r)).requirements.length,2);
 });
@@ -117,7 +118,7 @@ test('referenced table/caption, footnote and structured unit headers are supplie
 });
 test('numeric common conditions cannot be excluded to bypass protected tokens',()=>{
   const j=job(),c=Object.values(j.corpus.candidates)[0];c.contexts.push({key:'condition',kind:'caption',text:'≤ 25 °C',bodyBlocks:[{kind:'paragraph',text:'≤ 25 °C'}],tokens:protectedTokens('≤ 25 °C',profile,'condition')});
-  const r=fake(j);code(()=>submit(j,r),'context-needed');
+  const r=fake(j);r.decisions[0].contextAssessments.find(a=>a.contextKey==='condition').outcome='not-applicable';code(()=>submit(j,r),'context-needed');
 });
 test('formatted exponents survive adoption and XHTML; flattening to plain digits is rejected',()=>{
   const i=input();const c=i.bundle.snapshot.nodes[0];c.content=[{kind:'text',text:'Must withstand 10'},{kind:'superscript',children:[{kind:'text',text:'3'}]},{kind:'text',text:' V'}];c.text='Must withstand 103 V';
@@ -149,8 +150,8 @@ test('split logical output keys preserve UUIDs when outputs move, and new parts 
 });
 test('selected footnote definitions preserve exact protected tokens through model and trial XHTML',()=>{
   const j=job(),c=Object.values(j.corpus.candidates)[0],context={key:'note',kind:'footnote',label:'unit-note',text:'At ≤ 25 °C',bodyBlocks:[{kind:'paragraph',content:[{kind:'text',text:'At ≤ 25 °C'}]}],tokens:bodyTokens([{kind:'paragraph',text:'At ≤ 25 °C'}],profile,'note')};
-  c.contexts.push(context);const r=fake(j),d=r.decisions[0],o=d.outputs[0];d.contextAssessments.find(a=>a.contextKey==='note').outcome='apply';o.contextKeys=['note'];o.bodyBlocks.push({kind:'paragraph',content:[{kind:'footnote',label:'unit-note'}]});
-  const used=new Set(),pool=[...c.tokens,...context.tokens],notes=[{label:'unit-note',content:context.bodyBlocks[0].content}];o.protectedTokenMappings=outputTokens(o,profile,0,notes).map(t=>({outputTokenKey:t.key,sourceTokenKey:(()=>{const s=pool.find(s=>!used.has(s.key)&&s.kind===t.kind&&s.value===t.value);used.add(s.key);return s.key;})()}));
+  c.contexts.push(context);c.bodyBlocks=[{kind:'paragraph',content:[{kind:'text',text:'Voltage ≤ 5 V'},{kind:'footnote',label:'unit-note'}]}];c.tokens=bodyTokens(c.bodyBlocks,profile,c.key);const r=fake(j),d=r.decisions[0],o=d.outputs[0];d.contextAssessments.find(a=>a.contextKey==='note').outcome='apply';o.contextKeys=['note'];
+  const used=new Set(),pool=[...c.tokens,...context.tokens],notes=[{label:'unit-note',content:context.bodyBlocks[0].content}];o.protectedTokenMappings=outputTokens(o,profile,0,notes).map(t=>({outputTokenKey:t.key,sourceTokenKey:(()=>{const s=pool.find(s=>!used.has(s.key)&&s.kind===t.kind&&s.value===t.value)??pool.find(s=>s.kind===t.kind&&s.value===t.value);used.add(s.key);return s.key;})()}));
   const set=proposal(submit(j,r));assert.deepEqual(set.requirements[0].footnotes,notes);assert.ok(exportReqif([set],{testOnly:true}).xml.includes('At ≤ 25 °C'));
 });
 test('reopening a target invalidates the entire chain of dependent duplicate sections',()=>{
@@ -170,7 +171,12 @@ test('unconfigured unit words adjacent to quantities cannot disappear',()=>{
 });
 test('applied table header source chains reach both the batch catalog and new proposal',()=>{
   const j=job(),r=fake(j),index=r.decisions.findIndex(d=>j.corpus.candidates[d.candidateKey].kind==='table-cell'),d=r.decisions[index],c=j.corpus.candidates[d.candidateKey],header=c.contexts.find(c=>c.kind==='header');
-  d.contextAssessments.find(a=>a.contextKey===header.key).outcome='apply';d.outputs[0].contextKeys=[header.key];d.outputs[0].bodyBlocks.push(...header.bodyBlocks);
+  d.contextAssessments.find(a=>a.contextKey===header.key).outcome='apply';d.outputs[0].contextKeys=[...new Set([...d.outputs[0].contextKeys,header.key])];
   assert.ok(header.sourceKeys.every(k=>batch(j,r.sectionKey).sources[k]));
   const result=proposal(submit(j,r)).requirements[index];assert.ok(result.sources.some(s=>s.elementRef==='#/tables/0'&&s.selector==='cell:0:0'));
+});
+
+test('table cell row context keeps its structural role over adjacent prose aliases',()=>{
+  const j=job(),c=Object.values(j.corpus.candidates).find(c=>c.kind==='table-cell'),row=c.contexts.find(c=>c.kind==='row');assert.ok(row);assert.ok(row.sourceKeys.length);assert.ok(row.sourceKeys.every(k=>batch(j,c.sectionKey).sources[k]));
+  const r=fake(j),d=r.decisions.find(d=>d.candidateKey===c.candidateKey);d.contextAssessments.find(a=>a.contextKey===row.key).outcome='not-applicable';code(()=>submit(j,r),'context-needed');
 });
