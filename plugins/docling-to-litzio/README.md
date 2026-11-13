@@ -1,8 +1,31 @@
 # docling-to-litzio — 생성·채점·원문 대응·문제 탐지
 
-고정 Docling 변환 묶음을 공식 작성 입력으로 바꾸고, CLI가 만든 리치오 문서를 재읽어 검사한다. 플러그인 진입점·설치·화면·AI·교정은 없다. 생성 결과는 **검수 전 초안**이다.
+고정 Docling 변환 묶음을 공식 작성 입력으로 바꾸고, CLI가 만든 리치오 문서를 재읽어 검사한다. 설치 가능한 Host 진입점과 가져오기·결과·문제 목록 화면이 있다. AI·교정·검수 완료는 없다. 생성 결과는 **검수 전 초안**이다.
 
-## 실행
+
+## 설치와 화면 (0.6.0)
+
+이 폴더가 설치 단위다. 공개 master의 제작 안내와 CLI `plugins scaffold --template screen`에서 시작했다. React/ui/invoke와 공개 CLI만 사용하며 별도 화면 의존성이나 빌드는 없다. Node 처리 코드와 v1 생성/검수 파일은 기존 CLI 흐름과 같다.
+
+```sh
+# BUILT_CLI는 공개 rich authoring을 포함한 소스 빌드 cli.mjs.
+# HOST는 명시적으로 시작한 격리 Host의 origin. 설치된 daemon을 자동 탐색하지 않는다.
+node BUILT_CLI plugins validate PLUGIN_DIRECTORY --host HOST --json
+node BUILT_CLI plugins install PLUGIN_DIRECTORY --host HOST --json
+node BUILT_CLI plugins settings local.docling-to-litzio --file SETTINGS_JSON --host HOST --json
+```
+
+SETTINGS_JSON은 `{"workspaceDirectory":"WORKSPACE_ABSOLUTE_DIRECTORY","cliEntry":"BUILT_CLI_ABSOLUTE_FILE"}`이다. 두 값은 실제 Host의 절대 경로로 바꾼다. 설정 파일·operation 입력은 artifact 밖에 둔다. 작업 폴더는 기존 폴더여야 하고, 열린 폴더 목록과는 별개다. 리치오 설정의 플러그인 설정에서도 지정할 수 있다. 기존 문서와 사용자 교정은 덮어쓰지 않는다.
+
+화면에서 작업 폴더 안의 상대 묶음 위치(예: `inputs/lsr`)를 입력하고 **입력 확인 → 문서 만들기**를 누른다. source PDF 이름·쪽 수·지원 schema·그림 수와 누락 자산/옵션 진단을 먼저 보여 준다. 완료 뒤 손실 요약·검수 묶음·반복 패턴 접기와 묶음별 쪽/좌표/문서 target/원본 selfRef/근거를 읽는다. 전체 근거는 펼쳐 볼 수 있다. 원문/문서 미리보기·대조·비서 교정·검수 완료를 제공하지 않는다.
+
+긴 처리는 접수 후 Node worker에서 기존 `generate`→`createReview`→reader 검증을 실행한다. 화면은 짧은 `job` 호출로 조회한다. 상태는 작업 폴더의 `.docling-to-litzio/jobs/REQUEST_ID.json`, 새 결과는 `generations/REQUEST_ID/`다. 같은 requestId/입력 재조회는 같은 작업을 돌려주며 새 generation은 새 ID로만 만든다. status가 ready여도 검수 완료가 아니다. 실패/중단 결과는 보존하고 reader가 완성품으로 읽지 않는다. reload 뒤 이전 생성 목록을 읽을 수 있고, 자동 재실행하지 않는다. 종료 시 자기 worker가 끝날 때까지 기다린다. 강제 종료는 다음 실행에서 interrupted로 드러내며 취소·강제 종료 안전성을 보장하는 작업 엔진은 아니다.
+
+공개 작업(version 1, Host scope): `health`, `preflight`, `start`(write, assistant:false), `jobs`, `job`, `summary`, `groups`, `group`(read, assistant:true). 입력/출력 schema는 manifest에 있다. CLI `operation invoke local.docling-to-litzio.OP --input INPUT_JSON --host HOST --json`도 같은 작업을 호출한다. start에는 bundle/fingerprint/preflight 확인과 호출자가 만든 UUID requestId가 필요하다. 응답을 잃었으면 새 ID로 재전송하지 말고 먼저 같은 ID의 job을 조회한다. `summary/groups/group`은 매번 완료 표지·digest/revision·전수 대응·검수 파일을 검증하며 수정된 문서는 거부한다. 화면의 **결과 다시 검증**으로 새로 읽는다.
+
+현재 공개 화면에는 Host 폴더 선택기·기존 문서 열기 callback·saveDocument의 images 입력이 없다. 상대 경로 입력과 명시적인 CLI 설정을 사용하며, **문서 열기 버튼은 비활성**이다. 생성 문서는 리치오 파일 탐색기에서 연다. 독자 미리보기나 숨은 HTTP 호출로 우회하지 않았다. [실제 설치/화면 증거·플랫폼 부족·PR 4 조사](docs/results-installable.md)를 따른다.
+
+## 처리 CLI 실행
 
 Node 24.22.1 이상 25 미만, 외부 Node 의존성 없음. 공개 제작 계약의 ESM `host.js`와 같은 JavaScript 모듈이므로 후속 Host 진입점에서 추가 빌드 없이 import할 수 있다. 다른 플러그인/내부 플랫폼 모듈을 import하지 않는다.
 
