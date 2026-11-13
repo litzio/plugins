@@ -61,3 +61,25 @@ fixtures는 기존 PDF를 중복 복사하지 않고 record.source.file의 상�
 권장 프로필은 플러그인의 기본값이다. [옵션 표](options.md)와 [기계 판독용 정의](options.json)의 고정/조정 구분, 허용값·기본값·영향·의존성을 따른다. 변환 기록에는 actual_request 전체와 overrides_from_default, 기본 프로필 hash를 추가로 남긴다. 임의 변환 결과의 채점은 [tools 사용법](../../tools/README.md)을 따른다.
 
 보관 프로필 파일은 LF로 정규화한다. profile_sha256은 보관된 파일의 hash이고 execution_profile_sha256은 실행 때 읽은 프로필 원문 바이트의 hash다. 두 값이 줄바꿈 때문에 달라도 actual_request의 값은 같으며 둘 다 보존한다.
+
+## 다음 플러그인이 읽는 필드의 필수성 (2026-11-13)
+
+공개 모델의 `default`/선택 선언만으로 인계에 필요한 필드를 선택으로 취급하지 않는다. `docling-to-litzio`가 읽거나 인계 구조에 보존하는 필드는 제공돼야 하며, `false`·`null`·빈 배열도 **명시적으로 존재하는 값**이다. 정상 생략이 확인된 타입에 필드를 새로 만들어 요구하지 않는다.
+
+`contracts/docling-to-litzio/README.md`와 다음 처리 코드를 읽기 전용으로 대조했다: `src/convert.js`, `table-rule.js`, `provenance.js`, `score.js`, `source-audit.js`, `formula.js`. 전체 필드/타입별 판정과 네 표본별 존재 수, 원본 코드 hash는 [consumer-fields.json](../../plugins/docling-convert/schemas/consumer-fields.json)에 고정한다. 검사 도구는 그 플러그인의 코드를 import하지 않는다.
+
+| 소비 경로 | 필수성 |
+| --- | --- |
+| 본문 순서·출처·좌표: self_ref/parent/children/$ref/prov/page_no/bbox/charspan/pages/size | 기존 필수 유지. 좌표 원점 coord_origin과 Size.width/height도 schema에서 필수화 |
+| 표: num_rows/num_cols/table_cells, text, 시작·끝 index | 기존 필수 유지 |
+| 표 셀의 역할·범위·원문 보존 | row_span/col_span/column_header/row_header/row_section/bbox/fillable을 TableCell·RichTableCell에서 필수화. nullable bbox는 null 허용. 셀 객체 전체를 sourceCell로 인계하는 경로도 소비로 포함 |
+| 라벨·furniture·제목·목록·코드 | 적용 가능한 타입의 label/content_layer/level/marker/enumerated/code_language를 필수화. 일반 문단에 목록/코드 전용 필드를 요구하지 않음 |
+| 수식·그림·각주·참조·서식의 원문 인계 | text/orig/image/uri 및 참조는 기존 필수 유지. 적용 타입의 captions/footnotes/references/formatting/hyperlink/meta를 필수화 |
+
+변환 기록에서 읽는 source.file/sha256/bytes, document.sha256/schema/version/page_count, task.task_status, result.status/errors, actual_request에서 읽는 변환·이미지·제목 옵션도 대조했다. 이들은 기존 생성·검증 필수 항목이며 Docling 문서 선택 목록에는 없으므로 그대로 유지한다.
+
+기존 선택 목록에서 **103개 schema 필드 위치(이름 22종)**를 옮겼다. 50개 위치는 LSR 세 판(각 13쪽)과 NIST(11쪽)의 해당 타입 인스턴스에서 항상 제공됐다. 나머지 53개는 CodeItem/RichTableCell 등의 해당 타입이 네 표본에 없어 정상 수락을 검증하지 못한 소비 필수 선언이다. 이것을 정상 생략의 증거로 삼지 않고 fail-closed로 필수화했다. 미관측 타입에는 schema 수준의 합성 삭제 검사만 했으며 실제 응답을 검증했다고 주장하지 않는다.
+
+선택으로 남기는 것: 그룹의 prov/text/formatting, 일반 텍스트의 code_language/marker/level처럼 **그 타입의 schema에 없고 네 정상 출력에서도 실제로 빠진** 항목(65개 타입·필드 조합), 소비자가 읽지 않는 계산 grid·TableItem.image·origin.uri·source/comments 등, 독립적으로 선택하는 하위 annotation/metadata 키, 서버 작업의 부가 정보. meta/formatting 객체 자체의 존재와 nullable 값은 적용 타입에서 필수다. 전체 선택 목록은 [optional-fields.json](../../plugins/docling-convert/schemas/optional-fields.json)에 남긴다.
+
+검사: 네 표본 모두 단일 성공 판정을 통과했다(기존 fixture의 반올림된 uint64만 알려진 PDF hash 토큰으로 복원한 검사 입력). 관측된 승격 필드마다 표본별 삭제 변형 195건이 성공·게시 모두 거부됐다. 미관측 타입의 승격 53건은 schema 수준 삭제 거부를 확인했다. 기존 head에서 `#/tables/2/data/table_cells/0/column_header`만 삭제하면 성공·게시 gate가 허용됐고, 보완 후 같은 입력은 거부됐다. Docling 서버는 시작하지 않았다.

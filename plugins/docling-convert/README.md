@@ -152,3 +152,11 @@ Host에서 읽을 수 있는 경로여야 한다. 이번 시험은 artifact를 �
 최종 기계 생성 변형은 **18,862건**(필드 삭제 6,221 / 잘못된 타입 11,713 / const·enum 위반 928)이며 모두 complete=false 또는 검증 오류로 끝났고 게시 callback은 한 번도 실행되지 않았다. 범위는 접수 12 / poll 12 / result 189 / 문서 18,649건이다. 전체 실행은 72/72 통과(전수 변형 검사 약 17.6분). 그 뒤 추가한 위조 성공 객체 거부·기본값 무변경 검사는 정상 gate 검사와 함께 별도 3/3 통과했다. 서비스의 최종 코드로 가짜 HTTP 70/70 및 task_status 누락 재현을 다시 확인했다.
 
 빠른 HTTP 회귀 검사는 `node --test plugins/docling-convert/test/service.test.mjs`, 오래 걸리는 전수 변형 검사는 `node --test plugins/docling-convert/test/schema-mutations.test.mjs`다. 후자는 실제 정상 문서의 각 필드 인스턴스를 모두 순회하므로 schema별 대표 필드만 검사하는 것보다 오래 걸린다. 최종 후보 저장과 게시의 연결은 HTTP 검사로, 전수 변형의 게시 불가는 production publishComplete callback으로 각각 확인했다.
+
+## 소비 필드 보존 보완 — 2026-11-13
+
+`column_header`를 비롯한 소비 필드는 상위 모델에 기본값이 있다는 이유로 선택 처리하지 않는다. [계약의 대조 결과](../../contracts/docling-convert/README.md#다음-플러그인이-읽는-필드의-필수성-2026-11-13)와 [전체 근거](schemas/consumer-fields.json)에 후속 처리 코드의 실제 reads, 네 고정 표본의 타입별 존재 수, 정상 생략 항목을 기록했다. 다른 플러그인 폴더는 읽기만 했고, 이번 요청에 따라 producer 계약 문서만 보완했다.
+
+103개 schema 위치(22개 이름)를 필수로 승격하고 선택 제외 목록에서 제거했다. 50개 위치는 실제 관측으로, 53개는 미관측 타입의 소비 요구로 구분한다. sourceCell은 원문 그대로 인계하므로 fillable을 포함해 선언된 셀 필드 전체를 소비 대상으로 보았다. 빈 배열/null/false는 필드 누락을 허용하는 근거가 아니다.
+
+`node --test plugins/docling-convert/test/consumer-fields.test.mjs`: 4/4 통과. 네 표본 정상 수락, 관측 필드 삭제 변형 195건의 성공·게시 거부, 미관측 타입 삭제 53건의 schema 거부, table 2 머리 플래그 회귀 포함. `service.test.mjs`: 70/70 통과. 전체 schema 전수 변형 검사를 이번에 반복했다고 주장하지 않는다. 기존 schema에서 required 항목을 추가하는 변경이며, 기존 전수 생성기도 새 required 항목을 자동 포함한다. Docker는 시작하지 않았고 정지 상태다.

@@ -14,3 +14,10 @@ Public upstream sources and licensing:
 - https://github.com/docling-project/docling-serve/tree/v1.38.2
 - https://github.com/docling-project/docling-core/tree/v2.104.0
 - Included LICENSE.docling-serve and LICENSE.docling-core retain the upstream license notices.
+
+Consumer-contract overlay: fields actually read/transferred by docling-to-litzio
+are required even when upstream has a default. See consumer-fields.json for the
+baseline decision, four fixed-output observations, normal type-conditional
+omissions and unobserved types. The audit script reads fixtures and this plugin's
+schema; it does not import consumer code. Consumer source hashes are evidence
+snapshots, not claims of automatic discovery of future consumer changes.

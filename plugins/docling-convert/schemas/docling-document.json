@@ -135,6 +135,7 @@
       },
       "required": [
         "b",
+        "coord_origin",
         "l",
         "r",
         "t"
@@ -439,10 +440,19 @@
         }
       },
       "required": [
+        "captions",
         "children",
+        "code_language",
+        "content_layer",
+        "footnotes",
+        "formatting",
+        "hyperlink",
+        "label",
+        "meta",
         "orig",
         "parent",
         "prov",
+        "references",
         "self_ref",
         "text"
       ],
@@ -966,6 +976,12 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "level",
+        "meta",
         "orig",
         "parent",
         "prov",
@@ -1061,6 +1077,9 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "label",
+        "meta",
         "parent",
         "prov",
         "self_ref"
@@ -1154,6 +1173,9 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "label",
+        "meta",
         "parent",
         "prov",
         "self_ref"
@@ -1293,6 +1315,11 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "meta",
         "orig",
         "parent",
         "prov",
@@ -1584,10 +1611,16 @@
         }
       },
       "required": [
+        "captions",
         "children",
+        "content_layer",
+        "footnotes",
         "graph",
+        "label",
+        "meta",
         "parent",
         "prov",
+        "references",
         "self_ref"
       ],
       "title": "FormItem",
@@ -1749,6 +1782,11 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "meta",
         "orig",
         "parent",
         "prov",
@@ -1934,6 +1972,9 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "label",
+        "meta",
         "parent",
         "self_ref"
       ],
@@ -2247,6 +2288,9 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "label",
+        "meta",
         "parent",
         "self_ref"
       ],
@@ -2377,10 +2421,16 @@
         }
       },
       "required": [
+        "captions",
         "children",
+        "content_layer",
+        "footnotes",
         "graph",
+        "label",
+        "meta",
         "parent",
         "prov",
+        "references",
         "self_ref"
       ],
       "title": "KeyValueItem",
@@ -2512,6 +2562,9 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "label",
+        "meta",
         "parent",
         "self_ref"
       ],
@@ -2652,6 +2705,13 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "enumerated",
+        "formatting",
+        "hyperlink",
+        "label",
+        "marker",
+        "meta",
         "orig",
         "parent",
         "prov",
@@ -3093,10 +3153,16 @@
         }
       },
       "required": [
+        "captions",
         "children",
+        "content_layer",
+        "footnotes",
         "image",
+        "label",
+        "meta",
         "parent",
         "prov",
+        "references",
         "self_ref"
       ],
       "title": "PictureItem",
@@ -3613,9 +3679,16 @@
         }
       },
       "required": [
+        "bbox",
+        "col_span",
+        "column_header",
         "end_col_offset_idx",
         "end_row_offset_idx",
+        "fillable",
         "ref",
+        "row_header",
+        "row_section",
+        "row_span",
         "start_col_offset_idx",
         "start_row_offset_idx",
         "text"
@@ -3765,6 +3838,12 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "level",
+        "meta",
         "orig",
         "parent",
         "prov",
@@ -3790,7 +3869,11 @@
       },
       "title": "Size",
       "type": "object",
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "height",
+        "width"
+      ]
     },
     "SummaryMetaField": {
       "additionalProperties": true,
@@ -3908,8 +3991,15 @@
         }
       },
       "required": [
+        "bbox",
+        "col_span",
+        "column_header",
         "end_col_offset_idx",
         "end_row_offset_idx",
+        "fillable",
+        "row_header",
+        "row_section",
+        "row_span",
         "start_col_offset_idx",
         "start_row_offset_idx",
         "text"
@@ -4122,10 +4212,16 @@
         }
       },
       "required": [
+        "captions",
         "children",
+        "content_layer",
         "data",
+        "footnotes",
+        "label",
+        "meta",
         "parent",
         "prov",
+        "references",
         "self_ref"
       ],
       "title": "TableItem",
@@ -4330,7 +4426,11 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "formatting",
+        "hyperlink",
         "label",
+        "meta",
         "orig",
         "parent",
         "prov",
@@ -4464,6 +4564,11 @@
       },
       "required": [
         "children",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "meta",
         "orig",
         "parent",
         "prov",

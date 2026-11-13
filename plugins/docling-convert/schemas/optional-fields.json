@@ -60,21 +60,9 @@
         "summary",
         "topics"
       ],
-      "#/$defs/BoundingBox": [
-        "coord_origin"
-      ],
       "#/$defs/CodeItem": [
-        "captions",
-        "code_language",
         "comments",
-        "content_layer",
-        "footnotes",
-        "formatting",
-        "hyperlink",
         "image",
-        "label",
-        "meta",
-        "references",
         "source"
       ],
       "#/$defs/CodeMetaField": [
@@ -101,36 +89,19 @@
       ],
       "#/$defs/FieldHeadingItem": [
         "comments",
-        "content_layer",
-        "formatting",
-        "hyperlink",
-        "label",
-        "level",
-        "meta",
         "source"
       ],
       "#/$defs/FieldItem": [
         "comments",
-        "content_layer",
-        "label",
-        "meta",
         "source"
       ],
       "#/$defs/FieldRegionItem": [
         "comments",
-        "content_layer",
-        "label",
-        "meta",
         "source"
       ],
       "#/$defs/FieldValueItem": [
         "comments",
-        "content_layer",
-        "formatting",
-        "hyperlink",
         "kind",
-        "label",
-        "meta",
         "source"
       ],
       "#/$defs/FineRef": [
@@ -145,14 +116,8 @@
         "topics"
       ],
       "#/$defs/FormItem": [
-        "captions",
         "comments",
-        "content_layer",
-        "footnotes",
         "image",
-        "label",
-        "meta",
-        "references",
         "source"
       ],
       "#/$defs/Formatting": [
@@ -164,11 +129,6 @@
       ],
       "#/$defs/FormulaItem": [
         "comments",
-        "content_layer",
-        "formatting",
-        "hyperlink",
-        "label",
-        "meta",
         "source"
       ],
       "#/$defs/GraphCell": [
@@ -179,26 +139,14 @@
         "links"
       ],
       "#/$defs/GroupItem": [
-        "content_layer",
-        "label",
-        "meta",
         "name"
       ],
       "#/$defs/InlineGroup": [
-        "content_layer",
-        "label",
-        "meta",
         "name"
       ],
       "#/$defs/KeyValueItem": [
-        "captions",
         "comments",
-        "content_layer",
-        "footnotes",
         "image",
-        "label",
-        "meta",
-        "references",
         "source"
       ],
       "#/$defs/LanguageMetaField": [
@@ -206,20 +154,10 @@
         "created_by"
       ],
       "#/$defs/ListGroup": [
-        "content_layer",
-        "label",
-        "meta",
         "name"
       ],
       "#/$defs/ListItem": [
         "comments",
-        "content_layer",
-        "enumerated",
-        "formatting",
-        "hyperlink",
-        "label",
-        "marker",
-        "meta",
         "source"
       ],
       "#/$defs/MiscAnnotation": [
@@ -244,13 +182,7 @@
       ],
       "#/$defs/PictureItem": [
         "annotations",
-        "captions",
         "comments",
-        "content_layer",
-        "footnotes",
-        "label",
-        "meta",
-        "references",
         "source"
       ],
       "#/$defs/PictureLineChartData": [
@@ -283,41 +215,13 @@
       "#/$defs/PictureTabularChartData": [
         "kind"
       ],
-      "#/$defs/RichTableCell": [
-        "bbox",
-        "col_span",
-        "column_header",
-        "fillable",
-        "row_header",
-        "row_section",
-        "row_span"
-      ],
       "#/$defs/SectionHeaderItem": [
         "comments",
-        "content_layer",
-        "formatting",
-        "hyperlink",
-        "label",
-        "level",
-        "meta",
         "source"
-      ],
-      "#/$defs/Size": [
-        "height",
-        "width"
       ],
       "#/$defs/SummaryMetaField": [
         "confidence",
         "created_by"
-      ],
-      "#/$defs/TableCell": [
-        "bbox",
-        "col_span",
-        "column_header",
-        "fillable",
-        "row_header",
-        "row_section",
-        "row_span"
       ],
       "#/$defs/TableData": [
         "grid",
@@ -325,14 +229,8 @@
       ],
       "#/$defs/TableItem": [
         "annotations",
-        "captions",
         "comments",
-        "content_layer",
-        "footnotes",
         "image",
-        "label",
-        "meta",
-        "references",
         "source"
       ],
       "#/$defs/TabularChartMetaField": [
@@ -342,19 +240,10 @@
       ],
       "#/$defs/TextItem": [
         "comments",
-        "content_layer",
-        "formatting",
-        "hyperlink",
-        "meta",
         "source"
       ],
       "#/$defs/TitleItem": [
         "comments",
-        "content_layer",
-        "formatting",
-        "hyperlink",
-        "label",
-        "meta",
         "source"
       ],
       "#/$defs/TrackSource": [
