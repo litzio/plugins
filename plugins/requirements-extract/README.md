@@ -98,3 +98,5 @@ PR14 리뷰 보강: schema v2의 sourceRegionMappings로 원문 **전체 블록�
 
 
 PR14 재검토 보강: 후보에서 apply로 판단한 문맥은 분해/통합의 **각 결과**에 내용까지 보존해야 한다. 결과별 제외는 선택적 contextExclusions의 문맥 키·비해당 이유가 필요하며 report의 reviewFirst와 problems 선두에 사람 검토 대상으로 나온다. 보호 정책 /3으로 이전 판단을 무효화한다. 결과별 조건 회귀 45개(8종 문맥·통합·명시적 제외·저장 판단 재검사)를 추가했다.
+
+현재 v1.2 검수 완료 인계는 [완료 재검증과 확인 범위](docs/reviewed-handoff.md)를 따른다. 유효한 출처 검수 완료와 요구사항 쪽 별도 사람 확정이 모두 있어야 정식 내보내기를 허용한다. 구버전 unreviewed는 계속 draft다.

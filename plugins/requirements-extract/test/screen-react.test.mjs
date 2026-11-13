@@ -6,6 +6,8 @@ import {create} from 'react-test-renderer';
 import {transformSync} from 'esbuild';
 import {screenFixture} from './screen-fixture.mjs';
 import {reviewLists} from '../src/screen-review.mjs';
+import {reviewedFixture,currentSnapshot} from './reviewed-fixture.mjs';
+import {loadProvenance,resolveSource} from '../src/provenance.mjs';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 globalThis.ResizeObserver=class{observe(){}disconnect(){}};
@@ -108,5 +110,18 @@ test('React: switching source within one detail rejects its old callback; reread
   await act(async()=>old({state:'ready'}));assert.equal(h.button('선택 항목 확정').props.disabled,true);await h.ready();
   const before=h.sourceReload(),previous=h.sourceCallback();await h.click('항목 상세');assert.notEqual(h.sourceReload(),before);
   await act(async()=>previous({state:'ready'}));assert.equal(h.button('선택 항목 확정').props.disabled,true);await h.ready();assert.equal(h.button('선택 항목 확정').props.disabled,false);
+ }finally{await h.close();}
+});
+
+test('React: v1.2 groups and detailed human/expression distinctions render processing values unchanged',async()=>{
+ const root=reviewedFixture({human:'cell'}),bundle=loadProvenance(root,{inspect:()=>currentSnapshot(root)}),human=resolveSource(bundle,{elementRef:'#/tables/0',selector:'cell:1:0'}).source,table=resolveSource(bundle,{elementRef:'#/tables/0',selector:'cell:1:0'}).source;
+ const f=await screenFixture(),base=f.summary(),state=f.state(),candidateKey=Object.keys(state.corpus.candidates)[0],sourceKey=state.corpus.candidates[candidateKey].sourceKeys[0];
+ const problems=[{code:'source-human-correction',sourceKey,message:human.trace.humanCorrectionNotice},{code:'source-expression-confirmed',sourceKeys:[sourceKey],message:table.trace.mergedTableConfirmation},{code:'source-reviewed',sourceKeys:[sourceKey],message:table.trace.diagnostics.find(d=>d.code==='source-reviewed').message}];
+ const summary={...base,report:{...base.report,problems},diagnostics:[],links:null};summary.review=reviewLists({state,head:'reviewed-test',s:{links:null}},summary);
+ const original=f.service.detail;f.service.detail=p=>{const d=original(p);return {...d,sources:[human,table]};};
+ const h=await harness(f,{summary:()=>summary});
+ try{
+  for(const group of summary.review.groups){await h.click(group.title+' · '+group.count);assert.equal(h.table('요구사항·후보').length,group.count);assert.deepEqual(h.table('요구사항·후보').map(r=>r.join(' · ')),group.rows.map(r=>[r.number,r.title,r.status].join(' · ')));await h.click('문제 먼저 '+summary.review.problemCount);}
+  await h.click('항목 상세');const source=h.table('출처').flat().join(' ');assert.ok(source.includes(human.trace.humanCorrectionNotice));assert.ok(source.includes('현재 revision 검수 완료'));assert.ok(source.includes(table.trace.mergedTableConfirmation));assert.match(source,/비인증/);assert.ok(h.table('표현 보존 확인').flat().join(' ').includes('expression-semantic-preservation'));assert.ok(h.table('교정 이력').flat().join(' ').includes('human-source-region'));assert.ok(h.table('교정 이력').flat().join(' ').includes('전 구조'));assert.ok(h.table('교정 이력').flat().join(' ').includes('후 구조'));assert.ok(h.table('교정 이력').flat().join(' ').includes('math'));
  }finally{await h.close();}
 });

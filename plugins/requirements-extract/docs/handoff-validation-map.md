@@ -83,3 +83,26 @@ review-evidence-fields의 전체 목록:
 | 대상의 전체 교정 이력(되돌림 포함)과 현재 유효 교정 표시 | 소비자가 검증함 | trace.corrections는 대상의 전체 changes. correctionState/Notice는 대상별 첫 before와 마지막 after 비교로 별도 판정 |
 
 계약에서 모호한 것: 현재 contracts/에는 위 봉인/사슬/소비값 자기 일관성과 생산 시 생성 의미 검증의 책임 구분이 명시돼 있지 않다. 소유자가 이번 리뷰에서 정한 경계를 적용했으며 계약 파일은 수정하지 않았다. review-parity 검사는 특정 변형군의 관측 결과이며 모든 생성 의미 변형에 대한 생산자/소비자 동등성 선언이 아니다.
+
+## v1.2 추가 대조
+
+v1.2의 C0–C9 각각과 사건별 무효화는 [현재 완료 판정](reviewed-handoff.md)에 대응한다. 아래 규칙은 모두 소비자가 검증한다.
+
+| 계약 규칙 | 소비자 검사 | 검증 책임 |
+| --- | --- | --- |
+| complete 1.2 명시 분기·human-review schema·봉인 | complete-v12/human-review schema, json/file-digest/human-review-binding | 소비자가 검증함 |
+| history 1.2 사람 영역·빈 값·content·역연산 | history-human-validation/target/scope/content/inverse/before/current/submission | 소비자가 검증함 |
+| history 없는 1.2 생성본 | 생성 snapshot 보존·공식 inspect와 원장 changes=[] 대조, review-binding/digest/meaning | 소비자가 검증함 |
+| 물리 쪽 전수·generation·PDF 결합·pending·현재 revision | review-page-inventory/review-ledger/history-ledger, completionProof C0–C3 | 소비자가 검증함 |
+| 모든 범위·실제 note·필수 사람 결정·일반 명시 보류·실패 | completionProof C4/C5/C8; open nested record도 사용하는 사실의 형식 검사 | 소비자가 검증함 |
+| 내용 손실과 표현 분류·원본 손실 유지 | lossCatalog, C6; 기존 losses/item 전체 대조 유지 | 소비자가 검증함 |
+| 현재 targets·lossId·쪽·changeCount·마지막 유효 확인 | review-expression-binding/expressionReviews, C7와 발급 배열 전체 비교 | 소비자가 검증함 |
+| 현재 토큰과 사람 직접 교정·undo 면제 금지 | sourceText/protectedValues 다중집합 대조, C9 | 소비자가 검증함 |
+| 완료 발급 이력과 현재 원장 대조 | receiptCurrent: completion/scopes/humanDecisions/lossConfirmations/expressionReviews 전체 비교 | 소비자가 검증함 |
+| 완료 후 checkpoint/결정/표현/stop/resume/교정/undo 변경 | 현재 조건과 receiptCurrent 재계산, v1.2 review를 입력 해시에 결합 | 소비자가 검증함 |
+| 처음/마지막 완료 표지와 가변 원장 | marker-changed/ledger-changed | 소비자가 검증함 |
+| 사람 선언과 기계 증거 구분·표현 확인 범위·요구사항 별도 확정 | trace의 corrections/validation/actorLimitation/humanDecisions/expressionReviews/reviewState/diagnostics, SourceReferences 전체 JSON, 기존 confirm의 상세 digest 결합 | 소비자가 검증함 |
+
+v1.2도 위 ‘생산자의 봉인을 신뢰함’ 행의 생성 의미 검증 책임은 같다. 새 모호점(lossId 직렬화·분류 문자열·열린 내부 schema)은 reviewed-handoff.md에 적었다. 생산자 폴더와 contracts는 고치지 않는다.
+
+| 저장한 제안·상위 문서의 v1.2 출처 재읽기 | verifyReviewedSources / sourceCli.read: 상대 map 등록으로 인계·원장·공식 문서 재검사 후 trace/quote/digest 전체 대조. stale-source-evidence는 내보내기 오류 | 소비자가 검증함 |

@@ -77,3 +77,5 @@ src/export-classification.mjs의 보존/제외/차단 표는 body.mjs/inline.mjs
 export-fields.test.mjs는 모델 목록에 condition을 직접 추가한 상태를 만들고(문단/표는 실제 값 포함), 시험·정식 내보내기가 모두 막히는지 확인한 뒤 모델 목록을 복구한다. 문단·표·목록 항목·미주를 각각 검사한다.
 
 연결 없는 문서의 XML은 #17과 bytes 전체가 같지 않다. SourceRegistry/DocumentProfile 및 두 관계 유형의 RelationJudgments 속성 정의 ID가 합계 4개 추가된다. 같은 입력·고정 시각으로 비교한 기존 SpecObject의 XML 구조/값은 동일하고 기존 Identifiable ID는 하나도 사라지지 않는다.
+
+v1.2 출처 필드(review 조건/계수·완료 발급 digest/revision, reviewState/diagnostics, actorLimitation, humanDecisions, expressionReviews와 confirmation, humanCorrectionNotice, mergedTableConfirmation)는 모두 SourceReferences JSON으로 보존한다. 원본 losses와 현재 표현 확인을 함께 남기며 ‘사람으로 기록된 확인’과 기계 검증을 구별한다. 관련 교정 전체 이력·undoOf·beforeContent/afterContent·validation도 같은 속성에 보존한다. source 쪽 reviewed는 요구사항 confirmed를 대신하지 않는다.

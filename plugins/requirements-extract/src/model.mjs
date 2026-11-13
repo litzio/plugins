@@ -27,6 +27,11 @@ export const digest = r => sha256(canonical(semantic(r)));
 export const effectiveStatus = r => r.status === 'confirmed' && r.confirmedDigest !== digest(r) ? 'reviewed' : r.status;
 export const newRequirement = values => ({ kind: 'unknown', level: 'system', origin: 'derived', strength: 'mandatory', status: 'draft', verification: 'undecided', rationale: '', confirmedDigest: '', body: [], sources: [], relations: [], ...values, id: 'req-' + randomUUID() });
 export const newSet = values => ({ title: '요구사항 문서', profile: 'requirements-extract/1', defaultLevel: 'system', exportNamespace: randomUUID(), registry: [], requirements: [], ...values, setId: 'set-' + randomUUID() });
+export function reviewedTrace(t) {
+ const names=['boundEvidence','noPending','running','currentRevision','coverage','humanDecisions','contentLosses','expressions','failureFree','protectedValues'];
+ const counts=['uncovered','human','blocking','expressionUnconfirmed','failures','tokenDifferences'];
+ return t?.contract==='docling-to-litzio/1.2.0'&&t.reviewState==='reviewed'&&t.eligibleConfirmed===true&&t.bindingState==='current'&&t.review?.reviewComplete===true&&t.review.receiptCurrent===true&&t.review.completionRevision===t.documentRevision&&/^sha256:[a-f0-9]{64}$/.test(t.review.completionDigest)&&names.every(k=>t.review.conditions?.[k]===true)&&counts.every(k=>t.review.counts?.[k]===0)&&typeof t.actorLimitation==='string'&&t.actorLimitation.includes('비인증');
+}
 
 export function validate(sets, { formal = false } = {}) {
   const diagnostics = [];
@@ -65,13 +70,16 @@ export function validate(sets, { formal = false } = {}) {
           if(!/^[a-f0-9]{64}$/.test(n.sourceId)||!/^[a-f0-9]{64}$/.test(n.revision)||!Array.isArray(n.path)||!n.path.length||!n.path.every(Number.isInteger)||n.path[0]<1||n.path.some(v=>v<0)||typeof n.file!=='string'||/^(?:[a-z]:|[\\/])|(?:^|[\\/])\.\.(?:[\\/]|$)/i.test(n.file)||registration?.nativeDigest!=='sha256:'+n.revision||registration?.nativeFile!==n.file) add(s,r,'source-native-location','native 위치와 출처 등록/revision이 다릅니다');
         }
         if (src.trace) {
-          if (!['docling-to-litzio/1.0.0','docling-to-litzio/1.1.0'].includes(src.trace.contract) || src.trace.reviewState !== 'unreviewed' || src.trace.eligibleConfirmed !== false) add(s, r, 'source-trace', '알 수 없거나 승격된 v1 출처 trace를 거부합니다');
+          if(src.trace.contract==='docling-to-litzio/1.2.0'&&s.registry.find(v=>v.sourceKey===src.sourceKey)?.nativeDigest!=='sha256:'+src.trace.documentRevision)add(s,r,'source-registration-revision','출처 등록 해시와 검수 출처 revision이 다릅니다');
+          const reviewed=reviewedTrace(src.trace),unreviewed=['docling-to-litzio/1.0.0','docling-to-litzio/1.1.0','docling-to-litzio/1.2.0'].includes(src.trace.contract)&&src.trace.reviewState==='unreviewed'&&src.trace.eligibleConfirmed===false;
+          if (!reviewed&&!unreviewed) add(s, r, 'source-trace', src.trace.contract==='docling-to-litzio/1.2.0'?'알 수 없거나 증거 없이 승격된 출처 trace를 거부합니다':'알 수 없거나 승격된 v1 출처 trace를 거부합니다');
           if (!Array.isArray(src.trace.targets) || !Array.isArray(src.trace.regions) || !Array.isArray(src.trace.pages) || !/^[a-f0-9]{64}$/.test(src.trace.sourceId) || !/^[a-f0-9]{64}$/.test(src.trace.documentRevision) || !['current', 'uncertain'].includes(src.trace.bindingState)) add(s, r, 'source-trace', '출처 trace의 위치/식별 구조가 올바르지 않습니다');
-          add(s, r, 'source-review-required', 'v1 인계는 미검수 출처입니다. 정식 내보내기 전에 검수본 계약이 필요합니다', formal ? 'error' : 'warning');
+          if(!reviewed)add(s, r, 'source-review-required', src.trace.contract==='docling-to-litzio/1.2.0'?'현재 유효한 검수 완료 증거가 없는 출처입니다':'v1 인계는 미검수 출처입니다. 정식 내보내기 전에 검수본 계약이 필요합니다', formal ? 'error' : 'warning');
         }
         if (!keys.has(src.sourceKey) || !src.elementRef) add(s, r, 'broken-source', '출처 등록 또는 요소 참조가 없습니다');
         if (!/^(full|text:\d+:\d+|cell:\d+:\d+)$/.test(src.selector) || (src.selector.startsWith('text:') && Number(src.selector.split(':')[1]) >= Number(src.selector.split(':')[2]))) add(s, r, 'selector', '출처 범위가 올바르지 않습니다');
-        if (!src.quote || src.quoteDigest !== sha256(src.quote)) add(s, r, 'quote-digest', '인용문 해시가 일치하지 않습니다');
+        const gap=src.trace?.contract==='docling-to-litzio/1.2.0'&&src.trace.gapTarget?.originalConversionValue===''&&src.trace.gapTarget.originalTarget?.text===''&&src.trace.corrections?.some(c=>c.before===''&&c.evidence.kind==='human-source-region'&&c.validation.evidenceRecheck==='human-source-region'&&canonical(c.target.path)===canonical(src.trace.gapTarget.originalTarget.path));
+        if ((!src.quote&&!(src.quote===''&&gap)) || src.quoteDigest !== sha256(src.quote)) add(s, r, 'quote-digest', '인용문 해시가 일치하지 않습니다');
       }
       validateBody(r, (code, message) => add(s, r, code, message), labels);
       if (r.status === 'confirmed' && effectiveStatus(r) !== 'confirmed') add(s, r, 'confirmation-stale', '내용 변경으로 유효 상태를 reviewed로 낮춥니다', formal ? 'error' : 'warning');

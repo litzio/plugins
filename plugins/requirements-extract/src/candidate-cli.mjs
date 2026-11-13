@@ -62,7 +62,7 @@ export function execute(args) {
         if(sha256(readFileSync(destination)).slice(7)!==f.sha256) reject('source-changed','복사하는 동안 출처 bytes가 변경됐습니다');
       }
       copyFileSync(join(from,'complete.json'),join(target,'complete.json'),constants.COPYFILE_EXCL);
-      if(input.bundle.history) {
+      if(input.bundle.history||input.bundle.complete.schemaVersion==='1.2.0') {
         const ledger=join(from,'correction-ledger.json'),stat=lstatSync(ledger);
         if(!stat.isFile()||stat.isSymbolicLink()) reject('source-ledger','일반 교정 원장 파일이 필요합니다');
         copyFileSync(ledger,join(target,'correction-ledger.json'),constants.COPYFILE_EXCL);
