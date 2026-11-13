@@ -39,3 +39,11 @@
 ## 이번 작업의 검증 경계
 
 문서만 작성했다. 링크·문서 간 결정 일관성·변경 범위·민감 정보·공백 오류를 검사한다. 실제 AI 호출, 변환, Docker 조작, SDK 실행, native 예시의 admission, XSD 실행, 라이브러리 설치, Polarion 가져오기, 화면 검증은 수행하지 않았다. 제품 clone은 문서와 git 객체를 읽는 용도로만 사용했고 수정하지 않았다.
+
+## PR1에서 추가 확인한 공개 근거
+
+- Litzio checkout `8f41d0da6ad3cfe06299dfa04b39d1dcd6bea386`: README 개발 CLI 실행법, purpose, ADR-0006, document-support-v1, section-references-v1, table-caption-v1, plugin-screens-v1을 재확인했다. public plugin-sdk export의 authoring schema를 실행해 입력을 확인했다. Core 내부 소스는 읽지 않았다.
+- CLI help create/inspect/compare/insert-table/insert-target/apply-batch와 실제 출력: authoring은 label이 없어 생성 뒤 공식 batch를 사용, compare는 rich inline 의미를 제공한다.
+- OMG 공식 reqif.xsd와 XHTML driver 전이 의존의 URL/원본 SHA-256은 validation/schemas.lock.json 참조. 스키마 본문은 커밋하지 않고 캐시만 사용한다.
+- xmlbuilder2 4.0.3 및 실제 설치 전이 패키지의 package.json/LICENSE 확인. 전체 고지·정확한 lock 포함. 독립 reqif 0.0.47/lxml 6.0.2는 격리 검증 전용이다.
+- 초기 설계의 미실행 목록은 과거 경계다. PR1 실제 실행·실패 수정·미실행 목록은 pr1-validation.md가 현재 기록이다.

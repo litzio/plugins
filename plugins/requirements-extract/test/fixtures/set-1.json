@@ -1,0 +1,4728 @@
+{
+  "inspection": {
+    "ok": true,
+    "command": "inspect",
+    "revision": "00b8020a39f120bc58f9a1c6b2c502bd2a8bf41da31fa0df8f2f17dc0ea2f671",
+    "title": "합성 시스템 요구사항",
+    "nodes": [
+      {
+        "path": [
+          1
+        ],
+        "type": "heading",
+        "level": 1,
+        "editable": true,
+        "text": "요구사항 문서",
+        "referenceText": "§ 요구사항 문서",
+        "section": {
+          "start": 1,
+          "end": 32
+        }
+      },
+      {
+        "path": [
+          2
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 1
+        },
+        "captionNumberText": "Table 1"
+      },
+      {
+        "path": [
+          2,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "필드"
+      },
+      {
+        "path": [
+          2,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "값"
+      },
+      {
+        "path": [
+          2,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "profile"
+      },
+      {
+        "path": [
+          2,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "requirements-extract/1"
+      },
+      {
+        "path": [
+          2,
+          2,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "setId"
+      },
+      {
+        "path": [
+          2,
+          2,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "set-36b7797a-67e0-4cad-8121-000000000002"
+      },
+      {
+        "path": [
+          2,
+          3,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "exportNamespace"
+      },
+      {
+        "path": [
+          2,
+          3,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "8ecdb7b1-138e-49c8-a1e1-89a56f63a274"
+      },
+      {
+        "path": [
+          2,
+          4,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "defaultLevel"
+      },
+      {
+        "path": [
+          2,
+          4,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "system"
+      },
+      {
+        "path": [
+          3
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 2
+        },
+        "captionNumberText": "Table 2"
+      },
+      {
+        "path": [
+          3,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "sourceKey"
+      },
+      {
+        "path": [
+          3,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "artifactDigest"
+      },
+      {
+        "path": [
+          3,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "nativeFile"
+      },
+      {
+        "path": [
+          3,
+          0,
+          3
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "nativeDigest"
+      },
+      {
+        "path": [
+          3,
+          0,
+          4
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "mapFile"
+      },
+      {
+        "path": [
+          3,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "synthetic"
+      },
+      {
+        "path": [
+          3,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:8dd6df18f39390a986871f41f0f834c9642375d9b6d043fe4ff450bdb7095609"
+      },
+      {
+        "path": [
+          3,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "synthetic-input.md"
+      },
+      {
+        "path": [
+          3,
+          1,
+          3
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:c5c8a2d18e823defe026aa0e8e6164b3d99c3de20f1b7f16d11a2a11697b1344"
+      },
+      {
+        "path": [
+          3,
+          1,
+          4
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "synthetic-map.json"
+      },
+      {
+        "path": [
+          4
+        ],
+        "type": "target",
+        "label": "req-1593c157-e436-422d-a7aa-000000000004"
+      },
+      {
+        "path": [
+          5
+        ],
+        "type": "heading",
+        "level": 2,
+        "editable": true,
+        "text": "차단 유지",
+        "referenceText": "§ 차단 유지",
+        "section": {
+          "start": 4,
+          "end": 13
+        }
+      },
+      {
+        "path": [
+          6
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 3
+        },
+        "captionNumberText": "Table 3"
+      },
+      {
+        "path": [
+          6,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "필드"
+      },
+      {
+        "path": [
+          6,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "값"
+      },
+      {
+        "path": [
+          6,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "id"
+      },
+      {
+        "path": [
+          6,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000004"
+      },
+      {
+        "path": [
+          6,
+          2,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "kind"
+      },
+      {
+        "path": [
+          6,
+          2,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "performance"
+      },
+      {
+        "path": [
+          6,
+          3,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "level"
+      },
+      {
+        "path": [
+          6,
+          3,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "system"
+      },
+      {
+        "path": [
+          6,
+          4,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "origin"
+      },
+      {
+        "path": [
+          6,
+          4,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "derived"
+      },
+      {
+        "path": [
+          6,
+          5,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "strength"
+      },
+      {
+        "path": [
+          6,
+          5,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "mandatory"
+      },
+      {
+        "path": [
+          6,
+          6,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "status"
+      },
+      {
+        "path": [
+          6,
+          6,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "confirmed"
+      },
+      {
+        "path": [
+          6,
+          7,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "verification"
+      },
+      {
+        "path": [
+          6,
+          7,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "test"
+      },
+      {
+        "path": [
+          6,
+          8,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "rationale"
+      },
+      {
+        "path": [
+          6,
+          8,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님."
+      },
+      {
+        "path": [
+          6,
+          9,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "confirmedDigest"
+      },
+      {
+        "path": [
+          6,
+          9,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:1ba47f85e0e3fcddce76eaab8cbf554bd6794339484fd875bcdf3a373eacb89b"
+      },
+      {
+        "path": [
+          7
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "본문",
+        "referenceText": "§ 본문",
+        "section": {
+          "start": 7,
+          "end": 9
+        }
+      },
+      {
+        "path": [
+          8
+        ],
+        "type": "paragraph",
+        "editable": true,
+        "text": "차단 출력은 0 ≤ t ≤ 10 ms 동안 유지해야 한다."
+      },
+      {
+        "path": [
+          9
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "출처",
+        "referenceText": "§ 출처",
+        "section": {
+          "start": 9,
+          "end": 11
+        }
+      },
+      {
+        "path": [
+          10
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 4
+        },
+        "captionNumberText": "Table 4"
+      },
+      {
+        "path": [
+          10,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "sourceKey"
+      },
+      {
+        "path": [
+          10,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "elementRef"
+      },
+      {
+        "path": [
+          10,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "selector"
+      },
+      {
+        "path": [
+          10,
+          0,
+          3
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "quote"
+      },
+      {
+        "path": [
+          10,
+          0,
+          4
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "quoteDigest"
+      },
+      {
+        "path": [
+          10,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "synthetic"
+      },
+      {
+        "path": [
+          10,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "#/texts/4"
+      },
+      {
+        "path": [
+          10,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "full"
+      },
+      {
+        "path": [
+          10,
+          1,
+          3
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "차단 출력은 0 ≤ t ≤ 10 ms 동안 유지해야 한다."
+      },
+      {
+        "path": [
+          10,
+          1,
+          4
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:4585e44365405e7b2effacafb2a6aaa11432554b79cfa5df7d69bdae64d3a058"
+      },
+      {
+        "path": [
+          11
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "연결",
+        "referenceText": "§ 연결",
+        "section": {
+          "start": 11,
+          "end": 13
+        }
+      },
+      {
+        "path": [
+          12
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 5
+        },
+        "captionNumberText": "Table 5"
+      },
+      {
+        "path": [
+          12,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "role"
+      },
+      {
+        "path": [
+          12,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "targetId"
+      },
+      {
+        "path": [
+          12,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "rationale"
+      },
+      {
+        "path": [
+          12,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "refines"
+      },
+      {
+        "path": [
+          12,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000001"
+      },
+      {
+        "path": [
+          12,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "합성 상위 조건의 구체화"
+      },
+      {
+        "path": [
+          12,
+          2,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "relatesTo"
+      },
+      {
+        "path": [
+          12,
+          2,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000005"
+      },
+      {
+        "path": [
+          12,
+          2,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "동작 조건 관련"
+      },
+      {
+        "path": [
+          13
+        ],
+        "type": "target",
+        "label": "req-1593c157-e436-422d-a7aa-000000000005"
+      },
+      {
+        "path": [
+          14
+        ],
+        "type": "heading",
+        "level": 2,
+        "editable": true,
+        "text": "온도 오차",
+        "referenceText": "§ 온도 오차",
+        "section": {
+          "start": 13,
+          "end": 23
+        }
+      },
+      {
+        "path": [
+          15
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 6
+        },
+        "captionNumberText": "Table 6"
+      },
+      {
+        "path": [
+          15,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "필드"
+      },
+      {
+        "path": [
+          15,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "값"
+      },
+      {
+        "path": [
+          15,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "id"
+      },
+      {
+        "path": [
+          15,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000005"
+      },
+      {
+        "path": [
+          15,
+          2,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "kind"
+      },
+      {
+        "path": [
+          15,
+          2,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "performance"
+      },
+      {
+        "path": [
+          15,
+          3,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "level"
+      },
+      {
+        "path": [
+          15,
+          3,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "system"
+      },
+      {
+        "path": [
+          15,
+          4,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "origin"
+      },
+      {
+        "path": [
+          15,
+          4,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "derived"
+      },
+      {
+        "path": [
+          15,
+          5,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "strength"
+      },
+      {
+        "path": [
+          15,
+          5,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "mandatory"
+      },
+      {
+        "path": [
+          15,
+          6,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "status"
+      },
+      {
+        "path": [
+          15,
+          6,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "confirmed"
+      },
+      {
+        "path": [
+          15,
+          7,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "verification"
+      },
+      {
+        "path": [
+          15,
+          7,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "test"
+      },
+      {
+        "path": [
+          15,
+          8,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "rationale"
+      },
+      {
+        "path": [
+          15,
+          8,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님."
+      },
+      {
+        "path": [
+          15,
+          9,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "confirmedDigest"
+      },
+      {
+        "path": [
+          15,
+          9,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:8996433c009fc268d18c0f094b21e262513fab6a58b50bf448623c10c9208a6a"
+      },
+      {
+        "path": [
+          16
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "본문",
+        "referenceText": "§ 본문",
+        "section": {
+          "start": 16,
+          "end": 19
+        }
+      },
+      {
+        "path": [
+          17
+        ],
+        "type": "paragraph",
+        "editable": true,
+        "text": "온도 오차는 ±0.5 °C 이하이어야 한다."
+      },
+      {
+        "path": [
+          18
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 7
+        },
+        "captionNumberText": "Table 7"
+      },
+      {
+        "path": [
+          18,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "조건"
+      },
+      {
+        "path": [
+          18,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "허용값"
+      },
+      {
+        "path": [
+          18,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "정상"
+      },
+      {
+        "path": [
+          18,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "≤ 0.5 °C"
+      },
+      {
+        "path": [
+          18,
+          2,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "대기"
+      },
+      {
+        "path": [
+          18,
+          2,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "< 1.0 °C"
+      },
+      {
+        "path": [
+          19
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "출처",
+        "referenceText": "§ 출처",
+        "section": {
+          "start": 19,
+          "end": 21
+        }
+      },
+      {
+        "path": [
+          20
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 8
+        },
+        "captionNumberText": "Table 8"
+      },
+      {
+        "path": [
+          20,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "sourceKey"
+      },
+      {
+        "path": [
+          20,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "elementRef"
+      },
+      {
+        "path": [
+          20,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "selector"
+      },
+      {
+        "path": [
+          20,
+          0,
+          3
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "quote"
+      },
+      {
+        "path": [
+          20,
+          0,
+          4
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "quoteDigest"
+      },
+      {
+        "path": [
+          20,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "synthetic"
+      },
+      {
+        "path": [
+          20,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "#/texts/5"
+      },
+      {
+        "path": [
+          20,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "full"
+      },
+      {
+        "path": [
+          20,
+          1,
+          3
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "온도 오차는 ±0.5 °C 이하이어야 한다."
+      },
+      {
+        "path": [
+          20,
+          1,
+          4
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:fd72bfa29334c007233683bfbc892121e42030676803328885648510d3adf62d"
+      },
+      {
+        "path": [
+          21
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "연결",
+        "referenceText": "§ 연결",
+        "section": {
+          "start": 21,
+          "end": 23
+        }
+      },
+      {
+        "path": [
+          22
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 9
+        },
+        "captionNumberText": "Table 9"
+      },
+      {
+        "path": [
+          22,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "role"
+      },
+      {
+        "path": [
+          22,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "targetId"
+      },
+      {
+        "path": [
+          22,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "rationale"
+      },
+      {
+        "path": [
+          22,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "refines"
+      },
+      {
+        "path": [
+          22,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000002"
+      },
+      {
+        "path": [
+          22,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "합성 상위 조건의 구체화"
+      },
+      {
+        "path": [
+          23
+        ],
+        "type": "target",
+        "label": "req-1593c157-e436-422d-a7aa-000000000006"
+      },
+      {
+        "path": [
+          24
+        ],
+        "type": "heading",
+        "level": 2,
+        "editable": true,
+        "text": "문자 보존",
+        "referenceText": "§ 문자 보존",
+        "section": {
+          "start": 23,
+          "end": 32
+        }
+      },
+      {
+        "path": [
+          25
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 10
+        },
+        "captionNumberText": "Table 10"
+      },
+      {
+        "path": [
+          25,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "필드"
+      },
+      {
+        "path": [
+          25,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "값"
+      },
+      {
+        "path": [
+          25,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "id"
+      },
+      {
+        "path": [
+          25,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000006"
+      },
+      {
+        "path": [
+          25,
+          2,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "kind"
+      },
+      {
+        "path": [
+          25,
+          2,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "performance"
+      },
+      {
+        "path": [
+          25,
+          3,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "level"
+      },
+      {
+        "path": [
+          25,
+          3,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "system"
+      },
+      {
+        "path": [
+          25,
+          4,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "origin"
+      },
+      {
+        "path": [
+          25,
+          4,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "derived"
+      },
+      {
+        "path": [
+          25,
+          5,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "strength"
+      },
+      {
+        "path": [
+          25,
+          5,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "mandatory"
+      },
+      {
+        "path": [
+          25,
+          6,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "status"
+      },
+      {
+        "path": [
+          25,
+          6,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "confirmed"
+      },
+      {
+        "path": [
+          25,
+          7,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "verification"
+      },
+      {
+        "path": [
+          25,
+          7,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "test"
+      },
+      {
+        "path": [
+          25,
+          8,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "rationale"
+      },
+      {
+        "path": [
+          25,
+          8,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님."
+      },
+      {
+        "path": [
+          25,
+          9,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "confirmedDigest"
+      },
+      {
+        "path": [
+          25,
+          9,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:391037bce081be5646dd31208a029104bc74003d8d95eefff24259924863ded0"
+      },
+      {
+        "path": [
+          26
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "본문",
+        "referenceText": "§ 본문",
+        "section": {
+          "start": 26,
+          "end": 28
+        }
+      },
+      {
+        "path": [
+          27
+        ],
+        "type": "paragraph",
+        "editable": true,
+        "text": "상태 문자열 A & B < C > D \"확인\"과 역슬래시 \\ 및 | 문자를 보존해야 한다."
+      },
+      {
+        "path": [
+          28
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "출처",
+        "referenceText": "§ 출처",
+        "section": {
+          "start": 28,
+          "end": 30
+        }
+      },
+      {
+        "path": [
+          29
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 11
+        },
+        "captionNumberText": "Table 11"
+      },
+      {
+        "path": [
+          29,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "sourceKey"
+      },
+      {
+        "path": [
+          29,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "elementRef"
+      },
+      {
+        "path": [
+          29,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "selector"
+      },
+      {
+        "path": [
+          29,
+          0,
+          3
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "quote"
+      },
+      {
+        "path": [
+          29,
+          0,
+          4
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "quoteDigest"
+      },
+      {
+        "path": [
+          29,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "synthetic"
+      },
+      {
+        "path": [
+          29,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "#/texts/6"
+      },
+      {
+        "path": [
+          29,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "full"
+      },
+      {
+        "path": [
+          29,
+          1,
+          3
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "상태 문자열 A & B < C > D \"확인\"과 역슬래시 \\ 및 | 문자를 보존해야 한다."
+      },
+      {
+        "path": [
+          29,
+          1,
+          4
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "sha256:9fec02383fed744ba9d1142fbc728f3efd12c8b20b31be2f31d6834442204cb3"
+      },
+      {
+        "path": [
+          30
+        ],
+        "type": "heading",
+        "level": 3,
+        "editable": true,
+        "text": "연결",
+        "referenceText": "§ 연결",
+        "section": {
+          "start": 30,
+          "end": 32
+        }
+      },
+      {
+        "path": [
+          31
+        ],
+        "type": "table",
+        "numbers": {
+          "table": 12
+        },
+        "captionNumberText": "Table 12"
+      },
+      {
+        "path": [
+          31,
+          0,
+          0
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "role"
+      },
+      {
+        "path": [
+          31,
+          0,
+          1
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "targetId"
+      },
+      {
+        "path": [
+          31,
+          0,
+          2
+        ],
+        "type": "cell",
+        "header": true,
+        "editable": true,
+        "text": "rationale"
+      },
+      {
+        "path": [
+          31,
+          1,
+          0
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "refines"
+      },
+      {
+        "path": [
+          31,
+          1,
+          1
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "req-1593c157-e436-422d-a7aa-000000000003"
+      },
+      {
+        "path": [
+          31,
+          1,
+          2
+        ],
+        "type": "cell",
+        "header": false,
+        "editable": true,
+        "text": "합성 상위 조건의 구체화"
+      }
+    ],
+    "numbering": {
+      "mode": "automatic",
+      "targets": [
+        {
+          "kind": "table",
+          "path": [
+            2
+          ],
+          "number": 1
+        },
+        {
+          "kind": "table",
+          "path": [
+            3
+          ],
+          "number": 2
+        },
+        {
+          "kind": "table",
+          "path": [
+            6
+          ],
+          "number": 3
+        },
+        {
+          "kind": "table",
+          "path": [
+            10
+          ],
+          "number": 4
+        },
+        {
+          "kind": "table",
+          "path": [
+            12
+          ],
+          "number": 5
+        },
+        {
+          "kind": "table",
+          "path": [
+            15
+          ],
+          "number": 6
+        },
+        {
+          "kind": "table",
+          "path": [
+            18
+          ],
+          "number": 7
+        },
+        {
+          "kind": "table",
+          "path": [
+            20
+          ],
+          "number": 8
+        },
+        {
+          "kind": "table",
+          "path": [
+            22
+          ],
+          "number": 9
+        },
+        {
+          "kind": "table",
+          "path": [
+            25
+          ],
+          "number": 10
+        },
+        {
+          "kind": "table",
+          "path": [
+            29
+          ],
+          "number": 11
+        },
+        {
+          "kind": "table",
+          "path": [
+            31
+          ],
+          "number": 12
+        }
+      ],
+      "diagnostics": []
+    },
+    "citations": {
+      "bibliography": [],
+      "citations": [],
+      "readiness": {
+        "status": "evaluated",
+        "complete": true,
+        "diagnostics": []
+      },
+      "references": [],
+      "entries": []
+    }
+  },
+  "snapshot": {
+    "blocks": [
+      {
+        "block": "heading",
+        "path": [
+          1
+        ],
+        "level": 1,
+        "text": "요구사항 문서",
+        "content": [
+          {
+            "kind": "text",
+            "text": "요구사항 문서"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          2
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  2,
+                  0,
+                  0
+                ],
+                "text": "필드",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "필드"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  2,
+                  0,
+                  1
+                ],
+                "text": "값",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "값"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  2,
+                  1,
+                  0
+                ],
+                "text": "profile",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "profile"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  2,
+                  1,
+                  1
+                ],
+                "text": "requirements-extract/1",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "requirements-extract/1"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  2,
+                  2,
+                  0
+                ],
+                "text": "setId",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "setId"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  2,
+                  2,
+                  1
+                ],
+                "text": "set-36b7797a-67e0-4cad-8121-000000000002",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "set-36b7797a-67e0-4cad-8121-000000000002"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  2,
+                  3,
+                  0
+                ],
+                "text": "exportNamespace",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "exportNamespace"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  2,
+                  3,
+                  1
+                ],
+                "text": "8ecdb7b1-138e-49c8-a1e1-89a56f63a274",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "8ecdb7b1-138e-49c8-a1e1-89a56f63a274"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  2,
+                  4,
+                  0
+                ],
+                "text": "defaultLevel",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "defaultLevel"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  2,
+                  4,
+                  1
+                ],
+                "text": "system",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "system"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "table",
+        "path": [
+          3
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  3,
+                  0,
+                  0
+                ],
+                "text": "sourceKey",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sourceKey"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  0,
+                  1
+                ],
+                "text": "artifactDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "artifactDigest"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  0,
+                  2
+                ],
+                "text": "nativeFile",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "nativeFile"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  0,
+                  3
+                ],
+                "text": "nativeDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "nativeDigest"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  0,
+                  4
+                ],
+                "text": "mapFile",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "mapFile"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  3,
+                  1,
+                  0
+                ],
+                "text": "synthetic",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "synthetic"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  1,
+                  1
+                ],
+                "text": "sha256:8dd6df18f39390a986871f41f0f834c9642375d9b6d043fe4ff450bdb7095609",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:8dd6df18f39390a986871f41f0f834c9642375d9b6d043fe4ff450bdb7095609"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  1,
+                  2
+                ],
+                "text": "synthetic-input.md",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "synthetic-input.md"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  1,
+                  3
+                ],
+                "text": "sha256:c5c8a2d18e823defe026aa0e8e6164b3d99c3de20f1b7f16d11a2a11697b1344",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:c5c8a2d18e823defe026aa0e8e6164b3d99c3de20f1b7f16d11a2a11697b1344"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  3,
+                  1,
+                  4
+                ],
+                "text": "synthetic-map.json",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "synthetic-map.json"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "target",
+        "path": [
+          4
+        ],
+        "label": "req-1593c157-e436-422d-a7aa-000000000004"
+      },
+      {
+        "block": "heading",
+        "path": [
+          5
+        ],
+        "level": 2,
+        "text": "차단 유지",
+        "content": [
+          {
+            "kind": "text",
+            "text": "차단 유지"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          6
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  0,
+                  0
+                ],
+                "text": "필드",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "필드"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  0,
+                  1
+                ],
+                "text": "값",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "값"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  1,
+                  0
+                ],
+                "text": "id",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "id"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  1,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000004",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000004"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  2,
+                  0
+                ],
+                "text": "kind",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "kind"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  2,
+                  1
+                ],
+                "text": "performance",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "performance"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  3,
+                  0
+                ],
+                "text": "level",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "level"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  3,
+                  1
+                ],
+                "text": "system",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "system"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  4,
+                  0
+                ],
+                "text": "origin",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "origin"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  4,
+                  1
+                ],
+                "text": "derived",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "derived"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  5,
+                  0
+                ],
+                "text": "strength",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "strength"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  5,
+                  1
+                ],
+                "text": "mandatory",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "mandatory"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  6,
+                  0
+                ],
+                "text": "status",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "status"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  6,
+                  1
+                ],
+                "text": "confirmed",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "confirmed"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  7,
+                  0
+                ],
+                "text": "verification",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "verification"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  7,
+                  1
+                ],
+                "text": "test",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "test"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  8,
+                  0
+                ],
+                "text": "rationale",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "rationale"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  8,
+                  1
+                ],
+                "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님.",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님."
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  6,
+                  9,
+                  0
+                ],
+                "text": "confirmedDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "confirmedDigest"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  6,
+                  9,
+                  1
+                ],
+                "text": "sha256:1ba47f85e0e3fcddce76eaab8cbf554bd6794339484fd875bcdf3a373eacb89b",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:1ba47f85e0e3fcddce76eaab8cbf554bd6794339484fd875bcdf3a373eacb89b"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          7
+        ],
+        "level": 3,
+        "text": "본문",
+        "content": [
+          {
+            "kind": "text",
+            "text": "본문"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "paragraph",
+        "path": [
+          8
+        ],
+        "text": "차단 출력은 0 ≤ t ≤ 10 ms 동안 유지해야 한다.",
+        "content": [
+          {
+            "kind": "text",
+            "text": "차단 출력은 0 ≤ t ≤ 10 ms 동안 유지해야 한다."
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "heading",
+        "path": [
+          9
+        ],
+        "level": 3,
+        "text": "출처",
+        "content": [
+          {
+            "kind": "text",
+            "text": "출처"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          10
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  10,
+                  0,
+                  0
+                ],
+                "text": "sourceKey",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sourceKey"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  0,
+                  1
+                ],
+                "text": "elementRef",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "elementRef"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  0,
+                  2
+                ],
+                "text": "selector",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "selector"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  0,
+                  3
+                ],
+                "text": "quote",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "quote"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  0,
+                  4
+                ],
+                "text": "quoteDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "quoteDigest"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  10,
+                  1,
+                  0
+                ],
+                "text": "synthetic",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "synthetic"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  1,
+                  1
+                ],
+                "text": "#/texts/4",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "#/texts/4"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  1,
+                  2
+                ],
+                "text": "full",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "full"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  1,
+                  3
+                ],
+                "text": "차단 출력은 0 ≤ t ≤ 10 ms 동안 유지해야 한다.",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "차단 출력은 0 ≤ t ≤ 10 ms 동안 유지해야 한다."
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  10,
+                  1,
+                  4
+                ],
+                "text": "sha256:4585e44365405e7b2effacafb2a6aaa11432554b79cfa5df7d69bdae64d3a058",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:4585e44365405e7b2effacafb2a6aaa11432554b79cfa5df7d69bdae64d3a058"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          11
+        ],
+        "level": 3,
+        "text": "연결",
+        "content": [
+          {
+            "kind": "text",
+            "text": "연결"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          12
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  12,
+                  0,
+                  0
+                ],
+                "text": "role",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "role"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  12,
+                  0,
+                  1
+                ],
+                "text": "targetId",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "targetId"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  12,
+                  0,
+                  2
+                ],
+                "text": "rationale",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "rationale"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  12,
+                  1,
+                  0
+                ],
+                "text": "refines",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "refines"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  12,
+                  1,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000001",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000001"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  12,
+                  1,
+                  2
+                ],
+                "text": "합성 상위 조건의 구체화",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "합성 상위 조건의 구체화"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  12,
+                  2,
+                  0
+                ],
+                "text": "relatesTo",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "relatesTo"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  12,
+                  2,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000005",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000005"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  12,
+                  2,
+                  2
+                ],
+                "text": "동작 조건 관련",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "동작 조건 관련"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "target",
+        "path": [
+          13
+        ],
+        "label": "req-1593c157-e436-422d-a7aa-000000000005"
+      },
+      {
+        "block": "heading",
+        "path": [
+          14
+        ],
+        "level": 2,
+        "text": "온도 오차",
+        "content": [
+          {
+            "kind": "text",
+            "text": "온도 오차"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          15
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  0,
+                  0
+                ],
+                "text": "필드",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "필드"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  0,
+                  1
+                ],
+                "text": "값",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "값"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  1,
+                  0
+                ],
+                "text": "id",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "id"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  1,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000005",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000005"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  2,
+                  0
+                ],
+                "text": "kind",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "kind"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  2,
+                  1
+                ],
+                "text": "performance",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "performance"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  3,
+                  0
+                ],
+                "text": "level",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "level"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  3,
+                  1
+                ],
+                "text": "system",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "system"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  4,
+                  0
+                ],
+                "text": "origin",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "origin"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  4,
+                  1
+                ],
+                "text": "derived",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "derived"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  5,
+                  0
+                ],
+                "text": "strength",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "strength"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  5,
+                  1
+                ],
+                "text": "mandatory",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "mandatory"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  6,
+                  0
+                ],
+                "text": "status",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "status"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  6,
+                  1
+                ],
+                "text": "confirmed",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "confirmed"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  7,
+                  0
+                ],
+                "text": "verification",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "verification"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  7,
+                  1
+                ],
+                "text": "test",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "test"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  8,
+                  0
+                ],
+                "text": "rationale",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "rationale"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  8,
+                  1
+                ],
+                "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님.",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님."
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  15,
+                  9,
+                  0
+                ],
+                "text": "confirmedDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "confirmedDigest"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  15,
+                  9,
+                  1
+                ],
+                "text": "sha256:8996433c009fc268d18c0f094b21e262513fab6a58b50bf448623c10c9208a6a",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:8996433c009fc268d18c0f094b21e262513fab6a58b50bf448623c10c9208a6a"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          16
+        ],
+        "level": 3,
+        "text": "본문",
+        "content": [
+          {
+            "kind": "text",
+            "text": "본문"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "paragraph",
+        "path": [
+          17
+        ],
+        "text": "온도 오차는 ±0.5 °C 이하이어야 한다.",
+        "content": [
+          {
+            "kind": "text",
+            "text": "온도 오차는 ±0.5 °C 이하이어야 한다."
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          18
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  18,
+                  0,
+                  0
+                ],
+                "text": "조건",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "조건"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  18,
+                  0,
+                  1
+                ],
+                "text": "허용값",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "허용값"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  18,
+                  1,
+                  0
+                ],
+                "text": "정상",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "정상"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  18,
+                  1,
+                  1
+                ],
+                "text": "≤ 0.5 °C",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "≤ 0.5 °C"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  18,
+                  2,
+                  0
+                ],
+                "text": "대기",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "대기"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  18,
+                  2,
+                  1
+                ],
+                "text": "< 1.0 °C",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "< 1.0 °C"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          19
+        ],
+        "level": 3,
+        "text": "출처",
+        "content": [
+          {
+            "kind": "text",
+            "text": "출처"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          20
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  20,
+                  0,
+                  0
+                ],
+                "text": "sourceKey",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sourceKey"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  0,
+                  1
+                ],
+                "text": "elementRef",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "elementRef"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  0,
+                  2
+                ],
+                "text": "selector",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "selector"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  0,
+                  3
+                ],
+                "text": "quote",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "quote"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  0,
+                  4
+                ],
+                "text": "quoteDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "quoteDigest"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  20,
+                  1,
+                  0
+                ],
+                "text": "synthetic",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "synthetic"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  1,
+                  1
+                ],
+                "text": "#/texts/5",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "#/texts/5"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  1,
+                  2
+                ],
+                "text": "full",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "full"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  1,
+                  3
+                ],
+                "text": "온도 오차는 ±0.5 °C 이하이어야 한다.",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "온도 오차는 ±0.5 °C 이하이어야 한다."
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  20,
+                  1,
+                  4
+                ],
+                "text": "sha256:fd72bfa29334c007233683bfbc892121e42030676803328885648510d3adf62d",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:fd72bfa29334c007233683bfbc892121e42030676803328885648510d3adf62d"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          21
+        ],
+        "level": 3,
+        "text": "연결",
+        "content": [
+          {
+            "kind": "text",
+            "text": "연결"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          22
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  22,
+                  0,
+                  0
+                ],
+                "text": "role",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "role"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  22,
+                  0,
+                  1
+                ],
+                "text": "targetId",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "targetId"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  22,
+                  0,
+                  2
+                ],
+                "text": "rationale",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "rationale"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  22,
+                  1,
+                  0
+                ],
+                "text": "refines",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "refines"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  22,
+                  1,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000002",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000002"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  22,
+                  1,
+                  2
+                ],
+                "text": "합성 상위 조건의 구체화",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "합성 상위 조건의 구체화"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "target",
+        "path": [
+          23
+        ],
+        "label": "req-1593c157-e436-422d-a7aa-000000000006"
+      },
+      {
+        "block": "heading",
+        "path": [
+          24
+        ],
+        "level": 2,
+        "text": "문자 보존",
+        "content": [
+          {
+            "kind": "text",
+            "text": "문자 보존"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          25
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  0,
+                  0
+                ],
+                "text": "필드",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "필드"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  0,
+                  1
+                ],
+                "text": "값",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "값"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  1,
+                  0
+                ],
+                "text": "id",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "id"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  1,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000006",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000006"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  2,
+                  0
+                ],
+                "text": "kind",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "kind"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  2,
+                  1
+                ],
+                "text": "performance",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "performance"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  3,
+                  0
+                ],
+                "text": "level",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "level"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  3,
+                  1
+                ],
+                "text": "system",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "system"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  4,
+                  0
+                ],
+                "text": "origin",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "origin"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  4,
+                  1
+                ],
+                "text": "derived",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "derived"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  5,
+                  0
+                ],
+                "text": "strength",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "strength"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  5,
+                  1
+                ],
+                "text": "mandatory",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "mandatory"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  6,
+                  0
+                ],
+                "text": "status",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "status"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  6,
+                  1
+                ],
+                "text": "confirmed",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "confirmed"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  7,
+                  0
+                ],
+                "text": "verification",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "verification"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  7,
+                  1
+                ],
+                "text": "test",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "test"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  8,
+                  0
+                ],
+                "text": "rationale",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "rationale"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  8,
+                  1
+                ],
+                "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님.",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "공개 가능한 가상 전장 요구사항. 합성 출처이며 PDF 추적 증거가 아님."
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  25,
+                  9,
+                  0
+                ],
+                "text": "confirmedDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "confirmedDigest"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  25,
+                  9,
+                  1
+                ],
+                "text": "sha256:391037bce081be5646dd31208a029104bc74003d8d95eefff24259924863ded0",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:391037bce081be5646dd31208a029104bc74003d8d95eefff24259924863ded0"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          26
+        ],
+        "level": 3,
+        "text": "본문",
+        "content": [
+          {
+            "kind": "text",
+            "text": "본문"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "paragraph",
+        "path": [
+          27
+        ],
+        "text": "상태 문자열 A & B < C > D \"확인\"과 역슬래시 \\ 및 | 문자를 보존해야 한다.",
+        "content": [
+          {
+            "kind": "text",
+            "text": "상태 문자열 A & B < C > D \"확인\"과 역슬래시 \\ 및 | 문자를 보존해야 한다."
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "heading",
+        "path": [
+          28
+        ],
+        "level": 3,
+        "text": "출처",
+        "content": [
+          {
+            "kind": "text",
+            "text": "출처"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          29
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  29,
+                  0,
+                  0
+                ],
+                "text": "sourceKey",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sourceKey"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  0,
+                  1
+                ],
+                "text": "elementRef",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "elementRef"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  0,
+                  2
+                ],
+                "text": "selector",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "selector"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  0,
+                  3
+                ],
+                "text": "quote",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "quote"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  0,
+                  4
+                ],
+                "text": "quoteDigest",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "quoteDigest"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  29,
+                  1,
+                  0
+                ],
+                "text": "synthetic",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "synthetic"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  1,
+                  1
+                ],
+                "text": "#/texts/6",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "#/texts/6"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  1,
+                  2
+                ],
+                "text": "full",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "full"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  1,
+                  3
+                ],
+                "text": "상태 문자열 A & B < C > D \"확인\"과 역슬래시 \\ 및 | 문자를 보존해야 한다.",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "상태 문자열 A & B < C > D \"확인\"과 역슬래시 \\ 및 | 문자를 보존해야 한다."
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  29,
+                  1,
+                  4
+                ],
+                "text": "sha256:9fec02383fed744ba9d1142fbc728f3efd12c8b20b31be2f31d6834442204cb3",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "sha256:9fec02383fed744ba9d1142fbc728f3efd12c8b20b31be2f31d6834442204cb3"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "block": "heading",
+        "path": [
+          30
+        ],
+        "level": 3,
+        "text": "연결",
+        "content": [
+          {
+            "kind": "text",
+            "text": "연결"
+          }
+        ],
+        "editable": true
+      },
+      {
+        "block": "table",
+        "path": [
+          31
+        ],
+        "rows": [
+          {
+            "cells": [
+              {
+                "path": [
+                  31,
+                  0,
+                  0
+                ],
+                "text": "role",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "role"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  31,
+                  0,
+                  1
+                ],
+                "text": "targetId",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "targetId"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              },
+              {
+                "path": [
+                  31,
+                  0,
+                  2
+                ],
+                "text": "rationale",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "rationale"
+                  }
+                ],
+                "header": true,
+                "editable": true
+              }
+            ]
+          },
+          {
+            "cells": [
+              {
+                "path": [
+                  31,
+                  1,
+                  0
+                ],
+                "text": "refines",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "refines"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  31,
+                  1,
+                  1
+                ],
+                "text": "req-1593c157-e436-422d-a7aa-000000000003",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "req-1593c157-e436-422d-a7aa-000000000003"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              },
+              {
+                "path": [
+                  31,
+                  1,
+                  2
+                ],
+                "text": "합성 상위 조건의 구체화",
+                "content": [
+                  {
+                    "kind": "text",
+                    "text": "합성 상위 조건의 구체화"
+                  }
+                ],
+                "header": false,
+                "editable": true
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "title": "합성 시스템 요구사항"
+  }
+}
