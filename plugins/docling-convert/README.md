@@ -26,7 +26,7 @@ PDF를 Docling 변환 서버로 보내 [변환 계약](../../contracts/docling-c
 | 준비 확인 순서 | 부분: runConversion이 ready/version/OpenAPI/capabilities 수령만 함 | 충족: service.runConversion 순서 유지, validation.validateServer가 1.38.2·multipart 필드·preset 확인 |
 | 한 PDF, MIME/basename, form 필드 형식 | 충족: FormData files, 배열 반복/객체 JSON/boolean 문자열 | 충족: 같은 조립 코드 유지, 가짜 HTTP에서 본문 검사 |
 | 접수 즉시 응답, ID 인코딩, 1초 poll, result 수령 | 충족: convert/job와 encodeURIComponent | 충족: service.convert의 직렬 대기열, 동일 HTTP 흐름 |
-| task/result success 및 errors=[] | 누락: complete=false 고정, 완전 성공 조건 없음 | 충족: runConversion의 complete 논리식 |
+| task/result success 및 errors=[] | 누락: complete=false 고정, 완전 성공 조건 없음 | 충족: decideComplete의 명시적 성공 증거와 schema 검증 |
 | 모든 쪽 존재 | 부분: allPages 계산하지만 성공 판정에 사용 안 함 | 충족: validateResult가 정확한 수·연속 키·page_no 확인 |
 | 이미지 오프라인 해석 | 누락: URI 정규식만, image_decode_verified=false | 충족(지원 PNG 범위): PNG signature/CRC/zlib/scanline/filter 역변환; 다른 인코딩은 성공 거부 |
 | 부분 성공·실패 기록 | 부분: HTTP 실패 기록, 입력 검증 실패는 작업 error만 | 충족: 후보 생성 뒤 옵션·원본 검증도 catch해 record에 진단; incomplete 이유 표시 |
@@ -121,3 +121,34 @@ Host에서 읽을 수 있는 경로여야 한다. 이번 시험은 artifact를 �
 실제 서버는 수정 후 **한 번만** 재확인했다. 기존 컨테이너 ID를 유지하고 pull/recreate 없이 시작, 권장 프로필 LSR 13쪽이 약 18초에 complete였다. schema/참조/파일명·uint64 digest 검사와 15개 PNG 디코딩을 통과했다. 원본 숫자 토큰은 결과 JSON에 보존된다. 직접 시작한 컨테이너는 종료해 Exited (0)을 확인했다. 이번 수정에서는 새 AI 호출·리치오 화면 실행을 하지 않았다. 이전 화면 검증과 구분한다.
 
 최종 단위/가짜 HTTP 검사는 **69/69 통과**했다(약 11초). 재현 검사 3개는 수정 전 모두 실패했고 수정 후 통과했다. 전체 조건별 표와 필수 기록 bytes 대조는 위와 같다.
+
+## 성공 증거 기반 판정으로 교체 — 2026-11-13
+
+이 절이 현재 판정 구조이며 앞의 보완 기록은 각 검증 시점의 이력이다.
+
+독립 재검토의 `task_status` 누락 재현을 수정 전 head `3c294b27`에 검사로 추가했고, 기대 failed 대신 complete가 나와 실패했다. 이후 개별 fallback 추가/제거에 의존하는 방식을 바꿨다.
+
+- `schemas/server-responses.json`: 실제 1.38.2 `/openapi.json`의 접수·poll·inbody 결과 모델을 고정했다. 접수와 poll은 task_id/task_type/task_status를 필수로 요구한다. 결과는 document/status/errors/processing_time/timings/confidence를, document wrapper는 filename/json_content를 요구한다. 허용 enum·타입을 검증하며 모르는 envelope 필드는 거부한다.
+- `schemas/docling-document.json`: 설치된 docling-core 2.104.0의 공개 `DoclingDocument.model_json_schema()`를 고정하고, 기존 오프라인 계약의 schema/version·원본·본문·컬렉션·쪽·이미지를 required로 강화했다. 실제 출력에 있는 계산 필드 grid는 공개 `TableData.model_json_schema(mode="serialization")`로 정의했다. 문서 노드/이미지/표 셀/좌표 등 중첩 구조에도 schema를 적용한다.
+- `schema.mjs`: 고정 schema에 쓰인 JSON Schema 단언만 해석하는 독립 모듈이다. coercion/default 삽입/알 수 없는 필드 제거는 하지 않는다. 지원하지 않는 단언·format·외부 참조는 거부한다. schema 정의의 `default`는 주석일 뿐 값 보정에 사용하지 않는다. 자유로운 metadata map은 공개 schema가 허용한 범위에서만 허용한다. 일반 목적의 모든 JSON Schema 구현이라고 주장하지 않는다.
+- `decideComplete` 하나가 세 응답 schema, 문서 schema, 작업/원본 식별자, 참조 관계, 정확한 전체 쪽 수와 오프라인 이미지, 실제 task/result success 및 errors=[]를 모두 대조한다. `task_status || status`는 없으며 누락 필드에서 성공 증거를 만들지 않는다. 판정이 발급한 성공 객체만 `publishComplete`가 받아 최종 폴더 rename을 실행한다. complete 플래그만 조작한 객체는 게시할 수 없다.
+- 접수/poll의 잘못된 원문도 진단 기록에 남긴다. task ID를 받은 접수 응답이 다른 필드 때문에 거부되면 ID를 버리지 않는다. ID조차 없는 접수 실패는 uncertain이며 자동 재제출하지 않는다.
+
+### 기계 생성 변형 검사와 선택 필드
+
+`test/response-shapes.json`은 이번 실제 서버 호출에서 받은 접수/poll/result envelope의 모양이다(task ID만 합성 ID로 바꾸고, 큰 Docling 본문은 기존 공개 고정 fixture로 채운다. 원본 uint64 digest는 정확한 토큰으로 복원한다). 정상 응답은 단일 판정과 게시 gate를 통과해야 한다.
+
+`test/schema-mutations.test.mjs`는 사람이 골라 적은 필드 목록을 사용하지 않고 이 정상 응답/문서의 schema를 순회한다. 필수 필드별 삭제, 선언된 각 필드별 허용되지 않는 JSON 타입 하나, const/enum별 허용되지 않는 값 변형을 생성한다. 선택 필드도 **있을 때의 타입 오류**는 검사한다. 각 변형을 `decideComplete`와 실제 게시 gate에 넣어 성공 판정도 게시 callback 호출도 0인지 확인한다. 큰 파일을 변형마다 복사해 디스크를 채우지 않으며, 가짜 HTTP 통합 검사는 별도로 실제 후보/완성 폴더를 확인한다. 정상 fixture의 배열 요소를 임의로 줄여 의미 동등성을 판정하는 검사는 아니다.
+
+삭제에서 제외하는 선택 필드의 전체 schema 위치/이름은 [optional-fields.json](schemas/optional-fields.json)에 명시했다. 기준은 공개 schema가 required로 선언하지 않았고 오프라인 계약도 필수로 승격하지 않은 필드다. 대표 항목:
+
+- 접수/poll의 task_position/task_meta/error_message/failure. 없으면 이를 다른 값으로 채우지 않으며, 제공되면 schema 검증한다. failure/error_message가 실제 있으면 성공 판정도 거부한다.
+- 공개 결과 envelope가 보장하지 않는 result.task_id(있으면 대조), json 이외의 md/html/text/doctags/doclang_content.
+- 문서 origin.uri, content_layer/meta/formatting/hyperlink/source/comments 및 schema에 선택으로 정의된 분류/주석, 표 셀의 선택 표시·span·bbox, 계산된 grid 등. 제공된 정보는 보존하며 누락값을 합성하지 않는다. children/prov 등 오프라인 계약 필수 항목은 선택에서 제외해 required로 승격했다.
+- confidence.pages·timings 등 통계 사전의 개별 키, 공개 schema가 자유로운 JSON을 허용한 metadata 항목. 사전의 임의 키는 필수 필드가 아니고, 자유로운 JSON에는 단일한 '잘못된 JSON 타입'이 없으므로 추가 요구를 발명하지 않는다. 물리 document.pages의 각 쪽은 예외로 요청한 전체 쪽 수에 따라 삭제를 거부한다.
+
+실제 서버에 PDF 제출은 **한 번만** 했다. 첫 검증은 서버 계산 필드 grid가 입력용 모델 schema에 없어서 과도하게 거부했다. 공개 직렬화 모델로 정의를 보완한 뒤 **같은 task의 결과 GET만 다시 읽어** 최종 판정 complete, 13쪽·PNG 15개 검증 통과를 확인했다. 재제출/재변환은 없었다. 서비스 전체의 처음부터 끝까지 새 성공 실행을 했다고 주장하지 않는다. 기존 컨테이너는 동일 ID로 Exited (0), 임시 자료는 보존했다. 이번 수정에서 화면·AI 호출은 하지 않았다.
+
+최종 기계 생성 변형은 **18,862건**(필드 삭제 6,221 / 잘못된 타입 11,713 / const·enum 위반 928)이며 모두 complete=false 또는 검증 오류로 끝났고 게시 callback은 한 번도 실행되지 않았다. 범위는 접수 12 / poll 12 / result 189 / 문서 18,649건이다. 전체 실행은 72/72 통과(전수 변형 검사 약 17.6분). 그 뒤 추가한 위조 성공 객체 거부·기본값 무변경 검사는 정상 gate 검사와 함께 별도 3/3 통과했다. 서비스의 최종 코드로 가짜 HTTP 70/70 및 task_status 누락 재현을 다시 확인했다.
+
+빠른 HTTP 회귀 검사는 `node --test plugins/docling-convert/test/service.test.mjs`, 오래 걸리는 전수 변형 검사는 `node --test plugins/docling-convert/test/schema-mutations.test.mjs`다. 후자는 실제 정상 문서의 각 필드 인스턴스를 모두 순회하므로 schema별 대표 필드만 검사하는 것보다 오래 걸린다. 최종 후보 저장과 게시의 연결은 HTTP 검사로, 전수 변형의 게시 불가는 production publishComplete callback으로 각각 확인했다.

@@ -1,4 +1,4 @@
-import {validateResult,validateServer,validateTaskIdentity,validateDocument,parseServerJson} from './validation.mjs';
+import {validateServer,validateTaskIdentity,parseServerJson,validateProtocol,decideComplete,publishComplete} from './validation.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -11,7 +11,7 @@ export function createService(context) {
  const jobs=new Map(); let tail=Promise.resolve(); const controllers=new Map(); let disposed=false; let blocked=false;
  async function runConversion(input,job){
  const controller=new AbortController();controllers.set(job.id,controller);const progress=state=>{job.state=state};
-   const start=Date.now(), deadline=start+1800000; let task=null, stage='initial', candidate=null, record={complete:false,started_at:new Date(start).toISOString()};
+   const start=Date.now(), deadline=start+1800000; let decision=null, task=null, stage='initial', candidate=null, record={complete:false,started_at:new Date(start).toISOString()};
    const parent=path.resolve(input.destination);await fs.mkdir(parent,{recursive:true});candidate=await fs.mkdtemp(path.join(parent,'.docling-candidate-'));
    try {
    const profileBytes=await fs.readFile(path.join(dir,'pdf-en-v2.json')), profile=json(profileBytes), options=json(await fs.readFile(path.join(dir,'options.json'))).options;
@@ -33,20 +33,20 @@ export function createService(context) {
     stage='preflight';progress('preflight');await get('/ready'); record.server=json(await get('/version'));const api=await get('/openapi.json');record.openapi_sha256=hash(api);record.capabilities=json(await get('/v1/capabilities'));validateServer(record.server,json(api),record.capabilities,request);
     const form=new FormData();form.append('files',new Blob([source],{type:'application/pdf'}),path.basename(input.source)); for(const [k,v] of Object.entries(request)){for(const item of Array.isArray(v)?v:[v])form.append(k,typeof item==='object'?JSON.stringify(item):String(item));}
     await fs.writeFile(path.join(candidate,'conversion-record.json'),stringify({...record,state:'preflight-complete'}));
-    stage='submitting';progress('submitting');const submitted=json(await get('/v1/convert/file/async',{method:'POST',body:form}));task=submitted.task_id;if(typeof task!=='string'||!task)throw Error('task_id가 없습니다');record.task_id=task;job.task_id=task;
+    stage='submitting';progress('submitting');const submitted=parseServerJson(await get('/v1/convert/file/async',{method:'POST',body:form}));record.submission=submitted;if(typeof submitted?.task_id==='string'&&submitted.task_id){task=submitted.task_id;record.task_id=task;job.task_id=task}validateProtocol(submitted,'submitted');
     await fs.writeFile(path.join(candidate,'conversion-record.json'),stringify({...record,state:'running'}));
-    stage='polling';let status;for(;;){status=json(await get('/v1/status/poll/'+encodeURIComponent(task)));record.task_status=status.task_status||status.status;record.task_response=status;record.task=status;validateTaskIdentity(status,task,true);progress(record.task_status);if(!['pending','started'].includes(record.task_status))break;await new Promise(r=>setTimeout(r,1000));}
+    stage='polling';let status;for(;;){status=json(await get('/v1/status/poll/'+encodeURIComponent(task)));record.task_response=status;record.task=status;validateProtocol(status,'status');record.task_status=status.task_status;validateTaskIdentity(status,task,true);progress(record.task_status);if(!['pending','started'].includes(record.task_status))break;await new Promise(r=>setTimeout(r,1000));}
     if(!['success','partial_success'].includes(record.task_status))throw Error('서버 작업 상태: '+record.task_status);
-    stage='result';progress('result');const body=await get('/v1/result/'+encodeURIComponent(task));const result=parseServerJson(body),doc=result.document?.json_content;record.result={status:result.status,errors:result.errors,body_sha256:hash(body),processing_time:result.processing_time,timings:result.timings,confidence:result.confidence};if(!doc||typeof doc!=='object')throw Error('DoclingDocument가 없습니다');
-    validateTaskIdentity(result,task);validateDocument(doc,record.source);
+    stage='result';progress('result');const body=await get('/v1/result/'+encodeURIComponent(task));const result=parseServerJson(body);validateProtocol(result,'result');const doc=result.document.json_content;record.result={status:result.status,errors:result.errors,body_sha256:hash(body),processing_time:result.processing_time,timings:result.timings,confidence:result.confidence};if(!doc||typeof doc!=='object')throw Error('DoclingDocument가 없습니다');
+    decision=decideComplete({submitted,status,result,source:record.source,count:input.pages});
     const data=stringify(doc);await fs.writeFile(path.join(candidate,'document.json'),data);
     record.document={sha256:hash(data),schema:doc.schema_name,version:doc.version,page_count:Object.keys(doc.pages||{}).length};
-    record.validation=validateResult(doc,input.pages);
-    record.complete=record.task_status==='success'&&result.status==='success'&&Array.isArray(result.errors)&&result.errors.length===0&&record.validation.all_pages&&record.validation.offline_images;
+    record.validation=decision.validation;
+    record.complete=decision.complete;
     record.state=record.complete?'complete':'incomplete';if(!record.complete)record.error=JSON.stringify({task_status:record.task_status,result_status:result.status,errors:result.errors,validation:record.validation});
    }catch(e){record.state=stage==='submitting'&&!task?'uncertain':controller.signal.aborted?'stopped':'failed';record.error=String(e.message||e);record.stage=stage;}
    record.completed_at=new Date().toISOString();record.elapsed_ms=Date.now()-start;await fs.writeFile(path.join(candidate,'conversion-record.json'),stringify(record));
-   if(record.complete){const dest=path.join(parent,path.parse(input.source).name+'-'+crypto.randomUUID());await fs.rename(candidate,dest);return {state:record.state,path:dest,stage,validation:record.validation,task_id:task};}return {state:record.state,path:candidate,error:record.error,stage,task_id:task,validation:record.validation};
+   if(record.complete){const dest=path.join(parent,path.parse(input.source).name+'-'+crypto.randomUUID());await publishComplete(decision,()=>fs.rename(candidate,dest));return {state:record.state,path:dest,stage,validation:record.validation,task_id:task};}return {state:record.state,path:candidate,error:record.error,stage,task_id:task,validation:record.validation};
  }
  return {operations:{
   async defaults(){const p=json(await fs.readFile(path.join(dir,'pdf-en-v2.json')));const o=json(await fs.readFile(path.join(dir,'options.json')));return {request:p.request,options:o.options,server:context.settings.serverUrl||'http://127.0.0.1:5001'}},
@@ -66,7 +66,7 @@ export function createService(context) {
    if(!record.task_id)return {state:record.state, message:'작업 ID가 없어 서버 처리 여부를 확인할 수 없습니다. 재제출하지 마세요.'};
    const url=(record.server_url||'').replace(/\/$/,'')+'/v1/status/poll/'+encodeURIComponent(record.task_id);
    const res=await fetch(url,{signal:AbortSignal.timeout(5000)});if(!res.ok)throw Error('상태 조회 HTTP '+res.status);
-   const serverStatus=await res.json();validateTaskIdentity(serverStatus,record.task_id,true);
+   const serverStatus=await res.json();validateProtocol(serverStatus,'status');validateTaskIdentity(serverStatus,record.task_id,true);
    return {candidate:input.candidate,record_state:record.state,task_id:record.task_id,server_status:serverStatus};
   }
  },status:()=>({available:true,message:'준비됨'}),dispose(){disposed=true;for(const c of controllers.values())c.abort()}};

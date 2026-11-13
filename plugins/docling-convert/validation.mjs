@@ -1,3 +1,5 @@
+import {readFileSync} from 'node:fs';
+import {assertSchema} from './schema.mjs';
 import {inflateSync} from 'node:zlib';
 function crc(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0)}return (c^0xffffffff)>>>0}
 export function decodePng(uri){
@@ -22,10 +24,10 @@ export function decodePng(uri){
  return {width:w,height:h};
 }
 export function validateResult(doc,count){
- const pages=doc.pages||{},bad=[];let images=0;
+ const pages=doc.pages,bad=[];let images=0;
  function scan(x,p){if(!x||typeof x!=='object')return;if(p.endsWith('/image')){images++;try{decodePng(x.uri)}catch(e){bad.push({path:p,error:e.message})}}for(const[k,v]of Object.entries(x))scan(v,p+'/'+k)}scan(doc,'');
  const all=Object.keys(pages).length===count&&Array.from({length:count},(_,i)=>pages[String(i+1)]?.page_no===i+1).every(Boolean);
- return {all_pages:all,offline_images:bad.length===0&&(doc.pictures||[]).every(p=>typeof p.image?.uri==='string')&&Object.values(pages).every(p=>typeof p.image?.uri==='string'),images,bad_images:bad,image_decode_verified:true};
+ return {all_pages:all,offline_images:bad.length===0&&doc.pictures.every(p=>typeof p.image?.uri==='string')&&Object.values(pages).every(p=>typeof p.image?.uri==='string'),images,bad_images:bad,image_decode_verified:true};
 }
 
 export function validateServer(server,api,capabilities,request){
@@ -94,4 +96,30 @@ export function validateDocument(doc,source){
  const visited=new Set(),active=new Set();
  function visit(ref){require(!active.has(ref),'children cycle');if(visited.has(ref))return;active.add(ref);for(const c of nodes.get(ref).children)visit(c.$ref);active.delete(ref);visited.add(ref)}
  visit('#/body');visit('#/furniture');require(visited.size===nodes.size,'unreachable node');
+}
+
+// Required protocol evidence and document shape are checked without defaults.
+export function validateProtocol(value,kind){
+ const schema=responseSchemas.components.schemas[kind==='result'?'ConvertDocumentResponse':'TaskStatusResponse'];
+ assertSchema(value,schema,responseSchemas);
+}
+export function decideComplete({submitted,status,result,source,count}){
+ validateProtocol(submitted,'submitted');validateProtocol(status,'status');validateProtocol(result,'result');
+ validateTaskIdentity(status,submitted.task_id,true);validateTaskIdentity(result,submitted.task_id);
+ assertSchema(result.document.json_content,documentSchema,documentSchema);
+ validateDocument(result.document.json_content,source);
+ if(result.document.filename!==source.basename)throw Error('Result filename mismatch');
+ const validation=validateResult(result.document.json_content,count);
+ const complete=['pending','started','success'].includes(submitted.task_status)&&!submitted.error_message&&!submitted.failure&&status.task_status==='success'&&result.status==='success'&&result.errors.length===0
+  &&!status.error_message&&!status.failure&&validation.all_pages&&validation.offline_images;
+ const verdict={complete,validation};if(complete)approvedVerdicts.add(verdict);return verdict;
+}
+
+export const responseSchemas=parseServerJson(readFileSync(new URL('./schemas/server-responses.json',import.meta.url)));
+export const documentSchema=parseServerJson(readFileSync(new URL('./schemas/docling-document.json',import.meta.url)));
+
+const approvedVerdicts=new WeakSet();
+export function publishComplete(verdict,publish){
+ if(!approvedVerdicts.has(verdict))throw Error('No complete verdict: publication refused');
+ return publish();
 }

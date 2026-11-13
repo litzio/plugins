@@ -1,0 +1,367 @@
+{
+  "reason": "Fields not required by the pinned public schema or the offline contract overlay. Absence is allowed; supplied values are validated. No defaults are inserted. Dynamic metadata-map entries are optional; physical document.pages keys are required by the requested page count.",
+  "fields": {
+    "server-responses.json": {
+      "#/components/schemas/TaskStatusResponse": [
+        "error_message",
+        "failure",
+        "task_meta",
+        "task_position"
+      ],
+      "#/components/schemas/TaskProcessingMeta": [
+        "num_failed",
+        "num_partially_succeeded",
+        "num_processed",
+        "num_succeeded"
+      ],
+      "#/components/schemas/PublicFailureInfo": [
+        "details"
+      ],
+      "#/components/schemas/ConvertDocumentResponse": [
+        "task_id"
+      ],
+      "#/components/schemas/ExportDocumentResponse": [
+        "doclang_content",
+        "doctags_content",
+        "html_content",
+        "md_content",
+        "text_content"
+      ],
+      "#/components/schemas/ErrorItem": [
+        "category",
+        "page_no"
+      ],
+      "#/components/schemas/ProfilingItem": [
+        "count",
+        "start_timestamps",
+        "times"
+      ],
+      "#/components/schemas/ConfidenceScores": [
+        "layout_score",
+        "low_grade",
+        "low_score",
+        "mean_grade",
+        "mean_score",
+        "ocr_score",
+        "pages",
+        "parse_score",
+        "table_score"
+      ]
+    },
+    "docling-document.json": {
+      "#": [
+        "field_items",
+        "field_regions"
+      ],
+      "#/$defs/BaseMeta": [
+        "entities",
+        "keywords",
+        "language",
+        "summary",
+        "topics"
+      ],
+      "#/$defs/BoundingBox": [
+        "coord_origin"
+      ],
+      "#/$defs/CodeItem": [
+        "captions",
+        "code_language",
+        "comments",
+        "content_layer",
+        "footnotes",
+        "formatting",
+        "hyperlink",
+        "image",
+        "label",
+        "meta",
+        "references",
+        "source"
+      ],
+      "#/$defs/CodeMetaField": [
+        "confidence",
+        "created_by",
+        "language"
+      ],
+      "#/$defs/DescriptionAnnotation": [
+        "kind"
+      ],
+      "#/$defs/DescriptionMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/DocumentOrigin": [
+        "uri"
+      ],
+      "#/$defs/EntityMention": [
+        "charspan",
+        "confidence",
+        "created_by",
+        "label",
+        "orig"
+      ],
+      "#/$defs/FieldHeadingItem": [
+        "comments",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "level",
+        "meta",
+        "source"
+      ],
+      "#/$defs/FieldItem": [
+        "comments",
+        "content_layer",
+        "label",
+        "meta",
+        "source"
+      ],
+      "#/$defs/FieldRegionItem": [
+        "comments",
+        "content_layer",
+        "label",
+        "meta",
+        "source"
+      ],
+      "#/$defs/FieldValueItem": [
+        "comments",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "kind",
+        "label",
+        "meta",
+        "source"
+      ],
+      "#/$defs/FineRef": [
+        "range"
+      ],
+      "#/$defs/FloatingMeta": [
+        "description",
+        "entities",
+        "keywords",
+        "language",
+        "summary",
+        "topics"
+      ],
+      "#/$defs/FormItem": [
+        "captions",
+        "comments",
+        "content_layer",
+        "footnotes",
+        "image",
+        "label",
+        "meta",
+        "references",
+        "source"
+      ],
+      "#/$defs/Formatting": [
+        "bold",
+        "italic",
+        "script",
+        "strikethrough",
+        "underline"
+      ],
+      "#/$defs/FormulaItem": [
+        "comments",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "meta",
+        "source"
+      ],
+      "#/$defs/GraphCell": [
+        "item_ref"
+      ],
+      "#/$defs/GraphData": [
+        "cells",
+        "links"
+      ],
+      "#/$defs/GroupItem": [
+        "content_layer",
+        "label",
+        "meta",
+        "name"
+      ],
+      "#/$defs/InlineGroup": [
+        "content_layer",
+        "label",
+        "meta",
+        "name"
+      ],
+      "#/$defs/KeyValueItem": [
+        "captions",
+        "comments",
+        "content_layer",
+        "footnotes",
+        "image",
+        "label",
+        "meta",
+        "references",
+        "source"
+      ],
+      "#/$defs/LanguageMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/ListGroup": [
+        "content_layer",
+        "label",
+        "meta",
+        "name"
+      ],
+      "#/$defs/ListItem": [
+        "comments",
+        "content_layer",
+        "enumerated",
+        "formatting",
+        "hyperlink",
+        "label",
+        "marker",
+        "meta",
+        "source"
+      ],
+      "#/$defs/MiscAnnotation": [
+        "kind"
+      ],
+      "#/$defs/MoleculeMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/PictureBarChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureClassificationData": [
+        "kind"
+      ],
+      "#/$defs/PictureClassificationMetaField": [
+        "predictions"
+      ],
+      "#/$defs/PictureClassificationPrediction": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/PictureItem": [
+        "annotations",
+        "captions",
+        "comments",
+        "content_layer",
+        "footnotes",
+        "label",
+        "meta",
+        "references",
+        "source"
+      ],
+      "#/$defs/PictureLineChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureMeta": [
+        "classification",
+        "code",
+        "description",
+        "entities",
+        "keywords",
+        "language",
+        "molecule",
+        "summary",
+        "tabular_chart",
+        "topics"
+      ],
+      "#/$defs/PictureMoleculeData": [
+        "kind"
+      ],
+      "#/$defs/PicturePieChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureScatterChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureStackedBarChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureTabularChartData": [
+        "kind"
+      ],
+      "#/$defs/RichTableCell": [
+        "bbox",
+        "col_span",
+        "column_header",
+        "fillable",
+        "row_header",
+        "row_section",
+        "row_span"
+      ],
+      "#/$defs/SectionHeaderItem": [
+        "comments",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "level",
+        "meta",
+        "source"
+      ],
+      "#/$defs/Size": [
+        "height",
+        "width"
+      ],
+      "#/$defs/SummaryMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/TableCell": [
+        "bbox",
+        "col_span",
+        "column_header",
+        "fillable",
+        "row_header",
+        "row_section",
+        "row_span"
+      ],
+      "#/$defs/TableData": [
+        "grid",
+        "orientation"
+      ],
+      "#/$defs/TableItem": [
+        "annotations",
+        "captions",
+        "comments",
+        "content_layer",
+        "footnotes",
+        "image",
+        "label",
+        "meta",
+        "references",
+        "source"
+      ],
+      "#/$defs/TabularChartMetaField": [
+        "confidence",
+        "created_by",
+        "title"
+      ],
+      "#/$defs/TextItem": [
+        "comments",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "meta",
+        "source"
+      ],
+      "#/$defs/TitleItem": [
+        "comments",
+        "content_layer",
+        "formatting",
+        "hyperlink",
+        "label",
+        "meta",
+        "source"
+      ],
+      "#/$defs/TrackSource": [
+        "identifier",
+        "kind",
+        "voice"
+      ]
+    }
+  }
+}
