@@ -224,9 +224,9 @@ furniture/그림/수식 영역 제외는 옛 구현의 한계다. 새 설계는 
 | 능력 / 실제 막히는 일 | 시점 | 범용성 | 플러그인 대안·결정 |
 | --- | --- | --- | --- |
 | 공식 native 작성·이미지 게시·최종 targets·check | 첫 단계부터 필요(현재 CLI 경로 있음) | 모든 가져오기/보고서 작성 | create 입력과 receipt 사용. 내부 writer/asset 저장 구현 안 함 |
-| 새 화면 저장의 images 입력 | 없어도 됨(첫 단계 CLI), 화면 생성 완성 시 필요 | 보고서/HTML·Word 가져오기 | 현재 saveDocument만으로 그림 게시 불가. CLI 경로 유지 가능, 필요할 때 범용 images 확장 요청 |
+| 새 화면 저장의 images 입력 | 없어도 됨(첫 단계 CLI), 화면 생성 완성 시 필요 | 보고서/HTML·Word 가져오기 | 현재 saveDocument만으로 그림 게시 불가. 공개 figure.imageAsset으로 실제 호출하면 Image keys must match Figure asset references. CLI의 공식 images 경로를 사용하고 화면 callback 확장을 요청 |
 | rich inline/위·아래첨자·미주/중첩·문자 목록/rich cell/표 캡션·label/reference 작성 입력 | 공개 master에서 충족. 실제 이관은 원본 근거가 있는 범위 | 기술 문서 가져오기·번역 | CLI 소스 빌드와 content roundtrip으로 확인. source에 없는 구조/참조는 복원하지 않으며, 더 이상 플랫폼 보강 대기로 분류하지 않음 |
-| CLI 읽기 출력의 완전한 inline 구조 | 공식 rich 작성 입력 소비 시 필요 | 모든 문서 처리 | 현재 일부 구조 생략. 보강 전 구조를 추측하지 않고 원본 중간 표현에 보존 |
+| CLI 읽기 출력의 완전한 inline 구조 | 공식 rich 작성 입력 소비 시 필요 | 모든 문서 처리 | 공개 master에서 모든 위치 content 출력 확인. 생성/readback과 구조 손상 검사에서 사용 |
 | 문서 표시·특정 target 이동/강조·선택 알림 | 검수 단계에서 필요 | 번역 검토·문서 비교 | 일반 문서 탭 열기는 1단계 대안. native renderer 복제는 대안 아님 |
 | 원본 영역과 native target을 연결하는 대조 틀 | 검수 단계에서 필요(사람 판단 시작 전) | PDF/Word 가져오기·번역 원문 대조 | PDF.js로 원본만 그릴 수 있음. native 쪽·초안 보호·선택 연동이 없어 전체 대조를 혼자 완성할 수 없음 |
 | 일반 문서의 안전한 부분 편집/충돌·되돌리기 receipt와 변경 관계 | 검수 단계에서 필요 | 모든 AI 문서 교정 | CLI inspect/수정/if-revision이 가능한 범위는 사용. 플러그인 화면 수정 API와 편집 후 provenance 이동 증명은 현재 미확인. receipt가 없으면 uncertain으로 중단, 직접 파일 overwrite 금지 |
@@ -351,3 +351,17 @@ LSR 두 판은 각각 17/21묶음(1.31/1.62건/쪽), NIST는 14묶음(1.27건/�
 provenance v1과 검수 파일 v1.0.0 schema는 바꾸지 않는다. 캡션은 table/figure block, 정의는 receipt가 재배치한 footnote block, 중첩 항목은 최상위 포함 list-item target으로 연결한다. structure의 부가 생성 근거(noteBinding/noteReferences/listProjection)는 정밀 selector가 아니며 소비자가 native path로 사용하지 않는다. 기존 v1 표/목록 block의 null text 의미와 옛 묶음 읽기도 유지한다.
 
 숫자/PDF 비교는 원래 marker를 대응 근거로 복원해 새 미주 표시 번호를 원본 값 오류로 오인하지 않는다. 모양/렌더링을 기준으로 승인하지 않는다. 표 caption이 native 소속이 되면서 기존 뒤 문단 순서 후보 7/7/3개가 사라졌고 나머지 알려진 문제·주입 검사·음성 대조는 유지한다. 최신 수치와 남은 손실은 results-richer-authoring.md가 정본이며 PR 1–3 결과 문서는 당시 측정 기록이다.
+
+## 2026-11-13 설치와 가져오기·결과·문제 목록 화면
+
+PR 2에서 미뤄 둔 설치/화면과 7절 1–3의 화면 부분을 구현했다. 플러그인 0.6.0은 litzio-plugin.json/host.mjs/screen.jsx와 기존 처리 코드를 그대로 설치한다. 공개 scaffold/validate/install/settings/operation invoke와 React/ui의 공통 부품만 사용한다. 생성기/탐지기와 두 v1 schema는 바꾸지 않는다.
+
+작업 폴더와 공식 CLI 진입 파일은 Host 설정에 명시한다. 공개 PluginContext에는 열린 폴더·문서 생성/읽기 callback이나 자기 CLI 위치가 없으므로 자동 탐색하지 않는다. 묶음은 그 작업 폴더 안의 상대 경로로 입력한다. 입력 PDF/record/JSON digest·schema·참조·쪽·누락 자산을 확인하고 새 requestId/generation만 만든다. 실제 생성은 기존 CLI 처리 코드와 공식 images 게시를 사용한다.
+
+접수 후 Node worker에서 생성/검수 대상을 만들고 소유 상태 파일로 단계·결과를 남긴다. 10초 RPC를 바꾸지 않는다. 중복 requestId는 재생성하지 않고 기존 상태를 돌려준다. 강제 종료 뒤 미완성 상태는 interrupted이며 자동 재시작/삭제/교정 이식은 없다. 모든 reader가 원래 v1 완료/digest/revision/대응을 검사한다. 비서 작업을 이 단계에서 실행하지 않는다.
+
+화면은 가져오기와 결과/문제 목록이다. 반복 패턴을 접되 모든 구성원을 보존하며, 묶음을 선택하면 쪽·bbox·native target·selfRef·근거를 표로 보여 준다. PDF 뷰어·독자 native 미리보기·나란한 대조·교정·완료 UI는 만들지 않는다. 기존 문서 열기 callback이 없어 문서 열기 버튼은 비활성+파일 탐색기 안내이며 실제 파일 탐색기 열기를 확인했다.
+
+LSR 두 판/NIST의 화면 생성 결과는 113/113/407블록, 손실 31/31/0, 묶음 15/19/9로 기존 처리 흐름과 같다. 설치/호출/화면은 격리 Host에서 확인했다. 세부 수락 범위·캡처·플랫폼 부족·안전한 부분 수정 receipt와 스킬 전달 조사 결과는 results-installable.md를 따른다. docs/progress.md는 고치지 않고 PR 본문에 전달안을 둔다.
+
+현재 소유자 확인 필요 표에 추가할 가정: Host의 작업 폴더/공식 CLI 파일을 수동 설정하고 상대 경로 입력/파일 탐색기 열기로 먼저 사용한다. 선택기·images/saveDocument·기존 문서 열기·Host 작성 callback은 범용 능력 보강 대상으로 남기며 공개되지 않은 API로 우회하지 않는다. 스킬은 공개 최소 선언 검증이 막혀 전달을 확인하지 못했으므로 이번 artifact에는 넣지 않는다.

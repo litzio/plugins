@@ -1,0 +1,579 @@
+{
+  "id": "local.docling-to-litzio",
+  "name": "Docling 문서 만들기",
+  "description": "고정 변환 결과에서 리치오 문서와 검수 대상 목록을 만듭니다. 생성 결과는 검수 전 초안입니다.",
+  "icon": "FileText",
+  "entry": "host.mjs",
+  "screen": "screen.jsx",
+  "operations": [
+    {
+      "id": "health",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "preflight",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bundle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "bundle"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "bundle": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "sourceName": {
+            "type": "string"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "schemaVersion": {
+            "type": "string"
+          },
+          "pictures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "supported": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bundle",
+          "fingerprint",
+          "sourceName",
+          "pages",
+          "schemaVersion",
+          "pictures",
+          "diagnostics",
+          "supported"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "start",
+      "version": 1,
+      "effect": "write",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bundle": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "requestId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "bundle",
+          "fingerprint",
+          "requestId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "bundle": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "ready",
+              "failed",
+              "interrupted"
+            ]
+          },
+          "errorCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bundle",
+          "fingerprint",
+          "output",
+          "phase",
+          "message",
+          "createdAt",
+          "updatedAt",
+          "jobId",
+          "state"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "jobs",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bundle": {
+                  "type": "string"
+                },
+                "fingerprint": {
+                  "type": "string"
+                },
+                "output": {
+                  "type": "string"
+                },
+                "phase": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "jobId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                },
+                "state": {
+                  "enum": [
+                    "queued",
+                    "running",
+                    "ready",
+                    "failed",
+                    "interrupted"
+                  ]
+                },
+                "errorCode": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "bundle",
+                "fingerprint",
+                "output",
+                "phase",
+                "message",
+                "createdAt",
+                "updatedAt",
+                "jobId",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "jobs"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "job",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "bundle": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "ready",
+              "failed",
+              "interrupted"
+            ]
+          },
+          "errorCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bundle",
+          "fingerprint",
+          "output",
+          "phase",
+          "message",
+          "createdAt",
+          "updatedAt",
+          "jobId",
+          "state"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "summary",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "type": "object",
+            "properties": {
+              "bundle": {
+                "type": "string"
+              },
+              "fingerprint": {
+                "type": "string"
+              },
+              "output": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "jobId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "state": {
+                "enum": [
+                  "queued",
+                  "running",
+                  "ready",
+                  "failed",
+                  "interrupted"
+                ]
+              },
+              "errorCode": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "bundle",
+              "fingerprint",
+              "output",
+              "phase",
+              "message",
+              "createdAt",
+              "updatedAt",
+              "jobId",
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "generationId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "document": {
+            "type": "string"
+          },
+          "blocks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "assets": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sourceElements": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "losses": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lossKinds": {
+            "type": "object"
+          },
+          "lossCategories": {
+            "type": "object"
+          },
+          "statistics": {
+            "type": "object"
+          },
+          "check": {
+            "type": "boolean"
+          },
+          "reviewComplete": {
+            "const": false
+          }
+        },
+        "required": [
+          "job",
+          "generationId",
+          "revision",
+          "document",
+          "blocks",
+          "assets",
+          "sourceElements",
+          "losses",
+          "lossKinds",
+          "lossCategories",
+          "statistics",
+          "check",
+          "reviewComplete"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "groups",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "groups",
+          "series"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "group",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "groupId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "groupId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "type": "object"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "group",
+          "findings"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "healthCheck": "health",
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "workspaceDirectory": {
+        "type": "string",
+        "title": "작업 폴더",
+        "description": "입력 묶음과 새 generation을 담을 Host의 절대 폴더. 열린 폴더 목록과 별개입니다."
+      },
+      "cliEntry": {
+        "type": "string",
+        "title": "공식 CLI 진입 파일",
+        "description": "이 Host에서 실행할 소스 빌드 cli.mjs 절대 경로. 설치된 CLI를 자동 탐색하지 않습니다."
+      }
+    },
+    "additionalProperties": false
+  }
+}

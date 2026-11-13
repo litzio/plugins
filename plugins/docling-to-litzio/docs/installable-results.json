@@ -1,0 +1,167 @@
+{
+  "platformCommit": "9956e8e0687de377986b1ad140bd451e801864b8",
+  "pluginVersion": "0.6.0",
+  "method": "Installed isolated Host public operations and actual screen generation. Source-built CLI; no AI.",
+  "samples": [
+    {
+      "bundle": "inputs/lsr",
+      "pages": 13,
+      "blocks": 113,
+      "assets": 2,
+      "sourceElements": 171,
+      "losses": 31,
+      "findings": 48,
+      "groups": 15,
+      "foldedRows": 9,
+      "check": true,
+      "generationMismatches": 0,
+      "reviewComplete": false
+    },
+    {
+      "bundle": "inputs/no-bookmarks",
+      "pages": 13,
+      "blocks": 113,
+      "assets": 2,
+      "sourceElements": 171,
+      "losses": 31,
+      "findings": 69,
+      "groups": 19,
+      "foldedRows": 10,
+      "check": true,
+      "generationMismatches": 0,
+      "reviewComplete": false
+    },
+    {
+      "bundle": "inputs/nist",
+      "pages": 11,
+      "blocks": 407,
+      "assets": 8,
+      "sourceElements": 440,
+      "losses": 0,
+      "findings": 347,
+      "groups": 9,
+      "foldedRows": 5,
+      "check": true,
+      "generationMismatches": 0,
+      "reviewComplete": false
+    }
+  ],
+  "editingProbe": {
+    "commands": [
+      {
+        "operation": {
+          "command": "update-node-text",
+          "path": "1",
+          "from": "0.73",
+          "to": "0.74"
+        },
+        "exitCode": 0,
+        "receipt": {
+          "ok": true,
+          "command": "apply-batch",
+          "applied": 1,
+          "revision": "cab4cb7536e6932dc879258f59b07089cf9e18c92d9a8dc59aab83bbaa3f79ad"
+        },
+        "error": ""
+      },
+      {
+        "operation": {
+          "command": "update-table-cell",
+          "path": "2,1,0",
+          "text": "0.74 ms"
+        },
+        "exitCode": 0,
+        "receipt": {
+          "ok": true,
+          "command": "apply-batch",
+          "applied": 1,
+          "revision": "9a95b719a1f25e05c2c84c65dc851cefaf395e980b4acb40747f8e24c6ea6f3d"
+        },
+        "error": ""
+      },
+      {
+        "operation": {
+          "command": "update-equation-latex",
+          "path": "3",
+          "from": "x = 1",
+          "to": "x = 2"
+        },
+        "exitCode": 0,
+        "receipt": {
+          "ok": true,
+          "command": "apply-batch",
+          "applied": 1,
+          "revision": "60fb8ce785cab4fe0b537bf52dfbfc50b6ee787f4ec3c329c4b33584ee72dce8"
+        },
+        "error": ""
+      }
+    ],
+    "stale": {
+      "exitCode": 1,
+      "error": "revision mismatch; run inspect again; nothing was written",
+      "bytesPreserved": true
+    },
+    "check": {
+      "ok": true,
+      "command": "check",
+      "validation": {
+        "valid": true
+      },
+      "writeability": {
+        "writable": true
+      },
+      "references": {
+        "unresolved": []
+      },
+      "numbering": {
+        "mode": "automatic",
+        "targets": [
+          {
+            "kind": "table",
+            "path": [
+              2
+            ],
+            "number": 1
+          },
+          {
+            "kind": "equation",
+            "path": [
+              3
+            ],
+            "number": 1
+          }
+        ],
+        "diagnostics": []
+      },
+      "readiness": {
+        "pendingFigures": [],
+        "missingImageFigures": []
+      },
+      "endnotes": {
+        "inPlace": true
+      },
+      "citations": {
+        "bibliography": [],
+        "citations": [],
+        "readiness": {
+          "status": "evaluated",
+          "complete": true,
+          "diagnostics": []
+        },
+        "references": [],
+        "entries": []
+      }
+    },
+    "limits": [
+      "Receipt has applied count and resulting revision only; no before/after target mapping or cross-file provenance transaction.",
+      "Single edit JSON success receipt is not offered; one-operation apply-batch provides it.",
+      "No AI or correction workflow implemented."
+    ]
+  },
+  "limitations": [
+    "Result screen cannot open an existing document; native file explorer opening verified.",
+    "saveDocument has no images argument; official authoring imageAsset probe refused missing image binding.",
+    "Skill minimum declaration failed static assistant skill validation; provider delivery unverified.",
+    "No correction, review completion, comparison viewer or long-document acceptance."
+  ]
+}

@@ -1,3 +1,5 @@
+> 작성 입력 보강 당시 기록이다. 후속 설치·화면 확인은 [설치 결과](results-installable.md)를 따른다.
+
 # 보강된 작성 입력 적용 결과
 
 2026-11-13 공개 리치오 master `9956e8e0`을 별도 임시 checkout에서 frozen install 후 `pnpm --filter @litzio/cli build`로 빌드했다. [공식 작성 입력·JSON 읽기 계약](https://github.com/litzio/litzio/blob/9956e8e0/docs/design/document-support-v1.md#공식-문서-작성-입력), 목록·미주 계약과 CLI `help create`/`help insert-block`을 읽었다. 세부 InlineContent 모양은 공개 SDK의 `documentAuthoringSchema`를 JSON Schema로 조회하고 실제 CLI로 확인했다. 내부 구현을 가져다 쓰지 않았다.
