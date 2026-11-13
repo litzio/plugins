@@ -2,6 +2,7 @@ import { create } from 'xmlbuilder2';
 import { createHash } from 'node:crypto';
 import { policy, canonical, sha256, validate, semantic } from './model.mjs';
 import { inlineFields, inlineTags } from './inline.mjs';
+import {exportCatalogIssues,requirementClassification,setClassification} from './export-classification.mjs';
 
 const NS = 'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd';
 const XHTML = 'http://www.w3.org/1999/xhtml';
@@ -79,9 +80,11 @@ function body(parent, blocks, context) {
 }
 
 export function exportReqif(sets, { testOnly = false, previous, now = new Date().toISOString() } = {}) {
+  const catalogIssues=exportCatalogIssues();
+  if(catalogIssues.length)throw Object.assign(new Error('내보내기 필드 분류 누락'),{diagnostics:catalogIssues});
   const diagnostics = validate(sets, { formal: !testOnly });
-  const requirementFields=new Set(['id','title','titleContent','body','footnotes',...Object.keys(policy),'rationale','sources','relations','confirmedDigest','location']);
-  const setFields=new Set(['setId','title','profile','defaultLevel','exportNamespace','registry','requirements','file','revision','heading','diagnostics']);
+  const requirementFields=new Set(Object.keys(requirementClassification));
+  const setFields=new Set(Object.keys(setClassification));
   for(const s of sets) {
     for(const key of Object.keys(s))if(!setFields.has(key))diagnostics.push({file:s.file??'',location:[1],severity:'error',code:'unmapped-export-field',message:'미분류 문서 필드: '+key});
     for(const r of s.requirements)for(const key of Object.keys(r))if(!requirementFields.has(key))diagnostics.push({file:s.file??'',location:r.location??[1],severity:'error',code:'unmapped-export-field',message:'미분류 요구사항 필드: '+key});

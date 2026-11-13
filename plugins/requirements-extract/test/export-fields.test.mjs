@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {create} from 'xmlbuilder2';
 import {sample} from './sample.mjs';
 import {exportReqif} from '../src/reqif.mjs';
+import {bodyFields,listItemFields,footnoteFields} from '../src/body.mjs';
 const nodes=(root,tag)=>[...root.getElementsByTagName(tag)];
 function attributes(xml,name) {
  const root=create(xml).node,ids=new Set(nodes(root,'ATTRIBUTE-DEFINITION-STRING').filter(n=>n.getAttribute('LONG-NAME')===name).map(n=>n.getAttribute('IDENTIFIER')));
@@ -31,4 +32,12 @@ test('unknown body/inline/footnote fields block; oversized relation evidence nev
 });
 test('unmapped ordered list style is blocked rather than silently numbered differently',()=>{
  const sets=sample();sets[0].requirements[0].body=[{kind:'list',ordered:true,style:'unknown-numbering',items:[{content:[{kind:'text',text:'obligation'}]}]}];assert.throws(()=>exportReqif(sets,{testOnly:true}),e=>e.diagnostics.some(d=>d.code==='unsupported-export-list-style'));
+});
+for(const scope of ['paragraph','table','list-item','footnote'])test('model extension '+scope+'.condition requires independent export classification',()=>{
+ const fields=scope==='list-item'?listItemFields:scope==='footnote'?footnoteFields:bodyFields[scope];fields.push('condition');
+ try {
+  const sets=sample();sets[0].requirements[0].body=[scope==='table'?{kind:'table',rows:[['value']],condition:'MUST NOT DISAPPEAR'}:{kind:'paragraph',text:'body',...(scope==='paragraph'?{condition:'MUST NOT DISAPPEAR'}:{})}];
+  for(const testOnly of [true,false])assert.throws(()=>exportReqif(sets,{testOnly}),e=>e.diagnostics.some(d=>d.code==='unclassified-export-model-field'&&d.message.includes('.condition')));
+ }finally{fields.pop();}
+ assert.doesNotThrow(()=>exportReqif(sample(),{testOnly:true}));
 });

@@ -6,6 +6,8 @@ export const bodyFields = {
   divider: [], code: ['language', 'code'], equation: ['latex', 'label', 'enumerator'],
   figure: ['label', 'contentKind', 'imageUrl', 'imageAlt', 'caption', 'mermaidSource', 'enumerator'],
 };
+export const listItemFields=['content','list'];
+export const footnoteFields=['label','content'];
 export function fromSnapshot(b) {
   const shape = message => { throw Object.assign(new Error(message), { code: 'projection-shape', location: b.path }); };
   const inline = value => {
@@ -46,10 +48,10 @@ export function validateBody(r, add, labels = new Set()) {
   const list = l => {
     if (l.style?.endsWith('roman') && (l.start ?? 1) + (l.items?.length ?? 0) > 4000) add('list-format', '4000 이상 로마 숫자 표기는 지원하지 않습니다');
     if (Object.keys(l).some(k => !['kind', ...bodyFields.list].includes(k))) add('unmapped-semantic', '미지원 목록 필드');
-    for (const i of l.items ?? []) { if (Object.keys(i).some(k => !['content', 'list'].includes(k))) add('unmapped-semantic', '미지원 목록 항목 필드'); inline(i.content); if (i.list) list(i.list); }
+    for (const i of l.items ?? []) { if (Object.keys(i).some(k => !listItemFields.includes(k))) add('unmapped-semantic', '미지원 목록 항목 필드'); inline(i.content); if (i.list) list(i.list); }
   };
   if (r.titleContent) inline(r.titleContent);
-  for (const f of r.footnotes ?? []) { if (Object.keys(f).some(k => !['label', 'content'].includes(k))) add('unmapped-semantic', '미지원 미주 필드'); inline(f.content); }
+  for (const f of r.footnotes ?? []) { if (Object.keys(f).some(k => !footnoteFields.includes(k))) add('unmapped-semantic', '미지원 미주 필드'); inline(f.content); }
   for (const b of r.body ?? []) {
     if (!bodyFields[b.kind]) { add('unsupported-body', '미지원 본문 kind'); continue; }
     if (Object.keys(b).some(k => !['kind', ...bodyFields[b.kind]].includes(k))) add('unmapped-semantic', '본문에 보존하지 못한 필드가 있습니다');

@@ -69,3 +69,11 @@
 | 그 밖의 문서 필드 | 차단 | unmapped-export-field |
 
 검사: export-fields.test.mjs의 XML attribute JSON 재읽기, 원래 양방향 판단 전부 비교, 필드 변형·과대 값 차단, upstream.test.mjs의 폐기 상태 변형. 실제 부분 충족 새 문서 왕복 후 ReqIF XSD/독립 parser 검증은 validation/upstream.mjs로 따로 수행한다.
+
+## 모델 확장 시 분류 누락 차단
+
+src/export-classification.mjs의 보존/제외/차단 표는 body.mjs/inline.mjs의 모델 허용 필드 목록과 독립적이다. exporter는 문서를 처리하기 전에 모든 모델 kind와 필드를 이 표에 대조한다. 모델 목록에 새 필드가 생기면 문서에 값이 없어도 unclassified-export-model-field로 차단한다. 본문·인라인·목록 항목·미주 목록과 policy 필드를 대조하며 최상위 문서/요구사항의 실제 미분류 필드도 기존 검사로 차단한다. 모델의 허용 필드 추가가 exporter의 지원 선언으로 자동 승격되지 않는다.
+
+export-fields.test.mjs는 모델 목록에 condition을 직접 추가한 상태를 만들고(문단/표는 실제 값 포함), 시험·정식 내보내기가 모두 막히는지 확인한 뒤 모델 목록을 복구한다. 문단·표·목록 항목·미주를 각각 검사한다.
+
+연결 없는 문서의 XML은 #17과 bytes 전체가 같지 않다. SourceRegistry/DocumentProfile 및 두 관계 유형의 RelationJudgments 속성 정의 ID가 합계 4개 추가된다. 같은 입력·고정 시각으로 비교한 기존 SpecObject의 XML 구조/값은 동일하고 기존 Identifiable ID는 하나도 사라지지 않는다.
