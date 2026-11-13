@@ -1,0 +1,66 @@
+{
+  "platformCommit": "f8c9dc9b95759568906e080bf846abf846f81287",
+  "pluginVersion": "0.8.0",
+  "fixture": "LSR public fixture isolated conversion copy",
+  "model": "gpt-6.1-terra",
+  "reasoningEffort": "high",
+  "installedSkillNameLength": 47,
+  "userTurns": 2,
+  "trials": [
+    {
+      "task": 1,
+      "shellCalls": 9,
+      "skillRead": true,
+      "hostOriginDelivered": true,
+      "appliedChanges": 0,
+      "outcome": "stopped-on-uncertain-write",
+      "secondsUntilResumeIncludingDiagnosisAndSkillFix": 177
+    },
+    {
+      "task": 2,
+      "shellCalls": 11,
+      "skillRead": true,
+      "hostOriginDelivered": true,
+      "outcome": "completed-selected-scope",
+      "secondsUntilCompletionObserved": 227
+    }
+  ],
+  "independentEvaluation": {
+    "generationValid": true,
+    "injectedTargets": 2,
+    "correctedTargets": 2,
+    "changes": 2,
+    "onlyInjectedTargetsChanged": true,
+    "normalGroupsChanged": 0,
+    "protectedTokensRechecked": true,
+    "uncertainSubmissions": 4,
+    "pending": false,
+    "uninspectedGroups": 11,
+    "uninspectedPages": 13,
+    "reviewComplete": false,
+    "selectedStateCounts": {
+      "판단불가": 4,
+      "교정후재검사": 2
+    }
+  },
+  "uiUndoOnSeparateCopy": {
+    "receiptVerified": true,
+    "readbackEqualsHistory": true,
+    "afterValue": "888",
+    "evidence": "undo-restoration",
+    "originalTrialChangesRemain": 2
+  },
+  "defaultTests": {
+    "passed": 61,
+    "skipped": 8,
+    "failed": 0
+  },
+  "limitations": [
+    "single six-group pilot, no AI quality guarantee",
+    "no final reviewed handoff or full-document inspection",
+    "no context.cli in tested public master; explicit settings fallback retained",
+    "no side-by-side PDF/document view",
+    "initial Host isolation corrected before any AI turn; owned global skill removed; other generated metadata reported without speculative restoration",
+    "Host required forced termination of verified owned process tree after interrupt did not exit"
+  ]
+}

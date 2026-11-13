@@ -29,12 +29,36 @@ export default function Screen({ React, ui, invoke }) {
     [job, setJob] = React.useState(null),
     [history, setHistory] = React.useState([]),
     [result, setResult] = React.useState(null),
+    [review, setReview] = React.useState(null),
     [list, setList] = React.useState(null),
     [detail, setDetail] = React.useState(null),
     [expanded, setExpanded] = React.useState(false),
     [error, setError] = React.useState(""),
     [busy, setBusy] = React.useState(false);
   const request = React.useRef(null);
+  const loadReview = async (jobId) =>
+    setReview(await invoke("review-progress", { jobId }));
+  const undo = async (change) => {
+    setBusy(true);
+    setError("");
+    try {
+      const reply = await invoke("correction-undo", {
+        jobId: job.jobId,
+        changeId: crypto.randomUUID(),
+        undoOf: change.changeId,
+        actor: "human",
+        reason: "화면에서 선택한 교정 되돌리기",
+        evidence: change.evidence,
+      });
+      await loadReview(job.jobId);
+      if (reply.status === "pending-reconcile")
+        setError("되돌리기 결과를 조정해야 합니다. 새 교정을 시작하지 마세요.");
+    } catch (e) {
+      message(e);
+    } finally {
+      setBusy(false);
+    }
+  };
   const message = (e) => setError(String(e?.message ?? e));
   const reloadHistory = () =>
     invoke("jobs", {})
@@ -68,14 +92,17 @@ export default function Screen({ React, ui, invoke }) {
     if (job?.state !== "ready") return;
     let alive = true;
     setResult(null);
+    setReview(null);
     setList(null);
     Promise.all([
       invoke("summary", { jobId: job.jobId }),
       invoke("groups", { jobId: job.jobId }),
+      invoke("review-progress", { jobId: job.jobId }),
     ])
-      .then(([r, g]) => {
+      .then(([r, g, progress]) => {
         if (alive) {
           setResult(r);
+          setReview(progress);
           setList(g);
           setDetail(null);
         }
@@ -145,6 +172,11 @@ export default function Screen({ React, ui, invoke }) {
       (list.series.find((s) => s.representativeGroupId === g.id)?.groupIds
         .length ?? 1) + "묶음",
   }));
+  const groupScopes = (review?.scopes ?? []).filter(
+    (s) => !s.id.startsWith("page:"),
+  );
+  const uninspected = groupScopes.filter((s) => s.state === "미검사").length;
+  const uncertain = groupScopes.filter((s) => s.state === "판단불가").length;
   return (
     <ui.ScreenLayout description="변환 결과에서 문서를 만들고 검수할 곳을 확인합니다. 생성 결과는 검수 전 초안입니다.">
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
@@ -298,6 +330,7 @@ export default function Screen({ React, ui, invoke }) {
                     invoke("summary", { jobId: job.jobId }),
                     invoke("groups", { jobId: job.jobId }),
                   ]);
+                  await loadReview(job.jobId);
                   setResult(r);
                   setList(g);
                 } catch (e) {
@@ -326,9 +359,97 @@ export default function Screen({ React, ui, invoke }) {
             현재 공개 화면 API로 기존 문서를 여는 기능은 제공되지 않습니다.
           </p>
           <p>
-            생성 시점의 요약입니다. 문서를 고쳤다면 결과를 다시 검증하세요. 현재
-            검수 완료나 교정 기능은 없습니다.
+            생성 시점의 손실과 검수 대상입니다. 교정 후 진행은 아래에서 다시
+            읽으세요. 최종 검수 완료는 아직 발급하지 않습니다.
           </p>
+          <ui.Toolbar>
+            <ui.Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => loadReview(job.jobId).catch(message)}
+            >
+              교정·진행 새로 읽기
+            </ui.Button>
+            <ui.SummaryCard label="미검사 묶음" value={uninspected} />
+            <ui.SummaryCard
+              label="교정 기록"
+              value={(review?.changes ?? []).filter((c) => !c.undoOf).length}
+            />
+            <ui.SummaryCard label="판단 불가 묶음" value={uncertain} />
+            <ui.SummaryCard
+              label="미검사 쪽"
+              value={
+                (review?.scopes ?? []).filter(
+                  (s) => s.id.startsWith("page:") && s.state === "미검사",
+                ).length
+              }
+            />
+          </ui.Toolbar>
+          {review?.pending && (
+            <ui.Notice tone="error">
+              문서와 기록의 조정이 필요합니다. 새 교정과 완료 인계를 멈춥니다.
+            </ui.Notice>
+          )}
+          <p>
+            교정 뒤 다른 범위는 재검사가 필요합니다. 숫자 재대조 통과는 전체
+            검수 완료가 아닙니다.
+          </p>
+          <h2>적용된 교정</h2>
+          <ui.DataTable
+            title="적용된 교정"
+            rows={(review?.changes ?? []).map((c) => ({
+              id: c.changeId,
+              kind: c.undoOf ? "되돌림" : "교정",
+              before: c.before,
+              after: c.after,
+              pages: [...new Set(c.evidence.scope.map((r) => r.pageNo))].join(
+                ", ",
+              ),
+              reason: c.reason,
+              verification: {
+                "verified-protected-tokens": "숫자·단위 재대조",
+                "not-applicable": "토큰 대조 대상 아님",
+                "undo-restoration": "과거 값 복원",
+              }[c.validation.evidenceRecheck],
+            }))}
+            columns={[
+              "kind",
+              "before",
+              "after",
+              "pages",
+              "reason",
+              "verification",
+            ]}
+            labels={{
+              kind: "종류",
+              before: "교정 전",
+              after: "교정 후",
+              pages: "근거 쪽",
+              reason: "근거",
+              verification: "재확인 범위",
+            }}
+          />
+          {(review?.changes ?? [])
+            .filter((c) => !c.undoOf)
+            .map((c) => (
+              <ui.Toolbar key={c.changeId}>
+                <span>
+                  {c.before} → {c.after}
+                </span>
+                <ui.Button
+                  variant="outline"
+                  disabled={
+                    busy ||
+                    !!review.pending ||
+                    review.currentRevision !== c.afterRevision ||
+                    review.changes.some((r) => r.undoOf === c.changeId)
+                  }
+                  onClick={() => undo(c)}
+                >
+                  이 교정 되돌리기
+                </ui.Button>
+              </ui.Toolbar>
+            ))}
           <ui.DataTable
             title="손실 요약"
             rows={Object.entries(result.lossKinds).map(([kind, count]) => ({
