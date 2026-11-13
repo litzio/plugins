@@ -1,3 +1,4 @@
+import { repoPath } from "./paths.js";
 import { syntheticGeneration, fakeCli } from "./correction-fixture.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,7 +12,7 @@ import {
   rmdir,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { generate } from "../src/generate.js";
 import { createReview, readReview } from "../src/review.js";
@@ -100,7 +101,7 @@ async function prepare() {
     return baseline;
   }
   const input = join(root, "input");
-  await cp(resolve("fixtures/lsr-1.1"), input, { recursive: true });
+  await cp(repoPath("fixtures/lsr-1.1"), input, { recursive: true });
   const bundle = join(input, "converted"),
     docFile = join(bundle, "document.json"),
     recordFile = join(bundle, "conversion-record.json");

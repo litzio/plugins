@@ -3,6 +3,7 @@ import {
   humanQueue,
   lossCatalog,
   expressionReviews,
+  invalidateReview,
 } from "./human-review.js";
 import { schemas, validateSchema } from "./schema.js";
 import { readFile, writeFile, rename, open, unlink } from "node:fs/promises";
@@ -305,7 +306,7 @@ export function createCorrections(root, cli) {
     s.changes = changes;
     s.revision = snapshot.revision;
     s.pending = null;
-    s.completion = null;
+    invalidateReview(s, { groups: null, resetScopes: true });
 
     for (const scope of s.scopes) {
       scope.state = scope.id === change.groupId ? "교정후재검사" : "미검사";
@@ -360,6 +361,21 @@ export function createCorrections(root, cli) {
             input.note.trim(),
           "human-note-required",
         );
+        const prior = (s.humanDecisions ?? [])
+          .filter(
+            (d) =>
+              d.groupId === input.groupId &&
+              d.revision === s.revision &&
+              !d.invalidatedAt,
+          )
+          .at(-1);
+        invalidateReview(s, {
+          groups:
+            input.decision === "deferred" ||
+            (prior && prior.decision !== input.decision)
+              ? [input.groupId]
+              : [],
+        });
         s.humanDecisions ??= [];
         s.humanDecisions.push({
           groupId: input.groupId,
@@ -369,7 +385,7 @@ export function createCorrections(root, cli) {
           actor: "human",
           time: new Date().toISOString(),
         });
-        s.completion = null;
+        invalidateReview(s);
         await save(file, s);
         return { recorded: true };
       }),
@@ -432,7 +448,7 @@ export function createCorrections(root, cli) {
           meaning: "expression-semantic-preservation",
           comparison: "source-and-current-side-by-side",
         });
-        s.completion = null;
+        invalidateReview(s);
         await save(file, s);
         return { recorded: true };
       }),
@@ -503,13 +519,7 @@ export function createCorrections(root, cli) {
         const s = await ledger();
         const snap = await inspect();
         if (snap.revision !== s.revision) {
-          s.completion = null;
-          for (const record of s.lossConfirmations ?? [])
-            record.invalidatedAt = new Date().toISOString();
-          for (const t of s.scopes) {
-            t.state = "미검사";
-            t.checkpoint = null;
-          }
+          invalidateReview(s, { groups: null, resetScopes: true });
           await save(file, s);
         }
         if (s.pending || snap.revision !== s.revision)
@@ -591,6 +601,7 @@ export function createCorrections(root, cli) {
         };
 
         if (input.decision === "uncertain") {
+          invalidateReview(s, { groups: [input.groupId] });
           s.submissions.push({
             ...row,
             decision: input.decision,
@@ -836,7 +847,7 @@ export function createCorrections(root, cli) {
         };
 
         s.submissions.push({ ...row, status: "pending-reconcile" });
-        s.completion = null;
+        invalidateReview(s, { groups: null, resetScopes: true });
         s.scopes.find((t) => t.id === input.groupId).state = "검사중";
         await save(file, s);
 
@@ -960,7 +971,21 @@ export function createCorrections(root, cli) {
           typeof input.note === "string" && input.note.length > 0,
           "inspection-note-required",
         );
-        s.completion = null;
+        const restarting = ["미검사", "검사중", "판단불가", "실패"].includes(
+          input.state,
+        );
+        let groups = [];
+        if (restarting) {
+          const { report } = await readReview(root, join(root, "review"));
+          groups = input.scopeId.startsWith("page:")
+            ? report.groups
+                .filter((g) =>
+                  g.pageNos.includes(Number(input.scopeId.slice(5))),
+                )
+                .map((g) => g.id)
+            : [input.scopeId];
+        }
+        invalidateReview(s, { groups });
         t.state = input.state;
         t.checkpoint = {
           revision: s.revision,
@@ -975,6 +1000,7 @@ export function createCorrections(root, cli) {
     stop: () =>
       locked(async () => {
         const s = await ledger();
+        invalidateReview(s, { groups: null, resetScopes: true });
         s.stopped = true;
         await save(file, s);
         return { stopped: true };
@@ -985,6 +1011,7 @@ export function createCorrections(root, cli) {
         const s = await ledger();
         need(!s.pending, "pending-reconcile");
         need((await inspect()).revision === s.revision, "stale-document");
+        invalidateReview(s, { groups: null, resetScopes: true });
         s.stopped = false;
         await save(file, s);
         return { stopped: false };

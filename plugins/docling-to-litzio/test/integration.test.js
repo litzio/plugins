@@ -1,3 +1,4 @@
+import { repoPath } from "./paths.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
@@ -28,12 +29,12 @@ test(
       ["nist", "fixtures/nist-sp1108r4/converted"],
     ];
     for (const [name, folder, oracle] of fixtures) {
-      const before = await readBundle(folder),
+      const before = await readBundle(repoPath(folder)),
         evidence = spawnSync(
           "python",
           [
-            resolve("plugins/docling-to-litzio/src/audit_bookmarks.py"),
-            resolve(folder, before.record.source.file),
+            repoPath("plugins/docling-to-litzio/src/audit_bookmarks.py"),
+            repoPath(folder, before.record.source.file),
           ],
           { encoding: "utf8" },
         );
@@ -42,27 +43,27 @@ test(
       await writeFile(ef, evidence.stdout);
       const out = join(root, name),
         result = await generate(
-          resolve(folder),
+          repoPath(folder),
           out,
           cli,
-          oracle && resolve(oracle),
+          oracle && repoPath(oracle),
           ef,
         );
       assert.equal(result.generationMismatches, 0);
       assert.equal(result.status, "generated-draft");
       assert.equal(
         result.source.doclingSha256,
-        (await readBundle(folder)).source.doclingSha256,
+        (await readBundle(repoPath(folder))).source.doclingSha256,
       );
       const saved = await readFile(join(out, "document.md"));
-      await assert.rejects(generate(resolve(folder), out, cli), /EEXIST/);
+      await assert.rejects(generate(repoPath(folder), out, cli), /EEXIST/);
       assert.equal(hash(saved), hash(await readFile(join(out, "document.md"))));
       const correction = Buffer.concat([
         saved,
         Buffer.from("\nTemporary correction fixture\n"),
       ]);
       await writeFile(join(out, "document.md"), correction);
-      await assert.rejects(generate(resolve(folder), out, cli), /EEXIST/);
+      await assert.rejects(generate(repoPath(folder), out, cli), /EEXIST/);
       assert.equal(
         hash(await readFile(join(out, "document.md"))),
         hash(correction),
@@ -161,7 +162,7 @@ test(
     }
     const failed = join(root, "failed");
     await assert.rejects(
-      generate(resolve(fixtures[0][1]), failed, join(root, "missing-cli.mjs")),
+      generate(repoPath(fixtures[0][1]), failed, join(root, "missing-cli.mjs")),
     );
     assert.equal(
       JSON.parse(await readFile(join(failed, "generation.json"), "utf8"))

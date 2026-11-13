@@ -5,6 +5,8 @@ description: Docling 문서의 검수 묶음을 원본 PDF 근거와 대조하�
 
 # 묶음 검수
 
+actor는 인증된 신원이 아니라 제출자의 선언이다. 이 스킬을 수행하는 비서는 반드시 actor=assistant를 사용한다. actor=human을 선언하거나 human-source-region 근거·사람 결정·표현 보존 확인 경로를 사용하지 않는다. 빈 셀과 글자 층으로 입증하지 못한 값은 uncertain으로 남기고 사람 검수로 넘긴다.
+
 사용자가 준 jobId와 groupIds 범위만 처리한다. ID가 없으면 `jobs`, `groups`로 찾고 범위를 확인한다. `LITZIO_HOST_ORIGIN`이 없으면 중단한다. 다른 Host 주소를 추측하지 않는다. 모든 호출은 공개 CLI이며 입력 JSON은 비서 작업 폴더에 쓴다.
 
 ```powershell

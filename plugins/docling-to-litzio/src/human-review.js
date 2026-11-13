@@ -24,7 +24,12 @@ export function humanQueue(s, report) {
       ...g,
       decision:
         (s.humanDecisions ?? [])
-          .filter((d) => d.groupId === g.id && d.revision === s.revision)
+          .filter(
+            (d) =>
+              d.groupId === g.id &&
+              d.revision === s.revision &&
+              !d.invalidatedAt,
+          )
           .at(-1) ?? null,
     }));
 }
@@ -118,7 +123,9 @@ export function expressionReviews(s, catalog, revision) {
 export function completionGate(s, report, losses, revision, handoff, evidence) {
   const confirmed = (id) =>
     (s.humanDecisions ?? [])
-      .filter((d) => d.groupId === id && d.revision === revision)
+      .filter(
+        (d) => d.groupId === id && d.revision === revision && !d.invalidatedAt,
+      )
       .at(-1)?.decision === "confirmed";
   const expected = [
     ...report.groups.map((g) => g.id),
@@ -140,7 +147,15 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
             (t.state === "판단불가" && confirmed(id))),
       ),
   );
-  const human = humanQueue(s, report).filter((g) => !confirmed(g.id));
+  const decisions = new Map();
+  for (const d of s.humanDecisions ?? [])
+    if (d.revision === revision) decisions.set(d.groupId, d);
+  const human = new Set(
+    humanQueue(s, report)
+      .filter((g) => !confirmed(g.id))
+      .map((g) => g.id),
+  );
+  for (const [id, d] of decisions) if (d.decision === "deferred") human.add(id);
   const catalog = lossCatalog(losses, handoff);
   const blocking = catalog.filter(
     (l) => l.classification === "repair-required",
@@ -148,90 +163,147 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
   const expressionUnconfirmed = expressionReviews(s, catalog, revision).filter(
     (l) => l.confirmation?.decision !== "meaning-preserved",
   ).length;
-  const tokenDifferences = handoff
-    ? report.checks.filter((c) => {
-        if (c.status !== "available") return false;
-        const item = handoff.provenance.items.find(
-          (i) => i.sourceId === c.sourceId,
-        );
-        const cell = c.selectorKey.startsWith("cell:")
-          ? item?.cells.find(
-              (cell) => cell.cellIndex === Number(c.selectorKey.slice(5)),
-            )
-          : null;
-        const targets = cell
-          ? cell.targets.slice(0, 1)
-          : item?.targets.filter((t) => t.role === "content");
-        const humanReviewed =
-          (targets ?? []).length > 0 &&
-          (targets ?? []).every((t) => {
-            const last = (handoff.history?.changes ?? [])
-              .filter(
-                (c) =>
-                  JSON.stringify(c.target.path) === JSON.stringify(t.path) &&
-                  (c.target.kind !== "cell" ||
-                    (t.selector.kind === "cell" &&
-                      c.target.row === t.selector.row &&
-                      c.target.column === t.selector.column)),
+  const tokenDifferences =
+    handoff &&
+    evidence &&
+    Array.isArray(report.checks) &&
+    Array.isArray(evidence.pages)
+      ? report.checks.filter((c) => {
+          if (c.status !== "available") return false;
+          const item = handoff.provenance.items.find(
+            (i) => i.sourceId === c.sourceId,
+          );
+          const cell = c.selectorKey.startsWith("cell:")
+            ? item?.cells.find(
+                (cell) => cell.cellIndex === Number(c.selectorKey.slice(5)),
               )
-              .at(-1);
-            return last?.evidence.kind === "human-source-region";
-          });
-        if (humanReviewed) return false;
-        const text = (targets ?? [])
-          .map((t) => {
-            let value = sourceItemText(
-              handoff.snapshot,
-              t,
-              item,
-              handoff.provenance,
-            );
-            if (
-              cell &&
-              item.structure.tableModel?.headerRows > 1 &&
-              cell.sourceCell.column_header
-            )
-              return cell.sourceCell.text;
-            const node = handoff.snapshot.nodes.find(
-              (n) => JSON.stringify(n.path) === JSON.stringify(t.path),
-            );
-            if (
-              item.label === "caption" &&
-              ["figure", "table"].includes(node?.type) &&
-              node.enumerator
-            )
-              return `${node.enumerator} ${value ?? ""}`;
-            if (item.label === "footnote" && item.structure.noteBinding)
-              return `${item.structure.noteBinding.marker} ${value ?? ""}`;
-            return value;
-          })
-          .filter((t) => t !== null)
-          .join(" ");
-        const ids = new Set(c.pdfTokenIds),
-          tokens = evidence.pages
-            .flatMap((p) => p.tokens)
-            .filter((t) => ids.has(t.id));
-        const diff = difference(tokens, protectedTokens(text));
-        return diff.missing.length || diff.extra.length;
-      }).length
-    : 0;
+            : null;
+          const targets = cell
+            ? cell.targets.slice(0, 1)
+            : item?.targets.filter((t) => t.role === "content");
+          const humanReviewed =
+            (targets ?? []).length > 0 &&
+            (targets ?? []).every((t) => {
+              const last = (handoff.history?.changes ?? [])
+                .filter(
+                  (c) =>
+                    JSON.stringify(c.target.path) === JSON.stringify(t.path) &&
+                    (c.target.kind !== "cell" ||
+                      (t.selector.kind === "cell" &&
+                        c.target.row === t.selector.row &&
+                        c.target.column === t.selector.column)),
+                )
+                .at(-1);
+              return (
+                last?.evidence.kind === "human-source-region" && !last.undoOf
+              );
+            });
+          if (humanReviewed) return false;
+          const text = (targets ?? [])
+            .map((t) => {
+              let value = sourceItemText(
+                handoff.snapshot,
+                t,
+                item,
+                handoff.provenance,
+              );
+              if (
+                cell &&
+                item.structure.tableModel?.headerRows > 1 &&
+                cell.sourceCell.column_header
+              )
+                return cell.sourceCell.text;
+              const node = handoff.snapshot.nodes.find(
+                (n) => JSON.stringify(n.path) === JSON.stringify(t.path),
+              );
+              if (
+                item.label === "caption" &&
+                ["figure", "table"].includes(node?.type) &&
+                node.enumerator
+              )
+                return `${node.enumerator} ${value ?? ""}`;
+              if (item.label === "footnote" && item.structure.noteBinding)
+                return `${item.structure.noteBinding.marker} ${value ?? ""}`;
+              return value;
+            })
+            .filter((t) => t !== null)
+            .join(" ");
+          const ids = new Set(c.pdfTokenIds),
+            tokens = evidence.pages
+              .flatMap((p) => p.tokens)
+              .filter((t) => ids.has(t.id));
+          const diff = difference(tokens, protectedTokens(text));
+          return diff.missing.length || diff.extra.length;
+        }).length
+      : 0;
   const failures = s.scopes.filter((t) => t.state === "실패").length;
+  const requirements = {
+    boundEvidence:
+      typeof s.generationId === "string" &&
+      s.generationId.length > 0 &&
+      typeof s.sourceHash === "string" &&
+      s.sourceHash.length > 0 &&
+      typeof revision === "string" &&
+      revision.length > 0 &&
+      !!handoff &&
+      !!evidence &&
+      handoff.provenance.generationId === s.generationId &&
+      handoff.provenance.source?.pdf?.sha256 === s.sourceHash &&
+      evidence.pdfSha256 === s.sourceHash &&
+      handoff.snapshot?.revision === revision &&
+      handoff.provenance.document?.revision === revision,
+    noPending: s.pending === null,
+    running: s.stopped === false,
+    currentRevision: s.revision === revision,
+    coverage: uncovered.length === 0,
+    humanDecisions: human.size === 0,
+    contentLosses: blocking.length === 0,
+    expressions: expressionUnconfirmed === 0,
+    failureFree: failures === 0,
+    protectedValues: tokenDifferences === 0,
+  };
   return {
-    ready:
-      !s.pending &&
-      !s.stopped &&
-      s.revision === revision &&
-      !uncovered.length &&
-      !human.length &&
-      !blocking.length &&
-      !expressionUnconfirmed &&
-      !failures &&
-      !tokenDifferences,
+    ready: completionRequirementsMet(requirements),
     uncovered: uncovered.length,
-    human: human.length,
+    human: human.size,
     blocking: blocking.length,
     expressionUnconfirmed,
     failures,
     tokenDifferences,
   };
+}
+
+// C0-C9 in the handoff contract. Missing proof is false, never an implicit pass.
+export const COMPLETION_CONDITIONS = Object.freeze([
+  "boundEvidence",
+  "noPending",
+  "running",
+  "currentRevision",
+  "coverage",
+  "humanDecisions",
+  "contentLosses",
+  "expressions",
+  "failureFree",
+  "protectedValues",
+]);
+export function completionRequirementsMet(proof) {
+  return COMPLETION_CONDITIONS.every((key) => proof?.[key] === true);
+}
+
+// groups=null invalidates every review; [] invalidates only the completion receipt.
+export function invalidateReview(s, { groups = [], resetScopes = false } = {}) {
+  s.completion = null;
+  const affected = (id) => groups === null || groups.includes(id),
+    time = new Date().toISOString();
+  for (const record of [
+    ...(s.humanDecisions ?? []),
+    ...(s.lossConfirmations ?? []),
+  ])
+    if (affected(record.groupId)) record.invalidatedAt = time;
+  if (resetScopes)
+    for (const scope of s.scopes)
+      if (affected(scope.id)) {
+        scope.state = "미검사";
+        scope.checkpoint = null;
+      }
 }

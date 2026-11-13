@@ -126,7 +126,7 @@ node src/review.js --read GENERATION REVIEW_DIRECTORY
 
 review-targets.json, pdf-evidence.json, 마지막 review-complete.json을 만든다. [검수 대상 계약](../../contracts/docling-to-litzio/review-targets.md)에 schema/읽는 순서/거부 조건과 kind별 근거가 있다. 고정 revision만 읽고 변경된 문서는 stale로 거부한다. 처리 핵심의 시험용 changed snapshot은 uncertain이며 identity 재연결 증거가 아니다.
 
-표본 측정과 테스트는 **저장소 루트**에서 실행한다. built CLI는 이전과 같은 격리 소스 빌드다.
+표본 측정과 테스트는 플러그인 폴더 또는 저장소 루트에서 실행할 수 있다. 아래 명령은 **저장소 루트 기준**이다. built CLI는 이전과 같은 격리 소스 빌드다.
 
 ```powershell
 $env:DOCLING_TEST_CLI = 'BUILT_CLI'
@@ -156,3 +156,6 @@ corpus/CLI 환경 변수가 없으면 해당 통합·corpus 검사를 skip한다
 
 
 PR 5 추가: [손실 분류](docs/lsr-loss-classification.md)와 항목별 표현 보존 확인, 사람만 사용하는 원문 영역 근거 교정을 v1.2에 추가했다. 앞의 “LSR 차단 손실 때문에 완료하지 못함”은 초기 정책에서의 결과다. 현재 규칙과 추가 수락 결과는 [추가 검증](docs/results-human-policy.md)을 따른다. picker/open 전환은 이번 범위에 넣지 않았다.
+
+
+독립 리뷰 보완: 완료 조건 C0–C9와 사건별 무효화 표, actor의 비인증 선언 경계는 [인계 계약](../../contracts/docling-to-litzio/human-review.md)을 따른다. 검사는 저장소 루트의 기존 명령과 플러그인 폴더의 `npm test` 양쪽에서 실행할 수 있으며 fixture는 테스트 모듈 위치로 해석한다.

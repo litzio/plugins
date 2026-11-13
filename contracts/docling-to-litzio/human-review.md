@@ -4,16 +4,37 @@ v1.0 생성본과 v1.1 교정본을 바꾸지 않는 minor 확장이다. 기존 
 
 ## 발급과 파일
 
-공개 `review-finalize({jobId,revision})`는 기존 교정 잠금 안에서 현재 공식 inspect, 유효한 인계, 공식 check를 확인한다. 다음 조건을 모두 충족해야 한다.
+공개 `review-finalize({jobId,revision})`는 기존 교정 잠금 안에서 현재 공식 inspect, 유효한 인계, 공식 check를 확인한다. 다음 조건을 모두 충족해야 한다. `completionGate`가 조건 증거를 만들고 `completionRequirementsMet`가 C0–C9의 **모든 값이 명시적으로 true**인지 판정한다. 누락된 증거는 통과가 아니다. 발급과 인계 재검증은 같은 함수를 호출한다. 유효한 파일 집합·schema·digest·generation·교정 사슬을 먼저 검증하고, 발급 시 공식 check까지 성공해야 한다. 소비 시에는 같은 revision의 공식 inspect를 다시 대조한다.
 
-- 모든 탐지 묶음과 모든 PDF 쪽의 현재 revision checkpoint가 있어야 한다. `차이없음`, 실제 재검사 note가 있는 `교정후재검사`를 수락한다. 자동으로 찍힌 교정 checkpoint나 쪽 방문만으로 범위를 채우지 않는다.
-- 판단 불가 묶음은 같은 revision의 사람 `confirmed` 결정이 있어야 한다. 쪽 단위 판단 불가·실패·미검사는 차단한다.
-- 수식 전부, 병합 표, 북마크 근거가 약한 제목 계층, 의미 손실과 비서 판단 불가 묶음은 사람이 확인한다. 마지막 결정이 `deferred`면 차단한다.
-- blocking 손실을 **해소해야 하는 내용 손실**과 **형식 한계의 표현 손실**로 분류한다. 명시한 병합 값 반복·복합 머리 합침·머리 역할·셀 블록 평탄화만 표현 후보로 인정하며 애매한 것은 해소 대상으로 둔다. 주석 본문이 실제 현재 문단에 보존돼 있으면 호출부 연결 없이 주석 문단으로 둔 표현을 확인할 수 있다. 본문이 없으면 해소 대상이다.
-- 해소 대상 0, 표현 손실의 항목별 현재 확인 전부 충족이어야 한다. 표현 확인은 단순 검수 묶음 confirmed와 별개다. lossId는 sourceId/reasonCode/originalValue의 SHA-256이며 원본 손실을 삭제하지 않는다. 화면은 선택 source의 모든 항목·원본 내용을 각각 표시한다. 일괄 면제는 없다.
-- loss-decision은 사람의 meaning-preserved / meaning-changed / deferred를 기록한다. 현재 비교의 groupId, source 대상 targetPath와 실제 원문 pageNo를 검증한다. meaning-changed와 deferred는 모두 완료 차단이다. 모든 기록은 note/time/revision/changeCount/actor, meaning=expression-semantic-preservation, comparison=source-and-current-side-by-side를 갖는다. 문서가 바뀌면 이전 확인은 무효다. 같은 bytes revision으로 되돌아와도 changeCount가 달라 과거 확인을 재사용하지 않는다.
-- 사람 영역 근거 교정으로 따로 표시한 대상을 제외한 available PDF 보호 토큰 검사 범위에서 현재 대응 값의 숫자·단위·부호를 다시 비교해 차이가 0이어야 한다. 수식 의미는 이 검사로 보증하지 않는다. unavailable 범위는 검사 note와 사람 판단을 통해 남는 한계를 드러낸다.
-- pending·중단·오래된 revision·유효하지 않은 대응이면 발급하지 않는다.
+| 조건 | 판정 이름 | 반드시 있는 증거 |
+| --- | --- | --- |
+| C0 | boundEvidence | 검증된 현재 인계와 PDF 증거가 존재하며 generation/source PDF hash/현재 snapshot·대응 revision이 원장과 일치 |
+| C1 | noPending | pending 조정 없음 |
+| C2 | running | 중단 상태가 아님 |
+| C3 | currentRevision | 관측한 문서 revision과 진행 원장 revision이 같음 |
+| C4 | coverage | 모든 그룹·모든 물리 쪽에 현재 revision과 실제 검사 note가 있음. 차이없음/명시적 교정후재검사만 수락. 판단불가 그룹은 유효한 사람 confirmed가 필요. 방문/자동 교정 checkpoint는 불충분 |
+| C5 | humanDecisions | 수식·병합 표·약한 제목 근거·의미 손실·판단불가의 필수 결정 충족. **일반 묶음을 포함해 현재 revision의 마지막 명시적 결정이 deferred인 그룹은 하나도 없음** |
+| C6 | contentLosses | 해소해야 하는 내용 손실 0. 애매한 손실과 보존을 입증하지 못한 주석은 해소 대상 |
+| C7 | expressions | 모든 표현 손실 항목에 현재 revision/changeCount의 유효한 마지막 meaning-preserved 확인. missing/deferred/meaning-changed/invalidated는 차단 |
+| C8 | failureFree | 실패 범위 0 |
+| C9 | protectedValues | available인 PDF 보호 토큰 범위에서 현재 값 재대조 차이 0. 마지막 직접 human-source-region 교정만 별도 표시하며 **undoOf가 있는 되돌리기는 사람 확인 면제가 아니고 원래 token 검사를 다시 받음** |
+
+해당 값 자체의 직접 교정 영수증은 이력으로 보존한다. 검사 범위/사람 결정/표현 확인과 완료 발급은 별도 수명을 갖는다. 수식 의미·unavailable 영역의 의미를 기계 token 검사로 보증하지 않는다. 표현 손실의 명시 allowlist와 항목별 확인 정책은 유지한다. lossId는 sourceId/reasonCode/originalValue의 SHA-256이며 원본 손실을 삭제하지 않는다.
+
+### 사건별 무효화 표
+
+`invalidateReview`가 완료를 지우고 필요한 검수 확인을 invalidatedAt으로 무효화한다. 같은 revision의 명시적 보류는 중단·재개나 새 checkpoint만으로 해제되지 않으며 새 명시적 confirmed 결정이 필요하다. 기록 자체는 삭제하지 않는다. 오래된 human-review 파일은 발급 이력이며, 원장의 현재 completion이 없으면 재개만으로 되살아나지 않는다.
+
+| 사건 | 완료 | 범위와 관련 확인 |
+| --- | --- | --- |
+| 교정 접수·게시 / 되돌리기 | 무효 | 모든 범위 재검사, 모든 사람/표현 확인 무효. 되돌린 값은 새로운 사람 근거가 아님 |
+| 관측된 외부 문서 revision 변화 | 무효 | 모든 범위·사람/표현 확인 무효. 설명 없는 편집은 인계도 거부 |
+| 일반/필수 사람 결정의 새 제출 | 무효 | 마지막 유효 결정 사용. 보류 또는 결정 변경이면 해당 그룹의 기존 사람/표현 확인도 무효화 |
+| 표현 결정의 새 제출·보류·뜻이 달라짐 | 무효 | 해당 항목의 마지막 결정으로 대체. 다른 독립 항목의 증거는 유지 |
+| 그룹·쪽 검사 재개(미검사/검사중/판단불가/실패) | 무효 | 그 그룹 또는 그 쪽에 걸친 그룹의 사람/표현 확인 무효; 재개한 범위는 완료로 세지 않음 |
+| 현재 범위의 새 정상 checkpoint | 무효 | 재발급 필요. 기존 독립 확인은 유지 |
+| 비서 uncertain 제출 | 무효 | 해당 그룹의 기존 사람/표현 확인 무효, 판단불가로 둠 |
+| stop / resume / stop→resume | 무효 | 모든 범위 재검사와 모든 사람/표현 확인 무효. 새 검수 증거와 명시적 재발급 필요 |
 
 `human-review.json`을 추가한다. [정본 schema](../../plugins/docling-to-litzio/schema/human-review.schema.json)는 schemaVersion=1.2.0, generationId, documentRevision, time, scopes, humanDecisions, conditions를 갖는다. conditions는 ready=true와 uncovered/human/blocking/expressionUnconfirmed/failures/tokenDifferences=0이다. blocking은 해소 대상, expressionUnconfirmed는 표현 확인 전 건수다.
 
@@ -35,7 +56,7 @@ requirements-extract는 이번 PR에서 수정하지 않는다. 현재 reader/mo
 
 ## 사람이 원문 영역을 보고 한 교정 — 같은 v1.2
 
-correction-submit의 evidence.kind=human-source-region, refs=[], scope=[{pageNo,bbox}]는 **사람이 실제 원문 영역을 보고 확인함**이다. actor=human만 허용한다. 그룹에 대응한 대상과 해당 source/gap의 PDF 영역 안인지, 물리 쪽과 양의 bbox가 PDF 쪽 범위 안인지 검사한다. 비서의 빈 칸 채우기·글자 층으로 입증하지 못한 값 교정은 계속 거부한다. 생략한 kind 또는 pdf-tokens는 기존 규칙을 그대로 따른다.
+correction-submit의 evidence.kind=human-source-region, refs=[], scope=[{pageNo,bbox}]는 **사람이 실제 원문 영역을 보고 확인함**이다. actor=human만 허용한다. 그룹에 대응한 대상과 해당 source/gap의 PDF 영역 안인지, 물리 쪽과 양의 bbox가 PDF 쪽 범위 안인지 검사한다. actor=assistant라고 선언한 제출의 빈 칸 채우기·사람 영역 근거 사용은 거부한다. **actor는 제출자의 선언이며 인증되지 않는다.** 도구가 실제 사람/비서의 신원을 구조적으로 구분하지 못하므로 비서도 human을 선언할 수 있다. 스킬은 비서에게 assistant를 선언하고 사람 근거 경로를 쓰지 말라고 지시하며, 기록에는 선언된 actor가 남는다. 이는 현재 단계에서 받아들이는 신뢰 경계다. 생략한 kind 또는 pdf-tokens는 기존 규칙을 그대로 따른다.
 
 이 근거는 빈 셀 채우기와 수식/벡터 글자처럼 토큰 대조 불가 값에 사용할 수 있다. 기존 update-table-cell / update-equation-latex 연산을 쓴다. 셀 afterContent는 공개 InlineContent의 text/math 배열이며 after는 그 평문 투영이다. beforeContent/afterContent와 역연산 content를 이력에 기록하여 전체 snapshot의 정확한 투영·readback·되돌리기를 검증한다. 새 source cell을 만들어 내지 않고, 생성 report의 gap target과 source table 영역에 교정 근거를 연결한다.
 
@@ -46,3 +67,6 @@ validation.evidenceRecheck=human-source-region, protectedTokens=false로 표시�
 소비자 추가 변경: correction-history 1.2, human evidence actor/scope/gap binding, 빈 before의 제한, content 전후 투영과 역연산, human-source-region 표시와 applied 상태 검증을 지원한다. 사람 근거 교정 대상의 자동 token gate를 다시 기계 확인으로 승격하지 않는다. 표현 확인과 값 교정 확인은 서로 다른 기록이다.
 
 정책은 소유자가 돌아와 사용하며 조정할 가정이다. [LSR 29건 분류](../../plugins/docling-to-litzio/docs/lsr-loss-classification.md)를 함께 읽는다.
+
+
+소비자 추가 주의: actor는 비인증 자기 선언이다. human-source-region, 사람 결정과 표현 확인을 인증된 인간 승인으로 표시하지 않는다. C0–C9와 사건별 무효화 규칙을 그대로 재검증한다. undoOf를 직접 사람 근거 면제로 세지 않고, 필수 목록 밖의 명시적 보류도 차단하며, stop/resume 전의 완료·확인을 재사용하지 않는다.

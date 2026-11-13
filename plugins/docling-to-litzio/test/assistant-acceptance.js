@@ -1,3 +1,4 @@
+import { repoPath } from "./paths.js";
 // Manual acceptance setup. Uses public Host operations; never calls AI itself.
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -13,7 +14,7 @@ const root = resolve(rootArg),
   cli = resolve(cliArg),
   bundle = join(root, "inputs/lsr");
 await mkdir(join(root, "inputs"), { recursive: true });
-await cp(resolve("fixtures/lsr-1.1"), bundle, {
+await cp(repoPath("fixtures/lsr-1.1"), bundle, {
   recursive: true,
   errorOnExist: true,
   force: false,

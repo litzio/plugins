@@ -1,3 +1,4 @@
+import { repoPath } from "./paths.js";
 import { readFile, writeFile, mkdtemp } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -24,10 +25,10 @@ for (const [name, bundle, oracle] of [
 ]) {
   const output = join(root, name);
   await generate(
-    resolve(bundle),
+    repoPath(bundle),
     output,
     resolve(cli),
-    oracle && resolve(oracle),
+    oracle && repoPath(oracle),
   );
   const report = await createReview(output, join(root, name + "-review"));
   await readReview(output, join(root, name + "-review"));

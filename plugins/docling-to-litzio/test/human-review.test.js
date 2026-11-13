@@ -131,8 +131,13 @@ test("missing page, failure, stale revision, deferred human and stopped review c
     groups: [{ id: "g", kinds: ["formula-review-required"] }],
     statistics: { pages: 1 },
     findings: [],
+    checks: [],
   };
   const s = {
+    generationId: "g",
+    sourceHash: "pdf",
+    pending: null,
+    stopped: false,
     revision: "r",
     scopes: [
       {
@@ -148,9 +153,20 @@ test("missing page, failure, stale revision, deferred human and stopped review c
     ],
     humanDecisions: [{ groupId: "g", revision: "r", decision: "confirmed" }],
   };
-  assert.equal(completionGate(s, report, [], "r").ready, true);
+  const h = {
+    provenance: {
+      generationId: "g",
+      source: { pdf: { sha256: "pdf" } },
+      document: { revision: "r" },
+      items: [],
+    },
+    snapshot: { revision: "r", nodes: [] },
+  };
+  const evidence = { pdfSha256: "pdf", pages: [] };
+  assert.equal(completionGate(s, report, [], "r", h, evidence).ready, true);
   assert.equal(
-    completionGate(s, report, [{ severity: "blocking" }], "r").ready,
+    completionGate(s, report, [{ severity: "blocking" }], "r", h, evidence)
+      .ready,
     false,
   );
   for (const patch of [
@@ -162,7 +178,7 @@ test("missing page, failure, stale revision, deferred human and stopped review c
     { scopes: [{ ...s.scopes[0], state: "실패" }, s.scopes[1]] },
   ])
     assert.equal(
-      completionGate({ ...s, ...patch }, report, [], "r").ready,
+      completionGate({ ...s, ...patch }, report, [], "r", h, evidence).ready,
       false,
     );
 });
@@ -177,11 +193,24 @@ test("expression losses need individual current decisions; deferral, changed mea
   };
   const report = { groups: [], statistics: { pages: 0 }, checks: [] };
   const h = {
+    snapshot: { revision: "r", nodes: [] },
     provenance: {
+      generationId: "g",
+      source: { pdf: { sha256: "pdf" } },
+      document: { revision: "r" },
       items: [{ sourceId: "s", targets: [{ path: [1], role: "content" }] }],
     },
   };
-  const s = { revision: "r", scopes: [], changes: [], lossConfirmations: [] };
+  const s = {
+    generationId: "g",
+    sourceHash: "pdf",
+    pending: null,
+    stopped: false,
+    revision: "r",
+    scopes: [],
+    changes: [],
+    lossConfirmations: [],
+  };
   const catalog = lossCatalog([loss], h),
     base = {
       lossId: catalog[0].lossId,
@@ -190,20 +219,22 @@ test("expression losses need individual current decisions; deferral, changed mea
       decision: "meaning-preserved",
     };
   assert.equal(
-    completionGate(s, report, [loss], "r", h, { pages: [] })
+    completionGate(s, report, [loss], "r", h, { pdfSha256: "pdf", pages: [] })
       .expressionUnconfirmed,
     1,
   );
   for (const decision of ["deferred", "meaning-changed"]) {
     s.lossConfirmations = [{ ...base, decision }];
     assert.equal(
-      completionGate(s, report, [loss], "r", h, { pages: [] }).ready,
+      completionGate(s, report, [loss], "r", h, { pdfSha256: "pdf", pages: [] })
+        .ready,
       false,
     );
   }
   s.lossConfirmations = [base];
   assert.equal(
-    completionGate(s, report, [loss], "r", h, { pages: [] }).ready,
+    completionGate(s, report, [loss], "r", h, { pdfSha256: "pdf", pages: [] })
+      .ready,
     true,
   );
   assert.equal(

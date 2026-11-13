@@ -1,6 +1,7 @@
+import { repoPath } from "./paths.js";
 import { inlineText } from "../src/rich-content.js";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { extractPdf } from "../src/pdf-evidence.js";
 import { makePlan, hash } from "../src/convert.js";
 import { buildProvenance, publishHandoff } from "../src/provenance.js";
@@ -9,7 +10,9 @@ export async function syntheticGeneration(
   out,
   { header = false, text = "999" } = {},
 ) {
-  const pdf = await readFile(resolve("fixtures/lsr-1.1/LSR-1.1-standards.pdf")),
+  const pdf = await readFile(
+      repoPath("fixtures/lsr-1.1/LSR-1.1-standards.pdf"),
+    ),
     evidence = await extractPdf(pdf);
   const page = evidence.pages.find((p) =>
     p.items.some((i) => i.text === "0.12 s"),
@@ -133,8 +136,10 @@ export async function syntheticGeneration(
     await writeFile(join(out, name), bytes);
   await publishHandoff(out, p);
 }
-export async function fakeCli(out) {
-  let snapshot = JSON.parse(await readFile(join(out, "snapshot.json")));
+export async function fakeCli(out, initialSnapshot) {
+  let snapshot = initialSnapshot
+    ? structuredClone(initialSnapshot)
+    : JSON.parse(await readFile(join(out, "snapshot.json")));
   return async (command, args) => {
     if (command === "inspect") return structuredClone(snapshot);
     if (command !== "apply-batch") throw new Error("unexpected-command");
