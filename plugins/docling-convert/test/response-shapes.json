@@ -1,0 +1,190 @@
+{
+  "submitted": {
+    "task_id": "a/b",
+    "task_type": "convert",
+    "task_status": "pending",
+    "task_position": 1,
+    "task_meta": null,
+    "error_message": null,
+    "failure": null
+  },
+  "status": {
+    "task_id": "a/b",
+    "task_type": "convert",
+    "task_status": "success",
+    "task_position": null,
+    "task_meta": null,
+    "error_message": null,
+    "failure": null
+  },
+  "result": {
+    "document": {
+      "filename": "LSR-1.1-standards.pdf",
+      "md_content": null,
+      "json_content": null,
+      "html_content": null,
+      "text_content": null,
+      "doctags_content": null,
+      "doclang_content": null
+    },
+    "status": "success",
+    "errors": [],
+    "processing_time": 14.356053413000154,
+    "timings": {},
+    "confidence": {
+      "parse_score": 1.0,
+      "layout_score": 0.8410456175350737,
+      "table_score": null,
+      "ocr_score": 0.9224518497474747,
+      "mean_score": 0.918783822071463,
+      "low_score": 0.8437865036456235,
+      "mean_grade": "excellent",
+      "low_grade": "good",
+      "pages": {
+        "3": {
+          "parse_score": 1.0,
+          "layout_score": 0.6831629127264023,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.8415814563632011,
+          "low_score": 0.6990047670900822,
+          "mean_grade": "good",
+          "low_grade": "fair",
+          "pages": {}
+        },
+        "1": {
+          "parse_score": 1.0,
+          "layout_score": 0.8463406041264534,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9231703020632267,
+          "low_score": 0.8540235739201307,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "4": {
+          "parse_score": 1.0,
+          "layout_score": 0.8043541312217712,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9021770656108856,
+          "low_score": 0.8141364246606827,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "2": {
+          "parse_score": 1.0,
+          "layout_score": 0.8450103785310473,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9225051892655236,
+          "low_score": 0.852759859604495,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "6": {
+          "parse_score": 1.0,
+          "layout_score": 0.8814879655838013,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9407439827919006,
+          "low_score": 0.8874135673046112,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "7": {
+          "parse_score": 1.0,
+          "layout_score": 0.865188921491305,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9325944607456524,
+          "low_score": 0.8719294754167397,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "5": {
+          "parse_score": 1.0,
+          "layout_score": 0.866611962968653,
+          "table_score": null,
+          "ocr_score": 0.9375733333333334,
+          "mean_score": 0.9347284321006621,
+          "low_score": 0.873708100005121,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "8": {
+          "parse_score": 1.0,
+          "layout_score": 0.9178876429796219,
+          "table_score": null,
+          "ocr_score": 0.8417541666666667,
+          "mean_score": 0.9198806032154295,
+          "low_score": 0.8493675142979622,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "12": {
+          "parse_score": 1.0,
+          "layout_score": 0.7306744185360995,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.8653372092680498,
+          "low_score": 0.7441406976092945,
+          "mean_grade": "good",
+          "low_grade": "fair",
+          "pages": {}
+        },
+        "10": {
+          "parse_score": 1.0,
+          "layout_score": 0.8786283352158286,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9393141676079143,
+          "low_score": 0.8846969184550372,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "11": {
+          "parse_score": 1.0,
+          "layout_score": 0.8586533930566576,
+          "table_score": null,
+          "ocr_score": 0.9177354545454546,
+          "mean_score": 0.9254629492007039,
+          "low_score": 0.8645615992055372,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "13": {
+          "parse_score": 1.0,
+          "layout_score": 0.8834896002496991,
+          "table_score": null,
+          "ocr_score": null,
+          "mean_score": 0.9417448001248496,
+          "low_score": 0.8893151202372142,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        },
+        "9": {
+          "parse_score": 1.0,
+          "layout_score": 0.8721027612686157,
+          "table_score": null,
+          "ocr_score": 0.9927444444444445,
+          "mean_score": 0.95494906857102,
+          "low_score": 0.8841669295861986,
+          "mean_grade": "excellent",
+          "low_grade": "good",
+          "pages": {}
+        }
+      }
+    }
+  }
+}

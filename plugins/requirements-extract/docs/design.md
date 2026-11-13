@@ -161,12 +161,12 @@ title: 합성 시스템 요구사항
 | 정보 | 필요한 이유·검사 |
 | --- | --- |
 | 원본 PDF와 고정 Docling 결과의 digest, 문서 식별, 상대 파일 참조 | self_ref 충돌 방지와 원본 확인. 원본 파일을 찾지 못하면 출처 확인 불가. 절대 경로나 실행 환경 정보는 문서에 저장하지 않는다. |
-| 검수 리치오 문서 digest와 그 digest에 묶인 대응표 | 낡은 위치에 연결하지 않기. 수정 후 digest가 다르면 현재 위치 탐색을 중단한다. |
+| 생성 리치오 문서 revision과 complete/provenance 결합 | v1은 생성 시점 unreviewed다. bytes/revision 불일치는 거부하고 검수본·편집 후 갱신은 보류한다. |
 | 원본 self_ref → 현재 리치오 요소/범위의 다대다 대응 | 병합·분할된 문단·표도 추적. 현재 NodePath·레이블·셀 범위는 이 대응표의 위치 값이지 영속 ID가 아니다. |
-| 원문 쪽 목록·bbox·쪽 크기·좌표 단위와 원점·회전 | 페이지를 넘는 문장·표를 모두 강조한다. PDF 물리 쪽은 1부터, 인쇄 쪽 표기는 별도로 제공해야 한다. 좌표 규칙은 명시적 변환 없이는 추측하지 않는다. |
+| 원문 물리 쪽·TOPLEFT pt bbox·쪽 크기 | v1 regions/pages를 보존한다. 회전/인쇄 쪽은 null이면 미확인으로 표시하며 추측하지 않는다. |
 | 원문 인용과 그 문장이 문서에 표현된 텍스트 | 숫자 검사와 교정 차이 구별. 교정으로 바뀐 값은 검수 근거가 필요하다. |
-| 병합·분할·누락·제외·교정의 원본 요소 계보와 검수 상태 | 삭제된 self_ref를 다른 원문으로 재사용하지 않는다. 미검수·표현 손실은 후속 후보의 문제로 전파한다. |
-| 표 행/열 머리글·단위·주석의 문맥과 셀 원문 위치 | 숫자만 떨어져 의미가 바뀌는 것을 막는다. 셀 위치가 없으면 표 전체를 출처로 보존하고 정밀 추적 미충족을 알린다. |
+| 원본 계보·disposition·손실·bindingState | v1의 생성 계보만 소비한다. 교정 이력/검수 완료 정보는 없으며 미검수·손실·삭제/불확실 상태를 전파한다. |
+| sourceCell·tableModel의 원래 범위/머리 기여/병합/검수 표시 | 원문 값·span을 보존한다. regionPrecision=table이며 셀별 쪽을 추측하지 않는다. 반복된 숫자 확정 전에 사람 검수가 필요하다. |
 
 selector는 `full`, `text:<start>:<end>`(검토 당시 요소 텍스트의 Unicode code point, 0부터 반개구간), `cell:<row>:<column>`(0부터) 중 하나다. 표·목록에서 세부 위치가 없으면 full로만 허용한다. quoteDigest는 UTF-8 원문 조각의 전체 SHA-256이며 공백·기호를 정규화하지 않는다. 셀 selector의 실제 어댑터 의미는 앞 단계와 합의 전까지 가정이다.
 
@@ -400,3 +400,41 @@ reader는 inspect/compare의 모든 블록·셀을 소비 기록과 대조하고
 | --- | --- | --- |
 | 기준 문서의 표·제목·속성에 서식이 필요한가 | PR1은 평문으로 제한하고 서식 발견 시 오류 | 프로파일과 authoring/읽기/XHTML 표 정책 |
 | 검토 메모·목록을 첫 실사용에 포함해야 하는가 | PR1은 오류로 보류하고 후속 구현 | 구획 reader·목록 read model·생성기 |
+
+## 14. Rich body 구현 (PR 가)
+
+공개 master 9956e8e0의 문서 계약/CLI 도움말과 별도 임시 worktree의 빌드 CLI를 사용했다. 새 content/authoring 계약에 맞춰 [처리 표](read-profile.md)를 갱신한다. PR1의 문단·표 제한을 완화해 표 캡션/rich 셀, 중첩 목록, 미주, 인용/주의 상자/코드 블록, 링크/취소선/줄바꿈을 지원한다. 요구사항 제목의 서식도 ReqIF.Name에 보존한다. 프로파일의 속성 필드는 여전히 평문이다.
+
+미주는 요구사항에서 사용한 정의를 모델에 결합하고 [label] 표시와 본문 끝 주석으로 옮긴다. 정의 서식·부호·단위도 보존한다. content가 있을 때 파생 text는 확정 digest에서 제외한다. 새 공식 authoring에 target·rich 내용·미주를 넣어 생성하므로 레이블 추가 배치가 더는 필요하지 않다.
+
+8절의 수식/첨부 정책은 유지한다. 수식 원문과 그림 캡션은 모델에 남지만 검증된 PNG/첨부 패키징이 없는 ReqIF는 양 모드에서 차단한다. 참조/인용도 원문 구조는 보존하되 대상 매핑 후속 전 내보내기를 차단한다. PNG가 없는 LaTeX를 평문 수식으로 내보내지 않는다.
+
+공식 XSD에서 ol@start가 거부됨을 확인했다. 비기본 순서 목록은 원래 번호·스타일·구분자를 각 항목 글자로 명시하고 중첩을 유지한다. XHTML del과 caption을 사용해 표준 검증했다. 10의 지수 3을 sup 요소로, 단위의 지수/아래첨자를 각 요소로 유지하는 검사를 고정했다.
+
+검증: 단위 54개, 새 빌드 CLI의 생성/읽기/재작성/재읽기, 공식 XSD/65개 ID·참조/독립 parser 왕복 통과. 임시 자료 보존, 설치·화면·PNG·실제 ALM 미검증.
+
+| 추가 소유자 확인 | 현재 가정 | 변경 지점 |
+| --- | --- | --- |
+| 미주 표기 방식 | 요구사항별 [label] 및 끝 주석 | XHTML 본문 정책 |
+| 비기본 목록 번호 | 번호를 글자로 보존 | 목록 XHTML 정책 |
+
+### PR #10 리뷰 수정
+
+[재현·수정·실제 fixture 검증](rich-review.md): 문서별 setId로 XHTML anchor를 구분하고, 로컬 표 참조와 전역 요구사항 참조 scope를 구별한다. 내보내기 직전에 IDENTIFIER/id/xml:id 전체 유일성을 검사한다. 미주/목록은 ID를 생성하지 않으며 그림/수식 내보내기는 계속 차단이다.
+
+공식 compare의 figure.caption 객체에서 content를 보존한다. 전체 읽기 구조를 선행 검사하며 예기치 않은 모양은 위치가 있는 projection-shape 오류로 반환한다. 실제 CLI 출력 fixture로 지원 확장 요소 전체를 검사했고 단위 59개와 XSD/독립 parser를 통과했다.
+
+## 15. 확정 인계 계약 v1 소비 (PR 나)
+
+5절의 초기 요구는 contracts/docling-to-litzio의 생성 완결 v1에 맞춰 구체화했다. 계약과 producer 코드는 수정하지 않는다. 소비자는 schema 사본과 독립 의미 검사로 파일만 읽는다. complete와 파일 bytes, generation/revision, 원본 selfRef/sourceId/셀/쪽/좌표, 공식 현재 snapshot/receipt, 전수 손실·그림 원본까지 검사하며 표지를 마지막에 다시 읽는다. 서명·원자 snapshot은 주장하지 않는다.
+
+출처는 기존 5열 표에 선택 trace JSON 열을 더해 저장한다. 기존 문서/ID는 유지한다. sourceKey 등록의 artifactDigest는 고정 Docling bytes, nativeDigest는 생성 문서 revision이다. text selector는 원본 sourceText의 code point이며 native 문자열 offset으로 간주하지 않는다. 표 sourceCell 원래 범위와 현재 selector를 함께 남기며, 복합 머리 합치기/병합 반복의 tableModel과 reviewRequired를 출처에 싣는다. explanation target은 인용으로 쓰지 않는다.
+
+v1의 모든 reviewState가 unreviewed라는 계약을 따른다. current는 위치 유효성일 뿐 검수 증거가 아니다. uncertain·deleted·missing source는 확인 필요/오류로 남기고 자동 재연결하지 않는다. requireReviewed와 v1 trace를 가진 정식 ReqIF는 거부한다. 확인된 생성 위치를 초안 후보와 TEST ONLY 출력으로 다루는 일은 가능하다. 검수 완료/교정 이력, 회전·인쇄 쪽, 셀별 정밀 위치는 요구를 임의로 채우지 않고 결과의 한계로 표시한다. 실제 검수본 수락은 후속 계약/증거가 필요하다.
+
+8절 매핑대로 전체 sources/trace를 SourceReferences 정규 JSON에, 물리 쪽 목록을 SourcePages에 싣는다. 수식 PNG가 없는 후보는 시험 내보내기도 차단하며, 검사에서 제외한 파일은 이유/ID를 명시한다. [실행/결과](provenance.md)에 실제 생성 명령, 171개 원본 요소 전수 확인, 4개 손 선택 후보·다대다/물리 6·7쪽 연결, native JSON 왕복, PDF 표 영역 인용 4개 일치와 수식 기계 동등성 미확인, 시험 ReqIF 표준 검증을 구별했다.
+
+| 추가 소유자 확인 | 현재 가정 | 변경 지점 |
+| --- | --- | --- |
+| 생성 위치가 검증됐으나 미검수인 후보의 활용 | 초안/TEST ONLY만 허용; 확정 출처로 승격하지 않음 | 검수본 인계 채택 정책 |
+| 표 전체 영역 정밀도의 표시 | 셀별 쪽을 추측하지 않고 원래 span/병합 위험을 함께 표시 | 출처 표시·후속 검수 |

@@ -1,0 +1,521 @@
+{
+  "components": {
+    "schemas": {
+      "TaskStatusResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "minLength": 1
+          },
+          "task_type": {
+            "const": "convert",
+            "type": "string"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/ConversionStatus"
+          },
+          "task_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Position"
+          },
+          "task_meta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskProcessingMeta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicFailureInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "task_type",
+          "task_status"
+        ],
+        "title": "TaskStatusResponse",
+        "additionalProperties": false
+      },
+      "TaskType": {
+        "type": "string",
+        "enum": [
+          "convert",
+          "chunk"
+        ],
+        "title": "TaskType"
+      },
+      "ConversionStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "started",
+          "failure",
+          "success",
+          "partial_success",
+          "skipped"
+        ],
+        "title": "ConversionStatus"
+      },
+      "TaskProcessingMeta": {
+        "properties": {
+          "num_docs": {
+            "type": "integer",
+            "title": "Num Docs"
+          },
+          "num_processed": {
+            "type": "integer",
+            "title": "Num Processed",
+            "default": 0
+          },
+          "num_succeeded": {
+            "type": "integer",
+            "title": "Num Succeeded",
+            "default": 0
+          },
+          "num_partially_succeeded": {
+            "type": "integer",
+            "title": "Num Partially Succeeded",
+            "default": 0
+          },
+          "num_failed": {
+            "type": "integer",
+            "title": "Num Failed",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "num_docs"
+        ],
+        "title": "TaskProcessingMeta",
+        "additionalProperties": false
+      },
+      "PublicFailureInfo": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/FailureCategory"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/FailurePhase"
+          },
+          "details": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category",
+          "message",
+          "retryable",
+          "phase"
+        ],
+        "title": "PublicFailureInfo",
+        "additionalProperties": false
+      },
+      "FailureCategory": {
+        "type": "string",
+        "enum": [
+          "policy",
+          "capacity",
+          "source_unavailable",
+          "target_unavailable",
+          "timeout",
+          "internal",
+          "backend_failure",
+          "inference_failure",
+          "unknown"
+        ],
+        "title": "FailureCategory",
+        "description": "Error category shared by task-scope (``PublicFailureInfo``) and\ndocument/page-scope (``ErrorItem``) errors, so the jobkit bridge can pass one\nto the other without translation.\n\nTask-scope only: CAPACITY, TARGET_UNAVAILABLE, INTERNAL.\nDocument/page-scope only: BACKEND_FAILURE, INFERENCE_FAILURE.\nShared: POLICY, SOURCE_UNAVAILABLE, TIMEOUT.\n\nUNKNOWN is the default for uncategorized errors, distinct from INTERNAL (a\nknown service defect)."
+      },
+      "FailurePhase": {
+        "type": "string",
+        "enum": [
+          "admission",
+          "source_enumeration",
+          "execution",
+          "orchestration"
+        ],
+        "title": "FailurePhase"
+      },
+      "ConvertDocumentResponse": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/ExportDocumentResponse"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ConversionStatus"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorItem"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          },
+          "processing_time": {
+            "type": "number",
+            "title": "Processing Time",
+            "minimum": 0
+          },
+          "timings": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProfilingItem"
+            },
+            "type": "object",
+            "title": "Timings",
+            "default": {}
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfidenceScores"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "status",
+          "errors",
+          "processing_time",
+          "timings",
+          "confidence"
+        ],
+        "title": "ConvertDocumentResponse",
+        "description": "Single-document inline response with task-level timing flattened in.",
+        "additionalProperties": false
+      },
+      "ExportDocumentResponse": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "md_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Md Content"
+          },
+          "json_content": {
+            "type": "object"
+          },
+          "html_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Content"
+          },
+          "text_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Content"
+          },
+          "doctags_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doctags Content"
+          },
+          "doclang_content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doclang Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "json_content"
+        ],
+        "title": "ExportDocumentResponse",
+        "additionalProperties": false
+      },
+      "DoclingDocument": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "ErrorItem": {
+        "properties": {
+          "component_type": {
+            "$ref": "#/components/schemas/DoclingComponentType"
+          },
+          "module_name": {
+            "type": "string",
+            "title": "Module Name"
+          },
+          "error_message": {
+            "type": "string",
+            "title": "Error Message"
+          },
+          "category": {
+            "$ref": "#/components/schemas/FailureCategory",
+            "default": "unknown"
+          },
+          "page_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page No"
+          }
+        },
+        "type": "object",
+        "required": [
+          "component_type",
+          "module_name",
+          "error_message"
+        ],
+        "title": "ErrorItem",
+        "description": "Structured error information from document conversion.\n\nAttributes:\n    component_type: The component that generated the error.\n    module_name: The module where the error occurred.\n    error_message: Human-readable error description.\n    category: Semantic category of the error for filtering.\n    page_no: 1-indexed page the error is attributable to, or None for\n        document-scoped errors.",
+        "additionalProperties": false
+      },
+      "DoclingComponentType": {
+        "type": "string",
+        "enum": [
+          "document_backend",
+          "model",
+          "doc_assembler",
+          "user_input",
+          "pipeline"
+        ],
+        "title": "DoclingComponentType"
+      },
+      "ProfilingItem": {
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ProfilingScope"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "default": 0
+          },
+          "times": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array",
+            "title": "Times",
+            "default": []
+          },
+          "start_timestamps": {
+            "items": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "type": "array",
+            "title": "Start Timestamps",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "title": "ProfilingItem",
+        "additionalProperties": false
+      },
+      "ProfilingScope": {
+        "type": "string",
+        "enum": [
+          "page",
+          "document"
+        ],
+        "title": "ProfilingScope"
+      },
+      "ConfidenceScores": {
+        "properties": {
+          "parse_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parse Score"
+          },
+          "layout_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layout Score"
+          },
+          "table_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Score"
+          },
+          "ocr_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Score"
+          },
+          "mean_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean Score"
+          },
+          "low_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low Score"
+          },
+          "mean_grade": {
+            "$ref": "#/components/schemas/QualityGrade",
+            "default": "unspecified"
+          },
+          "low_grade": {
+            "$ref": "#/components/schemas/QualityGrade",
+            "default": "unspecified"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ConfidenceScores"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "title": "ConfidenceScores",
+        "description": "JSON-safe snapshot of docling confidence scores.\n\nPlain stored floats (NaN coerced to null) rather than a reuse of\ndocling's ``ConfidenceReport``, so the wire schema carries no numpy\ncomputed fields and deserializing clients don't recompute anything.",
+        "additionalProperties": false
+      },
+      "QualityGrade": {
+        "type": "string",
+        "enum": [
+          "poor",
+          "fair",
+          "good",
+          "excellent",
+          "unspecified"
+        ],
+        "title": "QualityGrade"
+      }
+    }
+  }
+}

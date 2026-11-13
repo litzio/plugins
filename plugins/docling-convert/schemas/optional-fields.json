@@ -1,0 +1,256 @@
+{
+  "reason": "Fields not required by the pinned public schema or the offline contract overlay. Absence is allowed; supplied values are validated. No defaults are inserted. Dynamic metadata-map entries are optional; physical document.pages keys are required by the requested page count.",
+  "fields": {
+    "server-responses.json": {
+      "#/components/schemas/TaskStatusResponse": [
+        "error_message",
+        "failure",
+        "task_meta",
+        "task_position"
+      ],
+      "#/components/schemas/TaskProcessingMeta": [
+        "num_failed",
+        "num_partially_succeeded",
+        "num_processed",
+        "num_succeeded"
+      ],
+      "#/components/schemas/PublicFailureInfo": [
+        "details"
+      ],
+      "#/components/schemas/ConvertDocumentResponse": [
+        "task_id"
+      ],
+      "#/components/schemas/ExportDocumentResponse": [
+        "doclang_content",
+        "doctags_content",
+        "html_content",
+        "md_content",
+        "text_content"
+      ],
+      "#/components/schemas/ErrorItem": [
+        "category",
+        "page_no"
+      ],
+      "#/components/schemas/ProfilingItem": [
+        "count",
+        "start_timestamps",
+        "times"
+      ],
+      "#/components/schemas/ConfidenceScores": [
+        "layout_score",
+        "low_grade",
+        "low_score",
+        "mean_grade",
+        "mean_score",
+        "ocr_score",
+        "pages",
+        "parse_score",
+        "table_score"
+      ]
+    },
+    "docling-document.json": {
+      "#": [
+        "field_items",
+        "field_regions"
+      ],
+      "#/$defs/BaseMeta": [
+        "entities",
+        "keywords",
+        "language",
+        "summary",
+        "topics"
+      ],
+      "#/$defs/CodeItem": [
+        "comments",
+        "image",
+        "source"
+      ],
+      "#/$defs/CodeMetaField": [
+        "confidence",
+        "created_by",
+        "language"
+      ],
+      "#/$defs/DescriptionAnnotation": [
+        "kind"
+      ],
+      "#/$defs/DescriptionMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/DocumentOrigin": [
+        "uri"
+      ],
+      "#/$defs/EntityMention": [
+        "charspan",
+        "confidence",
+        "created_by",
+        "label",
+        "orig"
+      ],
+      "#/$defs/FieldHeadingItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/FieldItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/FieldRegionItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/FieldValueItem": [
+        "comments",
+        "kind",
+        "source"
+      ],
+      "#/$defs/FineRef": [
+        "range"
+      ],
+      "#/$defs/FloatingMeta": [
+        "description",
+        "entities",
+        "keywords",
+        "language",
+        "summary",
+        "topics"
+      ],
+      "#/$defs/FormItem": [
+        "comments",
+        "image",
+        "source"
+      ],
+      "#/$defs/Formatting": [
+        "bold",
+        "italic",
+        "script",
+        "strikethrough",
+        "underline"
+      ],
+      "#/$defs/FormulaItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/GraphCell": [
+        "item_ref"
+      ],
+      "#/$defs/GraphData": [
+        "cells",
+        "links"
+      ],
+      "#/$defs/GroupItem": [
+        "name"
+      ],
+      "#/$defs/InlineGroup": [
+        "name"
+      ],
+      "#/$defs/KeyValueItem": [
+        "comments",
+        "image",
+        "source"
+      ],
+      "#/$defs/LanguageMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/ListGroup": [
+        "name"
+      ],
+      "#/$defs/ListItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/MiscAnnotation": [
+        "kind"
+      ],
+      "#/$defs/MoleculeMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/PictureBarChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureClassificationData": [
+        "kind"
+      ],
+      "#/$defs/PictureClassificationMetaField": [
+        "predictions"
+      ],
+      "#/$defs/PictureClassificationPrediction": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/PictureItem": [
+        "annotations",
+        "comments",
+        "source"
+      ],
+      "#/$defs/PictureLineChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureMeta": [
+        "classification",
+        "code",
+        "description",
+        "entities",
+        "keywords",
+        "language",
+        "molecule",
+        "summary",
+        "tabular_chart",
+        "topics"
+      ],
+      "#/$defs/PictureMoleculeData": [
+        "kind"
+      ],
+      "#/$defs/PicturePieChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureScatterChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureStackedBarChartData": [
+        "kind"
+      ],
+      "#/$defs/PictureTabularChartData": [
+        "kind"
+      ],
+      "#/$defs/SectionHeaderItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/SummaryMetaField": [
+        "confidence",
+        "created_by"
+      ],
+      "#/$defs/TableData": [
+        "grid",
+        "orientation"
+      ],
+      "#/$defs/TableItem": [
+        "annotations",
+        "comments",
+        "image",
+        "source"
+      ],
+      "#/$defs/TabularChartMetaField": [
+        "confidence",
+        "created_by",
+        "title"
+      ],
+      "#/$defs/TextItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/TitleItem": [
+        "comments",
+        "source"
+      ],
+      "#/$defs/TrackSource": [
+        "identifier",
+        "kind",
+        "voice"
+      ]
+    }
+  }
+}

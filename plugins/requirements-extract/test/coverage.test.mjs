@@ -9,20 +9,21 @@ import { sample } from './sample.mjs';
 const fixture = i => JSON.parse(readFileSync(new URL('./fixtures/set-' + i + '.json', import.meta.url)));
 const read = (x, name = 'set-1.md') => readInspection(x.inspection, name, x.snapshot);
 
-test('review regression: table applicability caption blocks even with unchanged confirmation', () => {
+test('review regression: table applicability caption is preserved and invalidates confirmation', () => {
   const x = fixture(1);
   const table = x.snapshot.blocks.find(b => b.block === 'table' && b.rows[0].cells[0].text === '조건');
   table.caption = [{ kind: 'text', text: '이 표는 85 °C에서만 적용한다' }];
   x.inspection.nodes.find(n => n.type === 'table' && n.path[0] === table.path[0]).caption = structuredClone(table.caption);
   const sets = [read(fixture(0), 'set-0.md'), read(x)];
-  assert.ok(sets[1].diagnostics.some(d => d.code === 'unmapped-semantic' && d.file === 'set-1.md' && d.location[0] === table.path[0]));
+  assert.deepEqual(sets[1].diagnostics, []);
   assert.throws(() => exportReqif(sets));
-  assert.throws(() => exportReqif(sets, { testOnly: true }));
+  assert.match(exportReqif(sets, { testOnly: true }).xml, /이 표는 85 °C에서만 적용한다/);
+  for (const s of sets) for (const r of s.requirements) r.confirmedDigest = digest(r);
+  assert.match(exportReqif(sets).xml, /이 표는 85 °C에서만 적용한다/);
 });
 
 const bodyTable = x => x.snapshot.blocks.find(b => b.block === 'table' && b.rows[0].cells[0].text === '조건');
 for (const [name, change] of [
-  ['table rich caption', x => bodyTable(x).caption = [{ kind: 'strong', children: [{ kind: 'text', text: '85 °C only' }] }]],
   ['table merged cell', x => bodyTable(x).rows[1].cells[0].colspan = 2],
   ['unknown row content', x => bodyTable(x).rows[1].condition = '85 °C'],
   ['unknown block field', x => x.snapshot.blocks.find(b => b.block === 'paragraph').condition = '85 °C'],
@@ -43,7 +44,7 @@ for (const type of ['figure', 'footnote', 'list', 'equation', 'code', 'future-bl
   if (type === 'list') p.items = [{ text: 'outer', items: [{ text: 'inner condition' }] }];
   x.inspection.nodes.find(n => JSON.stringify(n.path) === JSON.stringify(p.path)).type = type;
   const sets = [read(fixture(0)), read(x)];
-  assert.ok(sets[1].diagnostics.some(d => d.code === 'unsupported-body'));
+  assert.ok(sets[1].diagnostics.some(d => d.severity === 'error'));
   assert.throws(() => exportReqif(sets));
 });
 
