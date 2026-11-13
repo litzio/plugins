@@ -212,6 +212,7 @@ export async function createReview(input, output) {
   const handoff = await loadHandoff(input),
     p = handoff.provenance,
     doc = JSON.parse(await readRelative(input, p.source.docling.relativePath));
+  if (handoff.history) throw new Error("review-baseline-required");
   const evidence = await extractPdf(
     await readRelative(input, p.source.pdf.relativePath),
   );
@@ -270,7 +271,8 @@ export async function createReview(input, output) {
   return report;
 }
 export async function readReview(input, output) {
-  const handoff = await loadHandoff(input),
+  const loaded = await loadHandoff(input),
+    handoff = loaded.baseline ?? loaded,
     raw = await readRelative(output, "review-complete.json"),
     m = JSON.parse(raw);
   validateSchema(m, schemas["review-complete"]);

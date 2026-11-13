@@ -1,3 +1,9 @@
+import { validateReview } from "./review.js";
+import {
+  validateHistory,
+  validateCorrectionLedger,
+  verifyCorrectionEvidence,
+} from "./correction-history.js";
 import { listText } from "./rich-content.js";
 import { projectList } from "./list-rule.js";
 import { projectTable, sourceStructure } from "./table-rule.js";
@@ -458,10 +464,28 @@ export function validateEvidence(p, doc, record, snapshot, receipt) {
     assets: p.assets.length,
   };
 }
-export async function loadHandoff(root, { requireReviewed = false } = {}) {
+export async function loadHandoff(
+  root,
+  { requireReviewed = false, reconciling = false } = {},
+) {
+  let ledgerRaw, ledger;
+  try {
+    ledgerRaw = await readRelative(root, "correction-ledger.json");
+    ledger = JSON.parse(ledgerRaw);
+    need(reconciling || !ledger.pending, "pending-reconcile");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+  }
   const markerRaw = await readRelative(root, "complete.json"),
     marker = JSON.parse(markerRaw);
   const result = await validateFileSet(root, marker);
+  if (result.history)
+    validateCorrectionLedger(result.history, ledger, reconciling);
+  if (ledgerRaw)
+    need(
+      equal(ledgerRaw, await readRelative(root, "correction-ledger.json")),
+      "ledger-changed",
+    );
   need(
     equal(await readRelative(root, "complete.json"), markerRaw),
     "marker-changed",
@@ -482,6 +506,8 @@ async function validateFileSet(root, marker) {
     need(files.has(name), "required-file");
     return JSON.parse(files.get(name));
   };
+  const history =
+    marker.schemaVersion === "1.1.0" ? json("correction-history.json") : null;
   const p = json("provenance.json"),
     losses = json("losses.json"),
     snapshot = json("snapshot.json"),
@@ -494,14 +520,17 @@ async function validateFileSet(root, marker) {
     "generation",
   );
   need(
-    marker.documentRevision === p.document.revision &&
-      losses.documentRevision === p.document.revision,
+    (history ? history.baselineRevision : marker.documentRevision) ===
+      p.document.revision && losses.documentRevision === p.document.revision,
     "document-revision",
   );
   const mustFile = (path, digest) => {
     need(files.has(path) && hash(files.get(path)) === digest, "bound-file");
   };
-  mustFile(p.document.relativePath, p.document.revision);
+  mustFile(
+    p.document.relativePath,
+    history ? marker.documentRevision : p.document.revision,
+  );
   for (const f of [
     p.source.pdf,
     p.source.docling,
@@ -546,7 +575,59 @@ async function validateFileSet(root, marker) {
     record.source.bytes === files.get(p.source.pdf.relativePath).length,
     "pdf-bytes",
   );
-  return { provenance: p, losses, marker, snapshot, coverage };
+  const baseline = { provenance: p, losses, marker, snapshot, coverage };
+  if (!history) return baseline;
+  validateSchema(history, schemas["correction-history"]);
+  const evidence = json("review/pdf-evidence.json"),
+    report = json("review/review-targets.json");
+  validateSchema(evidence, schemas["pdf-evidence"]);
+  validateReview(report, baseline, evidence);
+  need(
+    report.evidenceFile.sha256 === hash(files.get("review/pdf-evidence.json")),
+    "history-evidence-digest",
+  );
+  need(
+    report.inputs.provenanceSha256 ===
+      marker.files.find((f) => f.relativePath === "provenance.json").sha256 &&
+      report.inputs.snapshotSha256 ===
+        marker.files.find((f) => f.relativePath === "snapshot.json").sha256,
+    "history-review-input",
+  );
+  verifyCorrectionEvidence(history, p, evidence, report);
+  const current = validateHistory(
+    history,
+    snapshot,
+    marker.documentRevision,
+    p.generationId,
+  );
+  const updated = structuredClone(p);
+  updated.schemaVersion = "1.1.0";
+  updated.document.revision = current.revision;
+  updated.document.blocks = current.nodes
+    .filter((n) => n.path.length === 1 && n.type !== "caption")
+    .map((n) => ({
+      path: n.path,
+      kind: n.type,
+      text: textAt(current, n.path),
+    }));
+  for (const i of updated.items)
+    for (const t of [
+      ...i.targets,
+      ...i.cells.flatMap((c) => c.targets),
+      ...i.losses.flatMap((l) => l.targets),
+    ]) {
+      t.documentRevision = current.revision;
+      t.text = textAt(current, t.path, t.selector);
+    }
+  return {
+    provenance: updated,
+    losses,
+    marker,
+    snapshot: current,
+    coverage,
+    history,
+    baseline,
+  };
 }
 export function currentTargets(item) {
   need(item.reviewState === "unreviewed", "review-state");

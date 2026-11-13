@@ -10,6 +10,14 @@ export function activate(context) {
   };
   return {
     operations: {
+      material: (input) => call(jobs.material, input),
+      "correction-submit": (input) => call(jobs.correctionSubmit, input),
+      "correction-undo": (input) => call(jobs.correctionUndo, input),
+      "correction-reconcile": (input) => call(jobs.correctionReconcile, input),
+      "review-progress": (input) => call(jobs.reviewProgress, input),
+      "review-checkpoint": (input) => call(jobs.reviewCheckpoint, input),
+      "review-stop": (input) => call(jobs.reviewStop, input),
+      "review-resume": (input) => call(jobs.reviewResume, input),
       health: (input) => call(jobs.health, input),
       preflight: (input) => call(jobs.preflight, input),
       start: (input) => call(jobs.start, input),
