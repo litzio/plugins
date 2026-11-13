@@ -24,6 +24,24 @@ const labels = {
 const priority = { high: "높음", medium: "보통", low: "낮음" };
 const targetText = (t) =>
   `블록 ${t.path.join(".")}${t.selector.kind === "cell" ? ` · 셀 ${t.selector.row + 1}/${t.selector.column + 1}` : t.selector.kind === "list-item" ? ` · 목록 ${t.selector.index + 1}` : ""} (${t.bindingState})`;
+const lossLabel = {
+  "merged-cell-repeated": "병합 값 반복",
+  "compound-header-flattened": "복합 머리 합침",
+  "table-header-role": "표 머리 역할 변경",
+  "cell-block-structure": "셀 블록 한 줄 표현",
+  "dedicated-table-note": "주석 위치·연결 표현",
+  "footnote-as-paragraph": "연결 없는 주석 문단",
+};
+const lossText = (loss) => {
+  const v = loss.originalValue;
+  if (v.cell)
+    return `원본 셀 ${v.cellIndex + 1} · 행 ${v.cell.start_row_offset_idx + 1}–${v.cell.end_row_offset_idx} / 열 ${v.cell.start_col_offset_idx + 1}–${v.cell.end_col_offset_idx} · ${v.cell.text}`;
+  if (v.contributions)
+    return v.contributions
+      .map((c) => `열 ${c.column + 1}: ${c.text}`)
+      .join("; ");
+  return v.text ?? JSON.stringify(v);
+};
 export default function Screen({ React, ui, invoke, openDocument }) {
   const [bundle, setBundle] = React.useState(""),
     [check, setCheck] = React.useState(null),
@@ -44,6 +62,8 @@ export default function Screen({ React, ui, invoke, openDocument }) {
     [readState, setReadState] = React.useState(null),
     [note, setNote] = React.useState(""),
     [after, setAfter] = React.useState("");
+  const [humanVisual, setHumanVisual] = React.useState(false),
+    [cellMath, setCellMath] = React.useState(false);
   const canvas = React.useRef(null),
     compareRequest = React.useRef(0);
   const compare = async (selection) => {
@@ -51,6 +71,8 @@ export default function Screen({ React, ui, invoke, openDocument }) {
     setComparison(null);
     setReadState(null);
     setAfter("");
+    setHumanVisual(false);
+    setCellMath(false);
     try {
       const c = await invoke("compare", { jobId: job.jobId, ...selection });
       if (ticket !== compareRequest.current) return;
@@ -110,6 +132,8 @@ export default function Screen({ React, ui, invoke, openDocument }) {
           (bottom - y) * zoom,
         );
       }
+      el.dataset.renderedSource =
+        comparison.targets[targetIndex]?.sourceId ?? "";
     };
     draw().catch((e) => {
       if (!disposed) message(e);
@@ -169,6 +193,27 @@ export default function Screen({ React, ui, invoke, openDocument }) {
       });
       await loadReview(job.jobId);
       setNote("");
+    } catch (e) {
+      message(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const recordLoss = async (loss, decision) => {
+    setBusy(true);
+    try {
+      const target = comparison.targets[targetIndex];
+      await invoke("loss-decision", {
+        jobId: job.jobId,
+        lossId: loss.lossId,
+        groupId: comparison.material.group.id,
+        revision: comparison.revision,
+        targetPath: [target.path[0]],
+        pageNo,
+        decision,
+        note,
+      });
+      await loadReview(job.jobId);
     } catch (e) {
       message(e);
     } finally {
@@ -531,13 +576,17 @@ export default function Screen({ React, ui, invoke, openDocument }) {
             <span>
               미검사 {review?.gate?.uncovered ?? "—"} · 사람 확인{" "}
               {review?.gate?.human ?? "—"} · 차단 손실{" "}
-              {review?.gate?.blocking ?? "—"} · 실패{" "}
+              {review?.gate?.blocking ?? "—"} · 표현 확인 전{" "}
+              {review?.gate?.expressionUnconfirmed ?? "—"} · 실패{" "}
               {review?.gate?.failures ?? "—"} · 숫자 차이{" "}
               {review?.gate?.tokenDifferences ?? "—"}
             </span>
           </ui.Toolbar>
           {comparison && (
-            <section aria-label="원문과 문서 대조">
+            <section
+              aria-label="원문과 문서 대조"
+              data-group-id={comparison.material.group.id}
+            >
               <ui.Toolbar>
                 <strong>
                   {comparison.material.group.kinds
@@ -554,6 +603,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                   쪽{" "}
                   <select
                     aria-label="원문 쪽"
+                    disabled={busy}
                     value={pageNo}
                     onChange={(e) => setPageNo(Number(e.target.value))}
                   >
@@ -568,6 +618,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                   확대{" "}
                   <select
                     aria-label="원문 확대"
+                    disabled={busy}
                     value={zoom}
                     onChange={(e) => setZoom(Number(e.target.value))}
                   >
@@ -582,6 +633,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                   문서 위치{" "}
                   <select
                     aria-label="문서 위치"
+                    disabled={busy}
                     value={targetIndex}
                     onChange={(e) => {
                       const index = Number(e.target.value);
@@ -676,12 +728,113 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                   보류
                 </ui.Button>
               </ui.Toolbar>
+              <h3>선택 위치의 표현 손실</h3>
+              <p>
+                원문과 현재 문서를 나란히 대조한 뒤 항목별로 결정하세요. 주석은
+                연결 없이 일반 문단으로 둔 표현인지 확인합니다.
+              </p>
+              {(review?.losses ?? [])
+                .filter(
+                  (l) =>
+                    l.sourceId === comparison.targets[targetIndex]?.sourceId,
+                )
+                .map((loss) => {
+                  const record = (review?.lossConfirmations ?? [])
+                    .filter(
+                      (d) =>
+                        d.lossId === loss.lossId &&
+                        d.revision === comparison.revision,
+                    )
+                    .at(-1);
+                  return (
+                    <div key={loss.lossId} data-loss-id={loss.lossId}>
+                      <p>
+                        <strong>
+                          {lossLabel[loss.reasonCode] ?? loss.reasonCode}
+                        </strong>
+                        {loss.representation === "unlinked-annotation" &&
+                          " · 호출부 연결 없이 주석 문단으로 둠"}{" "}
+                        ·{" "}
+                        {loss.classification === "expression"
+                          ? "표현 손실"
+                          : "해소 필요"}{" "}
+                        ·{" "}
+                        {{
+                          "meaning-preserved": "뜻 보존 확인됨",
+                          "meaning-changed": "뜻이 달라짐",
+                          deferred: "보류",
+                        }[record?.decision] ?? "미확인"}
+                      </p>
+                      <p style={{ overflowWrap: "anywhere" }}>
+                        {lossText(loss)}
+                      </p>
+                      <details>
+                        <summary>원본 구조 근거</summary>
+                        <pre
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {JSON.stringify(loss.originalValue, null, 2)}
+                        </pre>
+                      </details>
+                      {loss.classification === "expression" && (
+                        <ui.Toolbar>
+                          <ui.Button
+                            disabled={
+                              busy ||
+                              !note.trim() ||
+                              readState?.state !== "ready"
+                            }
+                            onClick={() =>
+                              recordLoss(loss, "meaning-preserved")
+                            }
+                          >
+                            이 표현으로 뜻이 보존됨
+                          </ui.Button>
+                          <ui.Button
+                            variant="outline"
+                            disabled={busy || !note.trim()}
+                            onClick={() => recordLoss(loss, "meaning-changed")}
+                          >
+                            뜻이 달라짐
+                          </ui.Button>
+                          <ui.Button
+                            variant="outline"
+                            disabled={busy || !note.trim()}
+                            onClick={() => recordLoss(loss, "deferred")}
+                          >
+                            이 표현 보류
+                          </ui.Button>
+                        </ui.Toolbar>
+                      )}
+                    </div>
+                  );
+                })}
               <details>
                 <summary>교정 제출</summary>
                 <p>
-                  선택 위치의 평문 문단·셀·수식만 교정합니다. 빈 칸·서식·구조
-                  교정은 지원하지 않습니다.
+                  선택 위치의 문단·셀·수식만 교정합니다. 빈 셀과 글자 층 대조가
+                  불가능한 값은 사람이 원문 영역을 확인한 근거가 필요합니다.
                 </p>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={humanVisual}
+                    onChange={(e) => setHumanVisual(e.target.checked)}
+                  />
+                  원문 영역을 직접 보고 확인함 (사람 근거)
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={cellMath}
+                    onChange={(e) => setCellMath(e.target.checked)}
+                    disabled={!humanVisual}
+                  />
+                  셀에 인라인 수식으로 입력
+                </label>
                 <label>
                   교정 후 값
                   <textarea
@@ -770,7 +923,10 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                             ]
                           : [];
                       });
-                      if (scope.some((r) => r.pageNo !== pageNo))
+                      if (
+                        !humanVisual &&
+                        scope.some((r) => r.pageNo !== pageNo)
+                      )
                         throw new Error(
                           "여러 쪽의 근거는 비서 교정 절차로 제출하세요.",
                         );
@@ -787,7 +943,24 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                           node.type === "equation" ? node.latex : node.text,
                         after,
                         reason: note,
-                        evidence: { refs, scope },
+                        ...(cellMath
+                          ? { afterContent: [{ kind: "math", value: after }] }
+                          : {}),
+                        evidence: humanVisual
+                          ? {
+                              kind: "human-source-region",
+                              refs: [],
+                              scope: (
+                                comparison.targets[targetIndex]?.regions ??
+                                comparison.regions
+                              )
+                                .filter((r) => r.pageNo === pageNo)
+                                .map((r) => ({
+                                  pageNo: r.pageNo,
+                                  bbox: r.bbox,
+                                })),
+                            }
+                          : { refs, scope },
                       });
                       await loadReview(job.jobId);
                       if (reply.status === "pending-reconcile")
@@ -861,6 +1034,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                 "verified-protected-tokens": "숫자·단위 재대조",
                 "not-applicable": "토큰 대조 대상 아님",
                 "undo-restoration": "과거 값 복원",
+                "human-source-region": "사람이 원문 영역을 보고 확인함",
               }[c.validation.evidenceRecheck],
             }))}
             columns={[
@@ -960,6 +1134,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
             검수 묶음 선택
             <select
               aria-label="검수 묶음 선택"
+              disabled={busy}
               value={detail?.group.id ?? ""}
               onChange={(e) => choose(e.target.value)}
             >

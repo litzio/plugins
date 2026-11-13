@@ -264,11 +264,38 @@ export function createJobs(
             .filter((t) => t.role !== "explanation")
             .map((t) => ({
               ...t,
+              sourceId: i.sourceId,
               regions: m.findings
                 .filter((f) => f.sourceIds.includes(i.sourceId))
                 .flatMap((f) => f.regions),
             })),
         );
+      for (const f of m.findings)
+        for (const t of f.targets) {
+          if (t.selector.kind !== "cell") continue;
+          const path = [...t.path, t.selector.row, t.selector.column];
+          if (
+            !h.snapshot.nodes.some(
+              (n) => JSON.stringify(n.path) === JSON.stringify(path),
+            )
+          )
+            continue;
+          if (
+            !targets.some(
+              (x) =>
+                JSON.stringify(x.path) === JSON.stringify(t.path) &&
+                x.selector.kind === "cell" &&
+                x.selector.row === t.selector.row &&
+                x.selector.column === t.selector.column,
+            )
+          )
+            targets.push({
+              ...t,
+              sourceId: f.sourceIds[0],
+              bindingState: "current",
+              regions: f.regions,
+            });
+        }
       if (change) {
         targets = targets.filter(
           (t) =>
@@ -288,6 +315,7 @@ export function createJobs(
         targets: targets
           .filter((t) => t.bindingState === "current")
           .map((t) => ({
+            sourceId: t.sourceId,
             regions: change?.evidence.scope ?? t.regions,
             revision: m.documentRevision,
             path:
@@ -310,6 +338,7 @@ export function createJobs(
         ),
       };
     },
+    lossDecision: (input) => correction("lossDecision", input),
     humanDecision: (input) => correction("humanDecision", input),
     reviewFinalize: (input) => correction("finalize", input),
     material: (input) => correction("material", input),

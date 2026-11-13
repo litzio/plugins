@@ -12,6 +12,7 @@ export function activate(context) {
     operations: {
       revision: (input) => call(jobs.revision, input),
       compare: (input) => call(jobs.compare, input),
+      "loss-decision": (input) => call(jobs.lossDecision, input),
       "human-decision": (input) => call(jobs.humanDecision, input),
       "review-finalize": (input) => call(jobs.reviewFinalize, input),
       material: (input) => call(jobs.material, input),

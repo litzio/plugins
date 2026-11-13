@@ -1,4 +1,9 @@
-import { completionGate, humanQueue } from "./human-review.js";
+import {
+  completionGate,
+  humanQueue,
+  lossCatalog,
+  expressionReviews,
+} from "./human-review.js";
 import { schemas, validateSchema } from "./schema.js";
 import { readFile, writeFile, rename, open, unlink } from "node:fs/promises";
 
@@ -21,6 +26,8 @@ import {
   projectEdit,
   operation,
   evidenceRecheck,
+  verifyVisualScope,
+  targetNode,
 } from "./correction-history.js";
 
 import { isDeepStrictEqual as equal } from "node:util";
@@ -250,7 +257,11 @@ export function createCorrections(root, cli) {
     const changes = [...s.changes, change];
 
     const history = {
-      schemaVersion: "1.1.0",
+      schemaVersion: changes.some(
+        (c) => c.evidence.kind === "human-source-region",
+      )
+        ? "1.2.0"
+        : "1.1.0",
       generationId: s.generationId,
       baselineRevision: s.baselineMarker.documentRevision,
       changes,
@@ -261,7 +272,11 @@ export function createCorrections(root, cli) {
 
     const marker = {
       ...s.baselineMarker,
-      schemaVersion: "1.1.0",
+      schemaVersion: changes.some(
+        (c) => c.evidence.kind === "human-source-region",
+      )
+        ? "1.2.0"
+        : "1.1.0",
       documentRevision: snapshot.revision,
       files: s.baselineMarker.files.map((f) =>
         f.relativePath === "document.md"
@@ -308,7 +323,11 @@ export function createCorrections(root, cli) {
     Object.assign(
       s.submissions.find((x) => x.changeId === change.changeId),
       {
-        status: change.validation.protectedTokens ? "applied" : "uncertain",
+        status:
+          change.validation.protectedTokens ||
+          change.validation.evidenceRecheck === "human-source-region"
+            ? "applied"
+            : "uncertain",
         afterRevision: change.afterRevision,
       },
     );
@@ -354,6 +373,69 @@ export function createCorrections(root, cli) {
         await save(file, s);
         return { recorded: true };
       }),
+    lossDecision: (input) =>
+      locked(async () => {
+        const s = await ledger(),
+          snap = await inspect(),
+          h = await loadHandoff(root);
+        need(
+          !s.pending &&
+            !s.stopped &&
+            input.revision === s.revision &&
+            snap.revision === s.revision,
+          "stale-loss-decision",
+        );
+        const { report } = await readReview(root, join(root, "review"));
+        const loss = lossCatalog(h.losses.items, h).find(
+          (l) => l.lossId === input.lossId,
+        );
+        need(loss?.classification === "expression", "loss-not-expression");
+        need(
+          ["meaning-preserved", "meaning-changed", "deferred"].includes(
+            input.decision,
+          ) &&
+            typeof input.note === "string" &&
+            input.note.trim(),
+          "loss-note-required",
+        );
+        const m = await material(input.groupId);
+        need(
+          m.findings.some((f) => f.sourceIds.includes(loss.sourceId)) &&
+            loss.targets.some(
+              (t) =>
+                JSON.stringify(t.path) === JSON.stringify(input.targetPath),
+            ),
+          "loss-outside-comparison",
+        );
+        need(
+          m.findings.some(
+            (f) =>
+              f.sourceIds.includes(loss.sourceId) &&
+              f.regions.some((r) => r.pageNo === input.pageNo),
+          ),
+          "loss-page-not-compared",
+        );
+        s.lossConfirmations ??= [];
+        s.lossConfirmations.push({
+          lossId: loss.lossId,
+          sourceId: loss.sourceId,
+          reasonCode: loss.reasonCode,
+          groupId: input.groupId,
+          revision: s.revision,
+          targetPath: input.targetPath,
+          pageNo: input.pageNo,
+          decision: input.decision,
+          note: input.note,
+          actor: "human",
+          time: new Date().toISOString(),
+          changeCount: s.changes.length,
+          meaning: "expression-semantic-preservation",
+          comparison: "source-and-current-side-by-side",
+        });
+        s.completion = null;
+        await save(file, s);
+        return { recorded: true };
+      }),
     finalize: (input) =>
       locked(async () => {
         const s = await ledger(),
@@ -382,6 +464,12 @@ export function createCorrections(root, cli) {
           scopes: s.scopes,
           humanDecisions: s.humanDecisions ?? [],
           conditions: gate,
+          lossConfirmations: s.lossConfirmations ?? [],
+          expressionReviews: expressionReviews(
+            s,
+            lossCatalog(h.losses.items, h),
+            s.revision,
+          ),
         };
         await save(join(root, "human-review.json"), completion);
         const marker = {
@@ -416,6 +504,8 @@ export function createCorrections(root, cli) {
         const snap = await inspect();
         if (snap.revision !== s.revision) {
           s.completion = null;
+          for (const record of s.lossConfirmations ?? [])
+            record.invalidatedAt = new Date().toISOString();
           for (const t of s.scopes) {
             t.state = "미검사";
             t.checkpoint = null;
@@ -448,6 +538,7 @@ export function createCorrections(root, cli) {
           currentRevision: snap.revision,
           reviewComplete: h.reviewComplete,
           humanQueue: humanQueue(s, report),
+          losses: lossCatalog(h.losses.items, h),
           gate,
         };
       }),
@@ -529,10 +620,16 @@ export function createCorrections(root, cli) {
           return row;
         }
 
+        const visual = input.evidence?.kind === "human-source-region";
+        need(!visual || input.actor === "human", "human-evidence-required");
+        need(
+          visual || input.afterContent === undefined,
+          "content-requires-human-evidence",
+        );
         need(
           input.decision === "correct" &&
             typeof input.before === "string" &&
-            input.before.trim().length > 0 &&
+            (input.before.trim().length > 0 || visual || input.undoOf) &&
             typeof input.after === "string" &&
             input.before !== input.after,
           "invalid-edit",
@@ -540,26 +637,27 @@ export function createCorrections(root, cli) {
 
         need(
           input.target &&
-            m.fragments.some((f) =>
-              [
-                ...f.mapping.targets,
-                ...f.mapping.cells.flatMap((c) => c.targets),
-              ].some(
-                (t) =>
-                  equal(t.path, input.target.path) &&
-                  (input.target.kind === "cell"
-                    ? t.selector.kind === "cell" &&
-                      t.selector.row === input.target.row &&
-                      t.selector.column === input.target.column
-                    : t.selector.kind === "block"),
-              ),
-            ),
+            (visual ||
+              m.fragments.some((f) =>
+                [
+                  ...f.mapping.targets,
+                  ...f.mapping.cells.flatMap((c) => c.targets),
+                ].some(
+                  (t) =>
+                    equal(t.path, input.target.path) &&
+                    (input.target.kind === "cell"
+                      ? t.selector.kind === "cell" &&
+                        t.selector.row === input.target.row &&
+                        t.selector.column === input.target.column
+                      : t.selector.kind === "block"),
+                ),
+              )),
           "target-outside-group",
         );
 
         need(
           Array.isArray(input.evidence?.refs) &&
-            input.evidence.refs.length > 0 &&
+            (visual || input.evidence.refs.length > 0) &&
             Array.isArray(input.evidence.scope) &&
             input.evidence.scope.length > 0,
           "evidence-required",
@@ -583,6 +681,14 @@ export function createCorrections(root, cli) {
           "invalid-inspection-scope",
         );
 
+        if (visual)
+          verifyVisualScope(
+            input,
+            m.group,
+            { findings: m.findings, checks: m.checks },
+            { pages: m.pdf },
+            m.fragments.map((f) => f.mapping),
+          );
         const boundChecks = m.fragments.flatMap((f) =>
           input.target.kind === "cell"
             ? f.mapping.cells
@@ -606,32 +712,38 @@ export function createCorrections(root, cli) {
               : [],
         );
         const allowed = new Set(boundChecks.flatMap((c) => c.pdfTokenIds));
-        need(
-          input.evidence.refs.every((id) => allowed.has(id)),
-          "evidence-outside-target",
-        );
+        if (!visual)
+          need(
+            input.evidence.refs.every((id) => allowed.has(id)),
+            "evidence-outside-target",
+          );
         const selected = tokens.filter((t) => allowed.has(t.id));
-        need(
-          equal([...new Set(input.evidence.refs)].sort(), [...allowed].sort()),
-          "incomplete-evidence",
-        );
-        need(
-          selected.every((t) =>
-            input.evidence.scope.some(
-              (r) =>
-                m.pdf.some(
-                  (p) =>
-                    p.pageNo === r.pageNo &&
-                    p.tokens.some((x) => x.id === t.id),
-                ) &&
-                r.bbox[0] <= t.bbox[0] &&
-                r.bbox[1] <= t.bbox[1] &&
-                r.bbox[2] >= t.bbox[2] &&
-                r.bbox[3] >= t.bbox[3],
+        if (!visual)
+          need(
+            equal(
+              [...new Set(input.evidence.refs)].sort(),
+              [...allowed].sort(),
             ),
-          ),
-          "uninspected-evidence",
-        );
+            "incomplete-evidence",
+          );
+        if (!visual)
+          need(
+            selected.every((t) =>
+              input.evidence.scope.some(
+                (r) =>
+                  m.pdf.some(
+                    (p) =>
+                      p.pageNo === r.pageNo &&
+                      p.tokens.some((x) => x.id === t.id),
+                  ) &&
+                  r.bbox[0] <= t.bbox[0] &&
+                  r.bbox[1] <= t.bbox[1] &&
+                  r.bbox[2] >= t.bbox[2] &&
+                  r.bbox[3] >= t.bbox[3],
+              ),
+            ),
+            "uninspected-evidence",
+          );
 
         if (input.undoOf) {
           const original = s.changes.find((c) => c.changeId === input.undoOf);
@@ -653,15 +765,20 @@ export function createCorrections(root, cli) {
           selected.map((t) => t.value),
         );
 
-        // Non-token text/formula semantic claims remain uncertain. Do not fill empty cells or infer headings.
+        // Human source-region attestations are distinct from machine token verification.
 
         need(
-          input.undoOf ||
+          visual ||
+            input.undoOf ||
             (!protectedTokens(input.before).length && !afterTokens.length) ||
             protectedMatch,
           "protected-token-mismatch",
         );
 
+        need(
+          input.afterContent === undefined || input.target.kind === "cell",
+          "cell-content-only",
+        );
         const snapshot = await inspect();
         need(
           snapshot.revision === input.revision &&
@@ -675,6 +792,8 @@ export function createCorrections(root, cli) {
           input.before,
           input.after,
           input.revision,
+          input.afterContent,
+          visual ? targetNode(snapshot, input.target).content : undefined,
         ); // reject unsupported rich/structural edits before writing
 
         const now = new Date().toISOString();
@@ -691,6 +810,14 @@ export function createCorrections(root, cli) {
           before: input.before,
           after: input.after,
           evidence: input.evidence,
+          ...(visual && input.target.kind === "cell"
+            ? {
+                beforeContent: targetNode(snapshot, input.target).content,
+                ...(input.afterContent !== undefined
+                  ? { afterContent: input.afterContent }
+                  : {}),
+              }
+            : {}),
           reason: input.reason,
           receipt: null,
           undoOf: input.undoOf ?? null,
@@ -698,7 +825,14 @@ export function createCorrections(root, cli) {
             readback: false,
             protectedTokens: protectedMatch && input.target.kind !== "equation",
           },
-          inverse: operation(input.target, input.after, input.before),
+          inverse: operation(
+            input.target,
+            input.after,
+            input.before,
+            visual && input.target.kind === "cell"
+              ? targetNode(snapshot, input.target).content
+              : undefined,
+          ),
         };
 
         s.submissions.push({ ...row, status: "pending-reconcile" });
@@ -713,7 +847,14 @@ export function createCorrections(root, cli) {
 
         await writeFile(
           opfile,
-          JSON.stringify([operation(input.target, input.before, input.after)]),
+          JSON.stringify([
+            operation(
+              input.target,
+              input.before,
+              input.after,
+              input.afterContent,
+            ),
+          ]),
           { flag: "wx" },
         );
 
@@ -734,6 +875,8 @@ export function createCorrections(root, cli) {
             input.before,
             input.after,
             receipt.revision,
+            input.afterContent,
+            s.pending.beforeContent,
           );
 
           const actual = await inspect();
@@ -742,6 +885,7 @@ export function createCorrections(root, cli) {
           // Repeat independent protected token comparison on actual readback, not the submitted after value.
 
           s.pending.validation.protectedTokens =
+            !visual &&
             protectedMatch &&
             equal(
               protectedTokens(valueAt(actual, input.target)).map(
@@ -868,6 +1012,13 @@ export function createCorrections(root, cli) {
         decision: "correct",
         reason: input.reason ?? "역연산",
         undoOf: c.changeId,
+        evidence:
+          c.evidence.kind === "human-source-region"
+            ? c.evidence
+            : input.evidence,
+        ...(c.beforeContent !== undefined
+          ? { afterContent: c.beforeContent }
+          : {}),
       });
     },
   };

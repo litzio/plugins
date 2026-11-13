@@ -153,3 +153,6 @@ corpus/CLI 환경 변수가 없으면 해당 통합·corpus 검사를 skip한다
 사람 확인/보류는 근거 note와 revision을 기록하며 교정 제출은 기존 공개 쓰기 작업을 사용한다. Host의 context.cli를 우선 사용하고 수동 CLI 설정은 Host가 제공하지 않을 때만 쓴다. 일반 문서 탭에서 손 편집하면 현재 인계 계약에서는 차단된다. 사용자가 저장하지 않은 탭 내용은 파일 CLI/DocumentView가 알지 못한다.
 
 완료 버튼은 범위·사람 확인·차단 손실·토큰 차이·실패 조건을 만족할 때만 켜진다. [완료 인계 v1.2](../../contracts/docling-to-litzio/human-review.md), [실행 결과와 제한](docs/results-compare.md)을 읽는다. LSR은 차단 손실 때문에 이번에 완료 발급하지 않았다.
+
+
+PR 5 추가: [손실 분류](docs/lsr-loss-classification.md)와 항목별 표현 보존 확인, 사람만 사용하는 원문 영역 근거 교정을 v1.2에 추가했다. 앞의 “LSR 차단 손실 때문에 완료하지 못함”은 초기 정책에서의 결과다. 현재 규칙과 추가 수락 결과는 [추가 검증](docs/results-human-policy.md)을 따른다. picker/open 전환은 이번 범위에 넣지 않았다.

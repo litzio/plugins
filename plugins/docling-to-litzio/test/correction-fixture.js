@@ -1,10 +1,14 @@
+import { inlineText } from "../src/rich-content.js";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { extractPdf } from "../src/pdf-evidence.js";
 import { makePlan, hash } from "../src/convert.js";
 import { buildProvenance, publishHandoff } from "../src/provenance.js";
 import { projectEdit } from "../src/correction-history.js";
-export async function syntheticGeneration(out, { header = false } = {}) {
+export async function syntheticGeneration(
+  out,
+  { header = false, text = "999" } = {},
+) {
   const pdf = await readFile(resolve("fixtures/lsr-1.1/LSR-1.1-standards.pdf")),
     evidence = await extractPdf(pdf);
   const page = evidence.pages.find((p) =>
@@ -12,7 +16,7 @@ export async function syntheticGeneration(out, { header = false } = {}) {
   );
   const bbox = page.items.find((i) => i.text === "0.12 s").bbox;
   const cell = {
-    text: "999",
+    text,
     row_span: 1,
     col_span: 1,
     start_row_offset_idx: 0,
@@ -95,8 +99,8 @@ export async function syntheticGeneration(out, { header = false } = {}) {
       {
         type: "cell",
         path: [1, 0, 0],
-        text: "999",
-        content: [{ kind: "text", text: "999" }],
+        text,
+        content: text ? [{ kind: "text", text }] : [],
       },
     ],
   };
@@ -147,7 +151,16 @@ export async function fakeCli(out) {
     ).text;
     const bytes = JSON.stringify(ops),
       revision = hash(bytes);
-    snapshot = projectEdit(snapshot, target, before, op.text, revision);
+    snapshot = projectEdit(
+      snapshot,
+      target,
+      before,
+      op.text ?? inlineText(op.content),
+      revision,
+      op.content,
+      snapshot.nodes.find((n) => JSON.stringify(n.path) === JSON.stringify(p))
+        .content,
+    );
     await writeFile(join(out, "document.md"), bytes);
     return { ok: true, command: "apply-batch", applied: 1, revision };
   };

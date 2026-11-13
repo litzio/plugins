@@ -1,4 +1,8 @@
-import { completionGate } from "./human-review.js";
+import {
+  completionGate,
+  lossCatalog,
+  expressionReviews,
+} from "./human-review.js";
 import { validateReview } from "./review.js";
 import {
   validateHistory,
@@ -492,7 +496,7 @@ export async function loadHandoff(
     "marker-changed",
   );
   let reviewed = false;
-  if (marker.schemaVersion === "1.2.0") {
+  if (marker.schemaVersion === "1.2.0" && marker.reviewState === "reviewed") {
     const completion = JSON.parse(
       await readRelative(root, "human-review.json"),
     );
@@ -538,6 +542,15 @@ export async function loadHandoff(
       equal(ledger.completion, completion) &&
       equal(ledger.scopes, completion.scopes) &&
       equal(ledger.humanDecisions ?? [], completion.humanDecisions) &&
+      equal(ledger.lossConfirmations ?? [], completion.lossConfirmations) &&
+      equal(
+        expressionReviews(
+          ledger,
+          lossCatalog(result.losses.items, result),
+          marker.documentRevision,
+        ),
+        completion.expressionReviews,
+      ) &&
       evidence.pages.every((p) =>
         ledger.scopes.some((t) => t.id === "page:" + p.pageNo),
       ) &&
@@ -578,7 +591,7 @@ async function validateFileSet(root, marker) {
   };
   need(
     marker.schemaVersion === "1.2.0"
-      ? marker.reviewState === "reviewed"
+      ? ["reviewed", "unreviewed"].includes(marker.reviewState)
       : marker.reviewState === "unreviewed",
     "review-state",
   );
@@ -657,6 +670,10 @@ async function validateFileSet(root, marker) {
   const baseline = { provenance: p, losses, marker, snapshot, coverage };
   if (!history) return baseline;
   validateSchema(history, schemas["correction-history"]);
+  need(
+    history.schemaVersion !== "1.2.0" || marker.schemaVersion === "1.2.0",
+    "history-version",
+  );
   const evidence = json("review/pdf-evidence.json"),
     report = json("review/review-targets.json");
   validateSchema(evidence, schemas["pdf-evidence"]);
@@ -680,7 +697,7 @@ async function validateFileSet(root, marker) {
     p.generationId,
   );
   const updated = structuredClone(p);
-  updated.schemaVersion = "1.1.0";
+  updated.schemaVersion = history.schemaVersion;
   updated.document.revision = current.revision;
   updated.document.blocks = current.nodes
     .filter((n) => n.path.length === 1 && n.type !== "caption")

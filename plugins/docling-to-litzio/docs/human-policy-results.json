@@ -1,0 +1,41 @@
+{
+  "sample": "LSR bookmark fixture, isolated copy with two injected numeric errors restored",
+  "completionRevision": "413abd687a70055f7d760ee2080ffe71d406f20cf1602cae6b08b0aa56b73095",
+  "classification": {
+    "expression": 29,
+    "repairRequired": 0,
+    "unlinkedAnnotation": 4,
+    "sourceDefectRecords": 2
+  },
+  "corrections": {
+    "tokenVerified": 2,
+    "humanSourceRegion": 7
+  },
+  "conditions": {
+    "ready": true,
+    "uncovered": 0,
+    "human": 0,
+    "blocking": 0,
+    "expressionUnconfirmed": 0,
+    "failures": 0,
+    "tokenDifferences": 0
+  },
+  "acceptedByRequireReviewed": true,
+  "missingConfirmation": {
+    "ready": false,
+    "observedReviewComplete": false,
+    "hostOutcome": "uncertain"
+  },
+  "deferredConfirmation": {
+    "ready": false,
+    "observedReviewComplete": false,
+    "hostOutcome": "uncertain"
+  },
+  "changedCopy": {
+    "officialUndo": "applied",
+    "expressionUnconfirmed": 29,
+    "reviewComplete": false,
+    "requireReviewedRejected": true
+  },
+  "qualification": "Deterministic workflow acceptance; scripted checkpoints are not actual AI review or full document quality certification"
+}

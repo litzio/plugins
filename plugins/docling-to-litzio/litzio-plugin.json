@@ -676,7 +676,7 @@
             "properties": {
               "refs": {
                 "type": "array",
-                "minItems": 1,
+                "minItems": 0,
                 "items": {
                   "type": "string",
                   "minLength": 1
@@ -707,6 +707,12 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "kind": {
+                "enum": [
+                  "pdf-tokens",
+                  "human-source-region"
+                ]
               }
             },
             "required": [
@@ -718,6 +724,12 @@
           "undoOf": {
             "type": "string",
             "minLength": 1
+          },
+          "afterContent": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
           }
         },
         "required": [
@@ -1078,6 +1090,68 @@
         },
         "required": [
           "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "loss-decision",
+      "version": 1,
+      "effect": "write",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "lossId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "targetPath": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "decision": {
+            "enum": [
+              "meaning-preserved",
+              "meaning-changed",
+              "deferred"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "jobId",
+          "lossId",
+          "groupId",
+          "revision",
+          "targetPath",
+          "pageNo",
+          "decision",
+          "note"
         ],
         "additionalProperties": false
       },

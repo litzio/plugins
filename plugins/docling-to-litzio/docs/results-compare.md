@@ -1,5 +1,7 @@
 # PR 5 원문 대조·사람 확정 검증
 
+아래는 초기 정책의 실행 기록이다. 손실 정책과 LSR 완료 발급의 최신 결과는 [추가 검증](results-human-policy.md)을 따른다.
+
 2026-11-14. 공개 master `7aa12173d2e4d976e7990d3300aae9bab0609920`을 새 격리 checkout에서 frozen install·production CLI/Editor build했다. 공개 제작 안내(plugin-stage1-v1), DocumentView 공개 SDK 계약, CLI help/scaffold/install/operation만 사용했다. 저장소도 시작 전에 fetch해 HEAD와 origin/master 차이가 0임을 확인했다.
 
 ## 실제 확인

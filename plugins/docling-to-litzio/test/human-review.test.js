@@ -8,7 +8,11 @@ import { createReview } from "../src/review.js";
 import { generate } from "../src/generate.js";
 import { createCorrections } from "../src/corrections.js";
 import { loadHandoff } from "../src/provenance.js";
-import { completionGate } from "../src/human-review.js";
+import {
+  completionGate,
+  lossCatalog,
+  expressionReviews,
+} from "../src/human-review.js";
 test("completion needs every current scope and human decision; seals v1.2 and rejects later changes", async () => {
   const parent = await mkdtemp(join(tmpdir(), "human-review-"));
   let root = join(parent, "generation");
@@ -161,4 +165,222 @@ test("missing page, failure, stale revision, deferred human and stopped review c
       completionGate({ ...s, ...patch }, report, [], "r").ready,
       false,
     );
+});
+
+test("expression losses need individual current decisions; deferral, changed meaning and a later edit block", () => {
+  const loss = {
+    severity: "blocking",
+    sourceId: "s",
+    reasonCode: "merged-cell-repeated",
+    originalValue: { cellIndex: 0 },
+    targets: [{ path: [1] }],
+  };
+  const report = { groups: [], statistics: { pages: 0 }, checks: [] };
+  const h = {
+    provenance: {
+      items: [{ sourceId: "s", targets: [{ path: [1], role: "content" }] }],
+    },
+  };
+  const s = { revision: "r", scopes: [], changes: [], lossConfirmations: [] };
+  const catalog = lossCatalog([loss], h),
+    base = {
+      lossId: catalog[0].lossId,
+      revision: "r",
+      changeCount: 0,
+      decision: "meaning-preserved",
+    };
+  assert.equal(
+    completionGate(s, report, [loss], "r", h, { pages: [] })
+      .expressionUnconfirmed,
+    1,
+  );
+  for (const decision of ["deferred", "meaning-changed"]) {
+    s.lossConfirmations = [{ ...base, decision }];
+    assert.equal(
+      completionGate(s, report, [loss], "r", h, { pages: [] }).ready,
+      false,
+    );
+  }
+  s.lossConfirmations = [base];
+  assert.equal(
+    completionGate(s, report, [loss], "r", h, { pages: [] }).ready,
+    true,
+  );
+  assert.equal(
+    expressionReviews({ ...s, changes: [{}] }, catalog, "r")[0].confirmation,
+    null,
+    "ABA revisions cannot resurrect a pre-edit confirmation",
+  );
+  assert.equal(expressionReviews(s, catalog, "new")[0].confirmation, null);
+  assert.equal(
+    lossCatalog([{ ...loss, reasonCode: "unknown" }], h)[0].classification,
+    "repair-required",
+  );
+  assert.equal(
+    lossCatalog(
+      [
+        {
+          ...loss,
+          reasonCode: "footnote-as-paragraph",
+          originalValue: { text: "lost" },
+        },
+      ],
+      { ...h, snapshot: { nodes: [] } },
+    )[0].classification,
+    "repair-required",
+  );
+});
+
+test("public loss decision binds one known loss to current comparison and preserves negative decisions", async () => {
+  const root = join(
+    await mkdtemp(join(tmpdir(), "loss-decision-")),
+    "generation",
+  );
+  await syntheticGeneration(root);
+  await createReview(root, join(root, "review"));
+  const service = createCorrections(root, await fakeCli(root));
+  let s = await service.progress();
+  const loss = s.losses[0],
+    report = JSON.parse(
+      await readFile(join(root, "review/review-targets.json")),
+    );
+  const finding = report.findings.find((f) =>
+      f.sourceIds.includes(loss.sourceId),
+    ),
+    group = report.groups.find((g) => g.findingIds.includes(finding.id));
+  const input = {
+    lossId: loss.lossId,
+    groupId: group.id,
+    revision: s.revision,
+    targetPath: loss.targets[0].path,
+    pageNo: finding.regions[0].pageNo,
+    decision: "meaning-preserved",
+    note: "Synthetic comparison attestation",
+  };
+  await assert.rejects(
+    service.lossDecision({ ...input, revision: "old" }),
+    /stale-loss-decision/,
+  );
+  await assert.rejects(
+    service.lossDecision({ ...input, lossId: "missing" }),
+    /loss-not-expression/,
+  );
+  await assert.rejects(
+    service.lossDecision({ ...input, targetPath: [999] }),
+    /loss-outside-comparison/,
+  );
+  await assert.rejects(
+    service.lossDecision({ ...input, pageNo: 999 }),
+    /loss-page-not-compared/,
+  );
+  await service.lossDecision(input);
+  s = await service.progress();
+  assert.equal(s.gate.expressionUnconfirmed, 0);
+  assert.equal(
+    s.lossConfirmations[0].meaning,
+    "expression-semantic-preservation",
+  );
+  await service.lossDecision({ ...input, decision: "deferred" });
+  assert.equal((await service.progress()).gate.expressionUnconfirmed, 1);
+  await service.lossDecision({ ...input, decision: "meaning-changed" });
+  assert.equal((await service.progress()).gate.expressionUnconfirmed, 1);
+});
+
+test("human region evidence alone permits empty cell inline math, records provenance, and undoes exactly", async () => {
+  const parent = await mkdtemp(join(tmpdir(), "visual-cell-"));
+  let root = join(parent, "seed");
+  await syntheticGeneration(root, { text: "" });
+  if (process.env.DOCLING_TEST_CLI) {
+    const bundle = join(parent, "bundle");
+    await cp(join(root, "source"), bundle, { recursive: true });
+    const record = JSON.parse(
+      await readFile(join(bundle, "conversion-record.json")),
+    );
+    record.source.file = "source.pdf";
+    await writeFile(
+      join(bundle, "conversion-record.json"),
+      JSON.stringify(record),
+    );
+    root = join(parent, "actual");
+    await generate(bundle, root, process.env.DOCLING_TEST_CLI);
+  }
+  await createReview(root, join(root, "review"));
+  const service = createCorrections(
+    root,
+    process.env.DOCLING_TEST_CLI ?? (await fakeCli(root)),
+  );
+  const s = await service.progress(),
+    report = JSON.parse(
+      await readFile(join(root, "review/review-targets.json")),
+    ),
+    f = report.findings.find((f) => f.kind === "protected-token-difference"),
+    group = report.groups.find((g) => g.findingIds.includes(f.id));
+  const input = {
+    changeId: "visual-fill",
+    generationId: s.generationId,
+    revision: s.revision,
+    groupId: group.id,
+    actor: "human",
+    decision: "correct",
+    target: { kind: "cell", path: [1], row: 0, column: 0 },
+    before: "",
+    after: "x^2",
+    afterContent: [{ kind: "math", value: "x^2" }],
+    reason: "Synthetic visual evidence test",
+    evidence: {
+      kind: "human-source-region",
+      refs: [],
+      scope: f.regions.map((r) => ({ pageNo: r.pageNo, bbox: r.bbox })),
+    },
+  };
+  await assert.rejects(
+    service.submit({ ...input, evidence: undefined }),
+    /schema-invalid|invalid-edit|content-requires-human-evidence/,
+  );
+  const { afterContent: _content, evidence: _evidence, ...noEvidence } = input;
+  await assert.rejects(
+    service.submit({ ...noEvidence, actor: "assistant" }),
+    /invalid-edit/,
+  );
+  await assert.rejects(service.submit(noEvidence), /invalid-edit/);
+  await assert.rejects(
+    service.submit({ ...input, actor: "assistant" }),
+    /human-evidence-required/,
+  );
+  await assert.rejects(
+    service.submit({
+      ...input,
+      evidence: {
+        ...input.evidence,
+        scope: [{ pageNo: 999, bbox: [0, 0, 1, 1] }],
+      },
+    }),
+    /invalid-inspection-scope|visual-scope/,
+  );
+  assert.equal((await service.submit(input)).status, "applied");
+  let h = await loadHandoff(root);
+  assert.equal(h.marker.schemaVersion, "1.2.0");
+  assert.equal(
+    h.history.changes[0].validation.evidenceRecheck,
+    "human-source-region",
+  );
+  assert.equal(h.history.changes[0].validation.protectedTokens, false);
+  assert.deepEqual(
+    h.snapshot.nodes.find((n) => n.type === "cell").content,
+    input.afterContent,
+  );
+  assert.equal(
+    (
+      await service.undo({
+        undoOf: input.changeId,
+        changeId: "visual-undo",
+        actor: "human",
+        reason: "Synthetic reverse",
+      })
+    ).status,
+    "applied",
+  );
+  h = await loadHandoff(root);
+  assert.equal(h.snapshot.nodes.find((n) => n.type === "cell").text, "");
+  assert.deepEqual(h.snapshot.nodes.find((n) => n.type === "cell").content, []);
 });
