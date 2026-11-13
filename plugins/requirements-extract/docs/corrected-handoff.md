@@ -21,3 +21,9 @@ complete의 1.0.0은 기존 생성 검사를 그대로 사용한다. 1.1.0은 �
 전체 LSR 미주 분리는 기존 계약이 허용한다. 소비자의 재구성 누락을 수정했다. [규칙별 검사 대조와 실제 모호점](handoff-validation-map.md)을 따른다. 교정→undo 후 원본 변환값으로 돌아오면 correctionState=restored-to-conversion-value이며 현재 교정 표시를 내지 않는다.
 
 교정 원장은 JSON Schema 정본이 없으므로 corrections.md의 필수 의미 검사로 대조한다. scope 처리 상태는 검수 완료 권위로 사용하지 않는다.
+
+## 소비 책임의 경계(최종 리뷰)
+
+봉인·교정 사슬/원장·실제 소비값의 자기 일관성을 검사한다. 유효한 생산자 봉인의 생성 의미 검증 전체는 신뢰하며 의도적으로 다시 봉인한 위조 방지를 주장하지 않는다. 이미 구현한 추가 검사는 유지한다. [규칙별 책임 대조표](handoff-validation-map.md)의 검증 책임을 따른다. contracts/에는 이 구분이 아직 없어 PR의 계약 모호점에 기록했다.
+
+trace.corrections에는 되돌림을 포함한 대상의 전체 교정 이력을 남긴다. correctionState/Notice는 현재 생성값과 다른지의 별도 표시이며 원상복원 시 현재 교정 Notice만 제거한다. 따라서 undo-restoration의 근거는 ReqIF 출처 JSON에도 그대로 남는다. snapshot/현재 inspect에서 text와 content가 함께 있는 모든 실제 소비 위치는 평문 투영 일치를 요구한다. 생성 서식의 정답 판정 전체를 이 검사와 혼동하지 않는다.

@@ -5,6 +5,7 @@ import Ajv from 'ajv/dist/2020.js';
 import { canonical, sha256 } from './model.mjs';
 import { correctedSnapshot } from './corrections.mjs';
 import { verifyNotes, noteSourceText } from './note-projection.mjs';
+import { checkProjectionConsistency } from './projection-consistency.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const equal = (a, b) => canonical(a) === canonical(b);
@@ -87,6 +88,7 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
   check(record.source.sha256 === p.source.pdf.sha256 && record.source.bytes === files.get(p.source.pdf.relativePath).length, 'source-record', 'PDF bytes와 변환 기록이 다릅니다');
   check(typeof inspect === 'function', 'inspection-required', '현재 문서의 공식 inspect 결과가 필요합니다');
   const actual = inspect(bundleFile(root, p.document.relativePath));
+  checkProjectionConsistency(snapshot,check);checkProjectionConsistency(actual,check);
   check(actual.ok && actual.revision === complete.documentRevision && (corrected || sameProjection(snapshot.nodes, actual.nodes)), 'stale-snapshot', '공식 현재 문서와 인계 snapshot이 다릅니다');
   if (!corrected) snapshot = actual;
   const rawItems = [doc.body, doc.furniture, ...Object.values(doc).filter(Array.isArray).flat()].filter(v => v?.self_ref);
@@ -230,9 +232,9 @@ export function resolveSource(bundle, { sourceKey = 'source', elementRef, select
     trace.limitations=['correction evidence is not semantic review completion','rotation/printedLabel unavailable',...(cell?['no per-cell page attribution']:[])];
     const changes=bundle.history.changes.filter(c=>targets.some(t=>equal(t.path,c.target.path) && (c.target.kind==='cell'?t.selector.kind==='cell'&&t.selector.row===c.target.row&&t.selector.column===c.target.column:t.selector.kind==='block')));
     const effective=new Set(changes.filter(c=>{const chain=changes.filter(v=>equal(v.target,c.target));return chain[0].before!==chain.at(-1).after;}).map(c=>canonical(c.target)));
-    trace.corrections=changes.filter(c=>effective.has(canonical(c.target))).map(c=>structuredClone(c));
-    if(changes.length) trace.correctionState=trace.corrections.length?'currently-corrected':'restored-to-conversion-value';
-    if(trace.corrections.length) { trace.correctionNotice='원본 변환값과 다르게 교정됨(근거 있음)'; diagnostics.push({code:'source-corrected',severity:'warning',message:trace.correctionNotice,file:p.document.relativePath,location:targets[0]?.path??[]}); }
+    trace.corrections=structuredClone(changes);
+    if(changes.length) trace.correctionState=effective.size?'currently-corrected':'restored-to-conversion-value';
+    if(effective.size) { trace.correctionNotice='원본 변환값과 다르게 교정됨(근거 있음)'; diagnostics.push({code:'source-corrected',severity:'warning',message:trace.correctionNotice,file:p.document.relativePath,location:targets[0]?.path??[]}); }
   }
   return { state: 'needs-source-review', eligibleConfirmed: false, source: { sourceKey, elementRef, selector, quote, quoteDigest: sha256(quote), trace }, diagnostics };
 }

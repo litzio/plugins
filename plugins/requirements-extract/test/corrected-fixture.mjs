@@ -1,8 +1,8 @@
 import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {handoff,read,write,h,reseal} from './handoff-fixture.mjs';
-export function correctedFixture() {
- const root=handoff(),p=read(root,'provenance.json'),baseline=read(root,'snapshot.json'),before=baseline.nodes[0].text,after='Corrected voltage ≤ 5 V';
+export function correctedFixture({before:initial}={}) {
+ const root=handoff(undefined,{quote:initial}),p=read(root,'provenance.json'),baseline=read(root,'snapshot.json'),before=baseline.nodes[0].text,after='Corrected voltage ≤ 5 V';
  writeFileSync(join(root,'document.md'),'corrected synthetic native bytes'); const revision=h(readFileSync(join(root,'document.md')));
  const current=structuredClone(baseline);current.revision=revision;current.nodes[0].text=after;current.nodes[0].content=[{kind:'text',text:after}];
  const bbox=[10,10,120,30],region={pageNo:1,bbox,unit:'pt',origin:'TOPLEFT'},refs=['t0','t1','t2'];

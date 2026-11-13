@@ -73,6 +73,7 @@ test('documented additive content fields accept older checkpoints without regene
 test('original text check catches consistent forged target/snapshot text', () => {
   const root = handoff(), p = read(root, 'provenance.json'), s = read(root, 'snapshot.json');
   s.nodes[0].text = p.items[2].targets[0].text = 'Voltage < 9 V';
+  s.nodes[0].content = [{kind:'text',text:s.nodes[0].text}];
   write(root, 'snapshot.json', s); write(root, 'provenance.json', p); reseal(root);
   assert.throws(() => load(root), e => e.diagnostics[0].code === 'source-native-text');
 });
