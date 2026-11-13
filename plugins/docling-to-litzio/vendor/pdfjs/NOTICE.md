@@ -1,0 +1,12 @@
+# Vendored PDF text reader
+
+- pdfjs-dist **6.5.438**, npm tarball integrity and every copied file SHA-256: manifest.json.
+- build/pdf.mjs is upstream **legacy/build/pdf.min.mjs**, build/pdf.worker.mjs is **legacy/build/pdf.worker.min.mjs**. Bytes are unmodified; filenames changed only. Source maps/rendering assets are omitted.
+- PDF.js license: **Apache-2.0**, original LICENSE retained. Sections 2–4 grant royalty-free use/distribution and require retained notices/license. No separate commercial-use fee or license was found in these terms.
+- Embedded legacy polyfills: **core-js 3.51.0, MIT**, original LICENSE_COREJS retained. Version/license URL is embedded in the upstream legacy build.
+- cmaps/: original **Adobe BSD-style redistribution notice**, retained in cmaps/LICENSE. No attribution/license text stripped.
+- Upstream package.json is metadata for provenance, not an installation instruction. No npm install is performed in this directory. Optional native @napi-rs/canvas, standard fonts (including Liberation), image codecs/WASM and rendering are **not bundled or required for this text path**. Upstream still attempts the optional canvas require at import; it was absent in all checks. Text extraction uses embedded PDF mappings / built-in metrics; useSystemFonts=true avoids fetching optional standard font programs, and disableFontFace=true prevents font rendering. No host font renderer is invoked.
+- Legacy ESM was selected after a standard ESM trial failed on Node 24's missing Uint8Array.toHex. Do not silently replace the build. Verified Node version: 24.22.2. PDF.js prints nonfatal warnings about missing optional canvas/DOMMatrix/Path2D on import; text extraction on all three fixed PDFs and a standalone copied artifact passed without these packages. This does not establish rendering support.
+- Original code: https://github.com/mozilla/pdf.js ; package: https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-6.5.438.tgz . Embedded MIT text: https://github.com/zloirock/core-js/blob/v3.51.0/LICENSE . Exact upstream notices were read before bundling. Broader platform/language/font coverage has not been verified.
+
+Reproduction: npm pack pdfjs-dist@6.5.438 --ignore-scripts in a temporary directory, verify tarball integrity, copy only the listed upstream files and cmaps directory, retain original license texts and compare manifest hashes. The release needs no package manager at runtime. The manifest test must pass after packaging.

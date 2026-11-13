@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "pdfSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reader": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "pdfjs-dist"
+        },
+        "version": {
+          "const": "6.5.438"
+        },
+        "license": {
+          "const": "Apache-2.0"
+        },
+        "mode": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "license",
+        "mode"
+      ],
+      "additionalProperties": false
+    },
+    "coordinateMethod": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "rotation": {
+            "type": "number"
+          },
+          "unit": {
+            "const": "pt"
+          },
+          "origin": {
+            "const": "TOPLEFT"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "bbox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "approximate": {
+                  "const": true
+                },
+                "dir": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "text",
+                "bbox",
+                "approximate",
+                "dir"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "number",
+                    "operator",
+                    "unit"
+                  ]
+                },
+                "start": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "end": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "id": {
+                  "type": "string"
+                },
+                "itemId": {
+                  "type": "string"
+                },
+                "bbox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                }
+              },
+              "required": [
+                "value",
+                "kind",
+                "start",
+                "end",
+                "id",
+                "itemId",
+                "bbox"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "pageNo",
+          "width",
+          "height",
+          "rotation",
+          "unit",
+          "origin",
+          "status",
+          "items",
+          "tokens"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "outline": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "present",
+            "absent",
+            "unknown"
+          ]
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "status",
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "pdfSha256",
+    "reader",
+    "coordinateMethod",
+    "pages",
+    "outline"
+  ],
+  "additionalProperties": false
+}

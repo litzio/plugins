@@ -28,7 +28,7 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 
 ## 변환 규칙
 
-각 규칙 버전은 `src/convert.js`의 RULES에 있다(현재 모두 1.0.0). 숫자·부호·단위·공백을 자체 정규화하지 않으며 Core가 문자열을 바꿨으면 재읽기 불일치로 남긴다.
+각 규칙 버전은 `src/convert.js`의 RULES에 있다(table/equation/figure/caption은 1.1.0, 나머지는 1.0.0). 숫자·부호·단위·공백을 자체 정규화하지 않으며 Core가 문자열을 바꿨으면 재읽기 불일치로 남긴다.
 
 | 요소 | 옮기는 방식 | 단순화/막힌 표현 |
 | --- | --- | --- |
@@ -38,7 +38,7 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 | 표 | 모든 셀 범위 검증, 직사각형 격자; 병합 글자 반복 | 병합·복합 header/row role·rich cell은 손실; 첫 행 header 강제; 명시 복합 머리는 합치고 병합 표 아래 설명+검수 |
 | 수식 | LaTeX 그대로; 전부 위치가 있는 검수 목록 | 같은 요소의 명시 번호는 fixed로 연결; 의미 정확성 판정 없음 |
 | 그림 | data URI → 공식 images; byte digest 보존 | 누락은 pending+손실, 손상은 거부; child 텍스트도 보존 |
-| 캡션·번호 | 그림 caption, 표 caption 별도 문단; 유일한 Arabic 번호만 fixed | Roman/문자/모호한 번호는 literal+번호 없음; table caption 입력 필요 |
+| 캡션·번호 | 그림 caption, 표 caption 별도 문단; 유일하고 명시된 Arabic/절 번호(예: K.1)만 fixed | Roman/문자/모호한 번호는 literal+번호 없음; table caption 입력 필요 |
 | 각주·위첨자 | footnote 문단; 원문 글자 보존 | call site 추정 없음; inline 서식/링크는 손실 |
 | 코드 | language와 원문 줄/공백 | unknown language는 빈 값 |
 | furniture | layer 또는 page_header/page_footer 명시 분류만 제외 | 제외 항목도 inventory와 위치 유지 |
@@ -88,3 +88,30 @@ loadHandoff는 marker→파일 bytes/digest→schema→원본/문서 revision→
 
 
 2026-11-13 추가 조사: 병합/복합 머리·머리 열은 플랫폼 형식 유지 한계이며, 이 플러그인이 반복·머리 합치기·원문 범위·표 아래 설명·전수 검수 표시로 처리한다. 손실 category는 native-format/authoring-input/plugin-pending. 원본 inline/관계는 items.structure, rich cell은 sourceCell에 보존한다. [표본 전후](docs/table-examples.md)에 실제 생성 전후와 선택 이유가 있다. 이미 지원되는 수식/그림 fixed 번호를 사용해, LSR의 식 번호 3개와 K.1/K.2 미이관 손실은 제거했다. LaTeX는 그대로다.
+
+
+PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.
+
+## PR 3 문제 탐지와 독립 PDF 증거
+
+생성 v1의 원본 PDF·Docling·실제 native snapshot/provenance를 읽고 **검수 전 후보**만 만든다. 설치/AI/교정은 없다. 후보 없음은 정답 판정이 아니다. PDF.js 6.5.438 legacy ESM과 worker/CMaps/라이선스를 vendor에 고정했으며 Node에서 npm install 없이 실행한다. 내장 core-js는 MIT, CMaps는 Adobe BSD-style, PDF.js는 Apache-2.0이다. 상세는 [vendor 고지](vendor/pdfjs/NOTICE.md).
+
+```sh
+node src/review.js GENERATION NEW_REVIEW_DIRECTORY
+node src/review.js --read GENERATION REVIEW_DIRECTORY
+```
+
+review-targets.json, pdf-evidence.json, 마지막 review-complete.json을 만든다. [검수 대상 계약](../../contracts/docling-to-litzio/review-targets.md)에 schema/읽는 순서/거부 조건과 kind별 근거가 있다. 고정 revision만 읽고 변경된 문서는 stale로 거부한다. 처리 핵심의 시험용 changed snapshot은 uncertain이며 identity 재연결 증거가 아니다.
+
+표본 측정과 테스트는 **저장소 루트**에서 실행한다. built CLI는 이전과 같은 격리 소스 빌드다.
+
+```powershell
+$env:DOCLING_TEST_CLI = 'BUILT_CLI'
+node plugins/docling-to-litzio/test/measure-corpus.js
+# 위 명령이 출력한 보존 corpus 경로
+$env:DOCLING_DETECTION_CORPUS = 'CORPUS_DIRECTORY'
+node plugins/docling-to-litzio/test/evaluate-detection.js $env:DOCLING_DETECTION_CORPUS
+node --test plugins/docling-to-litzio/test/*.test.js
+```
+
+corpus/CLI 환경 변수가 없으면 해당 통합·corpus 검사를 skip한다. vendored PDF reader·라이선스 hash·임시 독립 복사 실행은 별도로 검사한다. 라이브러리의 선택적 canvas/DOMMatrix/Path2D 경고는 stderr로 보내며 렌더링 성공을 주장하지 않는다. worker는 작업 후 종료된다. [실측과 놓치는 것](docs/results-pr3.md), [기계 측정](docs/detection-results.json).

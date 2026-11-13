@@ -1,0 +1,558 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "detectorVersion": {
+      "type": "string"
+    },
+    "generationId": {
+      "type": "string"
+    },
+    "documentRevision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "baselineRevision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "bindingState": {
+      "enum": [
+        "current",
+        "uncertain"
+      ]
+    },
+    "pdfSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reviewState": {
+      "const": "unreviewed"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "meaning-loss",
+              "protected-token-difference",
+              "text-layer-unavailable",
+              "formula-suspicion",
+              "formula-prose-suspect",
+              "picture-prose-suspect",
+              "merged-table-review",
+              "table-row-width",
+              "empty-table-header",
+              "repeated-merged-values",
+              "source-cell-unavailable",
+              "unmapped-table-tokens",
+              "source-native-change",
+              "furniture-in-body",
+              "reading-order-backtrack",
+              "unmapped-pdf-text",
+              "heading-basis-low",
+              "geometry-unavailable",
+              "reading-order-caption",
+              "formula-review-required"
+            ]
+          },
+          "priority": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "sourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          },
+          "selfRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pageNo": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "bbox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "unit": {
+                  "const": "pt"
+                },
+                "origin": {
+                  "const": "TOPLEFT"
+                }
+              },
+              "required": [
+                "pageNo",
+                "bbox",
+                "unit",
+                "origin"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "documentRevision": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "bindingState": {
+                  "enum": [
+                    "current",
+                    "uncertain",
+                    "deleted",
+                    "no-source"
+                  ]
+                },
+                "selector": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "block"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "list-item"
+                        },
+                        "index": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "index"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "const": "cell"
+                        },
+                        "row": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "column": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "rowSpan": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "columnSpan": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "row",
+                        "column",
+                        "rowSpan",
+                        "columnSpan"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "role": {
+                  "enum": [
+                    "content",
+                    "explanation"
+                  ]
+                }
+              },
+              "required": [
+                "path",
+                "documentRevision",
+                "bindingState",
+                "selector",
+                "text",
+                "role"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "evidence": {
+            "type": "object"
+          },
+          "status": {
+            "const": "candidate"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "priority",
+          "sourceIds",
+          "selfRefs",
+          "regions",
+          "targets",
+          "evidence",
+          "status"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "meaning-loss",
+                "protected-token-difference",
+                "text-layer-unavailable",
+                "formula-suspicion",
+                "formula-prose-suspect",
+                "picture-prose-suspect",
+                "merged-table-review",
+                "table-row-width",
+                "empty-table-header",
+                "repeated-merged-values",
+                "source-cell-unavailable",
+                "unmapped-table-tokens",
+                "source-native-change",
+                "furniture-in-body",
+                "reading-order-backtrack",
+                "unmapped-pdf-text",
+                "heading-basis-low",
+                "geometry-unavailable",
+                "reading-order-caption",
+                "formula-review-required"
+              ]
+            }
+          },
+          "priority": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "pageNos": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "findingIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "representativeId": {
+            "type": "string"
+          },
+          "reviewState": {
+            "const": "unreviewed"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "kinds",
+          "priority",
+          "pageNos",
+          "findingIds",
+          "representativeId",
+          "reviewState"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "representativeGroupId": {
+            "type": "string"
+          },
+          "defaultCollapsed": {
+            "const": true
+          },
+          "note": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "groupIds",
+          "representativeGroupId",
+          "defaultCollapsed",
+          "note",
+          "pattern"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "selectorKey": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable",
+              "formula-not-comparable",
+              "image-not-comparable"
+            ]
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "pdfTokenIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "nativeTokens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pageNo": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "bbox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "unit": {
+                  "const": "pt"
+                },
+                "origin": {
+                  "const": "TOPLEFT"
+                }
+              },
+              "required": [
+                "pageNo",
+                "bbox",
+                "unit",
+                "origin"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "sourceId",
+          "selectorKey",
+          "status",
+          "confidence",
+          "pdfTokenIds",
+          "nativeTokens",
+          "regions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "statistics": {
+      "type": "object",
+      "properties": {
+        "pages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "groups": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "groupsPerPage": {
+          "type": "number"
+        },
+        "foldedRows": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byKind": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "unavailableChecks": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "pages",
+        "findings",
+        "groups",
+        "groupsPerPage",
+        "foldedRows",
+        "byKind",
+        "unavailableChecks"
+      ],
+      "additionalProperties": false
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "provenanceSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "snapshotSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "provenanceSha256",
+        "snapshotSha256"
+      ],
+      "additionalProperties": false
+    },
+    "evidenceFile": {
+      "type": "object",
+      "properties": {
+        "relativePath": {
+          "const": "pdf-evidence.json"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "relativePath",
+        "sha256"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "detectorVersion",
+    "generationId",
+    "documentRevision",
+    "baselineRevision",
+    "bindingState",
+    "pdfSha256",
+    "reviewState",
+    "findings",
+    "groups",
+    "series",
+    "checks",
+    "statistics",
+    "limitations",
+    "inputs",
+    "evidenceFile"
+  ],
+  "additionalProperties": false
+}

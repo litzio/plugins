@@ -1,0 +1,393 @@
+{
+  "schema": "pr3-fixed-corpus-measurement",
+  "detectorVersion": "1.0.0",
+  "library": {
+    "pdfjs-dist": "6.5.438",
+    "license": "Apache-2.0",
+    "embeddedCoreJs": "3.51.0 MIT",
+    "cMaps": "Adobe BSD-style"
+  },
+  "corpus": {
+    "lsr": {
+      "pages": 13,
+      "findings": 62,
+      "groups": 17,
+      "groupsPerPage": 1.3076923076923077,
+      "foldedRows": 11,
+      "byKind": {
+        "meaning-loss": 36,
+        "formula-review-required": 3,
+        "text-layer-unavailable": 9,
+        "formula-suspicion": 1,
+        "formula-prose-suspect": 1,
+        "merged-table-review": 2,
+        "repeated-merged-values": 1,
+        "source-cell-unavailable": 2,
+        "reading-order-caption": 7
+      },
+      "unavailableChecks": 14
+    },
+    "no-bookmarks": {
+      "pages": 13,
+      "findings": 83,
+      "groups": 21,
+      "groupsPerPage": 1.6153846153846154,
+      "foldedRows": 12,
+      "byKind": {
+        "meaning-loss": 36,
+        "formula-review-required": 3,
+        "text-layer-unavailable": 9,
+        "formula-suspicion": 1,
+        "formula-prose-suspect": 1,
+        "merged-table-review": 2,
+        "repeated-merged-values": 1,
+        "source-cell-unavailable": 2,
+        "reading-order-caption": 7,
+        "heading-basis-low": 21
+      },
+      "unavailableChecks": 14
+    },
+    "nist": {
+      "pages": 11,
+      "findings": 364,
+      "groups": 14,
+      "groupsPerPage": 1.2727272727272727,
+      "foldedRows": 8,
+      "byKind": {
+        "protected-token-difference": 1,
+        "text-layer-unavailable": 330,
+        "meaning-loss": 14,
+        "empty-table-header": 1,
+        "source-cell-unavailable": 2,
+        "reading-order-caption": 3,
+        "heading-basis-low": 13
+      },
+      "unavailableChecks": 338
+    }
+  },
+  "groupPriorities": {
+    "lsr": {
+      "high": 11,
+      "medium": 5,
+      "low": 1
+    },
+    "no-bookmarks": {
+      "high": 11,
+      "medium": 9,
+      "low": 1
+    },
+    "nist": {
+      "high": 3,
+      "medium": 8,
+      "low": 3
+    }
+  },
+  "evaluation": {
+    "mutations": [
+      {
+        "kind": "number",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 2,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "inequality",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 2,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "unit",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 2,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "cell-swap",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 4,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "paragraph-removed",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 3,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "furniture-added",
+        "detected": true,
+        "detectorKinds": [
+          "furniture-in-body"
+        ],
+        "independentPdfDetected": false,
+        "additionalFindings": 1,
+        "bindingState": "uncertain"
+      }
+    ],
+    "controls": {
+      "definition": "LSR std-matrix body numeric cells equal to preconversion authoring oracle; excludes header, geometry/other detector rules and unadjudicated corpus regions",
+      "count": 21,
+      "available": 21,
+      "falsePositives": 0,
+      "falsePositiveRate": 0,
+      "cells": [
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 10,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 11,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 12,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 13,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 14,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 15,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 17,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 18,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 19,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 24,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 25,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 26,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 27,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 31,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 32,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 33,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 34,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 38,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 40,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 41,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 43,
+          "flagged": false,
+          "available": true
+        }
+      ]
+    },
+    "known": {
+      "formula3": true,
+      "captionOrderConflicts": 7,
+      "firstTwoFormulaFalseAlarms": 0,
+      "mergedTables": [
+        {
+          "ref": "#/tables/2",
+          "flagged": true
+        },
+        {
+          "ref": "#/tables/3",
+          "flagged": true
+        }
+      ],
+      "fourMissingNumericCells": [
+        {
+          "sourceRow": 3,
+          "sourceColumn": 1,
+          "flagged": true
+        },
+        {
+          "sourceRow": 3,
+          "sourceColumn": 2,
+          "flagged": true
+        },
+        {
+          "sourceRow": 3,
+          "sourceColumn": 3,
+          "flagged": true
+        },
+        {
+          "sourceRow": 3,
+          "sourceColumn": 4,
+          "flagged": true
+        }
+      ],
+      "missingNumericValuesFromTextLayer": "not recovered: these mathematical cell values are not present in the PDF text layer; structural gap candidates only",
+      "structuralGapSlots": [
+        {
+          "selfRef": "#/tables/3",
+          "positions": [
+            {
+              "sourceRow": 3,
+              "sourceColumn": 1,
+              "outputRow": 2,
+              "outputColumn": 1
+            },
+            {
+              "sourceRow": 3,
+              "sourceColumn": 2,
+              "outputRow": 2,
+              "outputColumn": 2
+            },
+            {
+              "sourceRow": 3,
+              "sourceColumn": 3,
+              "outputRow": 2,
+              "outputColumn": 3
+            },
+            {
+              "sourceRow": 3,
+              "sourceColumn": 4,
+              "outputRow": 2,
+              "outputColumn": 4
+            },
+            {
+              "sourceRow": 6,
+              "sourceColumn": 3,
+              "outputRow": 5,
+              "outputColumn": 3
+            }
+          ]
+        },
+        {
+          "selfRef": "#/tables/7",
+          "positions": [
+            {
+              "sourceRow": 1,
+              "sourceColumn": 1,
+              "outputRow": 1,
+              "outputColumn": 1
+            },
+            {
+              "sourceRow": 2,
+              "sourceColumn": 1,
+              "outputRow": 2,
+              "outputColumn": 1
+            }
+          ]
+        }
+      ],
+      "knownBlankGapFalsePositive": true,
+      "falseFurnitureOnUnchanged": 0
+    },
+    "unmeasured": [
+      "Global corpus false-positive rate: no exhaustive visual truth labels",
+      "Semantic errors with plausible text shared by PDF and Docling",
+      "Actual human/assistant resolution time and remaining workload"
+    ]
+  },
+  "measurementBoundaries": [
+    "Fixed synthetic LSR controls; NIST has no authoring oracle",
+    "Mutations applied to read-model snapshots in memory, not a post-edit identity or correction workflow",
+    "Candidate counts are not error counts or a human acceptance measurement"
+  ]
+}

@@ -2,11 +2,15 @@
   "name": "docling-to-litzio-processing",
   "private": true,
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "engines": {
     "node": ">=24.22.1 <25"
   },
   "scripts": {
     "test": "node --test test/*.test.js"
+  },
+  "vendoredDependencies": {
+    "pdfjs-dist": "6.5.438",
+    "core-js (embedded by pdfjs legacy build)": "3.51.0"
   }
 }
