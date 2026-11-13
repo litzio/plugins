@@ -1,3 +1,5 @@
+> 이 문서는 해당 PR 당시 측정이다. 최신 생성·손실·탐지 수치는 [보강된 작성 입력 결과](results-richer-authoring.md)를 따른다.
+
 # PR 3 — 문제 탐지와 독립 PDF 증거 (2026-11-13)
 
 설치·비서·화면·교정 없이 생성 v1의 실제 native read-model/대응/고정 원본 PDF를 읽었다. 라이브 AI·변환 서버·Docker·설치된 앱/daemon을 사용하지 않았다. 생성/소비/그림 bytes 검증은 이전의 공개 소스 production CLI 빌드로 실행했다. 원본은 변경하지 않았고 임시 산출물은 보존했다.

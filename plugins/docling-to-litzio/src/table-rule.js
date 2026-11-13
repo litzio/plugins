@@ -153,16 +153,7 @@ export function lossCategory(reason) {
     ].includes(reason)
   )
     return "native-format";
-  if (
-    [
-      "table-caption-separate",
-      "footnote-as-paragraph",
-      "inline-formatting",
-      "cell-rich-content-unavailable",
-      "list-marker-or-depth",
-    ].includes(reason)
-  )
-    return "authoring-input";
+  if (["table-caption-separate"].includes(reason)) return "authoring-input";
   return "plugin-pending";
 }
 export function sourceStructure(n) {

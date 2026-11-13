@@ -1,9 +1,9 @@
+import { sourceItemText } from "./rich-content.js";
 import { hash } from "./convert.js";
-import { textAt } from "./provenance.js";
 import { auditSourceNative } from "./source-audit.js";
 import { formulaHints } from "./formula.js";
 import { protectedTokens, difference } from "./tokens.js";
-export const DETECTOR_VERSION = "1.0.0";
+export const DETECTOR_VERSION = "1.1.0";
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const compact = (s) => (s ?? "").replace(/\s+/g, " ").trim();
 const inside = (box, region, margin = 1.5) => {
@@ -81,13 +81,6 @@ export function detectReview({
         evidence: detail,
         status: "candidate",
       });
-  };
-  const read = (t) => {
-    try {
-      return textAt(snapshot, t.path, t.selector);
-    } catch {
-      return null;
-    }
   };
   const selected = (rs, field = "tokens") => [
     ...new Map(
@@ -360,7 +353,9 @@ export function detectReview({
             confidence: "Cell page/bbox not established",
             pdfTokenIds: [],
             nativeTokens: c.targets.flatMap((t) =>
-              protectedTokens(read(t) ?? "").map((v) => v.value),
+              protectedTokens(sourceItemText(snapshot, t, i, p) ?? "").map(
+                (v) => v.value,
+              ),
             ),
             regions: rs,
           });
@@ -405,7 +400,7 @@ export function detectReview({
         ];
         knownCellBoxes.push(cellRs[0].bbox);
         const target = c.targets[0];
-        let text = target ? read(target) : "";
+        let text = target ? sourceItemText(snapshot, target, i, p) : "";
         if (model?.headerRows > 1 && c.sourceCell.column_header) {
           text = c.sourceCell.text;
         } // Combined headers are separately checked against source-native rules.
@@ -459,13 +454,15 @@ export function detectReview({
         rs,
         content
           .map((t) => {
-            const text = read(t),
+            const text = sourceItemText(snapshot, t, i, p),
               node = snapshot.nodes.find((n) => same(n.path, t.path));
             return source.label === "caption" &&
-              node?.type === "figure" &&
+              ["figure", "table"].includes(node?.type) &&
               node.enumerator
               ? `${node.enumerator} ${text ?? ""}`
-              : text;
+              : source.label === "footnote" && i.structure.noteBinding
+                ? `${i.structure.noteBinding.marker} ${text ?? ""}`
+                : text;
           })
           .filter((t) => t !== null)
           .join(" "),

@@ -98,7 +98,7 @@ targets[]: {path, documentRevision, selector?, bindingState}
 selector: {listItem?} 또는 {row,column} (블록 경로에 임의 숫자를 이어 붙이지 않음)
 ```
 
-`sourceId`는 입력 JSON hash + 원본 self_ref(+cell index)로 만든다. self_ref 단독은 다른 변환 실행과 같은 항목이라는 증거가 아니다. sourceId와 문서 path를 영속 블록 identity로 사용하지 않는다. 원본 `prov`의 모든 페이지/charspan/원래 좌표도 감사용으로 보존하고, 화면용 TOPLEFT pt 변환 시 페이지 높이·회전을 확인한다. 물리 PDF 1-based 쪽과 인쇄 쪽 번호를 별도 필드로 둔다. 셀 병합은 한 원본 셀→여러 출력 칸, 캡션은 여러 원본→표/그림과 별도 문단으로 연결한다.
+`sourceId`는 입력 JSON hash + 원본 self_ref(+cell index)로 만든다. self_ref 단독은 다른 변환 실행과 같은 항목이라는 증거가 아니다. sourceId와 문서 path를 영속 블록 identity로 사용하지 않는다. 원본 `prov`의 모든 페이지/charspan/원래 좌표도 감사용으로 보존하고, 화면용 TOPLEFT pt 변환 시 페이지 높이·회전을 확인한다. 물리 PDF 1-based 쪽과 인쇄 쪽 번호를 별도 필드로 둔다. 셀 병합은 한 원본 셀→여러 출력 칸, 캡션은 여러 원본→소속 표/그림 block으로 연결한다. 미주는 생성 receipt의 재배치된 정의 block으로 연결한다. 중첩 목록은 최상위 포함 항목 target으로 대응하며 정밀 부분 selector를 새로 만들지 않는다.
 
 `bindingState`는 `current | uncertain | deleted | no-source`. 출력이 없는 원본은 disposition으로 `furniture | omitted | unsupported | container`를 구분한다. 새 문단 삽입은 실제 원문 영역을 붙이거나 `no-source`로 두며 이웃 문단 출처를 빌리지 않는다. 삭제해도 과거 원본 항목과 손실은 남긴다.
 
@@ -118,20 +118,20 @@ selector: {listItem?} 또는 {row,column} (블록 경로에 임의 숫자를 이
 
 native 형식의 표현 능력과 공개 작성 입력의 표현 능력을 구분한다. 2026-11-13 PR 1 구현: JavaScript ESM 처리 모듈(런타임 Node 의존성 없음), 선택적 Python/pypdf 북마크 사전 검사만 별도 제공한다. 실제 실행과 세부 규칙은 ../README.md, 측정은 results.md를 따른다.
 
-현재 native는 중첩 목록·inline math·위첨자·미주 등을 지원하지만 공개 작성 입력은 plain string/평면 목록/직사각형 표다. 계약이 없는데 AST나 Markdown을 조립해 넣지 않는다.
+2026-11-13 공개 master의 공식 작성 입력이 inline content·표 caption/label·미주·중첩/문자 목록·label/reference를 받는다. CLI의 모든 위치 content를 보존 검증에 사용한다. 내부 AST나 Markdown을 조립하지 않는다. 근거가 없는 호출부·상호 참조·추출되지 않은 서식은 만들지 않는다.
 
 | 요소 | 보관 document.js가 한 일 / 한계 | 새 결정과 검수 기준 |
 | --- | --- | --- |
 | 순서·다단 | body.children 참조 순회, 배열 순서 사용 안 함. group 자식 유지 | 유지. 다단을 좌표로 임의 정렬하지 않음. 겹침/열 사이 점프는 의심 후보. furniture 트리·미도달도 inventory |
 | 제목 | title→H1, section_header level 1–6. 잘못된 level은 문단+손실 | 유지. 원문 번호를 literal로 보존하고 자동 제목 번호 끔. 번호만 보고 단계 추정 금지. frontmatter title은 명시 입력만 사용, 첫 H1과 혼동하지 않음 |
 | 문단 | text→literal 문단 | 유지. 원래 orig와 text 차이 보존. 한 항목의 여러 prov는 하나의 문단일 수 있음 |
-| 목록·중첩 | 연속 번호/종류 묶음, 100항목씩, 중첩 평탄화·비숫자 marker 손실 | 첫 생성은 동일 제한을 명시. 중첩/문자·로마 marker가 의미를 바꾸면 최종 완료 불가. 후속 공개 rich 작성 입력 또는 일반 목록 편집으로 복원하고 점검 |
+| 목록·중첩 | 연속 번호/종류 묶음, 100항목씩, 중첩 평탄화·비숫자 marker 손실 | 명시 group/children의 중첩과 숫자·단일 문자 style/delimiter/start를 작성 입력으로 옮긴다. 모호한 Roman/문자, 불연속·지원 불가 구조는 손실로 남긴다. 중첩 item의 native 대응은 최상위 포함 항목으로 한정 |
 | 표·병합 | num_rows×num_cols, 첫 행 header, 병합 글자 반복, 다단 header/row role 손실, 잘못된 span/중복 점유 전체 실패 | 첫 생성은 반복 표현 유지하되 원본 셀 index/span과 모든 출력 위치 연결. 빈 칸은 빈 칸, 미점유는 누락 확정 아님. 병합/복합 머리 표는 전부 검수 대상. 명시된 연속 머리 행을 ‘상위 머리 – 하위 머리’로 한 행에 합치고 원본 셀별 source span→출력 selector를 남긴다. 표 바로 아래에 원문 병합 좌표와 공통 조건/합계/범위일 수 있다는 설명 문단을 둔다. 병합 셀·복합 머리 역할은 형식을 바꾸지 않는 유지 한계이며 이 플러그인이 처리한다 |
-| 셀 수식·여러 줄 | 셀 text만 전달, inline 수식/서식 추출 안 함 | 수식을 plain text로 보존해도 의미 보존 성공으로 채점하지 않음. 줄바꿈/Core 거부는 진단하고 전체 생성 거부, 임의 공백 치환 금지. 후속 rich cell 입력 필요 |
+| 셀 수식·여러 줄 | 셀 text만 전달, inline 수식/서식 추출 안 함 | 수식을 plain text로 보존해도 의미 보존 성공으로 채점하지 않음. 줄바꿈/Core 거부는 진단하고 전체 생성 거부, 임의 공백 치환 금지. 작성 입력은 inline cell을 받지만 현재 sourceCell에는 구조가 없으므로 추측 파싱하지 않는다. 셀 블록은 native 유지 한계 |
 | 수식·번호 | formula.text→Equation, 수식 번호 연결 안 함 | LaTeX 원문 유지. 같은 formula.orig의 명시적 괄호 접두 번호(예: (1))가 유일하고 LaTeX에 중복 tag/label이 없으면 fixed enumerator로 옮긴다. 번호 증거는 structure.numberEvidence에 보존한다. LaTeX는 그대로이며, 떨어진 번호는 추측 연결하지 않고 검수한다. 깨진/반복 formula·본문 오분류 후보. 렌더 성공은 의미 정확성 아님 |
 | 그림·캡션 | embedded PNG/JPEG/WebP→공식 images. 확실한 Arabic/대문자 절 번호(예: K.1) fixed, 그 외 원문 caption+번호 없음/손실 | 유지. bytes hash 보존. missing ImageRef는 pending+차단 손실. 현재 NIST의 embedded 자산도 검증한다. 잘못된 bytes는 거부하며 missing으로 낮추지 않음. 그래프를 수치 표로 추측 복원하지 않음 |
-| 표 캡션 | 번호는 표, 글자는 뒤 문단(작성 입력에 caption 없음) | 첫 생성 유지, 다대다 대응. 공개 caption 입력이 생기면 native caption으로 이동. 종류 불일치/중복/모호한 번호는 원문 보존+번호 없음 |
-| 주석·각주·위첨자 | footnote를 문단으로 유지, call site 추정 안 함. inline formatting/link 손실 | 유지하되 검수에 호출부·정의·표/쪽 적용 범위를 함께 제공. 번호/문자 같다고 연결 금지. 명시적 관계의 native 미주·위첨자 복원은 rich 입력 확보 뒤. 중요한 지수/주석 소실은 차단 손실 |
+| 표 캡션 | 번호는 표, 글자는 뒤 문단(작성 입력에 caption 없음) | 공식 native table.caption으로 이관하고 소속 table block에 다대다 대응. 종류 불일치/중복/모호한 번호는 원문 보존+번호 없음 |
+| 주석·각주·위첨자 | footnote를 문단으로 유지, call site 추정 안 함. inline formatting/link 손실 | 추출된 formatting/hyperlink를 inline 구조로 보존한다. 미주는 source의 단일 marker occurrence와 PDF의 작은 raised item/인접 baseline·표 소유 범위를 함께 확인할 때만 연결한다. 호출부 없음/중복은 손실. 표 전용 주석 구역/원래 문자 표지는 연결 뒤에도 유지 한계. 중요한 지수/주석 소실은 차단 손실 |
 | 코드 | code_language와 text→Code | 유지. 줄/공백 의미 보존, unknown language는 빈 값. 수식으로 추측 변환하지 않음 |
 | 페이지 경계 | 서로 다른 문단/표를 자동 병합하지 않음 | 유지. 인접 양쪽을 검수 묶음으로 읽음. 같은 항목의 다중 prov는 그대로 유지. 별개 항목 병합은 원문 증거·읽기 순서·표 열 일치 확인 뒤 native 교정, 반복 header 제거도 기록 |
 | 머리글·바닥글·쪽 번호 | furniture layer 또는 page_header/page_footer 제외 | 명시 분류만 자동 제외. 반복/숫자/가장자리 휴리스틱만으로 본문 삭제 금지. 제외한 항목도 원문 대조 가능. 계약 v2 고정본의 furniture/page_header/page_footer만 제외; NIST 측면 출처 포함 |
@@ -225,7 +225,7 @@ furniture/그림/수식 영역 제외는 옛 구현의 한계다. 새 설계는 
 | --- | --- | --- | --- |
 | 공식 native 작성·이미지 게시·최종 targets·check | 첫 단계부터 필요(현재 CLI 경로 있음) | 모든 가져오기/보고서 작성 | create 입력과 receipt 사용. 내부 writer/asset 저장 구현 안 함 |
 | 새 화면 저장의 images 입력 | 없어도 됨(첫 단계 CLI), 화면 생성 완성 시 필요 | 보고서/HTML·Word 가져오기 | 현재 saveDocument만으로 그림 게시 불가. CLI 경로 유지 가능, 필요할 때 범용 images 확장 요청 |
-| rich inline/위·아래첨자·미주 연결/중첩 목록·문자 표지/rich cell/표 캡션·레이블·상호 참조 작성 입력 | 검수 단계에서 필요(해당 차단 손실 해소 전) | 기술 문서 가져오기·번역 | native 일반 편집이 공개적으로 표현하면 그것 사용. 없으면 공개 authoring 확장 요청. AST/원문 Markdown 우회 금지 |
+| rich inline/위·아래첨자·미주/중첩·문자 목록/rich cell/표 캡션·label/reference 작성 입력 | 공개 master에서 충족. 실제 이관은 원본 근거가 있는 범위 | 기술 문서 가져오기·번역 | CLI 소스 빌드와 content roundtrip으로 확인. source에 없는 구조/참조는 복원하지 않으며, 더 이상 플랫폼 보강 대기로 분류하지 않음 |
 | CLI 읽기 출력의 완전한 inline 구조 | 공식 rich 작성 입력 소비 시 필요 | 모든 문서 처리 | 현재 일부 구조 생략. 보강 전 구조를 추측하지 않고 원본 중간 표현에 보존 |
 | 문서 표시·특정 target 이동/강조·선택 알림 | 검수 단계에서 필요 | 번역 검토·문서 비교 | 일반 문서 탭 열기는 1단계 대안. native renderer 복제는 대안 아님 |
 | 원본 영역과 native target을 연결하는 대조 틀 | 검수 단계에서 필요(사람 판단 시작 전) | PDF/Word 가져오기·번역 원문 대조 | PDF.js로 원본만 그릴 수 있음. native 쪽·초안 보호·선택 연동이 없어 전체 대조를 혼자 완성할 수 없음 |
@@ -298,7 +298,7 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 | --- | --- | --- |
 | 대응/검수 sidecar 동반 전달 | 채택. native 유효성·가독성·다대다 대응을 함께 지키는 가장 단순한 방식 | 3절 출력 계약, requirements-extract 인계. 본문 ID 필요 시 먼저 범용 identity 계약 논의 |
 | 교정 후 재생성 정책 | 새 generation만 생성, 교정 자동 이식 없음. 수동 수정 유실 방지 | 3절 재생성/비교·채택, 이후 실제 병합 요구가 있을 때만 확장 |
-| 표 병합/중첩·셀 수식의 첫 단계 손실 허용 — 2026-11-13 조사 반영 | 병합/복합 머리는 형식 유지 방침에 따라 반복/합치기+원본 범위+문서 설명+전수 검수. 중첩/rich cell은 작성 입력 보강 뒤 해소. 의미 손실이 남으면 최종 완료 차단 | 4절 규칙, 1·4단계 순서/필요 플랫폼 표현 능력 |
+| 표 병합/중첩·셀 수식의 첫 단계 손실 허용 — 2026-11-13 조사 반영 | 병합/복합 머리는 형식 유지 방침에 따라 반복/합치기+원본 범위+문서 설명+전수 검수. 중첩은 공개 입력으로 이관. rich cell은 source 구조 부재와 셀 블록의 native 한계를 구분해 유지. 의미 손실이 남으면 최종 완료 차단 | 4절 규칙, 1·4단계 순서/필요 플랫폼 표현 능력 |
 | 비서/사람 분담 | 비서 먼저 즉시 교정, 사람은 판단 불가·대량 삭제·최종 확정. 모든 표/그림 전수 수동 확인 안 함 | 5–7절, 완료 gate와 실제 사람 부담 지표 |
 | 실사용 합격선과 측정 문서 | 200쪽 이상 1건, 사람 목록 ≤10%·100쪽당 30분을 잠정 목표로 진행. 대표성/밀도에 따라 조정 가능 | 1·10절 목표. 실제 자료 사용은 별도 허가 후 |
 | 변경 receipt가 없는 수동 편집 | 대응 uncertain·완료 무효화. 추측 연결보다 잘못된 출처 방지가 우선 | 3·8절. 더 강한 유지가 필수면 공개 편집 추적/identity 능력을 앞당김 |
@@ -341,3 +341,13 @@ LSR 두 판은 각각 17/21묶음(1.31/1.62건/쪽), NIST는 14묶음(1.27건/�
 알려진 셋째 수식/병합 표/북마크 없음/숫자 셀 4곳의 기록 부재를 잡지만, 벡터 수식의 수치 자체는 text layer에서 검증하지 못한다. 정상 빈 칸 1개도 gap 후보가 되는 오경보다. 수치/부호/단위/셀 교환/문단 누락/머리글 삽입의 주입 6종은 탐지했고, oracle와 같은 숫자 셀 21개 token 대조의 오경보는 0/21이다. 전체 문서/다른 후보의 오경보율과 시각/의미 품질은 미측정이다. 수식에서 문장 혼입을 없앤 그럴듯한 오답은 놓치며, bookmark가 있어도 개별 제목의 정확성을 보증하지 않는다.
 
 모든 수식은 의심 유무와 별개로 formula-review-required 후보와 각 수식 scope의 검수 묶음을 가진다. 의심 없는 두 수식도 검수에서 빠지지 않으며, 같은 필수 검수 패턴의 접기는 승인/검토 생략이 아니다.
+
+## 2026-11-13 보강된 작성 입력 적용
+
+생성기 0.5.0, 갱신 규칙 1.2.0과 탐지기 1.1.0을 사용한다. LSR 두 판은 각각 손실 38→31, NIST는 14→0이다. 표 caption 7/7/3개를 소속 table로 옮기고, NIST 미주 7개와 LSR 표 주석 1개를 실제 연결했다. LSR 각주 5개 전부를 연결한다는 가정은 기각했다: `19` 호출부 없음, 다른 표 `a` 호출부 없음, 한 추출 표 안에 중복 `a` 두 개. 이 4개는 문단으로 보존하며 손실을 유지한다. 이관한 표 주석도 원래 전용 배치·문자 표지 손실은 유지한다.
+
+세 고정 source에는 formatting/hyperlink가 없고 일반 중첩/문자 목록도 없어, 고정 source 사본에 명시 구조/서식을 더한 별도 반례의 실제 CLI roundtrip으로 확인했다. 식 fixed 번호 3개와 그림 K.1/K.2는 이미 이관돼 있었고 그대로 유지한다. 본문의 숫자만 보고 상호 참조를 만들지 않는다.
+
+provenance v1과 검수 파일 v1.0.0 schema는 바꾸지 않는다. 캡션은 table/figure block, 정의는 receipt가 재배치한 footnote block, 중첩 항목은 최상위 포함 list-item target으로 연결한다. structure의 부가 생성 근거(noteBinding/noteReferences/listProjection)는 정밀 selector가 아니며 소비자가 native path로 사용하지 않는다. 기존 v1 표/목록 block의 null text 의미와 옛 묶음 읽기도 유지한다.
+
+숫자/PDF 비교는 원래 marker를 대응 근거로 복원해 새 미주 표시 번호를 원본 값 오류로 오인하지 않는다. 모양/렌더링을 기준으로 승인하지 않는다. 표 caption이 native 소속이 되면서 기존 뒤 문단 순서 후보 7/7/3개가 사라졌고 나머지 알려진 문제·주입 검사·음성 대조는 유지한다. 최신 수치와 남은 손실은 results-richer-authoring.md가 정본이며 PR 1–3 결과 문서는 당시 측정 기록이다.

@@ -50,7 +50,7 @@ test(
     assert.equal(e.controls.count, 21);
     assert.equal(e.controls.falsePositives, 0);
     assert(e.known.formula3);
-    assert.equal(e.known.captionOrderConflicts, 7);
+    assert.equal(e.known.captionOrderConflicts, 0); // Linked native captions replace trailing prose.
     assert.equal(e.known.firstTwoFormulaFalseAlarms, 0);
     assert(e.known.mergedTables.every((t) => t.flagged));
     assert(e.known.fourMissingNumericCells.every((c) => c.flagged));

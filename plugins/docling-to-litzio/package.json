@@ -2,7 +2,7 @@
   "name": "docling-to-litzio-processing",
   "private": true,
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "engines": {
     "node": ">=24.22.1 <25"
   },

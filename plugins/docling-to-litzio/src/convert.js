@@ -1,8 +1,16 @@
+import {
+  formatInline,
+  hasInline,
+  unsupportedFormat,
+  bindNotes,
+  noteContent,
+} from "./rich-content.js";
+import { projectList, markerFormat } from "./list-rule.js";
 import { projectTable, lossCategory, sourceStructure } from "./table-rule.js";
 import { formulaHints } from "./formula.js";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { resolve, dirname } from "node:path";
+import { resolve } from "node:path";
 export const hash = (value) => createHash("sha256").update(value).digest("hex");
 export const RULES = Object.freeze(
   Object.fromEntries(
@@ -24,8 +32,17 @@ export const RULES = Object.freeze(
       "formulaHints",
     ].map((k) => [
       k,
-      ["table", "equation", "figure", "caption"].includes(k)
-        ? "1.1.0"
+      [
+        "table",
+        "equation",
+        "figure",
+        "caption",
+        "list",
+        "paragraph",
+        "heading",
+        "footnote",
+      ].includes(k)
+        ? "1.2.0"
         : "1.0.0",
     ]),
   ),
@@ -156,7 +173,13 @@ export function regions(prov, doc) {
     };
   });
 }
-export function makePlan({ doc, record, source, bookmarkEvidence }) {
+export function makePlan({
+  doc,
+  record,
+  source,
+  bookmarkEvidence,
+  pdfEvidence,
+}) {
   const nodes = validate(doc, record),
     items = new Map(),
     inputs = [],
@@ -274,6 +297,21 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
     const v = numbers.get(ref);
     return v && counts.get(kind + ":" + v.enumerator) === 1 ? v : null;
   };
+  if (pdfEvidence && pdfEvidence.pdfSha256 !== source.pdfSha256)
+    fail("pdf-evidence-digest");
+  const notes = bindNotes(doc, pdfEvidence);
+  for (const [ref, definition] of notes.definitions)
+    items.get(ref).structure.noteBinding = definition.binding;
+  for (const [key, bindings] of notes.edits) {
+    const ref = key.slice(0, key.lastIndexOf(":"));
+    (items.get(ref).structure.noteReferences ??= []).push(...bindings);
+  }
+  const content = (n, text = n.text ?? "") =>
+    noteContent(n, notes.edits.get(n.self_ref + ":text"), text);
+  const prose = (n) =>
+    hasInline(n) || notes.edits.has(n.self_ref + ":text")
+      ? { content: content(n) }
+      : { text: n.text };
   const seen = new Set();
   function walk(ref, depth = 0, excluded = false) {
     if (seen.has(ref)) return;
@@ -294,14 +332,55 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
       entry.disposition = "container";
       if (!["unspecified", "list", "ordered_list", "inline"].includes(n.label))
         note(ref, "group-role", n.label, "advisory");
+      if (n.label?.includes("list")) {
+        let projection;
+        try {
+          projection = projectList(ref, nodes, content);
+        } catch (e) {
+          if (
+            !/^list-(unrepresentable-structure|ambiguous-marker)$/.test(
+              e.message,
+            )
+          )
+            throw e;
+          note(ref, "list-marker-or-depth", { reason: e.message });
+        }
+        if (projection) {
+          const key = emit(ref, { kind: "list", ...projection.list });
+          for (const r of projection.containers) {
+            seen.add(r);
+            items.get(r).disposition = "container";
+          }
+          // v1 cannot locate a nested item precisely. Map to its containing root
+          // item; original self_ref/regions and raw hierarchy remain available.
+          for (const m of projection.mappings) {
+            seen.add(m.ref);
+            const i = items.get(m.ref);
+            i.disposition = "mapped";
+            i.structure.listProjection = {
+              rootSelfRef: ref,
+              indexPath: m.indexPath,
+            };
+            i.links.push({ key, selector: { listItem: m.indexPath[0] } });
+            const unknown = unsupportedFormat(nodes.get(m.ref));
+            if (Object.keys(unknown).length)
+              note(m.ref, "inline-formatting", unknown);
+          }
+          if (projection.mappings.some((m) => m.indexPath.length > 1))
+            diagnostics.push({
+              code: "nested-list-provenance-coarse",
+              selfRef: ref,
+            });
+          return;
+        }
+      }
       for (const c of n.children ?? [])
         walk(c.$ref, depth + (n.label?.includes("list") ? 1 : 0));
       return;
     }
-    if (
-      captionOwner.has(ref) &&
-      nodes.get(captionOwner.get(ref)).label === "picture"
-    ) {
+    if (captionOwner.has(ref)) {
+      const unknown = unsupportedFormat(n);
+      if (Object.keys(unknown).length) note(ref, "inline-formatting", unknown);
       entry.disposition = "container";
       return;
     }
@@ -343,11 +422,42 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
           contributions: projection.model.headerContributions,
         });
       const number = numbering(ref, "table");
-      emit(ref, {
-        kind: "table",
-        rows: projection.rows,
-        ...(number ? { enumerator: number.enumerator } : { enumerated: false }),
-      });
+      const caps = (n.captions ?? []).filter(
+        (c) => !furniture(nodes.get(c.$ref)),
+      );
+      const caption = caps.flatMap((c, index) => [
+        ...(index ? [{ kind: "text", text: " " }] : []),
+        ...content(
+          nodes.get(c.$ref),
+          number?.caption ?? nodes.get(c.$ref).text,
+        ),
+      ]);
+      const rows = projection.rows.map((row, r) =>
+        row.map((text, col) => {
+          const originals = entry.cells.filter((c) =>
+            c.selectors.some((s) => s.row === r && s.column === col),
+          );
+          // Compound headers keep their established exact joined text. A cell's
+          // inline note is transferred only for a one-source projection.
+          const edits =
+            originals.length === 1
+              ? notes.edits.get(ref + ":" + originals[0].cellIndex)
+              : undefined;
+          return edits?.length ? noteContent({}, edits, text) : text;
+        }),
+      );
+      emit(
+        ref,
+        {
+          kind: "table",
+          rows,
+          ...(caps.length ? { caption } : {}),
+          ...(number
+            ? { enumerator: number.enumerator }
+            : { enumerated: false }),
+        },
+        [ref, ...caps.map((c) => c.$ref)],
+      );
       if (projection.model.note) {
         const key = emit(ref, {
           kind: "paragraph",
@@ -355,8 +465,6 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
         });
         entry.links.find((l) => l.key === key).role = "explanation";
       }
-      if ((n.captions ?? []).length)
-        note(ref, "table-caption-separate", n.captions);
       if (n.label === "document_index")
         note(ref, "toc-static-table", n.label, "advisory");
     } else if (n.label === "picture") {
@@ -368,7 +476,10 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
       const block = {
         kind: "figure",
         imageAlt: "",
-        caption: number?.caption ?? caption,
+        caption:
+          caps.length === 1
+            ? content(nodes.get(caps[0].$ref), number?.caption ?? caption)
+            : caption,
         ...(number ? { enumerator: number.enumerator } : { enumerated: false }),
       };
       if (n.image?.uri) {
@@ -393,9 +504,9 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
     } else if (n.label === "title" || n.label === "section_header") {
       const level = n.label === "title" ? 1 : n.level;
       if (Number.isInteger(level) && level >= 1 && level <= 6)
-        emit(ref, { kind: "heading", level, text: n.text });
+        emit(ref, { kind: "heading", level, ...prose(n) });
       else {
-        emit(ref, { kind: "paragraph", text: n.text });
+        emit(ref, { kind: "paragraph", ...prose(n) });
         note(ref, "heading-level", level);
       }
     } else if (n.label === "formula") {
@@ -414,48 +525,32 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
         code: n.text,
       });
     else if (n.label === "list_item") {
-      const numeric = n.enumerated && /^\d+[.)]?$/.test(n.marker ?? ""),
-        previous = inputs.at(-1),
-        last = previous?.blocks[0];
-      const start = numeric ? Number(n.marker.replace(/\D/g, "")) : undefined;
-      const previousSource =
-        previous &&
-        [...items.values()].find((i) =>
-          i.links.some((l) => l.key === previous.key),
-        );
-      if (
-        last?.kind === "list" &&
-        last.ordered === !!numeric &&
-        last.items.length < 100 &&
-        previousSource &&
-        nodes.get(previousSource.selfRef).parent?.$ref === n.parent?.$ref &&
-        (!numeric || last.start + last.items.length === start)
-      ) {
-        const selector = { listItem: last.items.length };
-        last.items.push(n.text);
-        entry.disposition = "mapped";
-        entry.links.push({ key: previous.key, selector });
-      } else {
-        const key = emit(ref, {
-          kind: "list",
-          ordered: !!numeric,
-          ...(numeric ? { start } : {}),
-          items: [n.text],
-        });
-        entry.links[0].selector = { listItem: 0 };
-      }
-      if (
-        depth > 1 ||
-        (n.enumerated && !numeric) ||
-        (n.marker && !numeric && !["-", "•", "*"].includes(n.marker))
-      )
+      const format = markerFormat(n);
+      const key = emit(ref, {
+        kind: "list",
+        ...(format ?? { ordered: false }),
+        items: [{ content: content(n) }],
+      });
+      entry.links[0].selector = { listItem: 0 };
+      entry.structure.listProjection = { rootSelfRef: ref, indexPath: [0] };
+      if (!format || depth > 1 || n.children?.length)
         note(ref, "list-marker-or-depth", {
           marker: n.marker,
           enumerated: n.enumerated,
           depth,
         });
     } else if (typeof n.text === "string") {
-      emit(ref, { kind: "paragraph", text: n.text });
+      const definition = notes.definitions.get(ref);
+      emit(
+        ref,
+        definition
+          ? {
+              kind: "footnote",
+              label: definition.binding.label,
+              content: formatInline(n, definition.text),
+            }
+          : { kind: "paragraph", ...prose(n) },
+      );
       if (n.label === "footnote") {
         const tableOwned =
           n.parent?.$ref?.startsWith("#/tables/") ||
@@ -464,19 +559,31 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
               t.self_ref?.startsWith("#/tables/") &&
               t.footnotes?.some((r) => r.$ref === ref),
           );
-        note(
-          ref,
-          tableOwned ? "dedicated-table-note" : "footnote-as-paragraph",
-          n.text,
-        );
+        if (tableOwned || !definition)
+          note(
+            ref,
+            tableOwned ? "dedicated-table-note" : "footnote-as-paragraph",
+            {
+              text: n.text,
+              reason:
+                notes.unresolved.get(ref) ??
+                "Original table note placement/letter marker becomes a numbered endnote",
+            },
+          );
       } else if (!["text", "paragraph", "caption"].includes(n.label))
         note(ref, "role-as-paragraph", n.label);
     } else {
       entry.disposition = "unsupported";
       note(ref, "unsupported-element", n.label);
     }
-    if (n.formatting || n.hyperlink)
-      note(ref, "inline-formatting", n.formatting ?? n.hyperlink);
+    const unknownFormat = ["formula", "code"].includes(n.label)
+      ? {
+          ...(n.formatting ?? {}),
+          ...(n.hyperlink ? { hyperlink: n.hyperlink } : {}),
+        }
+      : unsupportedFormat(n);
+    if (Object.keys(unknownFormat).length)
+      note(ref, "inline-formatting", unknownFormat);
     for (const c of n.children ?? []) walk(c.$ref, depth);
     for (const c of n.captions ?? []) walk(c.$ref, depth);
   }
@@ -521,20 +628,30 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
   return {
     headingReview,
     formulaReview,
-    generatorVersion: "0.3.0",
+    generatorVersion: "0.5.0",
     rulesVersion: RULES,
     source,
     request,
     items: [...items.values()],
     losses,
     diagnostics,
-    provenanceStatus: "generation-report-only; finalize in PR 2",
+    provenanceStatus: "v1; unreviewed generation",
   };
 }
 export function validateLimits(request) {
   const a = request.authoring,
     bs = a.inputs.flatMap((i) => i.blocks);
-  if (a.inputs.length > 5000 || bs.length > 5000 || request.images.length > 256)
+  const listItems = (v) =>
+    v && typeof v === "object"
+      ? (v.kind === "list" || ("ordered" in v && Array.isArray(v.items))
+          ? v.items.length
+          : 0) + Object.values(v).reduce((s, x) => s + listItems(x), 0)
+      : 0;
+  if (
+    a.inputs.length > 5000 ||
+    bs.length + listItems(bs) > 5000 ||
+    request.images.length > 256
+  )
     fail("authoring-count-limit");
   const strings = (v) => {
     if (typeof v === "string" && v.length > 16384) fail("string-limit");

@@ -1,30 +1,15 @@
+import {
+  sourceItemText,
+  inlineSignature,
+  noteContent,
+} from "./rich-content.js";
+import { markerFormat } from "./list-rule.js";
 // Independent fixed-generation audit: source JSON and actual CLI read-model only.
 // It intentionally does not read authoring inputs or compare the planner with itself.
 export function auditSourceNative(doc, provenance, snapshot) {
   const mismatches = [];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const node = (path) => snapshot.nodes.find((n) => same(n.path, path));
-  const inspect = (t) => {
-    const n = node(t.path);
-    if (t.selector.kind === "cell")
-      return snapshot.nodes.find((n) =>
-        same(n.path, [...t.path, t.selector.row, t.selector.column]),
-      )?.text;
-    if (t.selector.kind === "list-item")
-      return n?.items?.[t.selector.index]?.content
-        .map((c) => c.text ?? "")
-        .join("");
-    return (
-      n?.text ??
-      n?.latex ??
-      n?.code ??
-      (n?.type === "figure"
-        ? (snapshot.nodes.find(
-            (c) => c.type === "caption" && c.path[0] === t.path[0],
-          )?.text ?? "")
-        : undefined)
-    );
-  };
   for (const item of provenance.items) {
     const source = item.selfRef
       .slice(2)
@@ -34,19 +19,21 @@ export function auditSourceNative(doc, provenance, snapshot) {
       for (const t of item.targets) {
         if (t.bindingState !== "current" || t.role === "explanation") continue;
         const n = node(t.path),
-          actual = inspect(t);
+          actual = sourceItemText(snapshot, t, item, provenance);
         let expected = source.text;
+        if (item.structure.noteBinding)
+          expected = /^(?:\d+|[a-z])\s+(\S[\s\S]*)$/.exec(source.text)?.[1];
         if (
           source.label === "caption" &&
-          n?.type === "figure" &&
+          ["figure", "table"].includes(n?.type) &&
           actual !== expected
         ) {
           const m =
-            /^\s*(?:Figure|Fig\.?|그림)\s+((?:[A-Z]\.)?\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
+            /^\s*(?:Figure|Fig\.?|그림|Table|표)\s+((?:[A-Z]\.)?\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
               expected,
             );
           const number = snapshot.numbering?.targets?.find(
-            (v) => v.kind === "figure" && same(v.path, t.path),
+            (v) => v.kind === n.type && same(v.path, t.path),
           )?.number;
           if (m && String(number) === m[1]) expected = m[2];
         }
@@ -57,6 +44,68 @@ export function auditSourceNative(doc, provenance, snapshot) {
             expected,
             actual,
           });
+        let actualContent = n?.content;
+        if (source.label === "caption" && n?.type === "table")
+          actualContent = n.caption;
+        if (source.label === "caption" && n?.type === "figure")
+          actualContent = snapshot.nodes.find(
+            (c) => c.type === "caption" && c.path[0] === n.path[0],
+          )?.content;
+        if (item.structure.listProjection) {
+          let list = n,
+            entry;
+          const indices = item.structure.listProjection.indexPath;
+          for (const [depth, index] of indices.entries()) {
+            entry = list?.items?.[index];
+            if (depth === indices.length - 1) {
+              const parent = doc.groups.find(
+                (g) => g.self_ref === source.parent?.$ref,
+              );
+              const siblings = (parent?.children ?? [])
+                .map((r) => doc.texts.find((n) => n.self_ref === r.$ref))
+                .filter(Boolean);
+              const alphabeticContext = siblings.some(
+                (s) =>
+                  s.enumerated &&
+                  /^[a-z][.)]?$/i.test(s.marker ?? "") &&
+                  !/^[ivxlcdm][.)]?$/i.test(s.marker),
+              );
+              const f = markerFormat(source, alphabeticContext);
+              if (
+                f &&
+                (list?.ordered !== f.ordered ||
+                  (f.ordered &&
+                    ((list.start ?? 1) + index !== f.start ||
+                      (list.style ?? "decimal") !== (f.style ?? "decimal") ||
+                      (list.delimiter ?? ".") !== (f.delimiter ?? "."))))
+              )
+                mismatches.push({
+                  selfRef: item.selfRef,
+                  kind: "source-list-marker",
+                });
+            }
+            list = entry?.list;
+          }
+          actualContent = entry?.content;
+        } else if (t.selector.kind === "list-item")
+          actualContent = n?.items?.[t.selector.index]?.content;
+        if (actualContent && !["formula", "code"].includes(source.label)) {
+          const bindings =
+            item.structure.noteReferences?.filter(
+              (b) => b.cellIndex === null,
+            ) ?? [];
+          const expectedContent = noteContent(source, bindings, expected);
+          if (
+            !same(
+              inlineSignature(expectedContent),
+              inlineSignature(actualContent),
+            )
+          )
+            mismatches.push({
+              selfRef: item.selfRef,
+              kind: "source-inline-structure",
+            });
+        }
         if (
           source.label === "section_header" &&
           source.level >= 1 &&
@@ -69,6 +118,7 @@ export function auditSourceNative(doc, provenance, snapshot) {
           });
         if (
           source.label === "list_item" &&
+          !item.structure.listProjection &&
           source.enumerated &&
           /^\d+[.)]?$/.test(source.marker ?? "") &&
           Number(source.marker.replace(/\D/g, "")) !==
@@ -147,10 +197,28 @@ export function auditSourceNative(doc, provenance, snapshot) {
               actualPositions.add(`${r}:${col}`);
               const expected =
                 r === 0 && headerRows > 1 ? header[col] : sc.text;
-              const actual = inspect({
+              const ct = {
                 ...t,
                 selector: { ...t.selector, row: r, column: col },
-              });
+              };
+              const actual = sourceItemText(snapshot, ct, item, provenance);
+              const cell = node([...ct.path, r, col]);
+              const bindings =
+                item.structure.noteReferences?.filter(
+                  (b) => b.cellIndex === c.cellIndex,
+                ) ?? [];
+              if (
+                cell?.content &&
+                !same(
+                  inlineSignature(noteContent({}, bindings, expected)),
+                  inlineSignature(cell.content),
+                )
+              )
+                mismatches.push({
+                  selfRef: item.selfRef,
+                  cellIndex: c.cellIndex,
+                  kind: "source-cell-inline-structure",
+                });
               if (actual !== expected)
                 mismatches.push({
                   selfRef: item.selfRef,

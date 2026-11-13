@@ -86,6 +86,46 @@ test(
       const snapshot = JSON.parse(
         await readFile(join(out, "snapshot.json"), "utf8"),
       );
+      assert.equal(result.losses, name === "nist" ? 0 : 31);
+      assert.equal(
+        snapshot.nodes.filter((n) => n.type === "footnote").length,
+        name === "nist" ? 7 : 1,
+      );
+      assert.equal(
+        snapshot.nodes.filter((n) => n.type === "table" && n.caption?.length)
+          .length,
+        name === "nist" ? 3 : 7,
+      );
+      for (const ref of before.doc.tables.flatMap((t) => t.captions ?? [])) {
+        const caption = handoff.provenance.items.find(
+          (i) => i.selfRef === ref.$ref,
+        );
+        assert(
+          caption.regions.length &&
+            caption.targets.some((t) =>
+              snapshot.nodes.some(
+                (n) =>
+                  n.type === "table" &&
+                  JSON.stringify(n.path) === JSON.stringify(t.path),
+              ),
+            ),
+        );
+      }
+      for (const note of handoff.provenance.items.filter(
+        (i) => i.structure.noteBinding,
+      )) {
+        assert(
+          note.regions.length &&
+            note.targets.some((t) =>
+              snapshot.nodes.some(
+                (n) =>
+                  n.type === "footnote" &&
+                  n.label === note.structure.noteBinding.label &&
+                  JSON.stringify(n.path) === JSON.stringify(t.path),
+              ),
+            ),
+        );
+      }
       const plan = makePlan(before),
         receipt = JSON.parse(await readFile(join(out, "receipt.json"), "utf8"));
       for (const entry of plan.items.filter((i) => i.asset)) {

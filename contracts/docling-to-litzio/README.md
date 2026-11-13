@@ -72,7 +72,7 @@ JSON Schema 2020-12의 기계 판독 정의는 설치 단위 안의 다음 파�
 
 병합이 있었던 표는 모두 tableModel.reviewRequired=true다. mergedRanges에 role과 risks(열 묶음, 행/열 간 공유, 합계/범위/공통 조건 가능성)를 표시한다. 이는 의미 판정이 아니며 검수 우선순위 근거다. 값 반복은 공통 조건을 행별 독립 값으로 잘못 읽히게 할 수 있다. 빈 칸은 누락으로 오해하기 쉬워 택하지 않고, 표 바로 아래에 원문 R/C 범위와 반복/머리 합치기 설명을 plain 문단으로 둔다. 그 target role은 explanation이다. 모든 원본 셀과 원래 숫자·부호는 그대로 보존한다.
 
-원본 형식의 유지 한계: 병합/복합 머리·머리 열, 표 전용 주석 구역과 표지, 셀 안 줄바꿈·여러 문단·목록, 정적 목차 역할. 작성 입력 보강 예정: 표 caption/label, 미주 표시/정의 연결, 중첩 목록·문자 표지, inline 서식·위/아래첨자, rich cell, label/상호 참조 및 읽기 출력의 inline 구조. 전자는 형식 확장을 기다리지 않으며 후자는 근거를 structure/sourceCell/source JSON에 보존한 채 후속 필드를 채운다.
+원본 형식의 유지 한계: 병합/복합 머리·머리 열, 표 전용 주석 구역과 표지, 셀 안 줄바꿈·여러 문단·목록, 정적 목차 역할. 2026-11-13 공개 master는 표 caption/label, 미주 표시/정의, 중첩·문자 목록, inline 서식/첨자·rich cell·label/reference 입력 및 모든 위치의 inline 읽기를 지원한다. source에 실제 구조가 있는 범위만 작성 필드를 채운다. 구조 없는 cell 문자열에서 수식/블록을 추측하지 않으며 더 이상 이를 작성 입력 대기로 분류하지 않는다.
 
 이미 제공되는 equation/figure.enumerator는 플러그인이 사용한다. 같은 formula.orig에 유일한 괄호 접두 번호가 있고 LaTeX에 tag/label이 없을 때 fixed 번호로 옮긴다. LaTeX는 바꾸지 않는다. 단일 그림 caption의 Arabic 또는 K.1 같은 명시 절 번호는 prefix를 떼어 fixed 번호로 둔다. 중복·접미사·다중 caption·불명확한 번호는 literal/unbound+검수 손실이다. 번호 미인식은 authoring-input 한계가 아니라 plugin-pending이다.
 
@@ -82,3 +82,11 @@ items.structure는 원본 parent/children/formatting/hyperlink/meta/captions/foo
 PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.
 
 PR 3은 생성 묶음을 바꾸지 않고 별도 [검수 대상 v1](review-targets.md)을 내놓는다. review-targets.json은 후보/미검수 상태이며 provenance의 reviewed 상태나 교정 이력을 확장하지 않는다.
+
+## 보강된 작성 입력의 v1 대응 범위
+
+새 schema/selector는 추가하지 않는다. 캡션 source item은 소속 table/figure의 block target과 원래 caption selfRef/regions로 이어진다. table block의 targets.text는 기존과 같이 null일 수 있다. 현재 caption 내용은 해당 revision의 공식 snapshot.table.caption에서 읽는다. null을 누락으로 해석하거나 캡션의 정밀 문자 범위라고 해석하지 않는다.
+
+미주 source item은 create receipt의 실제 재배치된 footnote block target에 연결된다. 원래 번호/문자와 sourceText는 보존되지만 화면의 미주 번호는 첫 참조 순서로 달라진다. 표 전용 배치·문자 표지 손실은 유지한다. 원문 call site는 유일한 source marker와 작은 raised PDF item·인접 baseline·소유 범위로 확인한 경우만 연결하며 missing/ambiguous는 손실로 보존한다.
+
+중첩 목록 source item은 이를 포함하는 최상위 list-item target으로 연결된다(그 target의 text는 포함된 하위 목록까지의 평문). 이는 포함 범위 대응이며 하위 항목을 정밀하게 선택하는 locator가 아니다. 기존 opaque structure에 보존하는 listProjection.indexPath와 noteBinding/noteReferences는 생성 검사의 부가 근거다. 소비자는 이 값을 영속 identity나 새 selector로 사용하지 않는다. 정밀 부분 범위가 필수이면 현재 v1로 충족하지 못한다고 표시해야 한다. 기존 생성 v1 묶음도 reader로 다시 검증했다.

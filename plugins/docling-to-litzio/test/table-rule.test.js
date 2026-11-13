@@ -104,7 +104,7 @@ test("duplicate and suffixed numbers stay literal/unbound with review loss", () 
 test("native, authoring and pending losses are separated; inline evidence stays available", () => {
   const b = structuredClone(source),
     text = b.doc.texts.find((n) => n.label === "text");
-  text.formatting = { bold: true, script: "super" };
+  text.formatting = { bold: true, script: "super", underline:true };
   text.hyperlink = "https://example.org";
   const p = makePlan(b),
     i = p.items.find((i) => i.selfRef === text.self_ref);
@@ -128,7 +128,7 @@ test("native, authoring and pending losses are separated; inline evidence stays 
     p.losses.some(
       (l) =>
         l.reasonCode === "inline-formatting" &&
-        l.category === "authoring-input",
+        l.category === "plugin-pending",
     ),
   );
 });

@@ -1,3 +1,4 @@
+import { inlineText, inlineSignature } from "./rich-content.js";
 // Independent readback checks. No Core, native parser or sibling plugin imports.
 export function verifyNative(plan, receipt, snapshot) {
   const mismatches = [],
@@ -34,7 +35,16 @@ export function verifyNative(plan, receipt, snapshot) {
       check(input.key, "code-language", b.language, n.language ?? "");
     if (b.kind === "list" && b.ordered)
       check(input.key, "list-start", b.start ?? 1, n.start ?? 1);
-    if ("text" in b) check(input.key, "literal", b.text, n.text);
+    if ("text" in b)
+      check(input.key, "literal", b.text, inlineText(n.content ?? n.text));
+    if ("content" in b)
+      check(
+        input.key,
+        "inline",
+        inlineSignature(b.content),
+        inlineSignature(n.content),
+      );
+    if (b.label) check(input.key, "label", b.label, n.label);
     if (b.kind === "heading") check(input.key, "level", b.level, n.level);
     if (b.kind === "equation") check(input.key, "latex", b.latex, n.latex);
     if (b.kind === "code") check(input.key, "code", b.code, n.code ?? n.text);
@@ -48,33 +58,52 @@ export function verifyNative(plan, receipt, snapshot) {
         b.rows.length * b.rows[0].length,
         cells.length,
       );
+      if (b.caption !== undefined)
+        check(
+          input.key,
+          "table-caption",
+          inlineSignature(b.caption),
+          inlineSignature(n.caption),
+        );
       b.rows.forEach((row, r) =>
         row.forEach((text, c) =>
           check(
             input.key,
             `cell:${r}:${c}`,
-            text,
-            get([...n.path, r, c])?.text,
+            inlineSignature(text),
+            inlineSignature(
+              get([...n.path, r, c])?.content ?? get([...n.path, r, c])?.text,
+            ),
           ),
         ),
       );
     }
     if (b.kind === "list") {
-      check(
-        input.key,
-        "list-text",
-        b.items,
-        n.items?.map((i) => i.content.map((c) => c.text ?? "").join("")),
-      );
-      check(input.key, "list-ordered", b.ordered, n.ordered);
+      const project = (l) => ({
+        ordered: l.ordered,
+        ...(l.ordered
+          ? {
+              start: l.start ?? 1,
+              style: l.style ?? "decimal",
+              delimiter: l.delimiter ?? ".",
+            }
+          : {}),
+        items: l.items.map((i) => ({
+          content: inlineSignature(typeof i === "string" ? i : i.content),
+          ...(i.list ? { list: project(i.list) } : {}),
+        })),
+      });
+      check(input.key, "list-structure", project(b), project(n));
     }
     if (b.kind === "figure")
       check(
         input.key,
         "caption",
-        b.caption,
-        nodes.find((c) => c.type === "caption" && c.path[0] === n.path[0])
-          ?.text ?? "",
+        inlineSignature(b.caption),
+        inlineSignature(
+          nodes.find((c) => c.type === "caption" && c.path[0] === n.path[0])
+            ?.content ?? "",
+        ),
       );
   }
   return {
@@ -100,6 +129,14 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
     for (const c of resolveRef(doc, ref).children ?? []) visit(c.$ref);
   };
   visit("#/body");
+  const markers = Object.fromEntries(
+    plan.items
+      .filter((i) => i.structure.noteBinding)
+      .map((i) => [
+        i.structure.noteBinding.label,
+        i.structure.noteBinding.marker,
+      ]),
+  );
   const metrics = {},
     details = [],
     observations = [],
@@ -192,7 +229,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
     const listText =
       n?.type === "list"
         ? n.items?.[i.links[0].selector?.listItem ?? 0]?.content
-            .map((c) => c.text ?? "")
+            .map((c) => inlineText([c]))
             .join("")
         : undefined;
     if (["text", "paragraph"].includes(label))
@@ -204,20 +241,30 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
       );
     let literal =
       listText ??
+      (n?.type === "table" && s?.label === "caption"
+        ? inlineText(n.caption)
+        : undefined) ??
+      (n?.content ? inlineText(n.content, markers) : undefined) ??
       n?.text ??
       n?.latex ??
       snapshot.nodes.find(
         (c) => c.type === "caption" && c.path[0] === n?.path[0],
       )?.text ??
       "";
-    if (s?.label === "caption" && n?.type === "figure" && n.enumerator) {
+    if (
+      s?.label === "caption" &&
+      ["figure", "table"].includes(n?.type) &&
+      n.enumerator
+    ) {
       const m =
-        /^\s*(?:Figure|Fig\.?|그림)\s+((?:[A-Z]\.)?\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
+        /^\s*(?:Figure|Fig\.?|그림|Table|표)\s+((?:[A-Z]\.)?\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
           s.text,
         );
       if (m && n.enumerator === m[1])
         literal = s.text.slice(0, s.text.length - m[2].length) + literal;
     }
+    if (i?.structure.noteBinding)
+      literal = i.structure.noteBinding.marker + " " + literal;
     if (e.text && e.text_scoring === "strict")
       measure(
         "literal",
@@ -241,7 +288,13 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
       );
     }
     if (label === "footnote")
-      measure("footnote", id, s?.label === "footnote", false, true);
+      measure(
+        "footnote",
+        id,
+        s?.label === "footnote",
+        n?.type === "footnote",
+        true,
+      );
     if (label === "picture")
       measure("figure", id, s?.label === "picture", n?.type === "figure");
     if (e.table) {
@@ -284,7 +337,8 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
           "cell_text",
           id,
           clean(c.text) === clean(sc?.text),
-          clean(c.text) === clean(nc?.text),
+          clean(c.text) ===
+            clean(nc?.content ? inlineText(nc.content, markers) : nc?.text),
           headerRows > 1 && c.r0 < headerRows,
         );
         if (/[0-9≤≥±%]/.test(c.text))
@@ -292,7 +346,8 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
             "numeric_cell",
             id,
             clean(c.text) === clean(sc?.text),
-            clean(c.text) === clean(nc?.text),
+            clean(c.text) ===
+              clean(nc?.content ? inlineText(nc.content, markers) : nc?.text),
             headerRows > 1 && c.r0 < headerRows,
           );
       }
@@ -310,7 +365,8 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
         !!sourceOK,
         native(b).some(
           (n) =>
-            n.type === "figure" && native(a).some((c) => equal(c.path, n.path)),
+            ["figure", "table"].includes(n.type) &&
+            native(a).some((c) => equal(c.path, n.path)),
         ),
         true,
       );
@@ -333,6 +389,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
         b.id,
         sourceOrder.indexOf(ai.selfRef) <= sourceOrder.indexOf(bi.selfRef),
         an.path[0] <= bn.path[0],
+        an.type === "footnote" || bn.type === "footnote",
       );
   }
   return {

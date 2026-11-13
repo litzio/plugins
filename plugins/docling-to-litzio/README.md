@@ -1,4 +1,4 @@
-# docling-to-litzio — 생성·채점·원문 대응 인계 (PR 1–2)
+# docling-to-litzio — 생성·채점·원문 대응·문제 탐지
 
 고정 Docling 변환 묶음을 공식 작성 입력으로 바꾸고, CLI가 만든 리치오 문서를 재읽어 검사한다. 플러그인 진입점·설치·화면·AI·교정은 없다. 생성 결과는 **검수 전 초안**이다.
 
@@ -28,25 +28,25 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 
 ## 변환 규칙
 
-각 규칙 버전은 `src/convert.js`의 RULES에 있다(table/equation/figure/caption은 1.1.0, 나머지는 1.0.0). 숫자·부호·단위·공백을 자체 정규화하지 않으며 Core가 문자열을 바꿨으면 재읽기 불일치로 남긴다.
+각 규칙 버전은 `src/convert.js`의 RULES에 있다(table/equation/figure/caption/list/paragraph/heading/footnote는 1.2.0, 나머지는 1.0.0). 생성기 0.5.0은 보강된 공식 작성 입력과 모든 위치의 inline JSON 읽기를 요구한다. 소스 빌드 기준과 전후 실측은 [richer authoring 결과](docs/results-richer-authoring.md)에 있다. 숫자·부호·단위·공백을 자체 정규화하지 않으며 Core가 문자열을 바꿨으면 재읽기 불일치로 남긴다.
 
 | 요소 | 옮기는 방식 | 단순화/막힌 표현 |
 | --- | --- | --- |
 | 순서·문단 | body/group children 순서; 다중 prov 보존 | 별개 문단/표를 페이지 경계에서 합치지 않음 |
 | 제목 | title H1, section_header level 그대로 | 1–6 밖은 문단+손실; 자동 계층 추정 없음 |
-| 목록 | 연속 같은 부모/종류를 최대 100항목으로 묶음; 숫자 start | 중첩 평탄화, 문자 marker 손실 |
-| 표 | 모든 셀 범위 검증, 직사각형 격자; 병합 글자 반복 | 병합·복합 header/row role·rich cell은 손실; 첫 행 header 강제; 명시 복합 머리는 합치고 병합 표 아래 설명+검수 |
+| 목록 | 명시 list 그룹의 중첩·항목 순서, 숫자/단일 문자 start·style·delimiter | 모호한 Roman/문자 구별·불연속/지원 불가 구조는 손실. 중첩 대응은 최상위 포함 항목 단위 |
+| 표 | 모든 셀 범위 검증, 직사각형 격자; 병합 글자 반복 | 병합·복합 header/row role·구조 없는 rich cell은 손실; 첫 행 header 강제; 명시 복합 머리는 합치고 병합 표 아래 설명+검수 |
 | 수식 | LaTeX 그대로; 전부 위치가 있는 검수 목록 | 같은 요소의 명시 번호는 fixed로 연결; 의미 정확성 판정 없음 |
 | 그림 | data URI → 공식 images; byte digest 보존 | 누락은 pending+손실, 손상은 거부; child 텍스트도 보존 |
-| 캡션·번호 | 그림 caption, 표 caption 별도 문단; 유일하고 명시된 Arabic/절 번호(예: K.1)만 fixed | Roman/문자/모호한 번호는 literal+번호 없음; table caption 입력 필요 |
-| 각주·위첨자 | footnote 문단; 원문 글자 보존 | call site 추정 없음; inline 서식/링크는 손실 |
+| 캡션·번호 | 표·그림의 native caption; 유일한 Arabic/절 번호(예: K.1) fixed | Roman/문자/모호한 번호는 literal+번호 없음 |
+| 각주·위첨자 | 원본의 bold/italic/delete·super/sub·hyperlink를 inline 구조로 이관. PDF의 유일한 작은 raised 표시+source 범위로 확인된 각주는 미주 | 호출부 없음/중복은 문단+손실. 표 전용 배치·문자 표지 한계는 미주 이관 뒤에도 남김. 서식 없는 추출 결과에서 서식을 추측하지 않음 |
 | 코드 | language와 원문 줄/공백 | unknown language는 빈 값 |
 | furniture | layer 또는 page_header/page_footer 명시 분류만 제외 | 제외 항목도 inventory와 위치 유지 |
 | 목차·미지원 | 목차 표는 정적 표, text는 문단, group은 자식 유지 | 역할 손실·미도달·무내용은 명시 보고 |
 
 잘못된 참조/순환/표 셀 겹침/범위는 거부한다. schema 1.10.0만 허용한다. 원본 PDF·JSON digest와 record의 bytes/schema/page_count, 연속 페이지와 bbox를 검사한다. 변환 옵션 누락/비활성, 쪽 이미지 부재, 부분 변환은 diagnostics에 남긴다. 이는 검수 완료가 아니다.
 
-공개 상한: authoring JSON/source 각각 4 MiB, 입력/블록 각각 5,000, 문자열 16,384 UTF-16 units, 표 100×32, 목록 100항목, 이미지 256개/각 10 MiB, 전체 요청 32 MiB. 생성기는 요청 상한을 사전 거부하고 최종 source/이미지 container/Unicode/Core 의미는 공식 CLI가 거부한다. 자르지 않는다.
+공개 상한: authoring JSON/source 각각 4 MiB, 입력/블록 각각 5,000(중첩 목록 항목도 block 합계에 포함), 문자열 16,384 UTF-16 units, 표 100×32, 목록 100항목, 이미지 256개/각 10 MiB, 전체 요청 32 MiB. 생성기는 요청 상한을 사전 거부하고 최종 source/이미지 container/Unicode/Core 의미는 공식 CLI가 거부한다. 자르지 않는다.
 
 ## 보고와 검증
 
@@ -115,3 +115,9 @@ node --test plugins/docling-to-litzio/test/*.test.js
 ```
 
 corpus/CLI 환경 변수가 없으면 해당 통합·corpus 검사를 skip한다. vendored PDF reader·라이선스 hash·임시 독립 복사 실행은 별도로 검사한다. 라이브러리의 선택적 canvas/DOMMatrix/Path2D 경고는 stderr로 보내며 렌더링 성공을 주장하지 않는다. worker는 작업 후 종료된다. [실측과 놓치는 것](docs/results-pr3.md), [기계 측정](docs/detection-results.json).
+
+## 보강된 작성 입력으로 손실 줄이기
+
+생성 시 vendored PDF reader가 원본의 작은 위첨자 호출 표시를 독립적으로 읽는다. 문자가 같다는 이유만으로 미주를 붙이지 않는다. LSR 각주 5개 중 1개, NIST 7개를 연결했다. LSR의 호출부 없는 `19`, 표시 없는 표 주석 `a`, 같은 추출 표 안의 중복 `a` 두 개는 보류한다. 표 아래 전용 주석 배치/문자 표지 손실은 연결 뒤에도 유지한다.
+
+[전후 수치·검증·미확인](docs/results-richer-authoring.md). provenance와 검수 파일의 schema는 그대로다. 표 캡션은 표 block target(스칼라 text=null), 미주는 재배치 receipt의 footnote block, 중첩 항목은 최상위 포함 list-item target에 대응한다. 정밀 부분 selector와 편집 후 자동 연결을 제공하지 않는다.

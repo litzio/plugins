@@ -1,0 +1,693 @@
+{
+  "platformCommit": "9956e8e0",
+  "generatorVersion": "0.5.0",
+  "detectorVersion": "1.1.0",
+  "schemaVersions": {
+    "provenance": "1.0.0",
+    "review": "1.0.0"
+  },
+  "fixtures": {
+    "lsr": {
+      "before": {
+        "blocks": 120,
+        "losses": 38,
+        "lossKinds": {
+          "table-header-role": 12,
+          "toc-static-table": 1,
+          "group-role": 1,
+          "merged-cell-repeated": 10,
+          "compound-header-flattened": 2,
+          "table-caption-separate": 7,
+          "dedicated-table-note": 4,
+          "footnote-as-paragraph": 1
+        }
+      },
+      "after": {
+        "blocks": 113,
+        "losses": 31,
+        "lossKinds": {
+          "table-header-role": 12,
+          "toc-static-table": 1,
+          "group-role": 1,
+          "merged-cell-repeated": 10,
+          "compound-header-flattened": 2,
+          "dedicated-table-note": 4,
+          "footnote-as-paragraph": 1
+        },
+        "lossCategories": {
+          "native-format": 29,
+          "plugin-pending": 2
+        },
+        "linkedNotes": [
+          "#/texts/45"
+        ],
+        "tableCaptions": 7,
+        "generationMismatches": 0,
+        "sourceAudit": {
+          "mismatches": []
+        },
+        "review": {
+          "pages": 13,
+          "findings": 48,
+          "groups": 15,
+          "groupsPerPage": 1.1538461538461537,
+          "foldedRows": 9,
+          "byKind": {
+            "meaning-loss": 29,
+            "formula-review-required": 3,
+            "text-layer-unavailable": 9,
+            "formula-suspicion": 1,
+            "formula-prose-suspect": 1,
+            "merged-table-review": 2,
+            "repeated-merged-values": 1,
+            "source-cell-unavailable": 2
+          },
+          "unavailableChecks": 14
+        }
+      },
+      "oracleMetrics": {
+        "furniture": {
+          "match": 65,
+          "conversion": 0,
+          "representation": 0,
+          "generation": 0,
+          "total": 65
+        },
+        "heading": {
+          "match": 19,
+          "conversion": 0,
+          "representation": 0,
+          "generation": 0,
+          "total": 19
+        },
+        "literal": {
+          "match": 75,
+          "conversion": 55,
+          "representation": 0,
+          "generation": 0,
+          "total": 130
+        },
+        "prose_role": {
+          "match": 42,
+          "conversion": 29,
+          "representation": 0,
+          "generation": 0,
+          "total": 71
+        },
+        "heading_level": {
+          "match": 16,
+          "conversion": 1,
+          "representation": 0,
+          "generation": 0,
+          "total": 17
+        },
+        "numeric_units_literal": {
+          "match": 42,
+          "conversion": 25,
+          "representation": 0,
+          "generation": 0,
+          "total": 67
+        },
+        "footnote": {
+          "match": 1,
+          "conversion": 7,
+          "representation": 4,
+          "generation": 0,
+          "total": 12
+        },
+        "table_dimensions": {
+          "match": 6,
+          "conversion": 0,
+          "representation": 2,
+          "generation": 0,
+          "total": 8
+        },
+        "cell_span": {
+          "match": 127,
+          "conversion": 2,
+          "representation": 10,
+          "generation": 0,
+          "total": 139
+        },
+        "cell_text": {
+          "match": 121,
+          "conversion": 4,
+          "representation": 14,
+          "generation": 0,
+          "total": 139
+        },
+        "numeric_cell": {
+          "match": 55,
+          "conversion": 4,
+          "representation": 0,
+          "generation": 0,
+          "total": 59
+        },
+        "formula": {
+          "match": 1,
+          "conversion": 2,
+          "representation": 0,
+          "generation": 0,
+          "total": 3
+        },
+        "figure": {
+          "match": 2,
+          "conversion": 0,
+          "representation": 0,
+          "generation": 0,
+          "total": 2
+        },
+        "caption_link": {
+          "match": 9,
+          "conversion": 1,
+          "representation": 0,
+          "generation": 0,
+          "total": 10
+        },
+        "adjacent_order": {
+          "match": 128,
+          "conversion": 1,
+          "representation": 1,
+          "generation": 0,
+          "total": 130
+        }
+      }
+    },
+    "no-bookmarks": {
+      "before": {
+        "blocks": 120,
+        "losses": 38,
+        "lossKinds": {
+          "table-header-role": 12,
+          "toc-static-table": 1,
+          "group-role": 1,
+          "merged-cell-repeated": 10,
+          "compound-header-flattened": 2,
+          "table-caption-separate": 7,
+          "dedicated-table-note": 4,
+          "footnote-as-paragraph": 1
+        }
+      },
+      "after": {
+        "blocks": 113,
+        "losses": 31,
+        "lossKinds": {
+          "table-header-role": 12,
+          "toc-static-table": 1,
+          "group-role": 1,
+          "merged-cell-repeated": 10,
+          "compound-header-flattened": 2,
+          "dedicated-table-note": 4,
+          "footnote-as-paragraph": 1
+        },
+        "lossCategories": {
+          "native-format": 29,
+          "plugin-pending": 2
+        },
+        "linkedNotes": [
+          "#/texts/45"
+        ],
+        "tableCaptions": 7,
+        "generationMismatches": 0,
+        "sourceAudit": {
+          "mismatches": []
+        },
+        "review": {
+          "pages": 13,
+          "findings": 69,
+          "groups": 19,
+          "groupsPerPage": 1.4615384615384615,
+          "foldedRows": 10,
+          "byKind": {
+            "meaning-loss": 29,
+            "formula-review-required": 3,
+            "text-layer-unavailable": 9,
+            "formula-suspicion": 1,
+            "formula-prose-suspect": 1,
+            "merged-table-review": 2,
+            "repeated-merged-values": 1,
+            "source-cell-unavailable": 2,
+            "heading-basis-low": 21
+          },
+          "unavailableChecks": 14
+        }
+      },
+      "oracleMetrics": {
+        "furniture": {
+          "match": 65,
+          "conversion": 0,
+          "representation": 0,
+          "generation": 0,
+          "total": 65
+        },
+        "heading": {
+          "match": 19,
+          "conversion": 0,
+          "representation": 0,
+          "generation": 0,
+          "total": 19
+        },
+        "literal": {
+          "match": 75,
+          "conversion": 55,
+          "representation": 0,
+          "generation": 0,
+          "total": 130
+        },
+        "prose_role": {
+          "match": 42,
+          "conversion": 29,
+          "representation": 0,
+          "generation": 0,
+          "total": 71
+        },
+        "heading_level": {
+          "match": 3,
+          "conversion": 14,
+          "representation": 0,
+          "generation": 0,
+          "total": 17
+        },
+        "numeric_units_literal": {
+          "match": 42,
+          "conversion": 25,
+          "representation": 0,
+          "generation": 0,
+          "total": 67
+        },
+        "footnote": {
+          "match": 1,
+          "conversion": 7,
+          "representation": 4,
+          "generation": 0,
+          "total": 12
+        },
+        "table_dimensions": {
+          "match": 6,
+          "conversion": 0,
+          "representation": 2,
+          "generation": 0,
+          "total": 8
+        },
+        "cell_span": {
+          "match": 127,
+          "conversion": 2,
+          "representation": 10,
+          "generation": 0,
+          "total": 139
+        },
+        "cell_text": {
+          "match": 121,
+          "conversion": 4,
+          "representation": 14,
+          "generation": 0,
+          "total": 139
+        },
+        "numeric_cell": {
+          "match": 55,
+          "conversion": 4,
+          "representation": 0,
+          "generation": 0,
+          "total": 59
+        },
+        "formula": {
+          "match": 1,
+          "conversion": 2,
+          "representation": 0,
+          "generation": 0,
+          "total": 3
+        },
+        "figure": {
+          "match": 2,
+          "conversion": 0,
+          "representation": 0,
+          "generation": 0,
+          "total": 2
+        },
+        "caption_link": {
+          "match": 9,
+          "conversion": 1,
+          "representation": 0,
+          "generation": 0,
+          "total": 10
+        },
+        "adjacent_order": {
+          "match": 128,
+          "conversion": 1,
+          "representation": 1,
+          "generation": 0,
+          "total": 130
+        }
+      }
+    },
+    "nist": {
+      "before": {
+        "blocks": 410,
+        "losses": 14,
+        "lossKinds": {
+          "footnote-as-paragraph": 7,
+          "table-caption-separate": 3,
+          "list-marker-or-depth": 4
+        }
+      },
+      "after": {
+        "blocks": 407,
+        "losses": 0,
+        "lossKinds": {},
+        "lossCategories": {},
+        "linkedNotes": [
+          "#/texts/28",
+          "#/texts/42",
+          "#/texts/43",
+          "#/texts/44",
+          "#/texts/90",
+          "#/texts/91",
+          "#/texts/219"
+        ],
+        "tableCaptions": 3,
+        "generationMismatches": 0,
+        "sourceAudit": {
+          "mismatches": []
+        },
+        "review": {
+          "pages": 11,
+          "findings": 347,
+          "groups": 9,
+          "groupsPerPage": 0.8181818181818182,
+          "foldedRows": 5,
+          "byKind": {
+            "protected-token-difference": 1,
+            "text-layer-unavailable": 330,
+            "empty-table-header": 1,
+            "source-cell-unavailable": 2,
+            "heading-basis-low": 13
+          },
+          "unavailableChecks": 338
+        }
+      }
+    }
+  },
+  "detectionEvaluation": {
+    "mutations": [
+      {
+        "kind": "number",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 3,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "inequality",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 3,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "unit",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 3,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "cell-swap",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 6,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "paragraph-removed",
+        "detected": true,
+        "detectorKinds": [
+          "protected-token-difference",
+          "source-native-change"
+        ],
+        "independentPdfDetected": true,
+        "additionalFindings": 3,
+        "bindingState": "uncertain"
+      },
+      {
+        "kind": "furniture-added",
+        "detected": true,
+        "detectorKinds": [
+          "furniture-in-body"
+        ],
+        "independentPdfDetected": false,
+        "additionalFindings": 1,
+        "bindingState": "uncertain"
+      }
+    ],
+    "controls": {
+      "definition": "LSR std-matrix body numeric cells equal to preconversion authoring oracle; excludes header, geometry/other detector rules and unadjudicated corpus regions",
+      "count": 21,
+      "available": 21,
+      "falsePositives": 0,
+      "falsePositiveRate": 0,
+      "cells": [
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 10,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 11,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 12,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 13,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 14,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 15,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 17,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 18,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 19,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 24,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 25,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 26,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 27,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 31,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 32,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 33,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 34,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 38,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 40,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 41,
+          "flagged": false,
+          "available": true
+        },
+        {
+          "selfRef": "#/tables/2",
+          "cellIndex": 43,
+          "flagged": false,
+          "available": true
+        }
+      ]
+    },
+    "known": {
+      "formula3": true,
+      "captionOrderConflicts": 0,
+      "firstTwoFormulaFalseAlarms": 0,
+      "mergedTables": [
+        {
+          "ref": "#/tables/2",
+          "flagged": true
+        },
+        {
+          "ref": "#/tables/3",
+          "flagged": true
+        }
+      ],
+      "fourMissingNumericCells": [
+        {
+          "sourceRow": 3,
+          "sourceColumn": 1,
+          "flagged": true
+        },
+        {
+          "sourceRow": 3,
+          "sourceColumn": 2,
+          "flagged": true
+        },
+        {
+          "sourceRow": 3,
+          "sourceColumn": 3,
+          "flagged": true
+        },
+        {
+          "sourceRow": 3,
+          "sourceColumn": 4,
+          "flagged": true
+        }
+      ],
+      "missingNumericValuesFromTextLayer": "not recovered: these mathematical cell values are not present in the PDF text layer; structural gap candidates only",
+      "structuralGapSlots": [
+        {
+          "selfRef": "#/tables/3",
+          "positions": [
+            {
+              "sourceRow": 3,
+              "sourceColumn": 1,
+              "outputRow": 2,
+              "outputColumn": 1
+            },
+            {
+              "sourceRow": 3,
+              "sourceColumn": 2,
+              "outputRow": 2,
+              "outputColumn": 2
+            },
+            {
+              "sourceRow": 3,
+              "sourceColumn": 3,
+              "outputRow": 2,
+              "outputColumn": 3
+            },
+            {
+              "sourceRow": 3,
+              "sourceColumn": 4,
+              "outputRow": 2,
+              "outputColumn": 4
+            },
+            {
+              "sourceRow": 6,
+              "sourceColumn": 3,
+              "outputRow": 5,
+              "outputColumn": 3
+            }
+          ]
+        },
+        {
+          "selfRef": "#/tables/7",
+          "positions": [
+            {
+              "sourceRow": 1,
+              "sourceColumn": 1,
+              "outputRow": 1,
+              "outputColumn": 1
+            },
+            {
+              "sourceRow": 2,
+              "sourceColumn": 1,
+              "outputRow": 2,
+              "outputColumn": 1
+            }
+          ]
+        }
+      ],
+      "knownBlankGapFalsePositive": true,
+      "falseFurnitureOnUnchanged": 0
+    },
+    "unmeasured": [
+      "Global corpus false-positive rate: no exhaustive visual truth labels",
+      "Semantic errors with plausible text shared by PDF and Docling",
+      "Actual human/assistant resolution time and remaining workload"
+    ]
+  }
+}

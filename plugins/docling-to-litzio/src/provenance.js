@@ -1,3 +1,5 @@
+import { listText } from "./rich-content.js";
+import { projectList } from "./list-rule.js";
 import { projectTable, sourceStructure } from "./table-rule.js";
 import { isDeepStrictEqual } from "node:util";
 import { auditSourceNative } from "./source-audit.js";
@@ -22,10 +24,9 @@ export function textAt(snapshot, path, selector = { kind: "block" }) {
       )?.text ?? null
     );
   if (selector.kind === "list-item")
-    return (
-      n.items?.[selector.index]?.content.map((c) => c.text ?? "").join("") ??
-      null
-    );
+    return n.items?.[selector.index]
+      ? listText({ items: [n.items[selector.index]] })
+      : null;
   return (
     n.text ??
     n.latex ??
@@ -289,6 +290,69 @@ export function validateEvidence(p, doc, record, snapshot, receipt) {
     const rawStructure = sourceStructure(n);
     for (const [key, value] of Object.entries(rawStructure))
       need(equal(i.structure[key], value), "source-structure");
+    if (i.structure.listProjection) {
+      const { rootSelfRef, indexPath } = i.structure.listProjection;
+      const root = nodes.get(rootSelfRef);
+      const expected =
+        rootSelfRef === i.selfRef && n.label === "list_item"
+          ? [0]
+          : projectList(rootSelfRef, nodes, () => []).mappings.find(
+              (m) => m.ref === i.selfRef,
+            )?.indexPath;
+      need(root && equal(indexPath, expected), "list-projection");
+      const rootItem = p.items.find((v) => v.selfRef === rootSelfRef);
+      need(
+        i.targets.every(
+          (t) =>
+            t.selector.kind === "list-item" &&
+            t.selector.index === indexPath[0] &&
+            rootItem.targets.some((r) => equal(r.path, t.path)),
+        ),
+        "list-projection-target",
+      );
+    }
+    if (i.structure.noteBinding) {
+      const b = i.structure.noteBinding,
+        call = nodes.get(b.sourceRef),
+        prefix = /^(\d+|[a-z])\s+(\S[\s\S]*)$/.exec(n.text ?? "");
+      need(
+        n.label === "footnote" &&
+          prefix?.[1] === b.marker &&
+          b.label === "docling-note-" + i.selfRef.split("/").at(-1),
+        "note-definition",
+      );
+      const text =
+        b.cellIndex === null
+          ? call?.text
+          : call?.data?.table_cells[b.cellIndex]?.text;
+      need(
+        Number.isInteger(b.start) &&
+          b.start >= 0 &&
+          text?.slice(b.start, b.start + b.marker.length) === b.marker,
+        "note-call-site",
+      );
+      const callItem = p.items.find((v) => v.selfRef === b.sourceRef);
+      need(
+        callItem?.structure.noteReferences?.some((v) => equal(v, b)),
+        "note-reciprocal",
+      );
+      need(
+        b.witness && p.pages.some((v) => v.pageNo === b.witness.pageNo),
+        "note-witness",
+      );
+      need(
+        snapshot.nodes.some(
+          (v) => v.type === "footnote" && v.label === b.label,
+        ),
+        "note-native-definition",
+      );
+    }
+    for (const b of i.structure.noteReferences ?? [])
+      need(
+        b.sourceRef === i.selfRef &&
+          p.items.some((v) => equal(v.structure.noteBinding, b)),
+        "note-reference",
+      );
     if (n.data?.table_cells && i.disposition === "mapped") {
       const model = projectTable(n.data).model;
       need(equal(i.structure.tableModel, model), "table-model");
