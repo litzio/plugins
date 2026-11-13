@@ -1,6 +1,7 @@
 // Fail closed over both public projections. Every source block/cell must have
 // been consumed, and every semantic field must be mapped or explicitly rejected.
 // Only snapshot coordinates/editability and derived display data are exempt.
+import { inlineFields, validInlineValue } from './inline.mjs';
 export function auditCoverage(input, snapshot, consumed, issue) {
   const key = n => JSON.stringify(n.path);
   const extras = (value, allowed, owner, context) => {
@@ -25,11 +26,11 @@ export function auditCoverage(input, snapshot, consumed, issue) {
   const observed = new Set();
   function inline(content, owner, context) {
     for (const c of content ?? []) {
-      const allowed = c.kind === 'text' || c.kind === 'code' ? ['kind', 'text']
-        : ['strong', 'emphasis', 'subscript', 'superscript'].includes(c.kind) ? ['kind', 'children'] : ['kind'];
+      const allowed = inlineFields[c.kind] ? ['kind', inlineFields[c.kind]] : ['kind'];
       if (allowed.length === 1) issue(owner, 'unmapped-semantic', context + ': 지원하지 않는 인라인 요소 ' + c.kind);
+      else if (!validInlineValue(c)) issue(owner, 'unmapped-semantic', context + ': 인라인 값 형식이 올바르지 않습니다');
       extras(c, allowed, owner, context + '.' + c.kind);
-      if (c.children) inline(c.children, owner, context);
+      if (Array.isArray(c.children)) inline(c.children, owner, context);
     }
   }
   function plainText(value, owner) {

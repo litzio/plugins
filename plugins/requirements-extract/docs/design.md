@@ -376,6 +376,8 @@ PR1은 모델·표현·내보내기를 끝까지 잇는 독립 작업으로 타�
 
 ### PR1 독립 리뷰 뒤의 의미 보존 경계
 
+실제 공개 출력의 전체 필드/종류 대응은 [읽기 프로파일](read-profile.md)이 우선한다. 지원 인라인의 필드는 text.text / code.value / strong·emphasis·subscript·superscript.children이다. src/inline.mjs를 coverage·model·XHTML에서 공유해 필드 이름이 갈라지지 않게 한다. 지원 6종을 포함한 8개 실제 표본에서 canonical 왕복과 독립 parser의 text/tail 정확 비교를 실행했다. 블록 code.language/code는 인라인 code.value와 구별해 차단한다.
+
 기존 head에서 표 캡션의 적용 조건이 진단 없이 사라지고 기존 확정 해시가 유효하게 남는 실패를 공개 CLI로 재현했다. 캡션을 보존하는 범위를 PR1에서 늘리는 대신, 캡션·미지원 의미 속성이 있으면 위치 진단으로 정식/시험 내보내기를 차단한다. 캡션이 있는 모델을 그대로 내보내는 우회도 차단한다.
 
 | 읽은 요소 | PR1 처리 |

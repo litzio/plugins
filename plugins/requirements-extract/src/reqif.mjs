@@ -1,6 +1,7 @@
 import { create } from 'xmlbuilder2';
 import { createHash } from 'node:crypto';
 import { policy, canonical, sha256, validate, semantic } from './model.mjs';
+import { inlineFields, inlineTags } from './inline.mjs';
 
 const NS = 'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd';
 const XHTML = 'http://www.w3.org/1999/xhtml';
@@ -14,9 +15,9 @@ export function stableId(namespace, key) {
 function inline(parent, content) {
   for (const c of content) {
     if (c.kind === 'text') parent.txt(c.text);
-    else if ({ strong: 'strong', emphasis: 'em', subscript: 'sub', superscript: 'sup', code: 'code' }[c.kind]) {
-      const p = parent.ele(XHTML, { strong: 'strong', emphasis: 'em', subscript: 'sub', superscript: 'sup', code: 'code' }[c.kind]);
-      if (c.children) inline(p, c.children); else p.txt(c.text ?? '');
+    else if (inlineTags[c.kind]) {
+      const p = parent.ele(XHTML, inlineTags[c.kind]);
+      if (inlineFields[c.kind] === 'children') inline(p, c.children); else p.txt(c[inlineFields[c.kind]]);
     } else throw new Error('지원하지 않는 인라인 요소: ' + c.kind);
   }
 }
@@ -49,6 +50,9 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
   if (!previous) diagnostics.push({ file: '', location: [1], code: 'manifest-new', severity: 'warning', message: '이전 manifest 없음: 기존 변경 시각 복구 불가' });
   if (previous && previous.namespace !== namespace) throw new Error('이전 manifest namespace와 다릅니다');
   const root = create({ version: '1.0', encoding: 'UTF-8' }).ele(NS, 'REQ-IF', { 'xmlns:xhtml': XHTML });
+  // Structural root whitespace also lets reqif 0.0.47 retain a non-self-closing
+  // root when it captures namespaces after removing child elements.
+  root.txt('\n');
   const header = root.ele('THE-HEADER').ele('REQ-IF-HEADER', { IDENTIFIER: id('header') });
   // ReqIF 1.2 uses the 20110401 schema whose wire version is fixed to 1.0.
   for (const [k, v] of Object.entries({ 'COMMENT': testOnly ? 'TEST ONLY - NOT FOR PRODUCTION' : 'requirements-extract/1', 'CREATION-TIME': now, 'REQ-IF-TOOL-ID': 'requirements-extract/1', 'REQ-IF-VERSION': '1.0', 'SOURCE-TOOL-ID': 'requirements-extract/1', TITLE: testOnly ? 'TEST ONLY' : 'Requirements' })) header.ele(k).txt(v);
@@ -109,5 +113,6 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
     for (const r of s.requirements) children.ele('SPEC-HIERARCHY', ident('hierarchy:' + s.setId + ':' + r.id, r.id, r.id)).ele('OBJECT').ele('SPEC-OBJECT-REF').txt(r.id);
   }
   if (previous) manifest.missing = Object.keys(previous.entries).filter(k => !manifest.entries[k]);
-  return { xml: root.end({ prettyPrint: true }), manifest, diagnostics };
+  // Pretty indentation inside mixed XHTML inserts whitespace into requirements.
+  return { xml: root.end({ prettyPrint: false }), manifest, diagnostics };
 }

@@ -41,3 +41,13 @@ PR1에서는 캡션 지원을 확장하지 않고 해당 표를 파일·위치�
 40개 Node 검사 통과. 별도 공개 소스 CLI 검사 7종 통과: 캡션·그림 캡션·미주·중첩 목록·블록 수식·인라인 수식은 native valid 확인 뒤 위치 진단과 정식/시험 내보내기 차단; HTML 병합 표는 native admission에서 거부한다. 합성 스냅샷의 새 필드·새 요소·병합 속성·대응 누락도 회귀 검사한다. 단위 변형과 실제 native 실행 결과를 구분한다. 임시 자료를 보존하며 단건 프로세스는 종료한다.
 
 기존 native 생성·손 수정/이동·canonical 왕복 통합 흐름도 재실행해 통과했다. 새로 생성한 일반/rich ReqIF 모두 기존 해시 고정 캐시로 XSD·65개 식별자/참조·독립 parser 왕복을 재검증해 통과했다. 스키마 다운로드·StrictDoc·Polarion은 재실행하지 않았다.
+
+## PR #4 인라인 code 재검토 후
+
+head 63c2a6cc의 리뷰 절차를 실제 임시 native 문서에서 재현했다. code.value가 공개 compare에 있으나 coverage/model은 text만 허용해, 합성 재확정 뒤에도 오류·내보내기 차단이 남았다. 실제 출력으로 만든 회귀 검사가 수정 전에 실패함을 확인했다. code.value를 그대로 모델에 유지하고 validator/exporter 모두 같은 필드 정의를 공유하도록 고쳤다.
+
+공개 native 계약과 실제 출력의 인라인 13종·블록 12종을 훑어 [종류별 처리 표](read-profile.md)를 작성했다. 지원한다고 명시한 text/strong/emphasis/subscript/superscript/code는 실제 표본을 각각 포함한 8종(code 특수 문자·중첩 추가)으로 check·canonical 재읽기·모델·XHTML 전체 텍스트 보존을 확인했다. 나머지는 실제 입력 7그룹에서 진단 후 차단했다. 아래/위 첨자는 `{sub}`/`{sup}` 문법으로 실제 children 필드를 확인했으며 추정한 문법을 근거로 사용하지 않았다.
+
+이 확인 중 XML pretty-print가 혼합 XHTML의 text/tail에 공백을 추가하는 실패도 발견해 제거했다. compact XML로 바꾼 첫 독립 왕복은 reqif 0.0.47의 namespace 캡처가 빈 root를 self-close해 실패했다. root에만 구조 newline을 넣어 해결했으며, 본문 공백은 바꾸지 않는다.
+
+최종 Node 검사 50/50 통과. 실제 공개 출력으로부터 다시 내보낸 8개 파일 모두 공식 XSD, 65개 식별자/참조, 독립 reqif parse/unparse/parse를 통과했다. 새 inlines.py는 혼합 문단의 text와 tail·서식까지 공백을 정규화하지 않고 정확히 대조한다. 기존 standard.py의 일반 비교는 바꾸지 않았으며, 이번 보강 검사를 별도 추가했다. 스키마 캐시는 기존 고정 해시를 재검증해 재사용했고 다운로드·StrictDoc·Polarion·설치/화면 시험은 하지 않았다. 단건 프로세스는 종료했고 임시 자료는 보존했다.

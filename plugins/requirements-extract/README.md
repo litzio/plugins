@@ -11,13 +11,14 @@ npm ci --ignore-scripts
 npm test
 ```
 
-40개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
+50개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
 
 실제 도구 검사는 별도다. 공개 Litzio checkout의 README에 따라 의존성을 준비하고 **새 임시 디렉터리**를 만든 뒤 다음 인자를 전달한다. 기존 자료 폴더를 지정하지 않는다. daemon을 시작하거나 연결하지 않으며 단건 프로세스는 종료한다. 임시 자료는 보존한다.
 
 ```sh
 node validation/native.mjs <source-checkout> <existing-scratch-folder>
 node validation/coverage.mjs <source-checkout> <another-existing-scratch-folder>
+node validation/inlines.mjs <source-checkout> <inline-scratch-folder>
 ```
 
 공식 create → 레이블 배치 → check → inspect/compare → 손 수정·문서 간 이동 → 재읽기 → 확정 해시 강등 → 합성 시험의 명시적 재확정 → ReqIF → format 두 번을 검사한다. 같은 이름 생성 거부도 확인한다. 실제 사람 승인·화면 수락을 대신하지 않는다.
@@ -28,6 +29,7 @@ node validation/coverage.mjs <source-checkout> <another-existing-scratch-folder>
 python -m pip install -r validation/requirements.txt
 python validation/standard.py setup <schema-cache>
 python validation/standard.py verify <schema-cache> <scratch-folder>/sample.reqif
+python validation/inlines.py <schema-cache> <inline-scratch-folder>
 ```
 
 공식 XSD 21개 의존 파일의 URL·SHA-256은 `validation/schemas.lock.json`에 고정했다. 원본은 재배포하지 않는다. 독립 reqif 0.0.47 parse/unparse/parse 후 XSD·객체/속성/XHTML·관계·Specification 의미를 비교한다. StrictDoc·Polarion·첨부 검사는 미실행이다.
@@ -40,6 +42,8 @@ python validation/standard.py verify <schema-cache> <scratch-folder>/sample.reqi
 - `src/reqif.mjs`: `exportReqif(sets, {previous, now, testOnly})` → `{xml, manifest, diagnostics}`. 기본은 정식 검사다. 시험 출력도 구조 오류는 차단하고 헤더에 TEST ONLY를 넣는다. 이전 manifest로 LAST-CHANGE를 보존하고 누락 ID를 보고한다. 누락을 삭제로 전송하지 않는다.
 
 새 authoring은 평문 문단·직사각형 표를 사용하고 레이블은 공식 배치로 붙인다. 기존 문단 strong/emphasis/subscript/superscript/code를 읽어 보존한다. 표·제목·속성은 평문이며 서식이 있으면 오류다. 목록 읽기·검토 메모·수식·참조 인라인·이미지·Mermaid는 현재 진단으로 차단한다. 조용히 평탄화하지 않는다.
+
+실제 필드 기준의 전체 종류별 표와 확인 범위는 [읽기 프로파일](docs/read-profile.md)에 있다. text는 text, code는 **value**, strong/emphasis/subscript/superscript는 children을 보존한다. 블록 code(language/code)는 지원하지 않는다. 지원 6종·특수 문자·중첩 서식의 8개 native 표본을 canonical 및 독립 ReqIF parser로 왕복 검사하며 혼합 XHTML의 text/tail 공백도 정확히 대조한다.
 
 | 읽은 요소 | PR1 처리 |
 | --- | --- |

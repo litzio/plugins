@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { inlineFields, validInlineValue } from './inline.mjs';
 
 export const policy = Object.freeze({
   kind: ['functional', 'performance', 'interface', 'constraint', 'safety', 'unknown'],
@@ -60,10 +61,11 @@ export function validate(sets, { formal = false } = {}) {
       }
       const checkInline = content => {
         for (const c of content) {
-          if (!['text', 'strong', 'emphasis', 'subscript', 'superscript', 'code'].includes(c.kind)) add(s, r, 'unsupported-inline', '수식·참조·기타 인라인 요소는 PR1 내보내기를 차단합니다');
-          const allowed = ['text', 'code'].includes(c.kind) ? ['kind', 'text'] : ['kind', 'children'];
+          if (!inlineFields[c.kind]) add(s, r, 'unsupported-inline', '수식·참조·기타 인라인 요소는 PR1 내보내기를 차단합니다');
+          else if (!validInlineValue(c)) add(s, r, 'unsupported-inline', '인라인 값 형식이 올바르지 않습니다');
+          const allowed = ['kind', inlineFields[c.kind]];
           if (Object.keys(c).some(k => !allowed.includes(k))) add(s, r, 'unmapped-semantic', '인라인 요소에 보존할 수 없는 필드가 있습니다');
-          if (c.children) checkInline(c.children);
+          if (Array.isArray(c.children)) checkInline(c.children);
         }
       };
       for (const b of r.body ?? []) {
