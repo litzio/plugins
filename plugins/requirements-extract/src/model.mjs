@@ -61,13 +61,17 @@ export function validate(sets, { formal = false } = {}) {
       const checkInline = content => {
         for (const c of content) {
           if (!['text', 'strong', 'emphasis', 'subscript', 'superscript', 'code'].includes(c.kind)) add(s, r, 'unsupported-inline', '수식·참조·기타 인라인 요소는 PR1 내보내기를 차단합니다');
+          const allowed = ['text', 'code'].includes(c.kind) ? ['kind', 'text'] : ['kind', 'children'];
+          if (Object.keys(c).some(k => !allowed.includes(k))) add(s, r, 'unmapped-semantic', '인라인 요소에 보존할 수 없는 필드가 있습니다');
           if (c.children) checkInline(c.children);
         }
       };
       for (const b of r.body ?? []) {
-        if (!['paragraph', 'table', 'list'].includes(b.kind)) add(s, r, 'unsupported-body', '첨부·수식·그림·기타 블록은 PR1에서 내보낼 수 없습니다');
+        if (!['paragraph', 'table'].includes(b.kind)) add(s, r, 'unsupported-body', '목록·첨부·수식·그림·기타 블록은 PR1에서 내보낼 수 없습니다');
+        const allowed = b.kind === 'paragraph' ? ['kind', 'text', 'content'] : ['kind', 'rows'];
+        if (Object.keys(b).some(k => !allowed.includes(k))) add(s, r, 'unmapped-semantic', '본문 요소에 보존할 수 없는 필드가 있습니다');
         if (b.content) checkInline(b.content);
-        if (b.kind === 'table' && (!b.rows?.length || !b.rows[0]?.length || b.rows.some(row => row.length !== b.rows[0].length))) add(s, r, 'body-table', '본문 표는 머리행이 있는 직사각형이어야 합니다');
+        if (b.kind === 'table' && (!b.rows?.length || !b.rows[0]?.length || b.rows.some(row => !Array.isArray(row) || row.length !== b.rows[0].length || row.some(c => typeof c !== 'string')))) add(s, r, 'body-table', '본문 표는 평문 셀과 머리행이 있는 직사각형이어야 합니다');
       }
       if (r.status === 'confirmed' && effectiveStatus(r) !== 'confirmed') add(s, r, 'confirmation-stale', '내용 변경으로 유효 상태를 reviewed로 낮춥니다', formal ? 'error' : 'warning');
       if (formal && (!['confirmed', 'obsolete'].includes(effectiveStatus(r)) || r.kind === 'unknown' || r.verification === 'undecided')) add(s, r, 'not-confirmed', '미확정·미분류·검증 방법 미정 항목은 정식 내보내기를 막습니다');

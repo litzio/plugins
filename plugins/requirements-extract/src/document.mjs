@@ -1,5 +1,6 @@
 // Input is the public `inspect --format json` result, never an internal AST.
 import { validate } from './model.mjs';
+import { auditCoverage } from './coverage.mjs';
 export const fields = ['id', 'kind', 'level', 'origin', 'strength', 'status', 'verification', 'rationale', 'confirmedDigest'];
 export const setFields = ['profile', 'setId', 'exportNamespace', 'defaultLevel'];
 export const registryFields = ['sourceKey', 'artifactDigest', 'nativeFile', 'nativeDigest', 'mapFile'];
@@ -11,14 +12,16 @@ export function readInspection(input, file = '', snapshot) {
   const diagnostics = [];
   const issue = (node, code, message) => diagnostics.push({ file, location: node?.path ?? [1], code, severity: 'error', message });
   const top = input.nodes.filter(n => n.path.length === 1);
+  const consumed = new Set();
+  const consume = node => { if (node) consumed.add(JSON.stringify(node.path)); return node; };
   let at = 0;
-  const take = () => top[at++];
+  const take = () => consume(top[at++]);
   function table(columns) {
     const n = take();
     if (n?.type !== 'table') { issue(n, 'table-required', '정해진 위치에 표가 필요합니다'); return []; }
     const cells = input.nodes.filter(c => c.type === 'cell' && c.path[0] === n.path[0]);
     const rows = [];
-    for (const c of cells) { (rows[c.path[1]] ??= [])[c.path[2]] = c.text; }
+    for (const c of cells) { consume(c); (rows[c.path[1]] ??= [])[c.path[2]] = c.text; }
     if (JSON.stringify(rows[0]) !== JSON.stringify(columns) || rows.some(r => r.length !== columns.length)) issue(n, 'table-columns', '표 열 또는 모양이 프로파일과 다릅니다');
     return rows.slice(1).map(r => Object.fromEntries(columns.map((k, i) => [k, r[i] ?? ''])));
   }
@@ -56,7 +59,7 @@ export function readInspection(input, file = '', snapshot) {
         }
         else if (b.type === 'table') {
           const cells = input.nodes.filter(c => c.type === 'cell' && c.path[0] === b.path[0]);
-          const rows = []; for (const c of cells) (rows[c.path[1]] ??= [])[c.path[2]] = c.text;
+          const rows = []; for (const c of cells) { consume(c); (rows[c.path[1]] ??= [])[c.path[2]] = c.text; }
           take(); r.body.push({ kind: 'table', rows });
         } else { take(); issue(b, 'unsupported-body', 'PR1 읽기는 평문 문단·직사각형 표만 지원합니다'); }
       }
@@ -66,6 +69,7 @@ export function readInspection(input, file = '', snapshot) {
   // inspect omits inline marks/atoms. The same-revision public compare snapshot
   // supplies those semantic values before this model may be exported.
   if (!snapshot) diagnostics.push({ file, location: [1], code: 'projection-unverified', severity: 'error', message: '공식 CLI compare 의미 스냅샷이 필요합니다' });
+  auditCoverage(input, snapshot, consumed, issue);
   if (snapshot) for (const b of snapshot.blocks ?? []) {
     const contents = b.block === 'table' ? b.rows.flatMap(r => r.cells.map(c => c.content)) : b.block === 'heading' ? [b.content] : [];
     if (contents.some(content => content?.some(c => c.kind !== 'text'))) issue(b, 'formatted-profile', '속성·표·제목의 인라인 서식은 PR1 프로파일에서 허용하지 않습니다');

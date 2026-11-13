@@ -28,9 +28,6 @@ function body(parent, blocks) {
       for (const [i, row] of b.rows.entries()) {
         const tr = table.ele(XHTML, 'tr'); for (const text of row) tr.ele(XHTML, i ? 'td' : 'th').txt(text);
       }
-    } else if (b.kind === 'list') {
-      const list = parent.ele(XHTML, b.ordered ? 'ol' : 'ul');
-      for (const text of b.items) list.ele(XHTML, 'li').txt(text);
     } else throw new Error('지원하지 않는 본문: ' + b.kind);
   }
 }
