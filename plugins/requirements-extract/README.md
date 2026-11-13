@@ -1,6 +1,6 @@
 # requirements-extract
 
-PR1은 설치·화면·AI 없이 실행하는 Node ESM 처리 모듈이다. 기준 자료는 리치오 문서이며 ReqIF는 파생물이다. [설계](docs/design.md)와 [실제 확인 기록](docs/pr1-validation.md)을 따른다.
+이 폴더는 공개 작업·사람 검토 화면·비서 스킬을 포함한 설치 단위다. [설치와 화면](docs/screen.md), [화면 검증](docs/screen-validation.md)을 따른다. 처리 모듈은 별도로도 실행할 수 있다. 기준 자료는 리치오 문서이며 ReqIF는 파생물이다. [설계](docs/design.md)와 [실제 확인 기록](docs/pr1-validation.md)을 따른다.
 
 교정본 인계 v1.1은 [소비 검증](docs/corrected-handoff.md), 상위 연결 후보·관계 판단·양방향 누락·새 제안 문서는 [상위 연결 파일 절차](docs/upstream.md)를 따른다. 모두 초안이며 자동 확정하지 않는다.
 
@@ -13,7 +13,7 @@ npm ci --ignore-scripts
 npm test
 ```
 
-84개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
+단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
 
 실제 도구 검사는 별도다. 공개 Litzio checkout의 README에 따라 의존성을 준비하고 **새 임시 디렉터리**를 만든 뒤 다음 인자를 전달한다. 기존 자료 폴더를 지정하지 않는다. daemon을 시작하거나 연결하지 않으며 단건 프로세스는 종료한다. 임시 자료는 보존한다.
 

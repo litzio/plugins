@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { writeFileSync, lstatSync, existsSync, realpathSync } from 'node:fs';
+import { writeFileSync, lstatSync, existsSync, realpathSync, mkdirSync } from 'node:fs';
 import { resolve, relative, isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
@@ -7,7 +7,7 @@ import { readInspection, authoring } from './document.mjs';
 
 // Caller explicitly supplies a source-checkout tsx executable/CLI entry and a
 // scratch root. No installed CLI, daemon discovery or implicit user-folder access.
-export function sourceCli({ node = process.execPath, tsx, entry, root }) {
+export function sourceCli({ node = process.execPath, tsx, entry, launcher, root, scratchDirectory = '' }) {
   root = resolve(root);
   if (realpathSync(root).toLowerCase() !== root.toLowerCase()) throw new Error('임시 폴더는 링크일 수 없습니다');
   const scoped = path => {
@@ -22,20 +22,21 @@ export function sourceCli({ node = process.execPath, tsx, entry, root }) {
     return absolute;
   };
   const run = (...args) => {
-    const r = spawnSync(node, [...(tsx ? ['--import', pathToFileURL(tsx).href] : []), entry, ...args], { encoding: 'utf8', timeout: 60000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+    const r = spawnSync(launcher?.bin??node, [...(launcher?.args??[...(tsx ? ['--import', pathToFileURL(tsx).href] : []), entry]), ...args], { encoding: 'utf8', timeout: 60000, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
     if (r.status !== 0) throw new Error(r.stderr || r.stdout || String(r.error));
     const line = r.stdout.trim().split('\n').findLast(l => l.trim().startsWith('{'));
     return line ? JSON.parse(line) : r.stdout;
   };
   function create(s, name) {
-    const file = scoped(name), input = scoped(randomUUID() + '.json');
+    const file = scoped(name);if(scratchDirectory)mkdirSync(scoped(scratchDirectory),{recursive:true});
+    const input = scoped(join(scratchDirectory,randomUUID() + '.json'));
     writeFileSync(input, JSON.stringify({ authoring: authoring(s), images: [] }), { flag: 'wx' });
     run('create', file, '--input', input, '--format', 'json');
     const inspect = run('inspect', file, '--format', 'json');
     const heads = inspect.nodes.filter(n => n.type === 'heading' && n.level === 2 && !inspect.nodes.some(t => t.type === 'target' && t.path[0] === n.path[0] - 1)).reverse();
     const operations = heads.map((n, i) => ({ command: 'insert-target', at: n.path[0], label: s.requirements[s.requirements.length - i - 1].id }));
     if (operations.length) {
-      const ops = scoped(randomUUID() + '.json'); writeFileSync(ops, JSON.stringify(operations), { flag: 'wx' });
+      const ops = scoped(join(scratchDirectory,randomUUID() + '.json')); writeFileSync(ops, JSON.stringify(operations), { flag: 'wx' });
       run('apply-batch', file, '--operations', ops, '--if-revision', inspect.revision, '--format', 'json');
     }
     run('check', file, '--format', 'json');

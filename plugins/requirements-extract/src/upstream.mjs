@@ -16,7 +16,7 @@ export function linkPolicy(profile) {
 }
 const selected=sets=>sets.flatMap(s=>s.requirements.map(r=>({setId:s.setId,revision:s.revision,registry:s.registry,requirement:r})));
 function checkInputs(upper,lower,profile) {
- linkPolicy(profile);need(upper.length&&lower.length,'link-inputs');
+ linkPolicy(profile);need(Array.isArray(upper)&&lower.length,'link-inputs');
  const all=[...upper,...lower]; need(new Set(all.map(s=>s.setId)).size===all.length && all.every(s=>/^[a-f0-9]{64}$/.test(s.revision)),'document-revision');
  const errors=validate(all).filter(d=>d.severity==='error'&&!['broken-relation','cycle'].includes(d.code));need(!errors.length,'invalid-requirement-sets');
  const items=selected(all);need(new Set(items.map(i=>i.requirement.id)).size===items.length,'duplicate-id');

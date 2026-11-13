@@ -5,6 +5,15 @@ import {upstreamFixture,linkDecision} from './upstream-fixture.mjs';
 import {exportReqif} from '../src/reqif.mjs';
 import {canonical} from '../src/model.mjs';
 const fixture=()=>{const f=upstreamFixture();return {...f,job:prepareLinks(f.upper,f.lower,f.profile)};};
+test('empty selected upper scope still requires explicit lower decisions and gap reasons',()=>{
+ const f=upstreamFixture();f.lower[0].requirements=f.lower[0].requirements.slice(0,1);
+ let j=prepareLinks([],f.lower,f.profile),id=f.lower[0].requirements[0].id;
+ assert.equal(linkReport(j).readyForHumanReview,false);assert.throws(()=>linkProposal(j));
+ j=submitLinks(j,linkDecision(j,id,null,{choice:'none',basis:'scope-review',coverage:'not-applicable'}));
+ assert.equal(linkReport(j).readyForHumanReview,false);
+ const gap=linkReport(j).gaps[0];j=classifyGap(j,{inputDigest:j.inputDigest,policyDigest:j.policyDigest,gapKey:gap.key,classification:'independent',reason:'No upstream set selected; public independent obligation reviewed.'});
+ assert.equal(linkReport(j).readyForHumanReview,true);assert.equal(linkProposal(j).sets[0].requirements[0].relations.length,0);
+});
 test('public synthetic 30/60 expected candidate inclusion and false links are measured separately',()=>{
  const f=fixture();let job=f.job,hit=0,top1False=0,falseCandidates=0;
  assert.equal(job.upper[0].requirements.length,30);assert.equal(job.lower[0].requirements.length,60);
