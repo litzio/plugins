@@ -18,13 +18,112 @@
     "scopes": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "미검사",
+              "검사중",
+              "차이없음",
+              "교정후재검사",
+              "판단불가",
+              "실패"
+            ]
+          },
+          "checkpoint": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "time": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "rulesVersion": {
+                    "const": "1.0.0"
+                  },
+                  "changeId": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "revision",
+                  "time",
+                  "rulesVersion"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "checkpoint"
+        ],
+        "additionalProperties": false
       }
     },
     "humanDecisions": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "enum": [
+              "confirmed",
+              "deferred"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor": {
+            "const": "human"
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "groupId",
+          "revision",
+          "decision",
+          "note",
+          "actor",
+          "time"
+        ],
+        "additionalProperties": false
       }
     },
     "conditions": {
@@ -171,8 +270,11 @@
             "minLength": 1
           },
           "basis": {
-            "type": "string",
-            "minLength": 1
+            "enum": [
+              "Note body retained as an unlinked annotation paragraph",
+              "Note body retained as a numbered endnote",
+              "Declared native representation limit; source values retained"
+            ]
           },
           "classification": {
             "const": "expression"

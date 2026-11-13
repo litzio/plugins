@@ -115,8 +115,11 @@ export function createCorrections(root, cli) {
       if (e.code !== "ENOENT") throw e;
     }
 
-    const h = await loadHandoff(root),
-      { report, evidence } = await readReview(root, join(root, "review"));
+    const {
+      handoff: h,
+      report,
+      evidence,
+    } = await readReview(root, join(root, "review"));
 
     need(!h.history, "correction-ledger-required");
     const state = {
@@ -159,9 +162,12 @@ export function createCorrections(root, cli) {
     return snapshot;
   };
 
-  const material = async (groupId) => {
-    const h = await loadHandoff(root),
-      { report, evidence } = await readReview(root, join(root, "review"));
+  const material = async (groupId, context) => {
+    const {
+      handoff: h,
+      report,
+      evidence,
+    } = context ?? (await readReview(root, join(root, "review")));
 
     const group = report.groups.find((g) => g.id === groupId);
     need(group, "group-not-found");
@@ -392,8 +398,9 @@ export function createCorrections(root, cli) {
     lossDecision: (input) =>
       locked(async () => {
         const s = await ledger(),
-          snap = await inspect(),
-          h = await loadHandoff(root);
+          snap = await inspect();
+        const context = await readReview(root, join(root, "review"));
+        const { handoff: h } = context;
         need(
           !s.pending &&
             !s.stopped &&
@@ -401,7 +408,6 @@ export function createCorrections(root, cli) {
             snap.revision === s.revision,
           "stale-loss-decision",
         );
-        const { report } = await readReview(root, join(root, "review"));
         const loss = lossCatalog(h.losses.items, h).find(
           (l) => l.lossId === input.lossId,
         );
@@ -414,7 +420,7 @@ export function createCorrections(root, cli) {
             input.note.trim(),
           "loss-note-required",
         );
-        const m = await material(input.groupId);
+        const m = await material(input.groupId, context);
         need(
           m.findings.some((f) => f.sourceIds.includes(loss.sourceId)) &&
             loss.targets.some(
@@ -455,12 +461,9 @@ export function createCorrections(root, cli) {
     finalize: (input) =>
       locked(async () => {
         const s = await ledger(),
-          snap = await inspect(),
-          h = await loadHandoff(root);
-        const { report, evidence } = await readReview(
-          root,
-          join(root, "review"),
-        );
+          snap = await inspect();
+        const context = await readReview(root, join(root, "review"));
+        const { handoff: h, report, evidence } = context;
         need(input.revision === snap.revision, "stale-finalization");
         const gate = completionGate(
           s,
@@ -530,11 +533,11 @@ export function createCorrections(root, cli) {
             humanQueue: [],
             gate: { ready: false },
           };
-        const { report, evidence } = await readReview(
-          root,
-          join(root, "review"),
-        );
-        const h = await loadHandoff(root);
+        const {
+          handoff: h,
+          report,
+          evidence,
+        } = await readReview(root, join(root, "review"));
         const gate = completionGate(
           s,
           report,

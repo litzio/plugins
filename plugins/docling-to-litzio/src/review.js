@@ -297,7 +297,7 @@ export async function readReview(input, output) {
     hash(await readRelative(output, "review-complete.json")) !== hash(raw)
   )
     throw new Error("review-binding");
-  return { report, evidence };
+  return { report, evidence, handoff: loaded };
 }
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   const args = process.argv.slice(2),

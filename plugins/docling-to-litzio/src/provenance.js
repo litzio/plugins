@@ -483,7 +483,9 @@ export async function loadHandoff(
   }
   const markerRaw = await readRelative(root, "complete.json"),
     marker = JSON.parse(markerRaw);
-  const result = await validateFileSet(root, marker);
+  // Bytes belong to this invocation only; boundary rereads below stay uncached.
+  const files = new Map();
+  const result = await validateFileSet(root, marker, files);
   if (result.history)
     validateCorrectionLedger(result.history, ledger, reconciling);
   if (ledgerRaw)
@@ -497,9 +499,7 @@ export async function loadHandoff(
   );
   let reviewed = false;
   if (marker.schemaVersion === "1.2.0" && marker.reviewState === "reviewed") {
-    const completion = JSON.parse(
-      await readRelative(root, "human-review.json"),
-    );
+    const completion = JSON.parse(files.get("human-review.json"));
     validateSchema(completion, schemas["human-review"]);
     need(
       marker.files.some((f) => f.relativePath === "human-review.json"),
@@ -511,17 +511,13 @@ export async function loadHandoff(
       ),
       "completion-evidence-required",
     );
-    const report = JSON.parse(
-      await readRelative(root, "review/review-targets.json"),
-    );
-    const evidence = JSON.parse(
-      await readRelative(root, "review/pdf-evidence.json"),
-    );
+    const report = JSON.parse(files.get("review/review-targets.json"));
+    const evidence = JSON.parse(files.get("review/pdf-evidence.json"));
     validateSchema(evidence, schemas["pdf-evidence"]);
     validateReview(report, result.baseline ?? result, evidence);
     need(
       report.evidenceFile.sha256 ===
-        hash(await readRelative(root, "review/pdf-evidence.json")) &&
+        hash(files.get("review/pdf-evidence.json")) &&
         report.inputs.provenanceSha256 ===
           marker.files.find((f) => f.relativePath === "provenance.json")
             .sha256 &&
@@ -576,9 +572,8 @@ export async function loadHandoff(
   need(!requireReviewed || reviewed, "review-unavailable");
   return result;
 }
-async function validateFileSet(root, marker) {
+async function validateFileSet(root, marker, files = new Map()) {
   validateSchema(marker, schemas.complete);
-  const files = new Map();
   for (const f of marker.files) {
     need(!files.has(f.relativePath), "duplicate-file");
     const bytes = await readRelative(root, f.relativePath);

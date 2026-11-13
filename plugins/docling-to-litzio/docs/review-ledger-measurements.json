@@ -1,0 +1,5539 @@
+{
+  "baseline": "d52c451",
+  "before": [
+    {
+      "factor": 1,
+      "pages": 13,
+      "groups": 19,
+      "sizes": {
+        "correction-ledger.json": 153937,
+        "correction-history.json": 109479,
+        "review/pdf-evidence.json": 216539,
+        "snapshot.json": 97619
+      },
+      "rows": [
+        {
+          "operation": "correction-submit",
+          "ms": 2438.6877,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 10,
+              "writes": 0,
+              "readBytes": 414317,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 9,
+              "writes": 0,
+              "readBytes": 18399,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 2568240,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 179076,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 7,
+              "writes": 1,
+              "readBytes": 64151,
+              "writeBytes": 65
+            },
+            "snapshot.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 390476,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 146892,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 602472,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 6901380,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 16440,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 41912,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 31176,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 851133,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.e73cbcb7-54b9-42f3-aece-c4257d599cb8.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 7143
+            },
+            "correction-operation-bench-0.json": {
+              "reads": 1,
+              "writes": 1,
+              "readBytes": 65,
+              "writeBytes": 65
+            },
+            "correction-ledger.json.dcf04ef5-bb01-4527-a8dd-30c182f49e92.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 124920
+            },
+            "correction-history.json.26f80e1b-1200-4f02-9efb-b6743960ae19.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 109479
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 218958,
+              "writeBytes": 0
+            },
+            "complete.json.80f66b15-8beb-452d-948b-d8587a1df814.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2337
+            },
+            "correction-ledger.json.762fbb17-1140-4e95-9fd9-d480a08fc340.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 7836
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 1118.2645000000002,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 13,
+              "writes": 0,
+              "readBytes": 550602,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 390,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 12,
+              "writes": 0,
+              "readBytes": 28044,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 2568240,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 179076,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 390476,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 146892,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 602472,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 6901380,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 16440,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 41912,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 31176,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 1299234,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 1702266,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 437916,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1556,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.c7629d47-444d-46cc-abb7-fed37ce1e9f4.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43090
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 941.2380000000003,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 13,
+              "writes": 0,
+              "readBytes": 560170,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 390,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 12,
+              "writes": 0,
+              "readBytes": 28044,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 2568240,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 179076,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 390476,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 146892,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 602472,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 6901380,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 16440,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 41912,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 31176,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 1299234,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 1702266,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 437916,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1556,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.ce1bc36a-ec60-42fa-908d-d351139ecce3.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43823
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 11.128799999998591,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 43823,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.e3a5a31a-5619-47f4-b4de-d34fd0d7aadc.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43823
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 7.235800000000381,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 43823,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.7584de2e-07ab-4e40-ab80-f5ddf4df3faa.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43823
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 218.08890000000065,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 175292,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.6ae072a8-93ae-4345-8c37-8b8f2ee19c78.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 44143
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 208.446899999999,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 176572,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.e087a940-6c55-4d82-bea6-990e55949cd5.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 44463
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 440.89509999999973,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 311241,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 195,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14022,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1284120,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 89538,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 195238,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 73446,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 301236,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2760552,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8220,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 851133,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 218958,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 474.8634000000002,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 311241,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 195,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14022,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1284120,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 89538,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 195238,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 73446,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 301236,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2760552,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8220,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 851133,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 218958,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 390.46830000000045,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 311241,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 195,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14022,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1284120,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 89538,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 195238,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 73446,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 301236,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2760552,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8220,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 851133,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 218958,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "finalize",
+          "ms": 598.1151999999984,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 10,
+              "writes": 0,
+              "readBytes": 773052,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 260,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 9,
+              "writes": 0,
+              "readBytes": 21444,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 1926180,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 134307,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 292857,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 110169,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 451854,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4140828,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 12330,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 31434,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 23382,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 1299234,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 1418555,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 328437,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "human-review.json.306e91b2-22ac-4f52-bd73-18039d20bd21.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 103673
+            },
+            "human-review.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 311019,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.6687dd76-bbe9-489d-87d7-29daff52c4a1.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 153937
+            },
+            "complete.json.83106b98-379a-4254-8bda-eed288c2a96e.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2474
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 216.9385999999995,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 461811,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 207346,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 203.47470000000067,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 461811,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 207346,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 185.64969999999994,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 461811,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 207346,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        }
+      ]
+    },
+    {
+      "factor": 10,
+      "pages": 130,
+      "groups": 196,
+      "sizes": {
+        "correction-ledger.json": 1484673,
+        "correction-history.json": 1071583,
+        "review/pdf-evidence.json": 2170869,
+        "snapshot.json": 957543
+      },
+      "rows": [
+        {
+          "operation": "correction-submit",
+          "ms": 21933.905999999995,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 10,
+              "writes": 0,
+              "readBytes": 3820269,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 9,
+              "writes": 0,
+              "readBytes": 18399,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 25770400,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1940900,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 7,
+              "writes": 1,
+              "readBytes": 641411,
+              "writeBytes": 65
+            },
+            "snapshot.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 3830172,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1474104,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 701188,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 69014700,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 16444,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 41912,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 31176,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 8462943,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.eb43dcd4-fa10-413a-a7f0-02ee2373fdfa.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 37411
+            },
+            "correction-operation-bench-0.json": {
+              "reads": 1,
+              "writes": 1,
+              "readBytes": 65,
+              "writeBytes": 65
+            },
+            "correction-ledger.json.ed5e265c-6725-4388-8b0d-1450d2aa6014.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1189612
+            },
+            "correction-history.json.dead5d7d-b283-4f8b-8881-072a864bf69c.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1056653
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2113306,
+              "writeBytes": 0
+            },
+            "complete.json.f0a49bc4-6a93-40f5-a227-d4fbd9aa7e24.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2337
+            },
+            "correction-ledger.json.b43c9e97-edb2-4854-92da-ab0377a53582.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 38104
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 26536.1164,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 13,
+              "writes": 0,
+              "readBytes": 5279313,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 126,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 12,
+              "writes": 0,
+              "readBytes": 28044,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 25770400,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1940900,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 3830172,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1474104,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 701188,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 69014700,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 16444,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 41912,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 31176,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 13025214,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 16925886,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 4286332,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1556,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.2e04823d-60f4-4fb3-b33d-1a3de1914ebc.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 406839
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 30670.988499999992,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 13,
+              "writes": 0,
+              "readBytes": 5288907,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 126,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 12,
+              "writes": 0,
+              "readBytes": 28044,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 25770400,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1940900,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 3830172,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1474104,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 701188,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 69014700,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 16444,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 41912,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 31176,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 13025214,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 16925886,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 4286332,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1556,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.c37e1aec-1796-4884-a4b3-6b4b2e0c9162.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407576
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 26.076499999995576,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 407576,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.e98bfa72-773b-4383-adca-cc1fb2af2292.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407576
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 16.016700000007404,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 407576,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.26c67a91-5ea6-46f0-bc16-dcce002bcba0.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407576
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 7820.602799999993,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1630304,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.4c6036ad-d234-491a-8dee-bebe2b23e1a4.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407896
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 7614.899899999989,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1631584,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.1a93a279-f375-4cc4-a6b7-692688927520.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 408216
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 19369.619000000006,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 2857512,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 63,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14022,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 12885200,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 970450,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1915086,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 737052,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 350594,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 27605880,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8222,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 8462943,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2143166,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 17798.638600000006,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 2857512,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 63,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14022,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 12885200,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 970450,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1915086,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 737052,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 350594,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 27605880,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8222,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 8462943,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2143166,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 17511.503599999996,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 2857512,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 63,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14022,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 12885200,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 970450,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1915086,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 737052,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 350594,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 27605880,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8222,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 8462943,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2143166,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "finalize",
+          "ms": 27256.208100000018,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 10,
+              "writes": 0,
+              "readBytes": 7311531,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 84,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 9,
+              "writes": 0,
+              "readBytes": 21444,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 19327800,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 1455675,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 2872629,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 1105578,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 525891,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 41408820,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 12333,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 31434,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 23382,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 13025214,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 5,
+              "writes": 0,
+              "readBytes": 14104905,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 3214749,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "human-review.json.a7032bd6-7d57-48c9-8d01-e68330598164.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1019518
+            },
+            "human-review.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 3058554,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.11a0ffdd-be46-46ee-80d1-0920517d4ed6.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1484673
+            },
+            "complete.json.19961345-9c8a-42bd-9900-e8363df67444.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2474
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 10168.597300000023,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4454019,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2039036,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 10079.070000000007,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4454019,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2039036,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 9557.12950000004,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4454019,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2039036,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        }
+      ]
+    }
+  ],
+  "after": [
+    {
+      "factor": 1,
+      "pages": 13,
+      "groups": 19,
+      "sizes": {
+        "correction-ledger.json": 153937,
+        "correction-history.json": 109479,
+        "review/pdf-evidence.json": 216539,
+        "snapshot.json": 97619
+      },
+      "rows": [
+        {
+          "operation": "correction-submit",
+          "ms": 254.84430000000003,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 397364,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 12705,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 1926180,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 134307,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 6,
+              "writes": 1,
+              "readBytes": 48162,
+              "writeBytes": 65
+            },
+            "snapshot.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 292857,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 110169,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 451854,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 5521104,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 12330,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 31434,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 23382,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 851133,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.f81e07ef-4007-4bbb-bf16-84244006f59b.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 7143
+            },
+            "correction-operation-bench-0.json": {
+              "reads": 1,
+              "writes": 1,
+              "readBytes": 65,
+              "writeBytes": 65
+            },
+            "correction-ledger.json.51b6d9ef-7fc1-4a61-bfd6-11e01abec55b.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 124920
+            },
+            "correction-history.json.e2d2f840-d740-4017-8056-fcc034c62302.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 109479
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 218958,
+              "writeBytes": 0
+            },
+            "complete.json.4f12cdad-85ca-4733-b258-879595ec739f.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2337
+            },
+            "correction-ledger.json.f32c9125-3b66-4bc7-b5ac-ed7890357ae5.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 7836
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 127.40600000000006,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 169416,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 195,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2760552,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.1cd8c6ba-8488-429d-99a6-497dd9347cce.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43090
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 126.18219999999997,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 172360,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 195,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2760552,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.766ad6fa-515b-4c25-8bca-ebc59c54a191.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43823
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 4.266399999999976,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 43823,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.6c8f1273-732b-4015-9252-42c12fd40907.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43823
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 3.7494000000001506,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 43823,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.92e7ed6c-a57b-4636-9720-89bda8f66d31.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 43823
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 117.15790000000015,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 175292,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.a19b40c9-bbdd-4f06-b3a7-f9c516c19391.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 44143
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 125.24389999999994,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 176572,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.654c3f06-c539-448a-928b-26bfaaab441e.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 44463
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 148.6470999999999,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 177852,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 141.83529999999996,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 177852,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 139.92020000000002,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 177852,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 130,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 433078,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 567422,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "finalize",
+          "ms": 279.7919999999999,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 639663,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 195,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14433,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1284120,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 89538,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 195238,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 73446,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 301236,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2760552,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8220,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 649617,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 851133,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 218958,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "human-review.json.9e25d3d1-74ed-4817-ae78-3679ec9049bc.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 103673
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 207346,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.d58c58cd-3fe9-4b98-b728-ced6459101db.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 153937
+            },
+            "complete.json.72296cd1-3fdf-4fc6-b507-67c3ba909590.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2474
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 139.82569999999987,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 461811,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 216539,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 283711,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 103673,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 136.942,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 461811,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 216539,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 283711,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 103673,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 139.02250000000004,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 461811,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 642060,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 44769,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 65,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 97619,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 36723,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 150618,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1380276,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4110,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 216539,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 283711,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 109479,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 103673,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        }
+      ]
+    },
+    {
+      "factor": 10,
+      "pages": 130,
+      "groups": 196,
+      "sizes": {
+        "correction-ledger.json": 1484673,
+        "correction-history.json": 1071583,
+        "review/pdf-evidence.json": 2170869,
+        "snapshot.json": 957543
+      },
+      "rows": [
+        {
+          "operation": "correction-submit",
+          "ms": 11892.9319,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 3712512,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 12705,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 19327800,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 1455675,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 6,
+              "writes": 1,
+              "readBytes": 481107,
+              "writeBytes": 65
+            },
+            "snapshot.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 2872629,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 1105578,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 525891,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 55211760,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 12333,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 31434,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 23382,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 8462943,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.f80f0bb7-0ea3-4246-bccd-de9ff8208b47.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 37411
+            },
+            "correction-operation-bench-0.json": {
+              "reads": 1,
+              "writes": 1,
+              "readBytes": 65,
+              "writeBytes": 65
+            },
+            "correction-ledger.json.fcf4c082-d64e-4d8d-927a-8c5561f9e5e3.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1189612
+            },
+            "correction-history.json.230e84df-5a32-40a6-9be8-102794843a74.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1056653
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2113306,
+              "writeBytes": 0
+            },
+            "complete.json.e2d19fa4-6e85-4cfd-b246-ae87a35b6217.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2337
+            },
+            "correction-ledger.json.06f429d2-dcbd-4a0b-a62a-4a5f188e531b.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 38104
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 8725.755099999995,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1624404,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 63,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 27605880,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.8b72fbed-0588-4c21-9f16-3485378e03f5.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 406839
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "loss-decision",
+          "ms": 10188.98739999999,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1627356,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 63,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 27605880,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.2e46c9fa-aba7-4725-b8cb-b871656ed2ce.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407576
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 22.555299999992712,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 407576,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.a99f8f6d-9fa3-41b3-9277-6cfc12206e03.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407576
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "checkpoint",
+          "ms": 18.770900000003166,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 407576,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.12674124-c501-4892-9b01-14a63618a244.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407576
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 9922.088900000002,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1630304,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.aabd4272-9d6b-4952-a067-eeb677779a6a.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 407896
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "human-decision",
+          "ms": 9868.56259999999,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1631584,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.5ab60478-360e-42cf-86ee-50b324cad292.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 408216
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 14320.737299999993,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1632864,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 13101.303499999995,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1632864,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "progress",
+          "ms": 14115.422099999996,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 4,
+              "writes": 0,
+              "readBytes": 1632864,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 42,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7011,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 4341738,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 5641962,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "finalize",
+          "ms": 26853.1967,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 7,
+              "writes": 0,
+              "readBytes": 6086883,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 63,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 6,
+              "writes": 0,
+              "readBytes": 14433,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 12885200,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 970450,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 1915086,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 737052,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 350594,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 27605880,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 8222,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 20956,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 15588,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 6512607,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 8462943,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2143166,
+              "writeBytes": 0
+            },
+            "review/review-complete.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 778,
+              "writeBytes": 0
+            },
+            "human-review.json.c4b891fe-5e65-49be-9c31-b83bd949d80f.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1019518
+            },
+            "human-review.json": {
+              "reads": 2,
+              "writes": 0,
+              "readBytes": 2039036,
+              "writeBytes": 0
+            },
+            "correction-ledger.json.99caaf11-4c2c-4098-bd71-1fdc845ef29d.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 1484673
+            },
+            "complete.json.2caece03-ac6c-4e24-b1d9-88785dd4ae33.tmp": {
+              "reads": 0,
+              "writes": 1,
+              "readBytes": 0,
+              "writeBytes": 2474
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 13635.734200000006,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4454019,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 2170869,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 2820981,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1019518,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 13525.458499999979,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4454019,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 2170869,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 2820981,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1019518,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        },
+        {
+          "operation": "handoff",
+          "ms": 18277.3229,
+          "files": {
+            "correction-ledger.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 4454019,
+              "writeBytes": 0
+            },
+            "complete.json": {
+              "reads": 3,
+              "writes": 0,
+              "readBytes": 7422,
+              "writeBytes": 0
+            },
+            "provenance.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 6442600,
+              "writeBytes": 0
+            },
+            "losses.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 485225,
+              "writeBytes": 0
+            },
+            "document.md": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 21,
+              "writeBytes": 0
+            },
+            "snapshot.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 957543,
+              "writeBytes": 0
+            },
+            "receipt.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 368526,
+              "writeBytes": 0
+            },
+            "source/source.pdf": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 175297,
+              "writeBytes": 0
+            },
+            "source/document.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 13802940,
+              "writeBytes": 0
+            },
+            "source/conversion-record.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 4111,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-e041a5cdaaf810197d986cc4ce26058797fa3553185be789d9c5b89998801847.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 10478,
+              "writeBytes": 0
+            },
+            "assets/document-102850379677a3cd60689481f5c31c3c1b611c4bf4fe7f16d35ea992f079bcb1-642b30b90d3b765b847a23b99e2874af6a5c1e1297872eaa67d05ce08fe3574e.png": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 7794,
+              "writeBytes": 0
+            },
+            "review/pdf-evidence.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 2170869,
+              "writeBytes": 0
+            },
+            "review/review-targets.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 2820981,
+              "writeBytes": 0
+            },
+            "correction-history.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1071583,
+              "writeBytes": 0
+            },
+            "human-review.json": {
+              "reads": 1,
+              "writes": 0,
+              "readBytes": 1019518,
+              "writeBytes": 0
+            }
+          },
+          "outcome": "ok"
+        }
+      ]
+    }
+  ]
+}

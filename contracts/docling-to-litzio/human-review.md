@@ -1,5 +1,7 @@
 # 사람의 최종 확정 인계 v1.2
 
+계약의 계산 규칙과 닫힌 필드 정의는 [v1.2 계산·기록 규칙](review-values.md)을 함께 따른다. 기존 v1.2 생산 결과의 의미를 명문화한 것이며 버전은 바꾸지 않는다.
+
 v1.0 생성본과 v1.1 교정본을 바꾸지 않는 minor 확장이다. 기존 소비자는 알 수 없는 1.2.0을 거부해야 한다. 원본 PDF·변환 결과·생성 provenance/snapshot/losses/receipt·탐지 파일은 불변이다. 생성 provenance의 `reviewState`는 계속 `unreviewed`다. 완료를 그 필드만으로 판정하지 않는다.
 
 ## 발급과 파일
