@@ -1,0 +1,31 @@
+import { sourceCli } from '../src/cli.mjs';
+import { richSample } from '../test/rich-sample.mjs';
+import { digest, validate } from '../src/model.mjs';
+import { exportReqif } from '../src/reqif.mjs';
+import { writeFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { create } from 'xmlbuilder2';
+const [entry, root] = process.argv.slice(2);
+const cli = sourceCli({ entry, root });
+const sets = richSample();
+for (const [i, s] of sets.entries()) cli.create(s, 'rich-' + i + '.md');
+const read = sets.map((_, i) => cli.read('rich-' + i + '.md'));
+for (const s of read) for (const r of s.requirements) r.confirmedDigest = digest(r);
+assert.deepEqual(validate(read, { formal: true }), []);
+for (const [i, s] of read.entries()) {
+  cli.create(s, 'again-' + i + '.md');
+  const next = cli.read('again-' + i + '.md');
+  assert.deepEqual(s.requirements.map(digest), next.requirements.map(digest));
+  const file = cli.scoped('rich-' + i + '.md');
+  writeFileSync(cli.scoped('rich-' + i + '.json'), JSON.stringify({ inspection: cli.run('inspect', file, '--format', 'json'), snapshot: cli.run('compare', file, file, '--json').before }, null, 2));
+}
+const result = exportReqif(read);
+writeFileSync(cli.scoped('rich.reqif'), result.xml);
+const doc = create(result.xml).node, ns = 'http://www.w3.org/1999/xhtml';
+assert.ok([...doc.getElementsByTagNameNS(ns, 'sup')].some(n => n.textContent === '3'));
+assert.ok([...doc.getElementsByTagNameNS(ns, 'sub')].some(n => n.textContent === '2'));
+assert.equal(doc.getElementsByTagNameNS(ns, 'caption')[0].textContent, '이 표는 85 °C에서만 적용한다');
+assert.ok(doc.getElementsByTagNameNS(ns, 'ul').length >= 2);
+assert.ok([...doc.getElementsByTagNameNS(ns, 'li')].some(n => n.textContent.startsWith('3. ')));
+assert.match(result.xml, /공통 조건/);
+console.log('PASS built CLI rich authoring/read/reauthor/digest; XHTML exponent, subscript, caption, nested list, notes');

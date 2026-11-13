@@ -59,7 +59,7 @@ const failures = [
   ['namespace', s => s[1].exportNamespace = '00000000-0000-4000-8000-000000000000'],
   ['confirmation-stale', s => s[0].requirements[0].body[0].text += '수정'],
   ['not-confirmed', s => s[0].requirements[0].status = 'draft'],
-  ['unsupported-body', s => s[0].requirements[0].body.push({ kind: 'equation', latex: 'x=1' })],
+  ['formula-render-required', s => s[0].requirements[0].body.push({ kind: 'equation', latex: 'x=1' })],
 ];
 for (const [code, change] of failures) test('reject ' + code, () => {
   const sets = sample(); change(sets);

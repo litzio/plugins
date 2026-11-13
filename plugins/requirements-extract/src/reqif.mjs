@@ -5,6 +5,18 @@ import { inlineFields, inlineTags } from './inline.mjs';
 
 const NS = 'http://www.omg.org/spec/ReqIF/20110401/reqif.xsd';
 const XHTML = 'http://www.w3.org/1999/xhtml';
+const anchor = label => 'label-' + createHash('sha256').update(label).digest('hex');
+function listMarker(n, style = 'decimal') {
+  if (style.endsWith('alpha')) {
+    let s = ''; for (let i = n; i > 0; i = Math.floor((i - 1) / 26)) s = String.fromCharCode(97 + (i - 1) % 26) + s;
+    return style.startsWith('upper') ? s.toUpperCase() : s;
+  }
+  if (style.endsWith('roman')) {
+    let s = ''; for (const [value, letters] of [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]) { while (n >= value) { s += letters; n -= value; } }
+    return style.startsWith('lower') ? s.toLowerCase() : s;
+  }
+  return String(n);
+}
 export function stableId(namespace, key) {
   const bytes = createHash('sha1').update(Buffer.from(namespace.replaceAll('-', ''), 'hex')).update(key, 'utf8').digest().subarray(0, 16);
   bytes[6] = (bytes[6] & 15) | 80; bytes[8] = (bytes[8] & 63) | 128;
@@ -15,6 +27,10 @@ export function stableId(namespace, key) {
 function inline(parent, content) {
   for (const c of content) {
     if (c.kind === 'text') parent.txt(c.text);
+    else if (c.kind === 'break') parent.ele(XHTML, 'br');
+    else if (c.kind === 'footnote') parent.ele(XHTML, 'sup').txt('[' + c.label + ']');
+    else if (c.kind === 'reference') parent.ele(XHTML, 'a', { href: '#' + anchor(c.label) }).txt(c.role + ': ' + c.label);
+    else if (c.kind === 'link') inline(parent.ele(XHTML, 'a', { href: c.url }), c.children);
     else if (inlineTags[c.kind]) {
       const p = parent.ele(XHTML, inlineTags[c.kind]);
       if (inlineFields[c.kind] === 'children') inline(p, c.children); else p.txt(c[inlineFields[c.kind]]);
@@ -25,11 +41,31 @@ function body(parent, blocks) {
   for (const b of blocks) {
     if (b.kind === 'paragraph') inline(parent.ele(XHTML, 'p'), b.content ?? [{ kind: 'text', text: b.text }]);
     else if (b.kind === 'table') {
-      const table = parent.ele(XHTML, 'table');
+      const table = parent.ele(XHTML, 'table', b.label ? { id: anchor(b.label) } : {});
+      if (b.caption?.length || b.enumerator) { const caption = table.ele(XHTML, 'caption'); if (b.enumerator) caption.txt('Table ' + b.enumerator + ' '); if (b.caption) inline(caption, b.caption); }
       for (const [i, row] of b.rows.entries()) {
-        const tr = table.ele(XHTML, 'tr'); for (const text of row) tr.ele(XHTML, i ? 'td' : 'th').txt(text);
+        const tr = table.ele(XHTML, 'tr'); for (const [j, text] of row.entries()) {
+          const cell = tr.ele(XHTML, i ? 'td' : 'th', b.align?.[j] ? { align: b.align[j] } : {});
+          if (Array.isArray(text)) inline(cell, text); else cell.txt(text);
+        }
       }
-    } else throw new Error('지원하지 않는 본문: ' + b.kind);
+    } else if (b.kind === 'list') {
+      // ReqIF's XHTML driver forbids ol@start. Keep non-default numbering
+      // explicitly in each item rather than silently restarting at 1.
+      const explicit = b.ordered && ((b.start ?? 1) !== 1 || (b.style && b.style !== 'decimal') || (b.delimiter && b.delimiter !== '.'));
+      const list = parent.ele(XHTML, b.ordered && !explicit ? 'ol' : 'ul');
+      for (const [index, item] of b.items.entries()) {
+        const li = list.ele(XHTML, 'li');
+        if (explicit) li.txt(listMarker((b.start ?? 1) + index, b.style) + (b.delimiter ?? '.') + ' ');
+        inline(li, item.content); if (item.list) body(li, [{ kind: 'list', ...item.list }]);
+      }
+    } else if (b.kind === 'quote') inline(parent.ele(XHTML, 'blockquote').ele(XHTML, 'p'), b.content ?? [{ kind: 'text', text: b.text }]);
+    else if (b.kind === 'admonition') {
+      const div = parent.ele(XHTML, 'div'); div.ele(XHTML, 'p').ele(XHTML, 'strong').txt(b.variant);
+      inline(div.ele(XHTML, 'p'), b.content ?? [{ kind: 'text', text: b.text }]);
+    } else if (b.kind === 'code') { if (b.language) parent.ele(XHTML, 'p').txt('Code: ' + b.language); parent.ele(XHTML, 'pre').txt(b.code); }
+    else if (b.kind === 'divider') parent.ele(XHTML, 'hr');
+    else throw new Error('지원하지 않는 본문: ' + b.kind);
   }
 }
 
@@ -84,7 +120,7 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
       if (dt === 'STRING' && value.length > 65535) throw new Error(name + ': 65535자 초과');
       const a = vals.ele('ATTRIBUTE-VALUE-' + dt, dt === 'STRING' ? { 'THE-VALUE': value } : {});
       a.ele('DEFINITION').ele('ATTRIBUTE-DEFINITION-' + dt + '-REF').txt(id('attr:' + typeKey + ':' + name));
-      if (dt === 'XHTML') body(a.ele('THE-VALUE').ele(XHTML, 'div'), value);
+      if (dt === 'XHTML') body(a.ele('THE-VALUE').ele(XHTML, 'div', name === 'ReqIF.Text' ? { id: anchor(data.id) } : {}), value);
       if (dt === 'ENUMERATION') a.ele('VALUES').ele('ENUM-VALUE-REF').txt(id('enum:' + name + ':' + value));
     }
   }
@@ -92,7 +128,8 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
   const objects = content.ele('SPEC-OBJECTS');
   for (const s of sets) for (const r of s.requirements) {
     const o = objects.ele('SPEC-OBJECT', ident(r.id, r.title, { ...semantic(r), status: r.status }));
-    values(o, 'object-type', attributes, { ...r, 'ReqIF.Name': text(r.title), 'ReqIF.Text': r.body, rationale: text(r.rationale), SourceReferences: canonical(r.sources), SourcePages: '' });
+    const notes = (r.footnotes ?? []).map(f => ({ kind: 'paragraph', content: [{ kind: 'text', text: '[' + f.label + '] ' }, ...f.content] }));
+    values(o, 'object-type', attributes, { ...r, 'ReqIF.Name': r.titleContent ? [{ kind: 'paragraph', content: r.titleContent }] : text(r.title), 'ReqIF.Text': [...r.body, ...notes], rationale: text(r.rationale), SourceReferences: canonical(r.sources), SourcePages: '' });
     o.ele('TYPE').ele('SPEC-OBJECT-TYPE-REF').txt(id('object-type'));
   }
   const rels = content.ele('SPEC-RELATIONS'), seen = new Set();

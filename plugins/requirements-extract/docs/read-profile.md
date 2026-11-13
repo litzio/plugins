@@ -1,55 +1,29 @@
-# 공개 읽기 출력과 PR1 처리 표
+# 공개 읽기 출력과 현재 처리 표
 
-공개 Litzio checkout `8f41d0da6ad3cfe06299dfa04b39d1dcd6bea386`의 document-support-v1, document-editing-v1, CLI help와 실제 inspect/compare 출력 기준이다. Core 내부 코드는 읽지 않았다. 이 표는 PR1 범위이며 플랫폼의 native 지원 전체와 구별한다. 새 의미 필드는 매핑 전까지 진단 후 차단한다.
+기준: 공개 Litzio master `9956e8e0`, document-support-v1의 공식 JSON 읽기/작성 입력 절과 빌드 CLI help. 별도 임시 worktree에서 의존성을 준비하고 CLI를 빌드했다. 원래 clone의 체크아웃·파일과 내부 구현은 사용하지 않았다.
 
-## 인라인: compare의 paragraph.content
-
-| 실제 kind | 실제 의미 필드(kind 제외) | PR1 본문 처리 |
+| 실제 구조/필드 | 모델 | ReqIF XHTML |
 | --- | --- | --- |
-| text | text | 보존 |
-| strong | children | 재귀 보존, XHTML strong |
-| emphasis | children | 재귀 보존, XHTML em |
-| subscript | children | 재귀 보존, XHTML sub |
-| superscript | children | 재귀 보존, XHTML sup |
-| code | **value** | 그대로 보존·escape, XHTML code |
-| delete | children | 진단 후 차단 |
-| link | url, children | 진단 후 차단 |
-| math | value | 진단 후 차단 |
-| reference | role, label | ref/eq/numref 모두 진단 후 차단 |
-| footnote | label | 진단 후 차단 |
-| citation | role, keys | 진단 후 차단 |
-| break | 없음 | 진단 후 차단 |
+| text.text, code.value | 보존 | 평문/code, escape |
+| strong/emphasis/subscript/superscript/delete.children | 재귀 보존 | strong/em/sub/sup/del로 의미 유지 |
+| link.url/children, break | 보존 | a/br |
+| footnote.label + footnote 블록 label/content | 요구사항별 사용 정의 결합 | 표시 [label] + 본문 끝 주석, 정의 서식 보존 |
+| math.value, equation.latex/label | 원문 LaTeX 보존 | 검증된 PNG 없으면 양 모드 차단 |
+| reference.role/label | 보존 | 같은 내보내기의 요구사항/표 label에 XHTML anchor로 연결, 역할과 label 표시 |
+| citation.role/keys | 보존 | 참고문헌 데이터 매핑 전 차단 |
+| heading.level/content | 요구사항 제목 서식 보존 | ReqIF.Name XHTML; 프로파일 경계 제목은 평문 |
+| table.rows[].cells[].content/header, caption | rich 셀·캡션 보존 | 표/머리글/셀/caption |
+| table.label/align/enumerator | 보존 | 안정적인 anchor/정렬/명시 번호 |
+| list.ordered/start/style/delimiter/items[].content/list | 재귀 보존 | 중첩 목록. 비기본 번호는 항목에 원래 번호를 명시 |
+| paragraph/quote/admonition.content, variant | 보존 | p/blockquote/종류 표시 div |
+| code.language/code, divider | 보존 | 언어 표시 + pre / hr |
+| figure.imageUrl/imageAlt/mermaidSource/caption/label | 캡션 포함 보존 | 첨부 패키징이 없어 양 모드 차단 |
+| 새 블록·필드/대응 누락·병합 셀 | 진단 | 차단 |
 
-위 13종을 실제 공개 출력에서 확인했다. 삭제 서식과 hard break는 공식 insert-block --content / insert-hard-break로 만들었다. subscript/superscript는 공개 계약의 `{sub}`/`{sup}` 역할을 사용했다. `~2~`/`^2^`와 `~~삭제~~`는 이 실행 환경에서 해당 의미 kind를 만들지 않았으므로 지원 검사의 근거로 삼지 않는다. code는 text나 children을 읽지 않는다. 인라인 허용 필드는 coverage/model/XHTML이 공유하는 src/inline.mjs 한곳에 둔다.
+문단·제목·인용·주의 상자·미주 정의·표 셀의 content, table.caption, list.items를 공개 읽기 출력에서 얻는다. 같은 revision의 compare snapshot과 전수 대조한다. path/text/editable/자동 번호는 조회·파생 값이며 rich 의미는 content를 기준으로 한다. 속성/출처/관계 표는 문자열 필드 계약이므로 서식은 진단한다. 알 수 없는 필드는 조용히 버리지 않는다.
 
-제목·속성·출처/관계 표·본문 표 셀의 인라인은 text만 지원하며 나머지는 진단 후 차단한다. 위 지원 서식은 요구사항의 본문 문단에 적용한다. 새 rich authoring은 여전히 후속이며 최소 생성기는 평문을 받는다.
+새 공식 작성 입력으로 content·표 caption·중첩 items·target·미주를 그대로 생성하고 다시 읽는다. 기존 문자열 입력과 PR1 ID는 유지한다. 미주 정의가 여러 요구사항에 쓰이면 각 ReqIF 본문 끝에 동일 정의를 싣는다. 미사용/없는 정의는 오류다.
 
-## 블록: compare의 blocks
+ReqIF XSD는 ol@start를 허용하지 않는다. 시작 번호/스타일/구분자를 잃지 않도록 비기본 순서 목록은 ul 안에 원래 번호(3., c), IV. 등)를 명시한다. 4000 이상 로마 숫자는 진단한다. 자동 표시 번호를 원문 번호로 추정하지 않는다. 그림/수식 PNG·ReqIFZ·선택 집합 밖 참조·참고문헌 대상 매핑은 미완료다.
 
-path와 editable은 좌표·편집 정보다. 아래는 그 밖의 실제 필드 이름이다.
-
-| 실제 block | 실제 의미 필드(block 제외) | PR1 처리 |
-| --- | --- | --- |
-| heading | level, text, content | 프로파일의 H1/H2/H3 경계와 평문 제목을 보존, 다른 경계/서식은 진단 |
-| target | label | 요구사항 id와 일치하는 경계 레이블 보존, 다른 위치는 진단 |
-| paragraph | text, content | 지원 인라인만 보존 |
-| table | rows[].cells[]: text, content, header, path | 캡션 없는 평문 직사각형 표 보존; 추가 의미 속성은 진단 |
-| table의 선택 필드 | caption | 적용 조건을 포함해 진단 후 차단(앞 리뷰에서 실제 확인) |
-| quote | text, content | 진단 후 차단 |
-| divider | 없음 | 진단 후 차단 |
-| admonition | variant, text, content | 진단 후 차단 |
-| code | language, code | 블록 code는 진단 후 차단, 인라인 code.value와 구별 |
-| list | ordered, items[].content, items[].list | 중첩을 포함해 요소 전체 진단 후 차단 |
-| figure | label, contentKind, imageUrl, imageAlt, caption, mermaidSource | 이미지·캡션·Mermaid 전체 진단 후 차단(선택 필드는 종류별로 다름) |
-| equation | latex, label | 진단 후 차단 |
-| footnote | label, text, content | 정의 전체 진단 후 차단 |
-
-위 12개 블록 종류를 실제 출력에서 확인했다. equation은 공식 insert-equation으로 생성했다. 네이티브 계약상 병합 셀·임의 HTML은 admission에서 먼저 거부된다. 가상 snapshot에 새 병합 필드가 들어오는 경우도 전수 대조로 차단한다. inspect의 자동 numbers/captionNumberText와 heading referenceText/section만 파생 표시 정보로 구별한다.
-
-## 확인한 왕복
-
-validation/inlines.mjs는 지원 6종을 각각 포함한 8개 표본(text/strong/emphasis/subscript/superscript/code/codeEscape/nested)에 대해 check → inspect/compare → 모델 → 합성 재확정 → 정식 ReqIF → format → 재읽기 digest 동일성을 확인한다. 실제 긍정 출력은 test/fixtures/inline-projections.json에 고정했다. 문자열 검사뿐 아니라 XML DOM의 문단 전체와 code 요소의 textContent를 원래 의미 값과 비교한다.
-
-validation/inlines.py는 같은 8개 파일에서 XSD·ID/참조·독립 reqif 왕복 후, 문단 내부의 text와 tail 및 서식을 공백까지 정확히 비교한다. 출력 XML은 혼합 XHTML에 들여쓰기를 넣지 않는다. root에만 구조 공백을 두어 reqif 0.0.47의 namespace 캡처가 self-closing root를 만들지 않게 한다. 임의 사용자 본문을 문자열로 보정하지 않는다.
-
-미지원 인라인/블록은 별도 7그룹(otherInline/citation/blocks/mermaid/delete/break/equation)에서 실제 native admission 성공 후 진단·시험 내보내기 차단을 확인한다. 기존 캡션·병합 셀 검사는 validation/coverage.mjs와 단위 검사에 유지한다. 이 결과는 미래 projection이나 Host 설치·화면·ALM 수락을 증명하지 않는다.
+검증: test/fixtures/rich는 새 빌드 CLI의 실제 inspect/compare 출력이다. validation/rich.mjs는 공식 생성→읽기→재작성→재읽기 digest, 지수 10³/단위 m³/s/아래첨자 H₂O, 캡션 조건, rich 셀, 중첩 목록, 미주를 검사한다. 공식 XSD·ID/참조·독립 reqif 왕복도 별도 실행한다. 설치·화면·ALM은 미확인이다. PR1의 과거 표와 실행 결과는 커밋 이력과 pr1-validation.md에 남긴다.

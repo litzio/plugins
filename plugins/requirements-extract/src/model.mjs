@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { inlineFields, validInlineValue } from './inline.mjs';
+import { validateBody } from './body.mjs';
 
 export const policy = Object.freeze({
   kind: ['functional', 'performance', 'interface', 'constraint', 'safety', 'unknown'],
@@ -18,7 +18,10 @@ function sort(v) {
 }
 export const sha256 = value => 'sha256:' + createHash('sha256').update(value, 'utf8').digest('hex');
 export function semantic(r) {
-  return Object.fromEntries(['id', 'title', 'body', ...Object.keys(policy).filter(k => k !== 'status'), 'rationale', 'sources', 'relations'].map(k => [k, r[k]]));
+  const value = Object.fromEntries(['id', 'title', 'titleContent', 'body', 'footnotes', ...Object.keys(policy).filter(k => k !== 'status'), 'rationale', 'sources', 'relations'].map(k => [k, r[k]]));
+  value.body = r.body?.map(b => { const v = structuredClone(b); if (v.content) delete v.text; return v; });
+  if (r.titleContent) delete value.title;
+  return value;
 }
 export const digest = r => sha256(canonical(semantic(r)));
 export const effectiveStatus = r => r.status === 'confirmed' && r.confirmedDigest !== digest(r) ? 'reviewed' : r.status;
@@ -31,6 +34,7 @@ export function validate(sets, { formal = false } = {}) {
   const add = (s, r, code, message, severity = 'error') => diagnostics.push({ file: s.file ?? '', location: r?.location ?? [1], code, severity, message });
   const ids = new Map(), setIds = new Set();
   const ns = sets[0]?.exportNamespace;
+  const labels = new Set(sets.flatMap(s => s.requirements.flatMap(r => [r.id, ...r.body.filter(b => b.label).map(b => b.label)])));
   for (const s of sets) {
     diagnostics.push(...(s.diagnostics ?? []));
     if (s.profile !== 'requirements-extract/1') add(s, null, 'profile', '지원하지 않는 문서 프로파일');
@@ -59,22 +63,7 @@ export function validate(sets, { formal = false } = {}) {
         if (!/^(full|text:\d+:\d+|cell:\d+:\d+)$/.test(src.selector) || (src.selector.startsWith('text:') && Number(src.selector.split(':')[1]) >= Number(src.selector.split(':')[2]))) add(s, r, 'selector', '출처 범위가 올바르지 않습니다');
         if (!src.quote || src.quoteDigest !== sha256(src.quote)) add(s, r, 'quote-digest', '인용문 해시가 일치하지 않습니다');
       }
-      const checkInline = content => {
-        for (const c of content) {
-          if (!inlineFields[c.kind]) add(s, r, 'unsupported-inline', '수식·참조·기타 인라인 요소는 PR1 내보내기를 차단합니다');
-          else if (!validInlineValue(c)) add(s, r, 'unsupported-inline', '인라인 값 형식이 올바르지 않습니다');
-          const allowed = ['kind', inlineFields[c.kind]];
-          if (Object.keys(c).some(k => !allowed.includes(k))) add(s, r, 'unmapped-semantic', '인라인 요소에 보존할 수 없는 필드가 있습니다');
-          if (Array.isArray(c.children)) checkInline(c.children);
-        }
-      };
-      for (const b of r.body ?? []) {
-        if (!['paragraph', 'table'].includes(b.kind)) add(s, r, 'unsupported-body', '목록·첨부·수식·그림·기타 블록은 PR1에서 내보낼 수 없습니다');
-        const allowed = b.kind === 'paragraph' ? ['kind', 'text', 'content'] : ['kind', 'rows'];
-        if (Object.keys(b).some(k => !allowed.includes(k))) add(s, r, 'unmapped-semantic', '본문 요소에 보존할 수 없는 필드가 있습니다');
-        if (b.content) checkInline(b.content);
-        if (b.kind === 'table' && (!b.rows?.length || !b.rows[0]?.length || b.rows.some(row => !Array.isArray(row) || row.length !== b.rows[0].length || row.some(c => typeof c !== 'string')))) add(s, r, 'body-table', '본문 표는 평문 셀과 머리행이 있는 직사각형이어야 합니다');
-      }
+      validateBody(r, (code, message) => add(s, r, code, message), labels);
       if (r.status === 'confirmed' && effectiveStatus(r) !== 'confirmed') add(s, r, 'confirmation-stale', '내용 변경으로 유효 상태를 reviewed로 낮춥니다', formal ? 'error' : 'warning');
       if (formal && (!['confirmed', 'obsolete'].includes(effectiveStatus(r)) || r.kind === 'unknown' || r.verification === 'undecided')) add(s, r, 'not-confirmed', '미확정·미분류·검증 방법 미정 항목은 정식 내보내기를 막습니다');
     }
