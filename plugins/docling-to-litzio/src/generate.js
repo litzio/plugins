@@ -43,12 +43,24 @@ export async function generate(
   await save("plan.json", plan);
   await save("request.json", plan.request);
   const call = (...args) => {
-    const r = spawnSync(process.execPath, [resolve(cli), ...args], {
-      cwd: output,
-      encoding: "utf8",
-      maxBuffer: 64 * 1024 * 1024,
-      env: { ...process.env, LITZIO_DATA_DIR: join(output, "host-data") },
-    });
+    const r = spawnSync(
+      typeof cli === "string" ? process.execPath : cli.bin,
+      [...(typeof cli === "string" ? [resolve(cli)] : cli.args), ...args],
+      {
+        cwd: output,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+        env: {
+          ...process.env,
+          LITZIO_DATA_DIR: join(output, "host-data"),
+          LITZIO_ASSISTANT_CWD: join(output, "assistant"),
+          LITZIO_ASSISTANT_SETTINGS_FILE: join(
+            output,
+            "assistant/settings.json",
+          ),
+        },
+      },
+    );
     if (r.error || r.status !== 0) {
       writeFileSync(
         join(output, "generation.json"),

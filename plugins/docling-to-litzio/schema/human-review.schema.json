@@ -1,0 +1,73 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.2.0"
+    },
+    "generationId": {
+      "type": "string"
+    },
+    "documentRevision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "humanDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "ready": {
+          "const": true
+        },
+        "uncovered": {
+          "const": 0
+        },
+        "human": {
+          "const": 0
+        },
+        "blocking": {
+          "const": 0
+        },
+        "failures": {
+          "const": 0
+        },
+        "tokenDifferences": {
+          "const": 0
+        }
+      },
+      "required": [
+        "ready",
+        "uncovered",
+        "human",
+        "blocking",
+        "failures",
+        "tokenDifferences"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "documentRevision",
+    "time",
+    "scopes",
+    "humanDecisions",
+    "conditions"
+  ],
+  "additionalProperties": false
+}

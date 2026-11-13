@@ -1,3 +1,4 @@
+import { completionGate } from "./human-review.js";
 import { validateReview } from "./review.js";
 import {
   validateHistory,
@@ -490,7 +491,76 @@ export async function loadHandoff(
     equal(await readRelative(root, "complete.json"), markerRaw),
     "marker-changed",
   );
-  need(!requireReviewed, "review-unavailable");
+  let reviewed = false;
+  if (marker.schemaVersion === "1.2.0") {
+    const completion = JSON.parse(
+      await readRelative(root, "human-review.json"),
+    );
+    validateSchema(completion, schemas["human-review"]);
+    need(
+      marker.files.some((f) => f.relativePath === "human-review.json"),
+      "completion-file-required",
+    );
+    need(
+      ["review/review-targets.json", "review/pdf-evidence.json"].every((name) =>
+        marker.files.some((f) => f.relativePath === name),
+      ),
+      "completion-evidence-required",
+    );
+    const report = JSON.parse(
+      await readRelative(root, "review/review-targets.json"),
+    );
+    const evidence = JSON.parse(
+      await readRelative(root, "review/pdf-evidence.json"),
+    );
+    validateSchema(evidence, schemas["pdf-evidence"]);
+    validateReview(report, result.baseline ?? result, evidence);
+    need(
+      report.evidenceFile.sha256 ===
+        hash(await readRelative(root, "review/pdf-evidence.json")) &&
+        report.inputs.provenanceSha256 ===
+          marker.files.find((f) => f.relativePath === "provenance.json")
+            .sha256 &&
+        report.inputs.snapshotSha256 ===
+          marker.files.find((f) => f.relativePath === "snapshot.json").sha256,
+      "completion-evidence-binding",
+    );
+    need(
+      completion.schemaVersion === "1.2.0" &&
+        completion.generationId === marker.generationId &&
+        completion.documentRevision === marker.documentRevision,
+      "completion-binding",
+    );
+    reviewed =
+      ledger?.generationId === marker.generationId &&
+      ledger?.sourceHash === result.provenance.source.pdf.sha256 &&
+      !!ledger?.completion &&
+      equal(ledger.completion, completion) &&
+      equal(ledger.scopes, completion.scopes) &&
+      equal(ledger.humanDecisions ?? [], completion.humanDecisions) &&
+      evidence.pages.every((p) =>
+        ledger.scopes.some((t) => t.id === "page:" + p.pageNo),
+      ) &&
+      completionGate(
+        ledger,
+        report,
+        result.losses.items,
+        marker.documentRevision,
+        result,
+        evidence,
+      ).ready;
+  }
+  need(
+    equal(await readRelative(root, "complete.json"), markerRaw),
+    "marker-changed",
+  );
+  if (ledgerRaw)
+    need(
+      equal(await readRelative(root, "correction-ledger.json"), ledgerRaw),
+      "ledger-changed",
+    );
+  result.reviewComplete = reviewed;
+  need(!requireReviewed || reviewed, "review-unavailable");
   return result;
 }
 async function validateFileSet(root, marker) {
@@ -506,8 +576,17 @@ async function validateFileSet(root, marker) {
     need(files.has(name), "required-file");
     return JSON.parse(files.get(name));
   };
+  need(
+    marker.schemaVersion === "1.2.0"
+      ? marker.reviewState === "reviewed"
+      : marker.reviewState === "unreviewed",
+    "review-state",
+  );
   const history =
-    marker.schemaVersion === "1.1.0" ? json("correction-history.json") : null;
+    marker.schemaVersion === "1.1.0" ||
+    (marker.schemaVersion === "1.2.0" && files.has("correction-history.json"))
+      ? json("correction-history.json")
+      : null;
   const p = json("provenance.json"),
     losses = json("losses.json"),
     snapshot = json("snapshot.json"),

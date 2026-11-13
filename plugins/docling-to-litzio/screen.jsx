@@ -1,3 +1,4 @@
+import * as pdfjs from "./vendor/pdfjs/build/pdf.mjs";
 const labels = {
   "meaning-loss": "의미에 영향이 있는 손실",
   "formula-review-required": "수식 검수",
@@ -23,7 +24,7 @@ const labels = {
 const priority = { high: "높음", medium: "보통", low: "낮음" };
 const targetText = (t) =>
   `블록 ${t.path.join(".")}${t.selector.kind === "cell" ? ` · 셀 ${t.selector.row + 1}/${t.selector.column + 1}` : t.selector.kind === "list-item" ? ` · 목록 ${t.selector.index + 1}` : ""} (${t.bindingState})`;
-export default function Screen({ React, ui, invoke }) {
+export default function Screen({ React, ui, invoke, openDocument }) {
   const [bundle, setBundle] = React.useState(""),
     [check, setCheck] = React.useState(null),
     [job, setJob] = React.useState(null),
@@ -35,6 +36,145 @@ export default function Screen({ React, ui, invoke }) {
     [expanded, setExpanded] = React.useState(false),
     [error, setError] = React.useState(""),
     [busy, setBusy] = React.useState(false);
+  const [comparison, setComparison] = React.useState(null),
+    [compareKey, setCompareKey] = React.useState(0),
+    [pageNo, setPageNo] = React.useState(1),
+    [zoom, setZoom] = React.useState(1),
+    [targetIndex, setTargetIndex] = React.useState(0),
+    [readState, setReadState] = React.useState(null),
+    [note, setNote] = React.useState(""),
+    [after, setAfter] = React.useState("");
+  const canvas = React.useRef(null),
+    compareRequest = React.useRef(0);
+  const compare = async (selection) => {
+    const ticket = ++compareRequest.current;
+    setComparison(null);
+    setReadState(null);
+    setAfter("");
+    try {
+      const c = await invoke("compare", { jobId: job.jobId, ...selection });
+      if (ticket !== compareRequest.current) return;
+      setNote("");
+      setComparison(c);
+      setCompareKey((k) => k + 1);
+      setTargetIndex(0);
+      setPageNo(
+        c.targets[0]?.regions?.[0]?.pageNo ?? c.regions[0]?.pageNo ?? 1,
+      );
+      setZoom(1);
+    } catch (e) {
+      if (ticket === compareRequest.current) message(e);
+    }
+  };
+  React.useEffect(() => {
+    if (!comparison) return;
+    let disposed = false,
+      task,
+      render,
+      workerURL;
+    const draw = async () => {
+      workerURL = URL.createObjectURL(
+        new Blob([comparison.worker], { type: "text/javascript" }),
+      );
+      pdfjs.GlobalWorkerOptions.workerSrc = workerURL;
+      task = pdfjs.getDocument({
+        data: Uint8Array.from(atob(comparison.pdf), (c) => c.charCodeAt(0)),
+        useSystemFonts: true,
+      });
+      const pdf = await task.promise,
+        page = await pdf.getPage(pageNo);
+      if (disposed) return;
+      const viewport = page.getViewport({ scale: zoom }),
+        el = canvas.current;
+      if (!el) return;
+      el.width = viewport.width;
+      el.height = viewport.height;
+      const ctx = el.getContext("2d");
+      render = page.render({ canvasContext: ctx, viewport });
+      await render.promise;
+      if (disposed) return;
+      ctx.strokeStyle =
+        getComputedStyle(el).getPropertyValue("--id-color-accent").trim() ||
+        "Highlight";
+      ctx.lineWidth = 3;
+      for (const r of (
+        comparison.targets[targetIndex]?.regions ?? comparison.regions
+      ).filter((r) => r.pageNo === pageNo)) {
+        // Evidence boxes use unrotated top-left PDF points. Rotated source alignment is unproven.
+        if (page.rotate !== 0) continue;
+        const [x, y, right, bottom] = r.bbox;
+        ctx.strokeRect(
+          x * zoom,
+          y * zoom,
+          (right - x) * zoom,
+          (bottom - y) * zoom,
+        );
+      }
+    };
+    draw().catch((e) => {
+      if (!disposed) message(e);
+    });
+    return () => {
+      disposed = true;
+      render?.cancel();
+      task?.destroy();
+      if (workerURL) URL.revokeObjectURL(workerURL);
+    };
+  }, [comparison, pageNo, zoom, targetIndex]);
+  React.useEffect(() => {
+    if (readState?.state !== "stale-target") return;
+    setComparison(null);
+    setError(
+      "문서 revision이 바뀌었습니다. 대조를 다시 선택하세요. 손 편집 문서는 인계할 수 없습니다.",
+    );
+  }, [readState]);
+  React.useEffect(() => {
+    if (!comparison) return;
+    let alive = true,
+      polling = false;
+    const timer = setInterval(async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const state = await invoke("revision", { jobId: job.jobId });
+        if (!alive) return;
+        if (state.revision !== comparison.revision) {
+          setComparison(null);
+          setReadState(null);
+          await compare(comparison.selection);
+        }
+      } catch (e) {
+        if (alive) {
+          setComparison(null);
+          message(e);
+        }
+      } finally {
+        polling = false;
+      }
+    }, 3000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [comparison, job?.jobId]);
+  const humanDecision = async (decision) => {
+    setBusy(true);
+    try {
+      await invoke("human-decision", {
+        jobId: job.jobId,
+        groupId: comparison.material.group.id,
+        revision: comparison.revision,
+        decision,
+        note,
+      });
+      await loadReview(job.jobId);
+      setNote("");
+    } catch (e) {
+      message(e);
+    } finally {
+      setBusy(false);
+    }
+  };
   const request = React.useRef(null);
   const loadReview = async (jobId) =>
     setReview(await invoke("review-progress", { jobId }));
@@ -91,6 +231,8 @@ export default function Screen({ React, ui, invoke }) {
   React.useEffect(() => {
     if (job?.state !== "ready") return;
     let alive = true;
+    ++compareRequest.current;
+    setComparison(null);
     setResult(null);
     setReview(null);
     setList(null);
@@ -150,6 +292,7 @@ export default function Screen({ React, ui, invoke }) {
     setDetail(null);
     try {
       setDetail(await invoke("group", { jobId: job.jobId, groupId: id }));
+      await compare({ groupId: id });
     } catch (e) {
       message(e);
     }
@@ -161,7 +304,10 @@ export default function Screen({ React, ui, invoke }) {
           s.groupIds.filter((id) => id !== s.representativeGroupId),
         ),
   );
-  const visible = (list?.groups ?? []).filter((g) => !hidden.has(g.id));
+  const humanIds = new Set((review?.humanQueue ?? []).map((g) => g.id));
+  const visible = (list?.groups ?? [])
+    .filter((g) => !hidden.has(g.id) || humanIds.has(g.id))
+    .sort((a, b) => Number(humanIds.has(b.id)) - Number(humanIds.has(a.id)));
   const groupRows = visible.map((g, index) => ({
     number: index + 1,
     priority: priority[g.priority],
@@ -309,13 +455,18 @@ export default function Screen({ React, ui, invoke }) {
             <ui.SummaryCard label="생성 시점 검사" value="통과" />
           </ui.Toolbar>
           <ui.Notice>
-            검수 전 초안입니다. 손실 0이나 검사 통과는 원문과 의미가 같다는 뜻이
-            아닙니다.
+            {review?.reviewComplete
+              ? "현재 revision 검수 완료"
+              : "미완료 인계 · 검수 전 초안"}
           </ui.Notice>
           <ui.Toolbar>
             <ui.Button
-              disabled
-              title="현재 공개 화면 API에는 기존 문서 열기가 없습니다"
+              disabled={!openDocument}
+              onClick={() =>
+                openDocument({
+                  path: comparison?.document ?? result.document,
+                }).catch(message)
+              }
             >
               문서 열기
             </ui.Button>
@@ -355,13 +506,313 @@ export default function Screen({ React, ui, invoke }) {
             </ui.Button>
           </ui.Toolbar>
           <p>
-            파일 탐색기에서 <strong>{result.document}</strong>를 선택해 여세요.
-            현재 공개 화면 API로 기존 문서를 여는 기능은 제공되지 않습니다.
+            일반 문서 탭에서 손으로 편집하면 교정 이력이 없어 인계가 막힙니다.
           </p>
-          <p>
-            생성 시점의 손실과 검수 대상입니다. 교정 후 진행은 아래에서 다시
-            읽으세요. 최종 검수 완료는 아직 발급하지 않습니다.
-          </p>
+          <ui.Toolbar>
+            <ui.Button
+              disabled={busy || !review?.gate?.ready || review?.reviewComplete}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await invoke("review-finalize", {
+                    jobId: job.jobId,
+                    revision: review.currentRevision,
+                  });
+                  await loadReview(job.jobId);
+                } catch (e) {
+                  message(e);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              검수 완료
+            </ui.Button>
+            <span>
+              미검사 {review?.gate?.uncovered ?? "—"} · 사람 확인{" "}
+              {review?.gate?.human ?? "—"} · 차단 손실{" "}
+              {review?.gate?.blocking ?? "—"} · 실패{" "}
+              {review?.gate?.failures ?? "—"} · 숫자 차이{" "}
+              {review?.gate?.tokenDifferences ?? "—"}
+            </span>
+          </ui.Toolbar>
+          {comparison && (
+            <section aria-label="원문과 문서 대조">
+              <ui.Toolbar>
+                <strong>
+                  {comparison.material.group.kinds
+                    .map((k) => labels[k] ?? k)
+                    .join(", ")}
+                </strong>
+                <ui.Button
+                  variant="outline"
+                  onClick={() => compare(comparison.selection)}
+                >
+                  대조 다시 읽기
+                </ui.Button>
+                <label>
+                  쪽{" "}
+                  <select
+                    aria-label="원문 쪽"
+                    value={pageNo}
+                    onChange={(e) => setPageNo(Number(e.target.value))}
+                  >
+                    {Array.from({ length: comparison.pageCount }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  확대{" "}
+                  <select
+                    aria-label="원문 확대"
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                  >
+                    {[0.75, 1, 1.5, 2].map((v) => (
+                      <option key={v} value={v}>
+                        {v * 100}%
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  문서 위치{" "}
+                  <select
+                    aria-label="문서 위치"
+                    value={targetIndex}
+                    onChange={(e) => {
+                      const index = Number(e.target.value);
+                      setTargetIndex(index);
+                      setPageNo(
+                        comparison.targets[index]?.regions?.[0]?.pageNo ??
+                          pageNo,
+                      );
+                      setAfter("");
+                    }}
+                  >
+                    {comparison.targets.map((t, i) => (
+                      <option key={i} value={i}>
+                        {t.path.join(".")}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </ui.Toolbar>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(min(100%, 28rem),1fr))",
+                  gap: "var(--space-3)",
+                  minWidth: 0,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <p>원문 PDF · {pageNo}쪽</p>
+                  <div style={{ height: 480, overflow: "auto" }}>
+                    <canvas ref={canvas} aria-label="원문 PDF와 근거 영역" />
+                  </div>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p>
+                    현재 문서 · {comparison.revision.slice(0, 8)} · 표 셀은 표
+                    전체 강조
+                  </p>
+                  <ui.DocumentView
+                    path={comparison.document}
+                    target={comparison.targets[targetIndex]}
+                    reloadKey={compareKey}
+                    height={480}
+                    onStateChange={setReadState}
+                  />
+                </div>
+              </div>
+              {!comparison.targets.length && (
+                <ui.Notice>
+                  현재 대응 위치 없음 · 위치를 추측하지 않습니다.
+                </ui.Notice>
+              )}
+              {readState?.state !== "ready" && (
+                <ui.Notice>{readState?.state ?? "loading"}</ui.Notice>
+              )}
+              {(review?.humanDecisions ?? [])
+                .filter(
+                  (d) =>
+                    d.groupId === comparison.material.group.id &&
+                    d.revision === comparison.revision,
+                )
+                .slice(-1)
+                .map((d, i) => (
+                  <ui.Notice key={i}>
+                    판단 기록:{" "}
+                    {d.decision === "confirmed" ? "문제 없음 확인" : "보류"} ·{" "}
+                    {d.note}
+                  </ui.Notice>
+                ))}
+              <ui.Toolbar>
+                <label>
+                  판단 근거{" "}
+                  <ui.Input
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </label>
+                <ui.Button
+                  disabled={
+                    busy || !note.trim() || readState?.state !== "ready"
+                  }
+                  onClick={() => humanDecision("confirmed")}
+                >
+                  문제 없음 확인
+                </ui.Button>
+                <ui.Button
+                  disabled={busy || !note.trim()}
+                  variant="outline"
+                  onClick={() => humanDecision("deferred")}
+                >
+                  보류
+                </ui.Button>
+              </ui.Toolbar>
+              <details>
+                <summary>교정 제출</summary>
+                <p>
+                  선택 위치의 평문 문단·셀·수식만 교정합니다. 빈 칸·서식·구조
+                  교정은 지원하지 않습니다.
+                </p>
+                <label>
+                  교정 후 값
+                  <textarea
+                    aria-label="교정 후 값"
+                    style={{ width: "100%", minHeight: 100 }}
+                    value={after}
+                    onChange={(e) => setAfter(e.target.value)}
+                  />
+                </label>
+                <ui.Button
+                  disabled={
+                    busy ||
+                    !after.trim() ||
+                    !note.trim() ||
+                    readState?.state !== "ready"
+                  }
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const path = comparison.targets[targetIndex]?.path;
+                      const node = comparison.material.current.find(
+                        (n) => JSON.stringify(n.path) === JSON.stringify(path),
+                      );
+                      if (
+                        !node ||
+                        !["paragraph", "cell", "equation"].includes(node.type)
+                      )
+                        throw new Error(
+                          "이 위치는 교정 제출을 지원하지 않습니다. 문단·셀·수식을 선택하세요.",
+                        );
+                      const target =
+                        node.type === "cell"
+                          ? {
+                              kind: "cell",
+                              path: [path[0]],
+                              row: path[1],
+                              column: path[2],
+                            }
+                          : { kind: node.type, path };
+                      const checks = comparison.material.fragments.flatMap(
+                        (f) => {
+                          if (node.type === "cell")
+                            return f.mapping.cells
+                              .filter((c) =>
+                                c.targets.some(
+                                  (t) =>
+                                    t.path[0] === path[0] &&
+                                    t.selector.row === path[1] &&
+                                    t.selector.column === path[2],
+                                ),
+                              )
+                              .flatMap((c) =>
+                                comparison.material.checks.filter(
+                                  (k) =>
+                                    k.sourceId === f.sourceId &&
+                                    k.selectorKey === "cell:" + c.cellIndex,
+                                ),
+                              );
+                          return f.mapping.targets.some(
+                            (t) => t.path[0] === path[0],
+                          )
+                            ? comparison.material.checks.filter(
+                                (k) => k.sourceId === f.sourceId,
+                              )
+                            : [];
+                        },
+                      );
+                      const refs = [
+                        ...new Set(checks.flatMap((c) => c.pdfTokenIds)),
+                      ];
+                      const scope = comparison.material.pdf.flatMap((p) => {
+                        const tokens = p.tokens.filter((t) =>
+                          refs.includes(t.id),
+                        );
+                        return tokens.length
+                          ? [
+                              {
+                                pageNo: p.pageNo,
+                                bbox: [
+                                  Math.min(...tokens.map((t) => t.bbox[0])),
+                                  Math.min(...tokens.map((t) => t.bbox[1])),
+                                  Math.max(...tokens.map((t) => t.bbox[2])),
+                                  Math.max(...tokens.map((t) => t.bbox[3])),
+                                ],
+                              },
+                            ]
+                          : [];
+                      });
+                      if (scope.some((r) => r.pageNo !== pageNo))
+                        throw new Error(
+                          "여러 쪽의 근거는 비서 교정 절차로 제출하세요.",
+                        );
+                      const reply = await invoke("correction-submit", {
+                        jobId: job.jobId,
+                        changeId: crypto.randomUUID(),
+                        actor: "human",
+                        generationId: comparison.material.generationId,
+                        revision: comparison.revision,
+                        groupId: comparison.material.group.id,
+                        decision: "correct",
+                        target,
+                        before:
+                          node.type === "equation" ? node.latex : node.text,
+                        after,
+                        reason: note,
+                        evidence: { refs, scope },
+                      });
+                      await loadReview(job.jobId);
+                      if (reply.status === "pending-reconcile")
+                        throw new Error("교정 조정이 필요합니다");
+                      await compare(comparison.selection);
+                    } catch (e) {
+                      message(e);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  교정 제출
+                </ui.Button>
+              </details>
+              <details>
+                <summary>기계 점검 결과</summary>
+                <pre
+                  style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                >
+                  {JSON.stringify(comparison.material.checks, null, 2)}
+                </pre>
+              </details>
+            </section>
+          )}
           <ui.Toolbar>
             <ui.Button
               variant="outline"
@@ -436,6 +887,12 @@ export default function Screen({ React, ui, invoke }) {
                 <span>
                   {c.before} → {c.after}
                 </span>
+                <ui.Button
+                  variant="outline"
+                  onClick={() => compare({ changeId: c.changeId })}
+                >
+                  원문 대조
+                </ui.Button>
                 <ui.Button
                   variant="outline"
                   disabled={

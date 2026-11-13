@@ -4,7 +4,7 @@ import { extractPdf } from "../src/pdf-evidence.js";
 import { makePlan, hash } from "../src/convert.js";
 import { buildProvenance, publishHandoff } from "../src/provenance.js";
 import { projectEdit } from "../src/correction-history.js";
-export async function syntheticGeneration(out) {
+export async function syntheticGeneration(out, { header = false } = {}) {
   const pdf = await readFile(resolve("fixtures/lsr-1.1/LSR-1.1-standards.pdf")),
     evidence = await extractPdf(pdf);
   const page = evidence.pages.find((p) =>
@@ -19,7 +19,7 @@ export async function syntheticGeneration(out) {
     end_row_offset_idx: 1,
     start_col_offset_idx: 0,
     end_col_offset_idx: 1,
-    column_header: false,
+    column_header: header,
     row_header: false,
     row_section: false,
     bbox: {

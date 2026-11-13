@@ -1,6 +1,6 @@
 import { createJobs, safeError } from "./src/plugin-jobs.js";
 export function activate(context) {
-  const jobs = createJobs(context.settings);
+  const jobs = createJobs(context.settings, { cli: context.cli });
   const call = async (fn, input) => {
     try {
       return await fn(input);
@@ -10,6 +10,10 @@ export function activate(context) {
   };
   return {
     operations: {
+      revision: (input) => call(jobs.revision, input),
+      compare: (input) => call(jobs.compare, input),
+      "human-decision": (input) => call(jobs.humanDecision, input),
+      "review-finalize": (input) => call(jobs.reviewFinalize, input),
       material: (input) => call(jobs.material, input),
       "correction-submit": (input) => call(jobs.correctionSubmit, input),
       "correction-undo": (input) => call(jobs.correctionUndo, input),

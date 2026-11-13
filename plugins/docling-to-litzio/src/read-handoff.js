@@ -13,7 +13,7 @@ console.log(
     {
       generationId: result.provenance.generationId,
       schemaVersion: result.provenance.schemaVersion,
-      reviewState: result.provenance.reviewState,
+      reviewState: result.reviewComplete ? "reviewed" : "unreviewed",
       documentRevision: result.provenance.document.revision,
       coverage: result.coverage,
     },

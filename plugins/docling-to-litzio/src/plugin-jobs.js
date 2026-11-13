@@ -55,22 +55,23 @@ async function ownedDirectory(root, path) {
   }
   return current;
 }
-export async function settingsPaths(settings) {
+export async function settingsPaths(settings, suppliedCli) {
   need(
     typeof settings.workspaceDirectory === "string" &&
       isAbsolute(settings.workspaceDirectory),
     "workspace-setting-required",
   );
   need(
-    typeof settings.cliEntry === "string" && isAbsolute(settings.cliEntry),
+    suppliedCli ||
+      (typeof settings.cliEntry === "string" && isAbsolute(settings.cliEntry)),
     "cli-setting-required",
   );
   const paths = {
     root: await realpath(settings.workspaceDirectory),
-    cli: await realpath(settings.cliEntry),
+    cli: suppliedCli ?? (await realpath(settings.cliEntry)),
   };
   need((await stat(paths.root)).isDirectory(), "workspace-directory-required");
-  need((await stat(paths.cli)).isFile(), "cli-file-required");
+  if (!suppliedCli) need((await stat(paths.cli)).isFile(), "cli-file-required");
   return paths;
 }
 export async function preflight(root, bundle) {
@@ -174,11 +175,14 @@ const publicJob = (s, owner, active) => {
     };
   return job;
 };
-export function createJobs(settings, { launch, claim = writeJob } = {}) {
+export function createJobs(
+  settings,
+  { launch, claim = writeJob, cli: suppliedCli } = {},
+) {
   const owner = randomUUID(),
     active = new Map();
   let closing = false;
-  const paths = () => settingsPaths(settings);
+  const paths = () => settingsPaths(settings, suppliedCli);
   const store = async () => {
     const p = await paths();
     await ownedDirectory(p.root, ".docling-to-litzio/jobs");
@@ -226,6 +230,88 @@ export function createJobs(settings, { launch, claim = writeJob } = {}) {
     return service[method](method === "material" ? input.groupId : input);
   };
   return {
+    async revision({ jobId }) {
+      const s = await current(jobId),
+        { root } = await paths();
+      need(s.state === "ready", "job-not-ready");
+      return {
+        revision: hash(
+          await readFile(await confined(root, join(s.output, "document.md"))),
+        ),
+      };
+    },
+    async compare({ jobId, groupId, changeId }) {
+      const s = await current(jobId),
+        { root, cli } = await paths();
+      need(s.state === "ready", "job-not-ready");
+      const output = await confined(root, s.output),
+        service = createCorrections(output, cli);
+      const progress = changeId
+        ? JSON.parse(
+            await readFile(join(output, "correction-ledger.json"), "utf8"),
+          )
+        : { changes: [] };
+      const change =
+        changeId && progress.changes.find((c) => c.changeId === changeId);
+      need(!changeId || change, "change-not-found");
+      const m = await service.material(change?.groupId ?? groupId),
+        h = await loadHandoff(output);
+      const ids = new Set(m.findings.flatMap((f) => f.sourceIds));
+      let targets = h.provenance.items
+        .filter((i) => ids.has(i.sourceId))
+        .flatMap((i) =>
+          [...i.targets, ...i.cells.flatMap((c) => c.targets)]
+            .filter((t) => t.role !== "explanation")
+            .map((t) => ({
+              ...t,
+              regions: m.findings
+                .filter((f) => f.sourceIds.includes(i.sourceId))
+                .flatMap((f) => f.regions),
+            })),
+        );
+      if (change) {
+        targets = targets.filter(
+          (t) =>
+            JSON.stringify(t.path) === JSON.stringify(change.target.path) &&
+            (change.target.kind !== "cell" ||
+              (t.selector.kind === "cell" &&
+                t.selector.row === change.target.row &&
+                t.selector.column === change.target.column)),
+        );
+      }
+      return {
+        selection: changeId ? { changeId } : { groupId },
+        pageCount: h.provenance.pages.length,
+        material: m,
+        document: join(output, "document.md"),
+        revision: m.documentRevision,
+        targets: targets
+          .filter((t) => t.bindingState === "current")
+          .map((t) => ({
+            regions: change?.evidence.scope ?? t.regions,
+            revision: m.documentRevision,
+            path:
+              t.selector.kind === "cell"
+                ? [...t.path, t.selector.row, t.selector.column]
+                : t.path,
+          })),
+        regions: change?.evidence.scope ?? m.findings.flatMap((f) => f.regions),
+        pdf: (
+          await readFile(
+            await confined(
+              root,
+              join(output, h.provenance.source.pdf.relativePath),
+            ),
+          )
+        ).toString("base64"),
+        worker: await readFile(
+          new URL("../vendor/pdfjs/build/pdf.worker.mjs", import.meta.url),
+          "utf8",
+        ),
+      };
+    },
+    humanDecision: (input) => correction("humanDecision", input),
+    reviewFinalize: (input) => correction("finalize", input),
     material: (input) => correction("material", input),
     correctionSubmit: (input) => correction("submit", input),
     correctionUndo: (input) => correction("undo", input),
@@ -360,7 +446,7 @@ export function createJobs(settings, { launch, claim = writeJob } = {}) {
         lossCategories: count("category"),
         statistics: r.statistics,
         check: true,
-        reviewComplete: false,
+        reviewComplete: h.reviewComplete,
       };
     },
     async groups({ jobId }) {

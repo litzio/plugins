@@ -1,3 +1,4 @@
+import { completionGate, humanQueue } from "./human-review.js";
 import { schemas, validateSchema } from "./schema.js";
 import { readFile, writeFile, rename, open, unlink } from "node:fs/promises";
 
@@ -35,9 +36,9 @@ const save = async (file, v) => {
 export function officialCli(cli, root) {
   return async (command, args) => {
     const r = spawnSync(
-      process.execPath,
+      typeof cli === "string" ? process.execPath : cli.bin,
       [
-        resolve(cli),
+        ...(typeof cli === "string" ? [resolve(cli)] : cli.args),
         command,
         join(root, "document.md"),
         ...args,
@@ -50,6 +51,8 @@ export function officialCli(cli, root) {
         env: {
           ...process.env,
           LITZIO_DATA_DIR: join(root, "correction-host-data"),
+          LITZIO_ASSISTANT_CWD: join(root, "assistant"),
+          LITZIO_ASSISTANT_SETTINGS_FILE: join(root, "assistant/settings.json"),
         },
       },
     );
@@ -316,6 +319,96 @@ export function createCorrections(root, cli) {
 
   return {
     material,
+    humanDecision: (input) =>
+      locked(async () => {
+        const s = await ledger(),
+          snap = await inspect();
+        need(
+          !s.pending &&
+            !s.stopped &&
+            input.revision === s.revision &&
+            snap.revision === s.revision,
+          "stale-human-decision",
+        );
+        const { report } = await readReview(root, join(root, "review"));
+        need(
+          report.groups.some((g) => g.id === input.groupId),
+          "group-not-found",
+        );
+        need(
+          ["confirmed", "deferred"].includes(input.decision) &&
+            typeof input.note === "string" &&
+            input.note.trim(),
+          "human-note-required",
+        );
+        s.humanDecisions ??= [];
+        s.humanDecisions.push({
+          groupId: input.groupId,
+          decision: input.decision,
+          note: input.note,
+          revision: s.revision,
+          actor: "human",
+          time: new Date().toISOString(),
+        });
+        s.completion = null;
+        await save(file, s);
+        return { recorded: true };
+      }),
+    finalize: (input) =>
+      locked(async () => {
+        const s = await ledger(),
+          snap = await inspect(),
+          h = await loadHandoff(root);
+        const { report, evidence } = await readReview(
+          root,
+          join(root, "review"),
+        );
+        need(input.revision === snap.revision, "stale-finalization");
+        const gate = completionGate(
+          s,
+          report,
+          h.losses.items,
+          snap.revision,
+          h,
+          evidence,
+        );
+        need(gate.ready, "review-incomplete");
+        need((await call("check", [])).ok === true, "document-check-failed");
+        const completion = {
+          schemaVersion: "1.2.0",
+          generationId: s.generationId,
+          documentRevision: s.revision,
+          time: new Date().toISOString(),
+          scopes: s.scopes,
+          humanDecisions: s.humanDecisions ?? [],
+          conditions: gate,
+        };
+        await save(join(root, "human-review.json"), completion);
+        const marker = {
+          ...h.marker,
+          schemaVersion: "1.2.0",
+          reviewState: "reviewed",
+          files: h.marker.files.filter(
+            (f) => f.relativePath !== "human-review.json",
+          ),
+        };
+        for (const name of [
+          "human-review.json",
+          "review/pdf-evidence.json",
+          "review/review-targets.json",
+        ]) {
+          if (!marker.files.some((f) => f.relativePath === name))
+            marker.files.push({
+              relativePath: name,
+              sha256: digest(await readRelative(root, name)),
+            });
+        }
+        s.completion = completion;
+        await save(file, s);
+        await save(join(root, "complete.json"), marker);
+        await loadHandoff(root, { requireReviewed: true });
+        return { reviewComplete: true, revision: s.revision };
+      }),
 
     progress: () =>
       locked(async () => {
@@ -329,7 +422,34 @@ export function createCorrections(root, cli) {
           }
           await save(file, s);
         }
-        return { ...s, currentRevision: snap.revision, reviewComplete: false };
+        if (s.pending || snap.revision !== s.revision)
+          return {
+            ...s,
+            currentRevision: snap.revision,
+            reviewComplete: false,
+            humanQueue: [],
+            gate: { ready: false },
+          };
+        const { report, evidence } = await readReview(
+          root,
+          join(root, "review"),
+        );
+        const h = await loadHandoff(root);
+        const gate = completionGate(
+          s,
+          report,
+          h.losses.items,
+          snap.revision,
+          h,
+          evidence,
+        );
+        return {
+          ...s,
+          currentRevision: snap.revision,
+          reviewComplete: h.reviewComplete,
+          humanQueue: humanQueue(s, report),
+          gate,
+        };
       }),
 
     submit: (input) =>
@@ -696,6 +816,7 @@ export function createCorrections(root, cli) {
           typeof input.note === "string" && input.note.length > 0,
           "inspection-note-required",
         );
+        s.completion = null;
         t.state = input.state;
         t.checkpoint = {
           revision: s.revision,

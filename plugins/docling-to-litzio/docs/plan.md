@@ -389,3 +389,11 @@ PR #15 독립 리뷰 보완: 의도적으로 모든 파일을 일관되게 고�
 실제 Codex gpt-6.1-terra/high에 LSR 사본의 여섯 묶음을 두 사용자 지시 턴으로 시험했다. 첫 턴은 근사 source bbox를 scope로 복사하게 한 스킬 오류로 거부·안전 중단했다. PDF token의 실제 bbox를 쓰도록 고친 뒤 두 숫자 셀 교정/재대조와 네 판단 불가 기록을 확인했다. 정상 대조 묶음은 바뀌지 않았다. 미검사 11묶음/13쪽과 최종 완료 false를 유지한다. 한 번의 수락을 AI 품질 보증으로 쓰지 않는다.
 
 실측·시간/턴·화면·격리 실수와 정리는 [결과](results-assistant-skill.md) 및 assistant-skill-results.json을 따른다. docs/progress.md는 수정하지 않는다.
+
+
+## PR 5 구현 결정
+
+- 실제 읽기 전용 DocumentView와 bundled PDF.js를 사용한다. 현재 인계/inspect를 통과한 NodePath만 주고, 선택 위치의 source region과 PDF 쪽을 연결한다. revision bytes를 주기적으로 확인하고 바뀌면 기존 대조를 먼저 제거한 뒤 재검증한다. 수동 편집으로 대응이 깨지면 위치를 추측하지 않는다.
+- 사람 판단과 완료 발급을 공개 작업으로 추가했다. 사람 교정은 기존 correction-submit이다. 완료는 [v1.2](../../../../contracts/docling-to-litzio/human-review.md) minor 확장이며 소비자 변경은 별도다.
+- 사람 확인으로 blocking 손실을 면제하지 않는다. LSR의 구조 손실이 남아 있어 LSR 완료 인계 수락은 미충족이다. 완료·무효화 기능 검사는 별도 합성 상태 전이 검사이며 실제 비서 전수 검수 증거가 아니다.
+- DocumentView의 수식/미주 자동 스크롤에서 강조가 480px 뷰포트 아래에 남는 사례를 발견했다. 내부 DOM에 기대는 제품 우회는 만들지 않았다. [실행 결과](results-compare.md)에 실제 확인과 미확인을 구분한다.

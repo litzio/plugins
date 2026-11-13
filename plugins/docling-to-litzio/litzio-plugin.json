@@ -452,7 +452,7 @@
             "type": "boolean"
           },
           "reviewComplete": {
-            "const": false
+            "type": "boolean"
           }
         },
         "required": [
@@ -966,6 +966,124 @@
       "outputSchema": {
         "type": "object"
       }
+    },
+    {
+      "id": "compare",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "changeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "human-decision",
+      "version": 1,
+      "effect": "write",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "confirmed",
+              "deferred"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "jobId",
+          "groupId",
+          "revision",
+          "decision",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "review-finalize",
+      "version": 1,
+      "effect": "write",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "revision",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
     }
   ],
   "healthCheck": "health",
@@ -980,7 +1098,7 @@
       "cliEntry": {
         "type": "string",
         "title": "공식 CLI 진입 파일",
-        "description": "이 Host에서 실행할 소스 빌드 cli.mjs 절대 경로. 설치된 CLI를 자동 탐색하지 않습니다."
+        "description": "Host가 context.cli를 제공하지 않을 때만 쓰는 공식 CLI 진입 파일."
       }
     },
     "additionalProperties": false
