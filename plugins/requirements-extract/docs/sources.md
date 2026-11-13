@@ -47,3 +47,5 @@
 - OMG 공식 reqif.xsd와 XHTML driver 전이 의존의 URL/원본 SHA-256은 validation/schemas.lock.json 참조. 스키마 본문은 커밋하지 않고 캐시만 사용한다.
 - xmlbuilder2 4.0.3 및 실제 설치 전이 패키지의 package.json/LICENSE 확인. 전체 고지·정확한 lock 포함. 독립 reqif 0.0.47/lxml 6.0.2는 격리 검증 전용이다.
 - 초기 설계의 미실행 목록은 과거 경계다. PR1 실제 실행·실패 수정·미실행 목록은 pr1-validation.md가 현재 기록이다.
+
+출처 어댑터는 확정 contracts/docling-to-litzio v1과 그 문서가 지정한 JSON Schema 파일을 읽고 사본을 설치 단위에 고정했다. 앞 플러그인의 처리 코드는 import하지 않았다. 공개 LSR의 고정 converted 결과에서 README 명령으로 생성한 실제 인계 파일을 검사했으며, 원본 PDF 글자 층/렌더는 별도 읽기 전용 증거로 확인했다. 상세는 provenance.md와 schema/README.md다.

@@ -139,7 +139,8 @@ export function exportReqif(sets, { testOnly = false, previous, now = new Date()
   for (const s of sets) for (const r of s.requirements) {
     const o = objects.ele('SPEC-OBJECT', ident(r.id, r.title, { ...semantic(r), status: r.status }));
     const notes = (r.footnotes ?? []).map(f => ({ kind: 'paragraph', content: [{ kind: 'text', text: '[' + f.label + '] ' }, ...f.content] }));
-    values(o, 'object-type', attributes, { ...r, 'ReqIF.Name': r.titleContent ? [{ kind: 'paragraph', content: r.titleContent }] : text(r.title), 'ReqIF.Text': [...r.body, ...notes], rationale: text(r.rationale), SourceReferences: canonical(r.sources), SourcePages: '' }, s.setId);
+    const pages = [...new Set(r.sources.flatMap(s => s.trace?.regions?.map(region => region.pageNo) ?? []))].sort((a, b) => a - b).join(', ');
+    values(o, 'object-type', attributes, { ...r, 'ReqIF.Name': r.titleContent ? [{ kind: 'paragraph', content: r.titleContent }] : text(r.title), 'ReqIF.Text': [...r.body, ...notes], rationale: text(r.rationale), SourceReferences: canonical(r.sources), SourcePages: pages }, s.setId);
     o.ele('TYPE').ele('SPEC-OBJECT-TYPE-REF').txt(id('object-type'));
   }
   const rels = content.ele('SPEC-RELATIONS'), seen = new Set();
