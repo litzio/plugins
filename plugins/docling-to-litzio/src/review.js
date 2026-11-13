@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { hash } from "./convert.js";
-import { loadHandoff, readRelative } from "./provenance.js";
+import { loadHandoff, readRelative, createReadSet } from "./provenance.js";
 import { extractPdf } from "./pdf-evidence.js";
 import { detectReview } from "./detection.js";
 import { validateSchema, schemas } from "./schema.js";
@@ -270,14 +270,18 @@ export async function createReview(input, output) {
   );
   return report;
 }
-export async function readReview(input, output) {
-  const loaded = await loadHandoff(input),
+export async function readReview(
+  input,
+  output,
+  { read = createReadSet() } = {},
+) {
+  const loaded = await loadHandoff(input, { read }),
     handoff = loaded.baseline ?? loaded,
-    raw = await readRelative(output, "review-complete.json"),
+    raw = await read(output, "review-complete.json"),
     m = JSON.parse(raw);
   validateSchema(m, schemas["review-complete"]);
-  const bytes = await readRelative(output, "review-targets.json"),
-    eb = await readRelative(output, "pdf-evidence.json");
+  const bytes = await read(output, "review-targets.json"),
+    eb = await read(output, "pdf-evidence.json");
   if (hash(bytes) !== m.reportSha256 || hash(eb) !== m.evidenceSha256)
     throw new Error("review-file-digest");
   const report = JSON.parse(bytes),
@@ -297,7 +301,7 @@ export async function readReview(input, output) {
     hash(await readRelative(output, "review-complete.json")) !== hash(raw)
   )
     throw new Error("review-binding");
-  return { report, evidence, handoff: loaded };
+  return { report, evidence, handoff: loaded, read };
 }
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   const args = process.argv.slice(2),
