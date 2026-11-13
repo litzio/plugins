@@ -28,6 +28,6 @@ export function activate(context) {
   start:({requestId,action,payload})=>launch('action',[action,payload],requestId),
   inspect:({requestId,method,payload})=>launch(method,[payload],requestId),
   job:input=>read(input),
-  jobs:()=>({jobs:readdirSync(directory()).filter(n=>/^[a-f0-9-]{36}\.json$/.test(n)).map(n=>{const r=read({id:n.slice(0,-5)});return {id:r.id,state:r.state,message:r.message,jobId:r.result?.jobId??null,document:r.result?.document??'',checkedSections:r.result?.report?.counts.checkedSections??0,sections:r.result?.report?.counts.sections??0,createdAt:lstatSync(join(directory(),n)).birthtimeMs};}).sort((a,b)=>b.createdAt-a.createdAt)}),
+  jobs:()=>({jobs:readdirSync(directory()).filter(n=>/^[a-f0-9-]{36}\.json$/.test(n)).map(n=>{const r=read({id:n.slice(0,-5)});return {id:r.id,state:r.state,message:r.message,jobId:r.result?.report?r.result.jobId:null,document:r.result?.document??'',checkedSections:r.result?.report?.counts.checkedSections??0,sections:r.result?.report?.counts.sections??0,createdAt:lstatSync(join(directory(),n)).birthtimeMs};}).sort((a,b)=>b.createdAt-a.createdAt).filter((r,i,rows)=>r.jobId&&rows.findIndex(v=>v.jobId===r.jobId)===i)}),
  },status:()=>({available:!!launcher&&typeof root==='string'&&isAbsolute(root)&&context.isDirectory(root),message:launcher?'요구사항 작업':'Host CLI 없음'}),async dispose(){closing=true;await Promise.all([...workers].map(w=>new Promise(resolve=>w.once('exit',resolve))));}};
 }

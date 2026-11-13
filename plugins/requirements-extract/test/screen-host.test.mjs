@@ -25,3 +25,11 @@ test('public request acceptance, failed result, replay conflict and missing comp
 test('Host official CLI is required with no installed/PATH fallback',async()=>{
  const root=mkdtempSync(join(tmpdir(),'requirements-host-unit-')),p=activate({settings:{workspaceDirectory:root},isDirectory:existsSync});assert.equal((await p.status()).available,false);assert.throws(()=>p.operations.start({requestId:randomUUID(),action:'prepare',payload:{}}));await p.dispose();
 });
+test('resume catalog is deduplicated by processing, and task receipts cannot replace review counts',async()=>{
+ const root=mkdtempSync(join(tmpdir(),'requirements-host-unit-')),p=activate({settings:{workspaceDirectory:root},cli:{bin:process.execPath,args:[]},isDirectory:existsSync}),jobId=randomUUID();
+ const dir=join(root,'.requirements-extract-requests');mkdirSync(dir);
+ for(const [i,result] of [{jobId,document:'sample.md',report:{counts:{checkedSections:1,sections:2}}},{jobId,document:'sample.md',report:{counts:{checkedSections:2,sections:2}}},{jobId,name:'assistant-task.json'}].entries()){
+  const id=randomUUID(),path=join(dir,id+'.json');writeFileSync(path,JSON.stringify({id,state:'queued'}));writeFileSync(path+'.done',JSON.stringify({id,state:'succeeded',result}));
+ }
+ const rows=p.operations.jobs().jobs;assert.equal(rows.length,1);assert.equal(rows[0].jobId,jobId);assert.equal(rows[0].checkedSections,2);await p.dispose();
+});

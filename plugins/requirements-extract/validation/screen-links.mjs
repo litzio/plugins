@@ -8,20 +8,21 @@ import {loadLedger} from '../src/ledger.mjs';
 import {fake} from '../test/candidate-fixture.mjs';
 import {sourceCli} from '../src/cli.mjs';
 const [entry,root]=process.argv.slice(2).map(p=>resolve(p)),launcher={bin:process.execPath,args:[entry]},service=screenService({root,launcher}),cli=sourceCli({root,launcher});
+const act=(action,payload)=>service.action(action,{reviewRevision:service.summary({jobId:payload.jobId}).review.revision,...payload});
 async function candidates(upper=[],level='system') {
  let s=await service.action('prepare',{document:'public-input.md',upper}),jobId=s.jobId;
  let state=loadLedger(join(root,'.requirements-extract',jobId,'ledger')).state;
- for(const section of state.corpus.sections){const response=fake(state,section);for(const d of response.decisions)d.choices.level=level;await service.action('submit',{jobId,response});state=loadLedger(join(root,'.requirements-extract',jobId,'ledger')).state;}
- return service.action('links',{jobId});
+ for(const section of state.corpus.sections){const response=fake(state,section);for(const d of response.decisions)d.choices.level=level;await act('submit',{jobId,response});state=loadLedger(join(root,'.requirements-extract',jobId,'ledger')).state;}
+ return act('links',{jobId});
 }
-let upper=await candidates([],'stakeholder');upper=await service.action('unlinked',{jobId:upper.jobId,ids:upper.linkRequirements.map(r=>r.id),classification:'independent',reason:'Synthetic public upper scope reviewed.'});
-await service.action('confirm',{jobId:upper.jobId,ids:upper.requirements.map(r=>r.id),inputDigest:upper.inputDigest,planDigest:upper.planDigest});
-const name='screen-linked-'+randomUUID().slice(0,8);await service.action('save',{jobId:upper.jobId,name:name+'-upper'});
+let upper=await candidates([],'stakeholder');upper=await act('unlinked',{jobId:upper.jobId,ids:upper.linkRequirements.map(r=>r.id),classification:'independent',reason:'Synthetic public upper scope reviewed.'});
+await act('confirm',{jobId:upper.jobId,ids:upper.requirements.map(r=>r.id),inputDigest:upper.inputDigest,planDigest:upper.planDigest,reviewed:upper.requirements.map(r=>service.detail({jobId:upper.jobId,requirementId:r.id}).review)});
+const name='screen-linked-'+randomUUID().slice(0,8);await act('save',{jobId:upper.jobId,name:name+'-upper'});
 let lower=await candidates([name+'-upper.md']),jobId=lower.jobId,id=lower.linkRequirements[0].id,b=service.linkBatch({jobId,lowerId:id});assert.equal(b.candidates.length,1);
-lower=await service.action('link-submit',{jobId,response:{inputDigest:b.inputDigest,policyDigest:b.policyDigest,lowerId:id,scopeReview:{checked:true,reason:'Synthetic full selected catalog check'},choices:[{choice:'refines',upperId:b.candidates[0].requirement.id,reason:'Deterministic public processing sample; partial scope reviewed.',basis:'satisfies-obligation',coverage:'partial',covered:'Submitted record and source location',remaining:'Sequence remains to be implemented'}]}});
+lower=await act('link-submit',{jobId,response:{inputDigest:b.inputDigest,policyDigest:b.policyDigest,lowerId:id,scopeReview:{checked:true,reason:'Synthetic full selected catalog check'},choices:[{choice:'refines',upperId:b.candidates[0].requirement.id,reason:'Deterministic public processing sample; partial scope reviewed.',basis:'satisfies-obligation',coverage:'partial',covered:'Submitted record and source location',remaining:'Sequence remains to be implemented'}]}});
 assert.ok(lower.links.problems.some(p=>p.code==='partial-fulfillment'));assert.ok(lower.planDigest);
 const detail=service.detail({jobId,requirementId:id});assert.equal(detail.linkReview.previous.choices[0].coverage,'partial');
-await service.action('confirm',{jobId,ids:[id],inputDigest:lower.inputDigest,planDigest:lower.planDigest});await service.action('save',{jobId,name});await service.action('export',{jobId,name});
+await act('confirm',{jobId,ids:[id],inputDigest:lower.inputDigest,planDigest:lower.planDigest,reviewed:[detail.review]});await act('save',{jobId,name});await act('export',{jobId,name});
 assert.match(readFileSync(join(root,name+'.reqif'),'utf8'),/Sequence remains to be implemented/);
 // A saved upper status change must invalidate existing judgments and confirmation.
 const set=cli.read(name+'-upper.md'),snapshot=cli.run('inspect',cli.scoped(name+'-upper.md'),'--format','json');
@@ -31,5 +32,5 @@ assert.ok(value); // Official edit is used; no direct document serialization.
 const {writeFileSync}=await import('node:fs');const op=join(root,name+'-operations.json');writeFileSync(op,JSON.stringify([{command:'update-table-cell',path:value.path.join(','),text:'obsolete'}]));
 cli.run('apply-batch',cli.scoped(name+'-upper.md'),'--operations',op,'--if-revision',snapshot.revision,'--format','json');
 const changed=service.summary({jobId});assert.equal(Object.keys(changed.confirmations).length,0);assert.equal(changed.planDigest,null);
-await assert.rejects(service.action('export',{jobId,name:name+'-obsolete'}));
+await assert.rejects(act('export',{jobId,name:name+'-obsolete'}));
 console.log(JSON.stringify({ok:true,jobId,upperRevisionChangedInvalidates:true,partialScopePreserved:true,formalExport:name+'.reqif',upperRequirements:set.requirements.length}));

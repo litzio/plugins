@@ -4,7 +4,7 @@
 
 ## 자동 검사와 실제 실행
 
-- `npm test`: 1,019개 통과. native 출처·프로파일 목록·공개 요청 상태와 기존 보호/인계/연결/ReqIF 변형 검사를 포함한다.
+- `npm test`: 재검토 수정 후 1,030개 통과. React 하네스 5개와 처리·검토 근거/목록 검사 5개, 재개 목록 검사 1개를 추가했다. 기존 native 출처·보호/인계/연결/ReqIF 검사도 포함한다.
 - 공개 `plugins validate` → install → running/health 확인. 의존성은 플러그인 폴더 안에서 `npm ci --ignore-scripts`로 준비했다. 스킬이 `litzio-plugin-local--requirements-extract---candidates`라는 이름으로 격리 비서 폴더에 설치됐고, 비서의 `/` 스킬 목록에서 표시됐다. 메시지를 보내거나 AI turn을 시작하지 않았다.
 - `validation/screen-decisions.mjs`: 화면이 준비한 작업 ID로 공개 CLI `operation invoke --host`를 사용해 작업 파일 생성, schema/batch 읽기, 결정적인 가짜 판단 제출, job 조회와 summary를 실행했다. 실제 비서 추론의 품질·실제 AI turn의 셸 환경 전달은 이 검사에 포함하지 않는다.
 - `validation/screen-safety.mjs`: 공식 CLI를 써서 미확정 정식 내보내기, 오래된 확정 해시, 원문 변경 후 재확정/저장, 작업 폴더 이탈을 거부했다. 입력 revision 변경 시 판단·확정이 무효화됐으며 중단/재개를 확인했다. 저장본의 confirmedDigest·nativeLocation 재읽기와 정식 ReqIF를 확인했다.
@@ -29,3 +29,12 @@
 640 폭에서 native 입력과 긴 좌표·교정 JSON을 가진 인계 입력 모두 tabpanel의 clientWidth/scrollWidth가 592로 같았다. 1440 폭 native 입력은 모두 1392였다. 세로 스크롤은 유지한다. 원문 뷰는 높이 480, 내부 스크롤 높이 약 12,294였고 contenteditable=true 요소는 0개였다. 문서 전체의 읽기·렌더링 비용은 남으며 대용량 성능은 측정하지 않았다.
 
 확인하지 않은 것: 실제 AI 판단·정확도, 소유자의 시각 승인, 미검수 Docling 출처의 정식 내보내기 성공, 여러 원문 뷰 동시 렌더링 부하, 임의 junction을 통한 플랫폼 picker 범위 검증. 해당 조건을 성공으로 기록하지 않는다.
+
+## PR20 재검토 수정
+
+[상태 사본·계산 점검표](screen-review-audit.md)에 공개 작업의 상세 근거 결합과 문제 목록 이동을 적었다. 기존 캡처는 최초 PR5 검증 당시 화면이다. 추가 격리 Host는 같은 공개 빌드 `2a7f3328`을 사용하고 데이터·비서 CWD/설정·daemon/reset을 새 하위 폴더에 격리했다.
+
+실제 CLI의 `screen-reviewed.mjs setup/change`에서 같은 ID의 본문이 바뀌고 새 요약 해시 + 옛 상세의 제출이 거부됐다. 실제 화면에서도 다시 검사 후 낡음 표시·확정 비활성을 확인했다. 기존 safety/links 검사도 새 reviewRevision/reviewed를 전달해 통과했다. 이 실행 역시 결정적인 가짜 판단이며 실제 AI나 소유자의 승인이 아니다.
+
+- [낡은 상세 표시](screenshots/stale-review-1440.png)
+- [채택 1/보류 1의 문제 묶음](screenshots/held-group-640.png)
