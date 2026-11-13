@@ -1,0 +1,24 @@
+{
+  "id": "requirements-extract/default",
+  "version": "1.0.0",
+  "ruleVersion": "1.0.0",
+  "limits": { "candidates": 20, "characters": 12000 },
+  "obligations": { "mandatory": ["shall", "must", "해야 한다", "하여야 한다", "금지", "이내"], "recommended": ["should", "권고"], "permitted": ["may", "허용"] },
+  "units": ["m³/s", "mg/L", "°C", "µs", "ms", "cycles", "kHz", "Hz", "mm", "cm", "kg", "V", "A", "W", "s", "m", "%"],
+  "negations": ["not", "never", "금지", "않는다", "아니어야"],
+  "includeNumeric": true,
+  "includeTableRows": true,
+  "includeTableCells": true,
+  "choices": {
+    "kind": ["functional", "performance", "interface", "constraint", "safety", "unknown"],
+    "level": ["stakeholder", "system", "unknown"],
+    "strength": ["mandatory", "recommended", "permitted", "unknown"],
+    "verification": ["test", "analysis", "inspection", "demonstration", "undecided"],
+    "origin": ["quoted", "derived", "unknown"]
+  },
+  "defaults": { "level": "system", "kind": "unknown", "verification": "undecided" },
+  "levelLabels": { "stakeholder": "상위 이해관계자", "system": "시스템" },
+  "allowedRefinesLevels": [["system", "stakeholder"]],
+  "transformations": ["keep", "split", "merge"],
+  "quality": ["same", "intended-difference", "conflict", "ambiguous", "undetermined"]
+}
