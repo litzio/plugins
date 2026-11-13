@@ -5,6 +5,7 @@
 | 단계 | 내용 | 상태 |
 | --- | --- | --- |
 | 저장소 준비 | 구조, 작업 규칙, 표본 자료 | 완료(2026-11-13) |
+| 변환 서버·계약·표본 | v1.38.2-cu128, 권장 기본값·조정 옵션, 옵션/VLM 시험, 전체 표본 재변환 | 완료(2026-11-13), 리치오/WSL Engine 미검증 |
 | docling-convert | 비서가 제작(작은 플러그인을 비서가 만들 수 있는지의 시험 포함) | 시작 전 |
 | docling-to-litzio | 외부 에이전트가 제작. 문서 만들기 → 원문과의 대응 보존 → 검수 → 표본 하나로 처음부터 끝까지 | 시작 전 |
 | requirements-extract | 설계안까지. 구현은 소유자 확인 뒤 | 시작 전 |
@@ -21,9 +22,41 @@
 
 소유자가 정해야 하는 질문을 여기에 모은다. 답을 기다리는 동안 이 질문과 무관한 일은 계속한다.
 
-(아직 없음)
+- 채택하지 않은 Granite-Docling-258M 모델 파일을 모델 volume에서 삭제할지 여부. 현재 보존 중이다.
 
 ## 참고
 
 - 이전 Docling 플러그인과 앱 안의 검수 화면은 리치오 저장소의 태그 `archive/2026-11-13-plugins-declarative`에 보관돼 있다. 설계와 교훈을 참고하되 옮겨 오지 않고 새로 만든다.
 - `fixtures/`의 표본은 그 태그의 고정 변환 결과를 가져온 것이다.
+
+## 서버 준비 (2026-11-13)
+
+소유자 승인으로 최신 안정 버전 v1.38.2 이미지 하나를 받았다. GPU는 RTX 3070 Ti, 드라이버는 610.88이다. 릴리스에서 cu130 전환 필요성을 확정하지 못해 기존과 같은 cu128을 선택했다. 이전 버전과 성능 비교는 하지 않았다.
+
+- 이미지: `ghcr.io/docling-project/docling-serve-cu128:v1.38.2`
+- 이미지 digest: `sha256:f26a8dea114dfcfdebcd1617a9eb0a66f48351ff8b5140510d3bfc989c74c38d`
+- 컨테이너: `docling-serve`, 모델 volume: `docling-models`
+- 기존 설정: 127.0.0.1:5001만 공개, GPU all, restart=no, mount 없음. 이미지 기본 artifacts 경로 사용, 별도 사용자 환경 변수 없음.
+- 기존 컨테이너는 정지 상태에서 `docling-serve-v1.32.0`으로 이름 변경했다. 새 서버의 LSR 두 판이 success/errors=[]임을 확인한 뒤 소유자 추가 승인에 따라 삭제했다.
+- 이전 이미지 삭제는 Docker가 거부했다. 별도의 기존 정지 컨테이너 두 개가 동일 이미지 ID를 참조한다. 이들을 변경하거나 강제 삭제하지 않았으므로 `ghcr.io/docling-project/docling-serve-cu128:v1.32.0` 이미지는 남아 있다.
+
+실제 실행 설정과 다른 PC 재현 절차는 [docling-server](../docling-server/README.md)에 있다. 새 PC는 디스크 여유·GPU·Docker Engine/compose를 확인하고 해당 문서의 모델 준비를 수행한다. 이번 PC에서는 compose로 생성·재생성했다. WSL 안에 Engine을 새로 설치하지 않았다.
+
+```sh
+docker compose -f docling-server/compose.yaml up -d
+# GET http://127.0.0.1:5001/ready 와 /version 확인
+docker compose -f docling-server/compose.yaml stop
+```
+
+기본 모델 디렉터리에 named volume을 연결해 Docker의 빈 volume 초기 복사를 이용한다. 기본 모델을 가리지 않고 CodeFormulaV2를 같은 경로에 추가했다. 기본 모델 전체를 다시 내려받거나 컨테이너 내부 writable layer에만 수식 모델을 두는 방식은 쓰지 않았다. 추가 다운로드는 CodeFormulaV2와 소유자가 별도 허용한 Granite-Docling-258M 하나다. 실제 API 변환은 CUDA에서 수행했다. RapidOCR의 ONNX runtime은 CUDAExecutionProvider가 없어 CPU fallback 경고가 있었으므로 모든 단계가 GPU라고 주장하지 않는다.
+
+모델 파일 관측 hash (가중치는 저장소에 넣지 않음):
+
+| 모델 | model.safetensors SHA-256 |
+| --- | --- |
+| CodeFormulaV2 | 4b04e77af34c4e682a7ab1617628340d658f3c3dcd12456dd2a7fff805cf79d2 |
+| Granite-Docling-258M | 1cdad234deb1cde18ee6a586f849057f19851daf1fedce2e40aff791dbe46f61 |
+
+원격 모델 서비스는 켜지 않았다. 외부 AI 서비스 호출·리치오 앱/daemon 변경·사용자 자료 접근은 하지 않았다. 다른 Docker 컨테이너/이미지/volume은 변경하지 않았다.
+
+최종 표본은 LSR 세 PDF 각 13쪽, NIST 11쪽 모두 task/result success, errors=[]다. 변환 내용의 한계와 확인된 수식 실패는 [근거 문서](../contracts/docling-convert/experiments.md)에 기록했다. 최종 컨테이너는 작업 뒤 정지했고 Exited (0)을 확인했다. 이전 이미지 삭제 거부는 다른 정지 컨테이너 참조 때문이며 별도 대상 삭제 승인을 요청하지 않고 보존했다. CI는 아직 없다.

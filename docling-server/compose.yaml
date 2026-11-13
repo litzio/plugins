@@ -1,0 +1,14 @@
+services:
+  docling:
+    image: ghcr.io/docling-project/docling-serve-cu128:v1.38.2
+    container_name: docling-serve
+    ports:
+      - "127.0.0.1:5001:5001"
+    gpus: all
+    environment:
+      DOCLING_SERVE_ARTIFACTS_PATH: /opt/app-root/src/.cache/docling/models
+    volumes:
+      - models:/opt/app-root/src/.cache/docling/models
+volumes:
+  models:
+    name: docling-models
