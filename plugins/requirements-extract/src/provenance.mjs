@@ -4,13 +4,14 @@ import { createHash } from 'node:crypto';
 import Ajv from 'ajv/dist/2020.js';
 import { canonical, sha256 } from './model.mjs';
 import { correctedSnapshot } from './corrections.mjs';
+import { verifyNotes, noteSourceText } from './note-projection.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const equal = (a, b) => canonical(a) === canonical(b);
 const parse = bytes => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
 function fail(code, message, location = []) { throw Object.assign(new Error(message), { diagnostics: [{ file: 'complete.json', location, code, severity: 'error', message }] }); }
 const check = (condition, code, message) => { if (!condition) fail(code, message); };
-const schemas = Object.fromEntries(['complete', 'provenance', 'losses', 'correction-history', 'review-targets', 'pdf-evidence'].map(name => [name, new Ajv({ strict: true, allowUnionTypes: true }).compile(JSON.parse(readFileSync(new URL('../schema/handoff-' + name + '.schema.json', import.meta.url))))]));
+const schemas = Object.fromEntries(['complete', 'provenance', 'losses', 'correction-history', 'review-targets', 'review-complete', 'pdf-evidence'].map(name => [name, new Ajv({ strict: true, allowUnionTypes: true }).compile(JSON.parse(readFileSync(new URL('../schema/handoff-' + name + '.schema.json', import.meta.url))))]));
 function schema(name, value) { check(schemas[name](value), 'handoff-schema', name + ': ' + JSON.stringify(schemas[name].errors)); }
 // The public CLI added content while preserving existing text fields. Accept
 // only that documented additive field in old checkpoints, using the fresh
@@ -90,6 +91,7 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
   if (!corrected) snapshot = actual;
   const rawItems = [doc.body, doc.furniture, ...Object.values(doc).filter(Array.isArray).flat()].filter(v => v?.self_ref);
   const raw = new Map(rawItems.map(v => [v.self_ref, v]));
+  verifyNotes(p,raw,snapshot,check);
   check(raw.size === rawItems.length && p.items.length === raw.size && new Set(p.items.map(i => i.selfRef)).size === raw.size, 'inventory', '원본 selfRef 전수 inventory가 다릅니다');
   const pageMap = new Map(p.pages.map(page => [page.pageNo, page]));
   check(pageMap.size === p.pages.length && pageMap.size === Object.keys(doc.pages).length, 'pages', '쪽 inventory 불일치');
@@ -110,6 +112,7 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
   for (const item of p.items) {
     const source = raw.get(item.selfRef); check(source && item.sourceId === hash(p.source.docling.sha256 + ':' + item.selfRef), 'source-identity', 'selfRef/sourceId가 원본에 없습니다');
     check(item.label === source.label && item.sourceText === (source.text ?? null) && item.originalText === (source.orig ?? null), 'source-text', '원본 label/text/orig가 변경됐습니다');
+    for(const key of ['parent','children','content_layer','formatting','hyperlink','meta','captions','footnotes','references','code_language','marker','enumerated','level']) if(Object.hasOwn(source,key)) check(equal(item.structure[({content_layer:'contentLayer',code_language:'codeLanguage'})[key]??key],source[key]),'source-structure','원본 구조 정보가 다릅니다');
     check((item.disposition === 'mapped') === (item.targets.length > 0), 'disposition', 'mapped/target 상태 불일치');
     const prov = source.prov ?? [];
     check(item.regions.length === prov.length, 'regions', '원문 영역이 누락됐습니다');
@@ -126,7 +129,9 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
       if (t.role === 'content' && ['paragraph', 'quote'].includes(kind)) expected = source.text;
       if (t.role === 'content' && kind === 'heading') expected = source.text;
       if (t.role === 'content' && kind === 'list' && t.selector.kind === 'list-item') expected = source.text;
-      target(t, expected);
+      const noteRefs=(item.structure.noteReferences??[]).filter(b=>b.cellIndex===null);
+      if(expected!==undefined&&noteRefs.length) noteSourceText(snapshot,t,noteRefs,expected,check);
+      target(t, noteRefs.length?undefined:expected);
       if (kind === 'heading') check(source.level === undefined || snapshot.nodes.find(n => equal(n.path, t.path)).level === source.level, 'heading-level', '원본 제목 level 불일치');
       if (kind === 'code') check(snapshot.nodes.find(n => equal(n.path, t.path)).language === (source.code_language ?? ''), 'code-language', '원본 코드 언어 불일치');
       if (kind === 'code') check(snapshot.nodes.find(n => equal(n.path, t.path)).code === source.text, 'code-text', '원본 코드 본문 불일치');
@@ -155,7 +160,9 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
       check(cell.cellIndex === index && equal(cell.sourceCell, cells[index]) && cell.sourceId === hash(p.source.docling.sha256 + ':' + item.selfRef + ':' + index), 'source-cell', '셀 index/span/text/sourceId 불일치');
       for (const t of cell.targets) {
         const header = item.structure.tableModel?.headerContributions?.find(h => h.column === t.selector.column && h.sourceCellIndices.includes(index));
-        target(t, header?.text ?? cells[index].text);
+        const expected=header?.text??cells[index].text, noteRefs=(item.structure.noteReferences??[]).filter(b=>b.cellIndex===index);
+        if(noteRefs.length) noteSourceText(snapshot,t,noteRefs,expected,check);
+        target(t, noteRefs.length?undefined:expected);
       }
     }
   }
@@ -178,6 +185,9 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
     schema('correction-history', history); schema('review-targets', report); schema('pdf-evidence', evidence);
     const ledgerPath = bundleFile(root, 'correction-ledger.json'), ledgerBytes = readFileSync(ledgerPath);
     current = correctedSnapshot({history, report, evidence, ledger:parse(ledgerBytes), baseline:snapshot, provenance:p, complete, files, actual, check});
+    const reviewPath=bundleFile(root,'review/review-complete.json'), reviewBytes=readFileSync(reviewPath), reviewMarker=parse(reviewBytes);schema('review-complete',reviewMarker);
+    check(reviewMarker.generationId===p.generationId&&reviewMarker.documentRevision===baselineRevision&&reviewMarker.reportSha256===hash(files.get('review/review-targets.json'))&&reviewMarker.evidenceSha256===hash(files.get('review/pdf-evidence.json')),'review-marker-binding','검수 완료 표지의 생성 결합이 다릅니다');
+    check(readFileSync(reviewPath).equals(reviewBytes),'review-marker-changed','검수 표지가 읽는 동안 바뀌었습니다');
     check(readFileSync(ledgerPath).equals(ledgerBytes), 'ledger-changed', '읽는 동안 교정 원장이 바뀌었습니다');
   }
   check(readFileSync(markerPath).equals(markerBytes), 'marker-changed', '읽는 동안 완료 표지가 바뀌었습니다');
@@ -218,7 +228,10 @@ export function resolveSource(bundle, { sourceKey = 'source', elementRef, select
   if(bundle.history) {
     trace.contract='docling-to-litzio/1.1.0'; trace.baselineRevision=bundle.history.baselineRevision;
     trace.limitations=['correction evidence is not semantic review completion','rotation/printedLabel unavailable',...(cell?['no per-cell page attribution']:[])];
-    trace.corrections=bundle.history.changes.filter(c=>targets.some(t=>equal(t.path,c.target.path) && (c.target.kind==='cell'?t.selector.kind==='cell'&&t.selector.row===c.target.row&&t.selector.column===c.target.column:t.selector.kind==='block'))).map(c=>structuredClone(c));
+    const changes=bundle.history.changes.filter(c=>targets.some(t=>equal(t.path,c.target.path) && (c.target.kind==='cell'?t.selector.kind==='cell'&&t.selector.row===c.target.row&&t.selector.column===c.target.column:t.selector.kind==='block')));
+    const effective=new Set(changes.filter(c=>{const chain=changes.filter(v=>equal(v.target,c.target));return chain[0].before!==chain.at(-1).after;}).map(c=>canonical(c.target)));
+    trace.corrections=changes.filter(c=>effective.has(canonical(c.target))).map(c=>structuredClone(c));
+    if(changes.length) trace.correctionState=trace.corrections.length?'currently-corrected':'restored-to-conversion-value';
     if(trace.corrections.length) { trace.correctionNotice='원본 변환값과 다르게 교정됨(근거 있음)'; diagnostics.push({code:'source-corrected',severity:'warning',message:trace.correctionNotice,file:p.document.relativePath,location:targets[0]?.path??[]}); }
   }
   return { state: 'needs-source-review', eligibleConfirmed: false, source: { sourceKey, elementRef, selector, quote, quoteDigest: sha256(quote), trace }, diagnostics };

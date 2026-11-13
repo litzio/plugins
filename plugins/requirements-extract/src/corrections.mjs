@@ -1,6 +1,7 @@
 // Independent consumer of contracts/docling-to-litzio/corrections.md.
 import { canonical } from './model.mjs';
 import { createHash } from 'node:crypto';
+import { validateReviewMeaning } from './review-integrity.mjs';
 const equal = (a,b) => canonical(a) === canonical(b);
 const hash = v => createHash('sha256').update(v).digest('hex');
 // This is the closed v1.1 evidence vocabulary, not a semantic correctness test.
@@ -14,6 +15,7 @@ export function correctedSnapshot({history:h, report:r, evidence:e, ledger:l, ba
   need(h.generationId===p.generationId && h.baselineRevision===baseline.revision, 'history-binding');
   need(r.generationId===p.generationId && r.baselineRevision===baseline.revision && r.documentRevision===baseline.revision && r.bindingState==='current' && r.pdfSha256===p.source.pdf.sha256 && e.pdfSha256===p.source.pdf.sha256,'review-binding');
   need(r.inputs.provenanceSha256===hash(files.get('provenance.json')) && r.inputs.snapshotSha256===hash(files.get('snapshot.json')) && r.evidenceFile.sha256===hash(files.get('review/pdf-evidence.json')),'review-digest');
+  validateReviewMeaning(r,p,baseline,e,need);
   need(l?.version===1 && l.generationId===h.generationId && l.sourceHash===p.source.pdf.sha256 && !l.pending && l.revision===complete.documentRevision && equal(l.changes,h.changes) && Array.isArray(l.submissions) && Array.isArray(l.scopes),'history-ledger');
   let state=structuredClone(baseline); const seen=new Set();
   const allTokens=e.pages.flatMap(page=>page.tokens.map(t=>({...t,pageNo:page.pageNo})));

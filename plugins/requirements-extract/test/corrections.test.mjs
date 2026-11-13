@@ -36,3 +36,21 @@ test('unexplained whole-snapshot change and failed official readback are refused
  const root=correctedFixture(),h=read(root,'correction-history.json');h.currentSnapshot.nodes[1].extra='unrecorded';write(root,'correction-history.json',h);reseal(root);assert.throws(()=>load(root));
  const other=correctedFixture();assert.throws(()=>loadProvenance(other,{inspect:()=>read(other,'snapshot.json')}));
 });
+function appendChange(root,after,{undo=false}={}) {
+ const history=read(root,'correction-history.json'),ledger=read(root,'correction-ledger.json'),last=history.changes.at(-1);
+ const change=structuredClone(last);change.changeId='change-'+history.changes.length;change.beforeRevision=last.afterRevision;change.before=last.after;change.after=after;
+ writeFileSync(join(root,'document.md'),'synthetic edit '+change.changeId+after);change.afterRevision=h('synthetic edit '+change.changeId+after);change.receipt.revision=change.afterRevision;change.undoOf=undo?last.changeId:null;change.inverse={command:'update-node-text',path:'1',from:after,to:change.before};
+ history.changes.push(change);history.currentSnapshot.revision=change.afterRevision;history.currentSnapshot.nodes[0].text=after;history.currentSnapshot.nodes[0].content=[{kind:'text',text:after}];
+ ledger.revision=change.afterRevision;ledger.changes=history.changes;ledger.submissions.push({changeId:change.changeId,status:'applied',afterRevision:change.afterRevision});
+ write(root,'correction-history.json',history);write(root,'correction-ledger.json',ledger);const complete=read(root,'complete.json');complete.documentRevision=change.afterRevision;write(root,'complete.json',complete);reseal(root);
+}
+test('multiple edits, exact undo, and undo then new edit describe current value only',()=>{
+ for(const mode of ['multiple','undo','undo-redo']) {
+  const root=correctedFixture();appendChange(root,mode==='multiple'?'Another voltage ≤ 5 V':'Voltage ≤ 5 V',{undo:mode!=='multiple'});
+  if(mode==='undo-redo')appendChange(root,'New voltage ≤ 5 V');
+  const bundle=load(root),source=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/texts/0'}).source;
+  const restored=mode==='undo';assert.equal(source.trace.correctionState,restored?'restored-to-conversion-value':'currently-corrected');
+  assert.equal(!!source.trace.correctionNotice,!restored);assert.equal(report(prepare([{key:'synthetic',bundle}],profile)).reviewFirst.some(p=>p.code==='source-corrected'),!restored);
+  const sets=sample(),r=sets[0].requirements[0];r.sources=[source];r.confirmedDigest=digest(r);assert.equal(exportReqif(sets,{testOnly:true}).xml.includes('원본 변환값과 다르게 교정됨'),!restored);
+ }
+});

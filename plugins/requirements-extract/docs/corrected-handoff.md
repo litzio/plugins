@@ -10,7 +10,7 @@ complete의 1.0.0은 기존 생성 검사를 그대로 사용한다. 1.1.0은 �
 
 - 고정 합성 v1.0의 bundle/source 직렬화 bytes는 변경 전 consumer와 비교하여 golden SHA-256으로 고정했다.
 - 합성 교정 표본에서 현재 값/원문 인용/우선 검토/시험 ReqIF 출처 보존을 확인한다. 문서만/history만/원장만 변경, 재봉인된 잘못된 사슬·대상·receipt·근거·validation·pending·제출 누락·설명되지 않은 전체 snapshot 차이를 거부한다.
-- 공개 Litzio master `877850887ca61bfe8c23c29e6d652aa51bae0e9a`를 별도 임시 checkout에서 빌드했다. 생산자의 공개 PDF 표본 기반 결정적 교정 시험을 실제 CLI로 실행했다. 전체 LSR은 아래 미주 표현 문제로 소비 거부됨을 확인했다.
+- 공개 Litzio master `877850887ca61bfe8c23c29e6d652aa51bae0e9a`를 별도 임시 checkout에서 빌드했다. 생산자의 공개 PDF 표본 기반 결정적 교정 시험을 실제 CLI로 실행했다. 전체 LSR은 최초에 소비자의 미주 재구성 누락으로 거부되었으나 독립 리뷰 뒤 수정해 실제 교정/undo 묶음 수락을 확인했다.
 - 생산자 시험의 작은 한 셀 원본(공개 PDF의 `0.12 s` 위치에 변환값 `999`를 둔 처리 표본)을 공식 생성/검수/교정 경로로 실행했다. 공식 receipt와 현재 inspect를 가진 v1.1 묶음을 소비하여 `verified-protected-tokens`와 원본 인용 `999`, 현재 값 `0.12 s`를 확인했다. 원본 변환 서버는 실행하지 않았다. 시험 ReqIF를 표준 검증 대상으로 사용했다.
 - 실제 묶음 재검증: `node validation/corrected.mjs BUILT_CLI HANDOFF NEW_REQIF`. CLI 실행 환경의 LITZIO_DATA_DIR, LITZIO_ASSISTANT_CWD, LITZIO_ASSISTANT_SETTINGS_FILE은 모두 격리된 임시 작업 영역으로 지정한다.
 
@@ -18,6 +18,6 @@ complete의 1.0.0은 기존 생성 검사를 그대로 사용한다. 1.1.0은 �
 
 ## 계약에서 모호한 것
 
-전체 LSR 생성 묶음의 한 셀에서 원본 `≥ 0.932 u a`가 native의 `≥ 0.932 u `와 별도 미주로 표현된다. 기존 소비자의 source-native 문자열 검사는 이를 거부한다. v1.1이라고 예외를 추가하거나 전체 source-native 검사를 끄지 않았다. 원본 미주 문자의 대응과 재구성 규칙을 계약에 명시하기 전 이 표본은 소비 불가다. 이는 교정 이력 사슬의 수락과 별개의 생성 표현 문제다.
+전체 LSR 미주 분리는 기존 계약이 허용한다. 소비자의 재구성 누락을 수정했다. [규칙별 검사 대조와 실제 모호점](handoff-validation-map.md)을 따른다. 교정→undo 후 원본 변환값으로 돌아오면 correctionState=restored-to-conversion-value이며 현재 교정 표시를 내지 않는다.
 
 교정 원장은 JSON Schema 정본이 없으므로 corrections.md의 필수 의미 검사로 대조한다. scope 처리 상태는 검수 완료 권위로 사용하지 않는다.
