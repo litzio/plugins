@@ -173,7 +173,7 @@ const publicJob = (s, owner, active) => {
     };
   return job;
 };
-export function createJobs(settings, { launch } = {}) {
+export function createJobs(settings, { launch, claim = writeJob } = {}) {
   const owner = randomUUID(),
     active = new Map();
   let closing = false;
@@ -199,6 +199,14 @@ export function createJobs(settings, { launch } = {}) {
     return s;
   };
   const current = async (id) => publicJob(await read(id), owner, active);
+  const matchingRequest = async ({ requestId, bundle, fingerprint }) => {
+    const existing = await read(requestId);
+    need(
+      existing.bundle === bundle && existing.fingerprint === fingerprint,
+      "request-id-conflict",
+    );
+    return publicJob(existing, owner, active);
+  };
   const ready = async (id) => {
     const s = await current(id);
     need(s.state === "ready", "job-not-ready");
@@ -229,12 +237,7 @@ export function createJobs(settings, { launch } = {}) {
       const { root, cli } = await store(),
         file = stateFile(root, requestId);
       try {
-        const existing = await read(requestId);
-        need(
-          existing.bundle === bundle && existing.fingerprint === fingerprint,
-          "request-id-conflict",
-        );
-        return publicJob(existing, owner, active);
+        return await matchingRequest({ requestId, bundle, fingerprint });
       } catch (e) {
         if (e.code !== "ENOENT") throw e;
       }
@@ -255,9 +258,10 @@ export function createJobs(settings, { launch } = {}) {
           updatedAt: now,
         };
       try {
-        await writeJob(file, state, true);
+        await claim(file, state, true);
       } catch (e) {
-        if (e.code === "EEXIST") return current(requestId);
+        if (e.code === "EEXIST")
+          return matchingRequest({ requestId, bundle, fingerprint });
         throw e;
       }
       const data = { root, cli, stateFile: file, state };

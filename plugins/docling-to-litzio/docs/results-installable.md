@@ -85,3 +85,11 @@ node BUILT_CLI apply-batch PROBE_MD --operations OPERATION_JSON --if-revision CU
 상태 파일은 플러그인 소유 실행 기록이며 새 handoff 계약이 아니다. ready에서도 표지/digest/revision 전수 검증 없이는 결과를 읽지 않는다. worker 종료를 기다리는 dispose만 있고 실행 중 강제 취소·여러 Host가 같은 작업 폴더를 공유하는 동시 실행·임의 수백 쪽 처리·재시작 중 실제 process crash 수락은 미검증이다. 중단 흔적은 단위 검사로 확인했고 실제 강제 종료 시험을 했다고 주장하지 않는다. 자동 재개/삭제·검수 완료/교정·나란한 대조·실제 비서 스킬 전달은 없다.
 
 직접 시작한 Host/브라우저/CLI/worker는 종료하고 임시 자료를 보존한다. 실제 설치된 리치오·사용자 daemon/자료, Docling 서버·재변환·Docker·AI는 건드리지 않았다. 진행 기록 전달안은 PR 본문에 두며 docs/progress.md는 수정하지 않는다.
+
+## PR #13 독립 리뷰 보완
+
+동시 start의 초기 기존 상태 반환과 EEXIST 재조회가 같은 bundle/fingerprint 검사 함수를 사용한다. 경쟁에 진 요청은 다른 입력이면 request-id-conflict, 같은 입력이면 기존 작업을 반환한다. 실제 배타적 파일 쓰기를 쓰면서 두 접수가 모두 초기 조회를 지난 뒤 경쟁하도록 제어한 회귀 검사에서 다른 묶음+다른 fingerprint/같은 fingerprint의 묶음 별칭/완전히 같은 요청을 확인한다. 상태 조회(job/jobs/ready)는 bundle/fingerprint를 인자로 받는 접수가 아니고, worker의 원본 재읽기는 fingerprint를 별도로 확인하므로 같은 누락은 없었다.
+
+스킬 실패의 [보존된 최소 재현 파일·정확한 바이트와 진단](skill-validation-repro.json)을 추가했다. skillUtf8 문자열을 UTF-8로 그대로 쓰면 당시 파일 SHA-256을 재현한다. 본문은 59자, 마지막 CRLF 포함 61 bytes, 전체 142 bytes다. 초기 full 변형은 validate/install 모두 실패했고, 이 보존된 최소 변형은 validate 실패를 확인한 파일이며 install을 다시 실행한 것으로 쓰지 않는다. 생산 artifact에는 여전히 skills 선언/파일이 없고 우회하지 않는다.
+
+리뷰 보완 후 전체 57개 검사 통과/skip 0. 새 동시 접수 회귀는 세 경쟁 경우를 확인했고, 기존 실제 CLI/worker·인계·탐지 검사도 통과했다.

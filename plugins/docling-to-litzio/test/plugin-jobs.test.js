@@ -106,6 +106,84 @@ test("accept/status is asynchronous, duplicate request is idempotent, interrupti
   assert.equal((await restarted.jobs()).jobs[0].state, "failed");
   assert(!JSON.stringify(await restarted.jobs()).includes(root));
 });
+test("concurrent EEXIST losers must match their own bundle and fingerprint", async () => {
+  const { root, input, settings } = await setup(),
+    other = join(root, "inputs", "other");
+  await mkdir(other);
+  const doc = JSON.parse(await readFile(join(input, "document.json")));
+  doc.name = "Concurrent alternative input";
+  const raw = JSON.stringify(doc),
+    record = JSON.parse(await readFile(join(input, "conversion-record.json")));
+  record.document.sha256 = hash(raw);
+  await writeFile(join(other, "document.json"), raw);
+  await writeFile(
+    join(other, "conversion-record.json"),
+    JSON.stringify(record),
+  );
+  const a = (await preflight(root, "inputs/lsr")).public;
+  const b = (await preflight(root, "inputs/other")).public;
+  assert.notEqual(a.fingerprint, b.fingerprint);
+  for (const second of [b, { ...a, bundle: "inputs/./lsr" }, a]) {
+    let arrive,
+      published,
+      claims = 0,
+      launches = 0,
+      loserCode;
+    const arrived = new Promise((r) => (arrive = r)),
+      publication = new Promise((r) => (published = r));
+    const jobs = createJobs(settings, {
+      // Both start calls have passed the initial read before the winner writes.
+      // Use the real exclusive file claim, then release the losing claim only
+      // after the winning state is fully written: no timing/sleep dependency.
+      claim: async (file, state, exclusive) => {
+        if (claims++ === 0) {
+          await arrived;
+          await writeJob(file, state, exclusive);
+          published();
+        } else {
+          arrive();
+          await publication;
+          try {
+            await writeJob(file, state, exclusive);
+          } catch (e) {
+            loserCode = e.code;
+            throw e;
+          }
+        }
+      },
+      launch: async () => {
+        launches++;
+      },
+    });
+    const requestId = randomUUID(),
+      requests = [a, second].map((p) => ({
+        bundle: p.bundle,
+        fingerprint: p.fingerprint,
+        requestId,
+      }));
+    const results = await Promise.allSettled(
+      requests.map((request) => jobs.start(request)),
+    );
+    assert.equal(loserCode, "EEXIST");
+    assert.equal(claims, 2);
+    assert.equal(launches, 1);
+    for (const [index, result] of results.entries()) {
+      if (result.status === "fulfilled") {
+        assert.equal(result.value.bundle, requests[index].bundle);
+        assert.equal(result.value.fingerprint, requests[index].fingerprint);
+      } else assert.match(result.reason.message, /request-id-conflict/);
+    }
+    assert.equal(
+      results.filter((r) => r.status === "fulfilled").length,
+      second === a ? 2 : 1,
+    );
+    assert.equal(
+      (await jobs.jobs()).jobs.filter((j) => j.jobId === requestId).length,
+      1,
+    );
+    await jobs.dispose();
+  }
+});
 test("changed input requires a fresh confirmation and job IDs cannot address arbitrary files", async () => {
   const { input, settings } = await setup(),
     jobs = createJobs(settings, {
