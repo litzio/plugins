@@ -984,5 +984,11 @@
       }
     },
     "additionalProperties": false
-  }
+  },
+  "skills": [
+    {
+      "id": "review",
+      "directory": "skills/review"
+    }
+  ]
 }
