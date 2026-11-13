@@ -23,3 +23,4 @@ python -X utf8 -m unittest discover -s tools -p test_score_lsr.py
 원문에 없는 내용, 비대응 출력, 의미 누락·위첨자·주석 범위는 자동 확정하지 않는다. 원문 PDF와 시각 대조가 필요하다. 좌표 매칭 자체도 오차가 있어 개별 오답 개수로 해석하지 않는다.
 
 추가 숫자 진단: `python -X utf8 tools/audit_pdf_numbers.py input.pdf document.json`. PyMuPDF(`pip install pymupdf`)가 필요하다. 쪽별 PDF 글자 층과 출력의 숫자·부등호·부호 token 다중집합 차이를 센다. 벡터 수식, 표 중복·분할, 서로 다른 tokenization 때문에 차이가 생기므로 missing/extra는 검토 후보 수이며 누락·환각의 확정 개수가 아니다. 단위는 numeric_literal/numeric_cell의 전체 문자열 대조로 함께 본다.
+`python -X utf8 tools/adapt_mineru_lsr.py result.json > adapted.json`: MinerU 3.4.5 한정 실험 어댑터. content_list의 0–1000 TOPLEFT 좌표와 middle JSON의 명시 캡션 관계, HTML rowspan/colspan을 기존 채점 입력으로 옮긴다. 셀 픽셀 좌표는 생성하지 않는다.

@@ -1,0 +1,752 @@
+{
+  "status": "tested_not_adopted",
+  "decision": "retain_docling",
+  "reason": "Owner rejects commercial additional license conditions",
+  "samples": [
+    {
+      "sample": "bookmarks",
+      "mineru_runs": [
+        {
+          "backend": "pipeline",
+          "sample": "bookmarks",
+          "repeat": 1,
+          "seconds": 23.115599300013855,
+          "status": "completed",
+          "bytes": 1370798
+        },
+        {
+          "backend": "pipeline",
+          "sample": "bookmarks",
+          "repeat": 2,
+          "seconds": 10.68423770001391,
+          "status": "completed",
+          "bytes": 1370798
+        }
+      ],
+      "repeat_adapter_equal": true,
+      "numbers": {
+        "docling": {
+          "missing": 1,
+          "extra": 19,
+          "pages": [
+            {
+              "page": 1,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 2,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 3,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 4,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 5,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 6,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 7,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 8,
+              "missing_numeric_tokens": 1,
+              "extra_numeric_tokens": 12
+            },
+            {
+              "page": 9,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 10,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 11,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 3
+            },
+            {
+              "page": 12,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 13,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            }
+          ]
+        },
+        "mineru": {
+          "missing": 26,
+          "extra": 71,
+          "pages": [
+            {
+              "page": 1,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 2,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 3,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 4,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 5,
+              "missing_numeric_tokens": 5,
+              "extra_numeric_tokens": 16
+            },
+            {
+              "page": 6,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 7,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 8,
+              "missing_numeric_tokens": 5,
+              "extra_numeric_tokens": 21
+            },
+            {
+              "page": 9,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 10,
+              "missing_numeric_tokens": 15,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 11,
+              "missing_numeric_tokens": 1,
+              "extra_numeric_tokens": 26
+            },
+            {
+              "page": 12,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 13,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            }
+          ]
+        }
+      },
+      "docling_score": {
+        "furniture": [
+          65,
+          65
+        ],
+        "literal_text": [
+          109,
+          195
+        ],
+        "numeric_literal": [
+          62,
+          92
+        ],
+        "heading_label": [
+          17,
+          19
+        ],
+        "prose_label": [
+          42,
+          71
+        ],
+        "heading_level": [
+          16,
+          17
+        ],
+        "note_label": [
+          5,
+          12
+        ],
+        "table_dimensions": [
+          8,
+          8
+        ],
+        "cell_span": [
+          134,
+          139
+        ],
+        "cell_text": [
+          135,
+          139
+        ],
+        "numeric_cell": [
+          55,
+          59
+        ],
+        "formula_detection": [
+          3,
+          3
+        ],
+        "formula_literal": [
+          1,
+          3
+        ],
+        "caption_link": [
+          7,
+          10
+        ],
+        "adjacent_order": [
+          122,
+          130
+        ]
+      },
+      "mineru_score": {
+        "furniture": [
+          50,
+          65
+        ],
+        "literal_text": [
+          134,
+          195
+        ],
+        "numeric_literal": [
+          63,
+          92
+        ],
+        "heading_label": [
+          18,
+          19
+        ],
+        "prose_label": [
+          70,
+          71
+        ],
+        "heading_level": [
+          6,
+          17
+        ],
+        "note_label": [
+          0,
+          12
+        ],
+        "table_dimensions": [
+          8,
+          8
+        ],
+        "cell_span": [
+          139,
+          139
+        ],
+        "cell_text": [
+          125,
+          139
+        ],
+        "numeric_cell": [
+          49,
+          59
+        ],
+        "formula_detection": [
+          3,
+          3
+        ],
+        "formula_literal": [
+          0,
+          3
+        ],
+        "caption_link": [
+          10,
+          10
+        ],
+        "adjacent_order": [
+          114,
+          123
+        ]
+      },
+      "repeat_raw_json_equal": true
+    },
+    {
+      "sample": "no-bookmarks",
+      "mineru_runs": [
+        {
+          "backend": "pipeline",
+          "sample": "no-bookmarks",
+          "repeat": 1,
+          "seconds": 12.438825899997028,
+          "status": "completed",
+          "bytes": 1370811
+        },
+        {
+          "backend": "pipeline",
+          "sample": "no-bookmarks",
+          "repeat": 2,
+          "seconds": 12.698953299986897,
+          "status": "completed",
+          "bytes": 1370811
+        }
+      ],
+      "repeat_adapter_equal": true,
+      "numbers": {
+        "docling": {
+          "missing": 1,
+          "extra": 19,
+          "pages": [
+            {
+              "page": 1,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 2,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 3,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 4,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 5,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 6,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 7,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 8,
+              "missing_numeric_tokens": 1,
+              "extra_numeric_tokens": 12
+            },
+            {
+              "page": 9,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 10,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 11,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 3
+            },
+            {
+              "page": 12,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 13,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            }
+          ]
+        },
+        "mineru": {
+          "missing": 26,
+          "extra": 71,
+          "pages": [
+            {
+              "page": 1,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 2,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 3,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 4,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 5,
+              "missing_numeric_tokens": 5,
+              "extra_numeric_tokens": 16
+            },
+            {
+              "page": 6,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 7,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 8,
+              "missing_numeric_tokens": 5,
+              "extra_numeric_tokens": 21
+            },
+            {
+              "page": 9,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 10,
+              "missing_numeric_tokens": 15,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 11,
+              "missing_numeric_tokens": 1,
+              "extra_numeric_tokens": 26
+            },
+            {
+              "page": 12,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 13,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            }
+          ]
+        }
+      },
+      "docling_score": {
+        "furniture": [
+          65,
+          65
+        ],
+        "literal_text": [
+          109,
+          195
+        ],
+        "numeric_literal": [
+          62,
+          92
+        ],
+        "heading_label": [
+          17,
+          19
+        ],
+        "prose_label": [
+          42,
+          71
+        ],
+        "heading_level": [
+          3,
+          17
+        ],
+        "note_label": [
+          5,
+          12
+        ],
+        "table_dimensions": [
+          8,
+          8
+        ],
+        "cell_span": [
+          134,
+          139
+        ],
+        "cell_text": [
+          135,
+          139
+        ],
+        "numeric_cell": [
+          55,
+          59
+        ],
+        "formula_detection": [
+          3,
+          3
+        ],
+        "formula_literal": [
+          1,
+          3
+        ],
+        "caption_link": [
+          7,
+          10
+        ],
+        "adjacent_order": [
+          122,
+          130
+        ]
+      },
+      "mineru_score": {
+        "furniture": [
+          50,
+          65
+        ],
+        "literal_text": [
+          134,
+          195
+        ],
+        "numeric_literal": [
+          63,
+          92
+        ],
+        "heading_label": [
+          18,
+          19
+        ],
+        "prose_label": [
+          70,
+          71
+        ],
+        "heading_level": [
+          6,
+          17
+        ],
+        "note_label": [
+          0,
+          12
+        ],
+        "table_dimensions": [
+          8,
+          8
+        ],
+        "cell_span": [
+          139,
+          139
+        ],
+        "cell_text": [
+          125,
+          139
+        ],
+        "numeric_cell": [
+          49,
+          59
+        ],
+        "formula_detection": [
+          3,
+          3
+        ],
+        "formula_literal": [
+          0,
+          3
+        ],
+        "caption_link": [
+          10,
+          10
+        ],
+        "adjacent_order": [
+          114,
+          123
+        ]
+      },
+      "repeat_raw_json_equal": true
+    },
+    {
+      "sample": "nist",
+      "mineru_runs": [
+        {
+          "backend": "pipeline",
+          "sample": "nist",
+          "repeat": 1,
+          "seconds": 8.391232599999057,
+          "status": "completed",
+          "bytes": 2494163
+        },
+        {
+          "backend": "pipeline",
+          "sample": "nist",
+          "repeat": 2,
+          "seconds": 8.378842500009341,
+          "status": "completed",
+          "bytes": 2494163
+        }
+      ],
+      "repeat_adapter_equal": true,
+      "numbers": {
+        "docling": {
+          "missing": 0,
+          "extra": 11,
+          "pages": [
+            {
+              "page": 1,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 1
+            },
+            {
+              "page": 2,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 4
+            },
+            {
+              "page": 3,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 4,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 5,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 6,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 7,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 8,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 9,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 3
+            },
+            {
+              "page": 10,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 11,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 3
+            }
+          ]
+        },
+        "mineru": {
+          "missing": 3,
+          "extra": 59,
+          "pages": [
+            {
+              "page": 1,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 2,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 23
+            },
+            {
+              "page": 3,
+              "missing_numeric_tokens": 3,
+              "extra_numeric_tokens": 12
+            },
+            {
+              "page": 4,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 5,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 6,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 7,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 8,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 16
+            },
+            {
+              "page": 9,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            },
+            {
+              "page": 10,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 8
+            },
+            {
+              "page": 11,
+              "missing_numeric_tokens": 0,
+              "extra_numeric_tokens": 0
+            }
+          ]
+        }
+      },
+      "repeat_raw_json_equal": true
+    }
+  ],
+  "container_interval": {
+    "source": "docker inspect State",
+    "start_utc": "2026-11-13T08:34:41.439670121Z",
+    "stop_utc": "2026-11-13T08:36:57.342461432Z",
+    "seconds": 135.902791311
+  },
+  "criteria": {
+    "a": "fail",
+    "b": "fail",
+    "c": "not_evaluated_reduced_scope",
+    "d": "not_met_natively_bookmark_repair_not_evaluated",
+    "e": "partial",
+    "f": "pass_pipeline",
+    "g": "fail_owner_policy_commercial_additional_terms"
+  },
+  "interrupted_vlm_submission": true
+}
