@@ -19,6 +19,7 @@ import {
   valueAt,
   projectEdit,
   operation,
+  evidenceRecheck,
 } from "./correction-history.js";
 
 import { isDeepStrictEqual as equal } from "node:util";
@@ -630,6 +631,15 @@ export function createCorrections(root, cli) {
             ) &&
             input.target.kind !== "equation";
 
+          s.pending.validation.evidenceRecheck = evidenceRecheck(
+            s.pending,
+            equal(
+              protectedTokens(valueAt(actual, input.target)).map(
+                (t) => t.value,
+              ),
+              selected.map((t) => t.value),
+            ),
+          );
           await save(file, s);
 
           await publish(s);

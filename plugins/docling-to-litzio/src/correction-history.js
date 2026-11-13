@@ -163,11 +163,15 @@ export function verifyCorrectionEvidence(
       ),
       "history-scope",
     );
-    const matched =
-      equal(
-        protectedTokens(c.after).map((t) => t.value),
-        tokens.map((t) => t.value),
-      ) && c.target.kind !== "equation";
+    const tokenMatch = equal(
+      protectedTokens(c.after).map((t) => t.value),
+      tokens.map((t) => t.value),
+    );
+    const matched = tokenMatch && c.target.kind !== "equation";
+    need(
+      c.validation.evidenceRecheck === evidenceRecheck(c, tokenMatch),
+      "history-evidence-recheck",
+    );
     need(c.validation.protectedTokens === matched, "history-validation");
     if (
       !c.undoOf &&
@@ -196,4 +200,60 @@ export function verifyCorrectionEvidence(
       );
     }
   }
+}
+
+// Cross-check separately persisted processing records; this is consistency, not authentication.
+export function validateCorrectionLedger(history, ledger, reconciling = false) {
+  need(
+    ledger &&
+      ledger.generationId === history.generationId &&
+      Array.isArray(ledger.changes) &&
+      Array.isArray(ledger.submissions) &&
+      Array.isArray(ledger.scopes),
+    "history-ledger-required",
+  );
+  const recorded = [...ledger.changes];
+  if (reconciling && ledger.pending) {
+    const pending = { ...ledger.pending };
+    delete pending.expected;
+    delete pending.requestHash;
+    recorded.push(pending);
+    need(ledger.revision === pending.beforeRevision, "history-ledger-revision");
+  } else {
+    need(
+      !ledger.pending && ledger.revision === history.currentSnapshot.revision,
+      "history-ledger-revision",
+    );
+  }
+  need(equal(recorded, history.changes), "history-ledger-mismatch");
+  for (const c of recorded) {
+    const submissions = ledger.submissions.filter(
+      (s) => s.changeId === c.changeId,
+    );
+    need(
+      submissions.length === 1 &&
+        ledger.sourceHash === c.sourceHash &&
+        ledger.scopes.some((s) => s.id === c.groupId),
+      "history-ledger-submission",
+    );
+    const row = submissions[0];
+    const pending = reconciling && ledger.pending?.changeId === c.changeId;
+    need(
+      pending
+        ? row.status === "pending-reconcile"
+        : row.afterRevision === c.afterRevision &&
+            row.status ===
+              (c.validation.protectedTokens ? "applied" : "uncertain"),
+      "history-ledger-submission",
+    );
+  }
+}
+export function evidenceRecheck(change, tokenMatch) {
+  if (
+    !protectedTokens(change.before).length &&
+    !protectedTokens(change.after).length
+  )
+    return "not-applicable";
+  if (change.undoOf && !tokenMatch) return "undo-restoration";
+  return tokenMatch ? "verified-protected-tokens" : "unverified";
 }

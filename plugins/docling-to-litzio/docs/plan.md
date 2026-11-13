@@ -377,3 +377,5 @@ material 읽기, 교정 제출/역연산/조정, 범위별 원장·checkpoint·�
 [본문 초안](assistant-review-draft.md)은 문서일 뿐 manifest에 skills를 싣지 않는다. 처리/가짜 제출과 실제 CLI 검증은 [결과](results-correction-core.md)를 따른다. 실제 AI·새 화면·최종 검수 완료·수백 쪽 수락은 수행하지 않는다.
 
 소유자 확인 필요로 남기는 것: 관측하지 못한 손 편집 뒤 재대응과 원장 손상 복구 절차. 이번 구현은 해당 경우 보수적으로 stale/pending을 유지한다. docs/progress.md는 수정하지 않으며 전달안은 PR 본문에 둔다.
+
+PR #15 독립 리뷰 보완: 의도적으로 모든 파일을 일관되게 고쳐 쓴 위조를 막는 것이 아닌 부분 변경 탐지 경계를 계약에 명시했다. 이력은 기존 원장/교정 기록·제출 상태와 대조하고, 교정본에 원장을 동반한다. validation.evidenceRecheck는 소비자가 읽을 토큰 근거 재확인 범위이며 구조/문장·수식 의미를 검증했다는 뜻이 아니다. 문서 단독 변경과 history만 맞춘 변경은 인계/material에서 거부한다.

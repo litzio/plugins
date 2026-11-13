@@ -1,6 +1,7 @@
 import { validateReview } from "./review.js";
 import {
   validateHistory,
+  validateCorrectionLedger,
   verifyCorrectionEvidence,
 } from "./correction-history.js";
 import { listText } from "./rich-content.js";
@@ -467,19 +468,24 @@ export async function loadHandoff(
   root,
   { requireReviewed = false, reconciling = false } = {},
 ) {
-  if (!reconciling) {
-    try {
-      const ledger = JSON.parse(
-        await readRelative(root, "correction-ledger.json"),
-      );
-      need(!ledger.pending, "pending-reconcile");
-    } catch (e) {
-      if (e.code !== "ENOENT") throw e;
-    }
+  let ledgerRaw, ledger;
+  try {
+    ledgerRaw = await readRelative(root, "correction-ledger.json");
+    ledger = JSON.parse(ledgerRaw);
+    need(reconciling || !ledger.pending, "pending-reconcile");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
   }
   const markerRaw = await readRelative(root, "complete.json"),
     marker = JSON.parse(markerRaw);
   const result = await validateFileSet(root, marker);
+  if (result.history)
+    validateCorrectionLedger(result.history, ledger, reconciling);
+  if (ledgerRaw)
+    need(
+      equal(ledgerRaw, await readRelative(root, "correction-ledger.json")),
+      "ledger-changed",
+    );
   need(
     equal(await readRelative(root, "complete.json"), markerRaw),
     "marker-changed",

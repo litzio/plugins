@@ -22,10 +22,19 @@ import {
   projectEdit,
   validateHistory,
   operation,
+  evidenceRecheck,
 } from "../src/correction-history.js";
 const cli = process.env.DOCLING_TEST_CLI;
 const path = { kind: "paragraph", path: [1] };
 test("exact text projection rejects before conflict, unsupported rich marks and unrelated edits", () => {
+  assert.equal(
+    evidenceRecheck({ before: "prose", after: "text" }, false),
+    "not-applicable",
+  );
+  assert.equal(
+    evidenceRecheck({ before: "1 ms", after: "2 ms", undoOf: "old" }, false),
+    "undo-restoration",
+  );
   const snap = {
     revision: "a",
     nodes: [
@@ -195,7 +204,10 @@ test(
     const h = await loadHandoff(out);
     assert.equal(h.marker.schemaVersion, "1.1.0");
     assert.equal(h.history.changes.length, 1);
-    await assert.rejects(createReview(out,join(out,"another-review")), /review-baseline-required/);
+    await assert.rejects(
+      createReview(out, join(out, "another-review")),
+      /review-baseline-required/,
+    );
     assert.deepEqual(
       await readFile(join(out, "provenance.json")),
       baselineBytes,
@@ -344,4 +356,104 @@ test("resealed history still refuses gaps, invented values and false validation"
     await writeFile(join(out, "complete.json"), JSON.stringify(marker));
     await assert.rejects(loadHandoff(out), /history-/);
   }
+});
+
+async function reseal(out, history) {
+  const raw = JSON.stringify(history);
+  await writeFile(join(out, "correction-history.json"), raw);
+  const marker = JSON.parse(await readFile(join(out, "complete.json")));
+  marker.documentRevision = history.currentSnapshot.revision;
+  marker.files.find((f) => f.relativePath === "document.md").sha256 = digest(
+    await readFile(join(out, "document.md")),
+  );
+  marker.files.find(
+    (f) => f.relativePath === "correction-history.json",
+  ).sha256 = digest(raw);
+  await writeFile(join(out, "complete.json"), JSON.stringify(marker));
+}
+async function manualEdit(fixture, after) {
+  const { out, input, real } = fixture;
+  const current = await real("inspect", []),
+    file = join(out, "manual-after-correction.json");
+  await writeFile(
+    file,
+    JSON.stringify([operation(input.target, input.after, after)]),
+  );
+  await real("apply-batch", [
+    "--operations",
+    file,
+    "--if-revision",
+    current.revision,
+  ]);
+  return real("inspect", []);
+}
+function alignChange(change, snapshot, after) {
+  change.after = after;
+  change.afterRevision = snapshot.revision;
+  change.receipt.revision = snapshot.revision;
+  change.inverse = operation(change.target, after, change.before);
+}
+test("document alone is stale; document and history aligned without ledger are refused", async () => {
+  const fixture = await setup();
+  const { service, input, out } = fixture;
+  assert.equal((await service.submit(input)).status, "applied");
+  const snapshot = await manualEdit(fixture, "0.12 s amended");
+  await assert.rejects(loadHandoff(out), /file-digest/);
+  await assert.rejects(service.material(input.groupId), /file-digest/);
+  const h = JSON.parse(await readFile(join(out, "correction-history.json")));
+  alignChange(h.changes[0], snapshot, "0.12 s amended");
+  h.currentSnapshot = snapshot;
+  await reseal(out, h);
+  await assert.rejects(loadHandoff(out), /history-ledger-/);
+  await assert.rejects(service.material(input.groupId), /history-ledger-/);
+});
+test("history-only inserted revision and ledger-only value or missing submission are refused", async () => {
+  for (const mode of ["insert-history", "ledger-value", "missing-submission"]) {
+    const { service, input, out } = await setup();
+    await service.submit(input);
+    const history = JSON.parse(
+      await readFile(join(out, "correction-history.json")),
+    );
+    const ledgerFile = join(out, "correction-ledger.json");
+    const ledger = JSON.parse(await readFile(ledgerFile));
+    if (mode === "insert-history") {
+      const original = history.changes[0],
+        first = structuredClone(original),
+        last = structuredClone(original);
+      first.after = "0.12 s intermediate";
+      first.afterRevision = "b".repeat(64);
+      first.receipt.revision = first.afterRevision;
+      first.inverse = operation(first.target, first.after, first.before);
+      last.changeId = "invented-revision";
+      last.before = first.after;
+      last.beforeRevision = first.afterRevision;
+      last.inverse = operation(last.target, last.after, last.before);
+      history.changes = [first, last];
+      await reseal(out, history);
+    } else {
+      if (mode === "ledger-value") ledger.changes[0].after = "0.12 s amended";
+      else ledger.submissions = [];
+      await writeFile(ledgerFile, JSON.stringify(ledger));
+    }
+    await assert.rejects(loadHandoff(out), /history-ledger-/);
+  }
+});
+test("handoff independently rechecks protected tokens even when history and ledger agree", async () => {
+  const fixture = await setup(),
+    { service, input, out } = fixture;
+  await service.submit(input);
+  const snapshot = await manualEdit(fixture, "0.11 s");
+  const history = JSON.parse(
+    await readFile(join(out, "correction-history.json")),
+  );
+  alignChange(history.changes[0], snapshot, "0.11 s");
+  history.currentSnapshot = snapshot;
+  const ledgerFile = join(out, "correction-ledger.json"),
+    ledger = JSON.parse(await readFile(ledgerFile));
+  ledger.changes = structuredClone(history.changes);
+  ledger.revision = snapshot.revision;
+  ledger.submissions[0].afterRevision = snapshot.revision;
+  await writeFile(ledgerFile, JSON.stringify(ledger));
+  await reseal(out, history);
+  await assert.rejects(loadHandoff(out), /history-evidence-recheck/);
 });

@@ -178,11 +178,19 @@
               },
               "protectedTokens": {
                 "type": "boolean"
+              },
+              "evidenceRecheck": {
+                "enum": [
+                  "verified-protected-tokens",
+                  "not-applicable",
+                  "undo-restoration"
+                ]
               }
             },
             "required": [
               "readback",
-              "protectedTokens"
+              "protectedTokens",
+              "evidenceRecheck"
             ],
             "additionalProperties": false
           },
