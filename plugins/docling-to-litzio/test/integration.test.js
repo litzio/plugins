@@ -4,6 +4,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { loadHandoff } from "../src/provenance.js";
 import { generate } from "../src/generate.js";
 import { readBundle, makePlan, hash } from "../src/convert.js";
 const cli = process.env.DOCLING_TEST_CLI;
@@ -11,7 +12,7 @@ test(
   "isolated official CLI: three fixtures, readback, assets, conflicts and incomplete failure",
   { skip: !cli },
   async () => {
-    const root = await mkdtemp(join(tmpdir(), "docling-pr1-integration-"));
+    const root = await mkdtemp(join(tmpdir(), "docling-pr2-integration-"));
     console.log("Retained integration directory:", root);
     const fixtures = [
       [
@@ -57,12 +58,18 @@ test(
       await assert.rejects(generate(resolve(folder), out, cli), /EEXIST/);
       assert.equal(hash(saved), hash(await readFile(join(out, "document.md"))));
       const report = JSON.parse(
-        await readFile(join(out, "correspondence-draft.json"), "utf8"),
+        await readFile(join(out, "provenance.json"), "utf8"),
       );
       assert(
         report.items.every(
           (i) => i.disposition !== "mapped" || i.targets.length > 0,
         ),
+      );
+      const handoff = await loadHandoff(out);
+      assert.equal(handoff.coverage.sourceItems, report.items.length);
+      await assert.rejects(
+        loadHandoff(out, { requireReviewed: true }),
+        /review-unavailable/,
       );
       const snapshot = JSON.parse(
         await readFile(join(out, "snapshot.json"), "utf8"),

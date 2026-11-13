@@ -201,3 +201,53 @@ test("merged cells have full selectors and captions contribute to figure block",
       );
     }
 });
+
+test("readback checks list start, code language and fixed enumerator", () => {
+  const plan = {
+    request: {
+      authoring: {
+        inputs: [
+          {
+            key: "list",
+            blocks: [
+              { kind: "list", ordered: true, start: 7, items: ["7 ms"] },
+            ],
+          },
+          {
+            key: "code",
+            blocks: [{ kind: "code", language: "python", code: "x=1" }],
+          },
+          {
+            key: "eq",
+            blocks: [{ kind: "equation", latex: "x=1", enumerator: "A.1" }],
+          },
+        ],
+      },
+    },
+  };
+  const receipt = {
+    revision: "a",
+    inputs: plan.request.authoring.inputs.map((i, k) => ({
+      key: i.key,
+      targets: [{ path: [k + 1] }],
+    })),
+  };
+  const snapshot = {
+    revision: "a",
+    nodes: [
+      {
+        path: [1],
+        type: "list",
+        ordered: true,
+        start: 8,
+        items: [{ content: [{ text: "7 ms" }] }],
+      },
+      { path: [2], type: "code", code: "x=1", language: "javascript" },
+      { path: [3], type: "equation", latex: "x=1", enumerator: "A.2" },
+    ],
+  };
+  assert.deepEqual(
+    verifyNative(plan, receipt, snapshot).mismatches.map((m) => m.field),
+    ["list-start", "code-language", "enumerator"],
+  );
+});

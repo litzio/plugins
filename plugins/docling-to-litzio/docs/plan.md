@@ -58,21 +58,23 @@
 
 ### 출력과 저장 경로
 
-출력 디렉터리의 논리 구성(아래 이름은 **제안**, 아직 상호 계약으로 확정되지 않음):
+출력 디렉터리의 논리 구성(PR 2에서 생성·인계 v1로 확정, 검수 이력은 후속):
 
 | 파일 | 책임과 내용 |
 | --- | --- |
 | `document.md` | 공식 입력으로 만든 valid native 문서. 여기만 교정 정본. 검수 상태·Docling 표식을 본문에 끼우지 않음 |
 | `assets/…` | 공식 이미지 저장 경로가 게시한 그림 bytes. 원본 hash와 최종 상대 URI 연결 |
 | `provenance.json` | 버전 있는 원본↔문서 다대다 대응, 원본/생성기/문서 hash, 항목별 제외·표현 손실, 자산 대응 |
+| `losses.json` | version 1.0.0 손실 전부, generation/revision으로 대응 파일과 결합 |
+| `complete.json` | 마지막 wx 게시, 원본/문서/그림/대응/손실/snapshot/receipt digest. 생성 완결이며 검수 완료 아님 |
 | `review.json` | 검사 범위·문제 묶음·교정 전후/근거/되돌리기 참조·사람 판단·완료 revision. DoclingDocument 확장 아님 |
-| `generation.json` | 생성기 버전·규칙 버전·입력 hash·공식 저장 receipt와 완료/부분 실패 상태. 파일 묶음의 인계 표지 |
+| `generation.json` | 생성기 버전·규칙 버전·입력 hash·공식 저장 receipt와 완료/부분 실패 진단. 인계 권위는 별도 complete.json |
 
 초기 저장은 Host 처리 코드가 공개 작성 입력을 만들고 `litzio create document.md --input request.json --format json`의 공식 경로로 게시한다. 입력은 `{authoring:{title?,inputs:[{key,blocks:[]}]},images:[{key,mime,base64}]}`다. 파일은 artifact 밖에 준비한다. literal text를 Markdown처럼 다시 해석하지 않는다. 공개 SDK `authorDocument`는 사전 검증용이고 실제 저장 receipt가 아니다. 최종 대응은 create receipt의 `inputs[].targets`와 `revision`에 결합한다. `litzio check document.md --format json`으로 재검사한다. 임의 `.md` 조립·내부 Core import·직접 overwrite를 하지 않는다.
 
 화면 `saveDocument({name,authoring,folder?,open?})`는 새 문서만 배타적으로 저장하며 현재 props에는 images 입력이 없다. **그림이 있는 문서를 화면 saveDocument만으로 완성할 수 있다고 가정하지 않는다.** 1단계는 CLI 생성으로 그림까지 검증한다. 화면 저장에 images가 필요하면 범용 확장 필요로 분리한다. 응답 유실은 같은 이름 재생성으로 해결하지 않고 파일/receipt를 확인한다.
 
-부속 JSON은 플러그인 소유 파일이다. `.md`와 다중 파일 원자 저장을 현재 플랫폼이 보장한다고 주장하지 않는다. 새 출력 디렉터리에서 문서/자산 저장→check→최종 receipt 대응 결합→부속 파일 검증→`generation.json` 완료 표지 순으로 게시한다. 중간 실패는 `incomplete`로 남기고 문서를 삭제하거나 원본에서 재생성하지 않는다. 소비자는 표지와 각 hash가 모두 일치해야 검수 완료 인계로 읽는다. 검수 단계의 여러 파일 갱신은 아래 플랫폼 능력으로 안전하게 묶어야 한다.
+부속 JSON은 플러그인 소유 파일이다. `.md`와 다중 파일 원자 저장을 현재 플랫폼이 보장한다고 주장하지 않는다. 새 출력 디렉터리에서 문서/자산 저장→check→최종 receipt 대응 결합→부속 파일 검증→`complete.json` 완료 표지 순으로 게시한다. 중간 실패는 `incomplete`로 남기고 문서를 삭제하거나 원본에서 재생성하지 않는다. 소비자는 마지막 complete.json과 각 hash가 모두 일치해야 생성 완결 묶음으로 읽는다. 이것은 검수 완료가 아니며 현 v1의 unreviewed 문서는 검수 완료 입력으로 채택할 수 없다. 검수 단계의 여러 파일 갱신은 아래 플랫폼 능력으로 안전하게 묶어야 한다.
 
 ### 대응 저장 방식의 결정
 
@@ -83,7 +85,7 @@
 | 문서 옆 버전 있는 JSON + revision별 공식 target | **채택**. 문서 자체 유효성과 독립 사용 유지, 다대다·셀·제외·편집 불확실성 표현 가능 |
 | Docling JSON에 검수/수정 확장 또는 내부 문서 ZIP 정본 | 폐기. 불변 원본과 native 교정 정본을 다시 혼동하고 인계에 전용 reader를 강제 |
 
-`provenance.json` v1의 최소 필드 설계(최종 버전·갱신 계약은 PR 2; PR 1 출력은 correspondence-draft.json):
+`provenance.json` v1의 최소 필드 설계(생성 v1은 PR 2에서 확정; 편집 후 갱신은 후속. PR 1 초안을 대체):
 
 ```text
 schemaVersion, generationId, generatorVersion, rulesVersion
@@ -302,3 +304,14 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 | 회전/인쇄 쪽·셀별 쪽 증거 부족 | null/표 전체 영역으로 명시, 정밀 대응은 추측하지 않음 | PR 2 대응 계약과 PR 3 PDF 증거 |
 
 이 문서에서 확정한 것은 플러그인의 범위와 구현 순서다. 플랫폼 기능의 구현 완료나 실제 품질 수락을 선언하지 않는다.
+
+## PR 2 생성 대응·인계 확정 (설치/화면 제외)
+
+[계약 v1](../../../../contracts/docling-to-litzio/README.md)과 schema/를 정본으로 삼는다. 기존 소유자 확인 필요 표는 유지한다.
+
+- provenance.json/losses.json/complete.json은 schemaVersion 1.0.0. 원본 PDF/Docling/record bytes를 source/에 함께 보관해 이동 가능한 인계를 택했다. record의 옛 상대 경로는 바꾸지 않고 provenance의 출력 기준 상대 참조로 찾는다.
+- generation.json은 진단으로 유지하고, 모든 파일의 실제 검증 뒤 complete.json을 마지막 배타적 쓰기로 게시한다. 표지 없음/손상/다른 revision/digest는 거부한다. 새 generation은 새 디렉터리만 사용한다. 미완성 출력과 사람의 교정은 보존한다.
+- 기존 필드 설계의 item별 pageSize는 pages로 모았다. regions에는 원래 prov를 함께 보존한다. targets에 kind가 있는 block/list-item/cell selector와 실제 native text를 넣었다. 셀 sourceCell span과 출력 range를 분리해 현재 반복→미래 병합을 같은 v1로 표현한다.
+- 검수 입력 요구는 유지한다. 생성 완료·current 위치는 검수 완료가 아니다. 현 v1은 unreviewed만 게시하며 requireReviewed 소비는 거부한다. 회전/인쇄 label·셀별 페이지/주석 적용 범위는 null/table precision으로 드러내고, 다음 PDF 증거/검수 단계에서 생산 측이 보강한다.
+- PR #6 비차단 리뷰를 따라 source→실제 snapshot 독립 검사를 추가했다. 이미 oracle과 다른 source를 추가 손상시키는 변형 검사, 목록 start·code language·fixed enumerator 비교도 추가했다. 기존 oracle metric 귀속 정의는 유지하고 별도 source-audit로 생성 손상을 계수한다.
+- 문서/그림 묶음의 동시 편집 원자 snapshot, 편집 후 receipt 기반 대응 갱신, review.json 이력·검수 완료, 실제 플러그인 설치/화면은 여전히 후속이다. 스키마 const unreviewed를 넘는 검수 상태 계약은 해당 단계에서 버전 규칙을 정한다.

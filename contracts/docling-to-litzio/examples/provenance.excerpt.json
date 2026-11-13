@@ -1,0 +1,384 @@
+{
+  "schemaVersion": "1.0.0",
+  "generationId": "34a8b347-0b05-4aa6-a3f9-05e8a28fa834",
+  "generatorVersion": "0.2.0",
+  "rulesVersion": {
+    "validation": "1.0.0",
+    "order": "1.0.0",
+    "heading": "1.0.0",
+    "paragraph": "1.0.0",
+    "list": "1.0.0",
+    "table": "1.0.0",
+    "equation": "1.0.0",
+    "figure": "1.0.0",
+    "caption": "1.0.0",
+    "footnote": "1.0.0",
+    "code": "1.0.0",
+    "furniture": "1.0.0",
+    "fallback": "1.0.0",
+    "coordinates": "1.0.0",
+    "formulaHints": "1.0.0"
+  },
+  "reviewState": "unreviewed",
+  "diagnostics": [],
+  "source": {
+    "pdf": {
+      "relativePath": "source/source.pdf",
+      "sha256": "63cda884de96dfd0357843a534895f1beb7a10b24f3244398d930817a32b82ea"
+    },
+    "docling": {
+      "relativePath": "source/document.json",
+      "sha256": "85af7bbf425fa0a0119c1e7ad1488cc3fd0fa12483bb396d9672769c114eb83a"
+    },
+    "conversionRecord": {
+      "relativePath": "source/conversion-record.json",
+      "sha256": "182364e3b4a2f0ffca801b349f5b56fbe3fb49db068bf3250e66e9ea8fe18e8d"
+    },
+    "documentSchemaVersion": "1.10.0"
+  },
+  "document": {
+    "relativePath": "document.md",
+    "revision": "e3d371007872e148c8ac4c02d3f0665a19bb39dbb2f3c8ff8295cda43cb1f3dd",
+    "blocks": [
+      {
+        "path": [
+          2
+        ],
+        "kind": "paragraph",
+        "text": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements."
+      },
+      {
+        "path": [
+          26
+        ],
+        "kind": "table",
+        "text": null
+      }
+    ]
+  },
+  "pages": [
+    {
+      "pageNo": 1,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 2,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 3,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 4,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 5,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 6,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 7,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 8,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 9,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 10,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 11,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 12,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    },
+    {
+      "pageNo": 13,
+      "width": 612,
+      "height": 792,
+      "rotation": null,
+      "printedLabel": null,
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    }
+  ],
+  "items": [
+    {
+      "sourceId": "d7e216dc509116ed2a71a386ec28eccddeeaa3dcfc4c7e9f12c6ebf4fdfc852b",
+      "selfRef": "#/texts/2",
+      "label": "text",
+      "sourceText": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements.",
+      "originalText": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements.",
+      "reviewState": "unreviewed",
+      "regions": [
+        {
+          "pageNo": 1,
+          "bbox": [
+            54,
+            141.2822268,
+            538.3840353999999,
+            164.2822268
+          ],
+          "unit": "pt",
+          "origin": "TOPLEFT",
+          "original": {
+            "page_no": 1,
+            "bbox": {
+              "l": 54,
+              "t": 650.7177732,
+              "r": 538.3840353999999,
+              "b": 627.7177732,
+              "coord_origin": "BOTTOMLEFT"
+            },
+            "charspan": [
+              0,
+              194
+            ]
+          }
+        }
+      ],
+      "disposition": "mapped",
+      "targets": [
+        {
+          "path": [
+            2
+          ],
+          "documentRevision": "e3d371007872e148c8ac4c02d3f0665a19bb39dbb2f3c8ff8295cda43cb1f3dd",
+          "bindingState": "current",
+          "selector": {
+            "kind": "block"
+          },
+          "text": "This fictional laboratory specification is a conversion and review fixture. All names, rules, numerical limits and diagrams are invented. It is not a source of electrical or safety requirements."
+        }
+      ],
+      "cells": [],
+      "losses": []
+    },
+    {
+      "sourceId": "a5a4b07de7927b5b2cf6446aa18484f336b61664a7e417b3d277e741617d96f9",
+      "selfRef": "#/tables/2",
+      "label": "table",
+      "sourceText": null,
+      "originalText": null,
+      "reviewState": "unreviewed",
+      "regions": [
+        {
+          "pageNo": 4,
+          "bbox": [
+            52.66168975830078,
+            199.92620849609375,
+            558.7369384765625,
+            491.4291687011719
+          ],
+          "unit": "pt",
+          "origin": "TOPLEFT",
+          "original": {
+            "page_no": 4,
+            "bbox": {
+              "l": 52.66168975830078,
+              "t": 592.0737915039062,
+              "r": 558.7369384765625,
+              "b": 300.5708312988281,
+              "coord_origin": "BOTTOMLEFT"
+            },
+            "charspan": [
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "disposition": "mapped",
+      "targets": [
+        {
+          "path": [
+            26
+          ],
+          "documentRevision": "e3d371007872e148c8ac4c02d3f0665a19bb39dbb2f3c8ff8295cda43cb1f3dd",
+          "bindingState": "current",
+          "selector": {
+            "kind": "block"
+          },
+          "text": null
+        }
+      ],
+      "cells": [
+        {
+          "sourceId": "1601c22d439d69165286a2bf6d89f50c5addbf5872528a80938d75fef40c02b6",
+          "cellIndex": 0,
+          "sourceCell": {
+            "bbox": {
+              "l": 59,
+              "t": 228.04992208,
+              "r": 107.33114932,
+              "b": 236.24992207999992,
+              "coord_origin": "TOPLEFT"
+            },
+            "row_span": 2,
+            "col_span": 1,
+            "start_row_offset_idx": 0,
+            "end_row_offset_idx": 2,
+            "start_col_offset_idx": 0,
+            "end_col_offset_idx": 1,
+            "text": "Parameter",
+            "column_header": true,
+            "row_header": false,
+            "row_section": false,
+            "fillable": false
+          },
+          "regionPrecision": "table",
+          "targets": [
+            {
+              "path": [
+                26
+              ],
+              "documentRevision": "e3d371007872e148c8ac4c02d3f0665a19bb39dbb2f3c8ff8295cda43cb1f3dd",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 0,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "Parameter"
+            },
+            {
+              "path": [
+                26
+              ],
+              "documentRevision": "e3d371007872e148c8ac4c02d3f0665a19bb39dbb2f3c8ff8295cda43cb1f3dd",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 1,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "Parameter"
+            }
+          ]
+        }
+      ],
+      "losses": [
+        {
+          "sourceId": "a5a4b07de7927b5b2cf6446aa18484f336b61664a7e417b3d277e741617d96f9",
+          "reasonCode": "merged-cell-repeated",
+          "severity": "blocking",
+          "resolution": "unreviewed",
+          "originalValue": {
+            "cellIndex": 0,
+            "cell": {
+              "bbox": {
+                "l": 59,
+                "t": 228.04992208,
+                "r": 107.33114932,
+                "b": 236.24992207999992,
+                "coord_origin": "TOPLEFT"
+              },
+              "row_span": 2,
+              "col_span": 1,
+              "start_row_offset_idx": 0,
+              "end_row_offset_idx": 2,
+              "start_col_offset_idx": 0,
+              "end_col_offset_idx": 1,
+              "text": "Parameter",
+              "column_header": true,
+              "row_header": false,
+              "row_section": false,
+              "fillable": false
+            }
+          },
+          "targets": [
+            {
+              "path": [
+                26
+              ],
+              "documentRevision": "e3d371007872e148c8ac4c02d3f0665a19bb39dbb2f3c8ff8295cda43cb1f3dd",
+              "bindingState": "current",
+              "selector": {
+                "kind": "block"
+              },
+              "text": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": []
+}

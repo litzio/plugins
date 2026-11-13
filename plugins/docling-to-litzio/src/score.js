@@ -26,6 +26,14 @@ export function verifyNative(plan, receipt, snapshot) {
       continue;
     }
     check(input.key, "kind", b.kind, n.type);
+    if ("enumerator" in b)
+      check(input.key, "enumerator", b.enumerator, n.enumerator);
+    if (b.enumerated === false)
+      check(input.key, "not-enumerated", undefined, n.numbers?.[b.kind]);
+    if (b.kind === "code")
+      check(input.key, "code-language", b.language, n.language ?? "");
+    if (b.kind === "list" && b.ordered)
+      check(input.key, "list-start", b.start ?? 1, n.start ?? 1);
     if ("text" in b) check(input.key, "literal", b.text, n.text);
     if (b.kind === "heading") check(input.key, "level", b.level, n.level);
     if (b.kind === "equation") check(input.key, "latex", b.latex, n.latex);

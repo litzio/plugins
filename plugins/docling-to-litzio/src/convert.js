@@ -484,7 +484,7 @@ export function makePlan({ doc, record, source, bookmarkEvidence }) {
   return {
     headingReview,
     formulaReview,
-    generatorVersion: "0.1.0",
+    generatorVersion: "0.2.0",
     rulesVersion: RULES,
     source,
     request,

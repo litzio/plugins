@@ -1,3 +1,9 @@
+import { auditSourceNative } from "./source-audit.js";
+import {
+  buildProvenance,
+  validateEvidence,
+  publishHandoff,
+} from "./provenance.js";
 import { randomUUID } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
@@ -100,16 +106,36 @@ export async function generate(
       })),
     };
   });
-  await save("correspondence-draft.json", {
-    schemaVersion: "draft-pr1",
-    generationId: plan.generationId,
-    status: plan.provenanceStatus,
-    generatorVersion: plan.generatorVersion,
-    rulesVersion: plan.rulesVersion,
-    source: plan.source,
-    document: { relativePath: "document.md", revision: receipt.revision },
+  /* PR 1 draft is replaced by the validated v1 sidecar below. */
+  const provenance = buildProvenance(
+    plan,
     items,
-  });
+    snapshot,
+    receipt,
+    bundle.doc,
+  );
+  validateEvidence(
+    provenance,
+    bundle.doc,
+    bundle.record,
+    snapshot,
+    safeReceipt,
+  );
+  const sourceAudit = auditSourceNative(bundle.doc, provenance, snapshot);
+  await save("source-audit.json", sourceAudit);
+  if (sourceAudit.mismatches.length)
+    throw new Error("source-native-mismatch; no completion marker");
+  await mkdir(join(output, "source"));
+  for (const [from, to] of [
+    [bundle.record.source.file, "source.pdf"],
+    ["document.json", "document.json"],
+    ["conversion-record.json", "conversion-record.json"],
+  ])
+    await writeFile(
+      join(output, "source", to),
+      await readFile(resolve(bundleFolder, from)),
+      { flag: "wx" },
+    );
   if (oracleFile)
     await save(
       "score.json",
@@ -150,6 +176,9 @@ export async function generate(
     join(output, "generation.json"),
     JSON.stringify(result, null, 2) + "\n",
   );
+  if (integrity.mismatches.length)
+    throw new Error("generation-mismatch; no completion marker");
+  await publishHandoff(output, provenance);
   return result;
 }
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
