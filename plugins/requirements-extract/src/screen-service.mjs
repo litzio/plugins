@@ -45,14 +45,14 @@ export function screenService({root,launcher,cli:providedCli}) {
  function fresh(id) {
   const s=info(id),path=join(at(id),'ledger'),old=loadLedger(path);need(!old.diagnostics.length,'ledger-corrupt');
   const p=s.profile?json(cli.scoped(s.profile)):json(new URL('../profiles/default.json',import.meta.url));
-  const next=refresh(old.state,inputs(id,s),p);
-  if(next.inputDigest!==old.state.inputDigest||next.policyDigest!==old.state.policyDigest){saveLedger(path,next,old.head);invalidate(s,'input-or-policy-changed');save(id,s);}
+  const next=refresh(old.state,inputs(id,s),p);let current=old;
+  if(next.inputDigest!==old.state.inputDigest||next.policyDigest!==old.state.policyDigest){current=saveLedger(path,next,old.head);invalidate(s,'input-or-policy-changed');save(id,s);}
   if(s.links) {
    const lower=s.links.job.lower[0];need(cli.run('inspect',cli.scoped(lower.file),'--format','json').revision===lower.revision,'link-baseline-changed');
    const links=refreshLinks(s.links.job,s.upper.map(readUpper),s.links.job.lower,next.profile);
    if(links.inputDigest!==s.links.job.inputDigest||links.policyDigest!==s.links.job.policyDigest){s.links.job=links;s.confirmations={};save(id,s);}
   }
-  return {s,...loadLedger(path),path};
+  return {s,...current,path};
  }
  function plan(id,current) {
   const c=current??fresh(id);let set=proposal(c.state);
@@ -71,9 +71,10 @@ export function screenService({root,launcher,cli:providedCli}) {
   const value={jobId:id,upperCount:c.s.upper.length,stopped:c.s.stopped===true,document:basename(c.s.document),report:review,links:c.s.links?linkReport(c.s.links.job):null,linkRequirements:c.s.links?.job.lower[0].requirements??[],candidates:Object.values(c.state.corpus.candidates).map(c=>({candidateKey:c.candidateKey,sectionKey:c.sectionKey,sourceKeys:c.sourceKeys,text:c.text})),sections:c.state.corpus.sections.map(s=>({key:s.key,candidates:s.candidateKeys.length,checked:!!c.state.responses[s.key]})),upperRequirements:c.s.links?.job.upper.flatMap(set=>set.requirements.map(r=>({...r,isUpper:true})))??[],requirements,planDigest:p?.planDigest??null,inputDigest:c.state.inputDigest,confirmations,diagnostics};
   return {...value,review:reviewLists(c,value)};
  }
- function detail({jobId,candidateKey,requirementId},current) {
-  const c=current??fresh(jobId);let r,upperSet;
-  if(requirementId){r=proposal(c.state).requirements.find(r=>r.id===requirementId);if(c.s.links&&linkReport(c.s.links.job).readyForHumanReview)r=plan(jobId,c).set.requirements.find(r=>r.id===requirementId)??r;
+ function detail({jobId,candidateKey,requirementId},current,preparedPlan) {
+  const c=current??fresh(jobId);let r,upperSet,p=preparedPlan;
+  if(!p)try{p=plan(jobId,c);}catch{}
+  if(requirementId){r=(p?.set??proposal(c.state)).requirements.find(r=>r.id===requirementId);
    if(!r)for(const file of c.s.upper){const set=readUpper(file),found=set.requirements.find(r=>r.id===requirementId);if(found){r=found;upperSet=set;break;}}}
   const candidate=c.state.corpus.candidates[candidateKey];need(r||candidate,'missing-item');
   const sources=r?.sources??candidate.sourceKeys.map(k=>c.state.corpus.sources[k]);
@@ -81,7 +82,7 @@ export function screenService({root,launcher,cli:providedCli}) {
    const path=n?.path??(t.selector.kind==='cell'?[...t.path,t.selector.row,t.selector.column]:t.path);
    return [{path:cli.scoped(n?.file??c.s.document),target:{revision:n?.revision??source.trace.documentRevision,path},label:'입력 문서',source}];});
   const value={requirement:r??null,candidate:candidate??null,sources,views,linkReview:c.s.links&&r&&!upperSet?linkBatch(c.s.links.job,r.id):null,gaps:c.s.links?linkReport(c.s.links.job).gaps.filter(g=>g.id===r?.id):[]};
-  let planDigest=null;try{planDigest=plan(jobId,c).planDigest;}catch{}
+  const planDigest=p?.planDigest??null;
   return {...value,review:detailReview(value,{jobId,revision:reviewRevision(c),planDigest,inputDigest:c.state.inputDigest,policyDigest:c.state.policyDigest})};
  }
  async function action(action,payload) {
@@ -123,7 +124,7 @@ export function screenService({root,launcher,cli:providedCli}) {
    if(action==='confirm') {
     need(c.s.links,'upper-links-required');
     const p=plan(id,c);need(payload.planDigest===p.planDigest&&payload.inputDigest===p.inputDigest&&Array.isArray(payload.ids)&&payload.ids.length&&new Set(payload.ids).size===payload.ids.length,'stale-confirmation');
-    checkReviewed(payload,payload.ids.map(requirementId=>detail({jobId:id,requirementId},c).review));
+    checkReviewed(payload,payload.ids.map(requirementId=>detail({jobId:id,requirementId},c,p).review));
     const unresolved=report(c.state).problems.filter(p=>['hold','context-needed','oversized-section','unprocessed-section'].includes(p.code));need(!unresolved.length,'unresolved-review');
     const records={...c.s.confirmations};for(const id of payload.ids){const r=p.set.requirements.find(r=>r.id===id);need(r,'unknown-requirement');records[id]={digest:digest(r),inputDigest:p.inputDigest,planDigest:p.planDigest,time:new Date().toISOString(),actor:'human',reviewed:payload.reviewed[payload.ids.indexOf(id)]};}
     // Re-read source and policy after checks, before recording a human decision.

@@ -1,0 +1,13 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+import {proposal} from '../src/workflow.mjs';
+import {authoring} from '../src/document.mjs';
+import {canonical,sha256} from '../src/model.mjs';
+import {exportReqif} from '../src/reqif.mjs';
+const [before,stateFile,result]=process.argv.slice(2),old=await import(pathToFileURL(resolve(before,'src/workflow.mjs'))),state=JSON.parse(readFileSync(stateFile));
+const a=old.proposal(state),b=proposal(state);assert.equal(canonical(a),canonical(b));
+const doc=canonical(authoring(a)),xml=exportReqif([a],{testOnly:true,now:'2026-11-14T00:00:00.000Z'}).xml;
+assert.equal(doc,canonical(authoring(b)));assert.equal(xml,exportReqif([b],{testOnly:true,now:'2026-11-14T00:00:00.000Z'}).xml);
+writeFileSync(result,JSON.stringify({sameSeedState:true,proposalBytes:Buffer.byteLength(doc),reqifBytes:Buffer.byteLength(xml),proposalSha256:sha256(doc),reqifSha256:sha256(xml)}));console.log('PASS same-state proposal authoring and fixed-clock ReqIF bytes');

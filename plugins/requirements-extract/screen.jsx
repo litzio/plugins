@@ -59,8 +59,8 @@ export default function Screen({React,ui,invoke,pickPath,openDocument}) {
    <ui.Toolbar><label>상세 항목 번호<ui.Input aria-label="상세 항목 번호" type="number" min={1} max={detailList.count} value={index} onChange={e=>{clearDetail();setIndex(Number(e.target.value));setTargetKey('');}}/></label><ui.Button disabled={busy||!selected} onClick={()=>run(choose)}>항목 상세</ui.Button><span>{selected?.title}</span></ui.Toolbar>
    {selectedRow?.targets.length>1&&<ui.Toolbar>{selectedRow.targets.map(t=><ui.Button key={t.key} variant="outline" onClick={()=>{clearDetail();setTargetKey(t.key);}}>{t.title}</ui.Button>)}</ui.Toolbar>}
    {stale&&<ui.Notice tone="error">표시한 상세가 낡았습니다. 항목 상세를 다시 읽으세요.</ui.Notice>}
-   {detail&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,320px),1fr))',gap:'var(--space-4)',minWidth:0}}>
-    <section style={{minWidth:0}}><h3>{detail.requirement?.title??'후보'}</h3><p style={{whiteSpace:'pre-wrap'}}>{body(detail.requirement?.body??detail.candidate?.bodyBlocks)}</p>
+   {detail&&<div style={{display:'grid',gridTemplateColumns:width>=800?'minmax(0,1fr) minmax(0,1fr)':'minmax(0,1fr)',gap:'var(--space-4)',minWidth:0}}>
+    <section aria-label="상세 내용" tabIndex={0} style={{minWidth:0,maxHeight:width>=800?560:320,overflowY:'auto'}}><h3>{detail.requirement?.title??'후보'}</h3><p style={{whiteSpace:'pre-wrap'}}>{body(detail.requirement?.body??detail.candidate?.bodyBlocks)}</p>
      {detail.requirement&&<DetailTable title="판단" rows={Object.entries({종류:detail.requirement.kind,수준:detail.requirement.level,기원:detail.requirement.origin,강도:detail.requirement.strength,'검증 방법':detail.requirement.verification,이유:detail.requirement.rationale}).map(([항목,내용])=>({항목,내용}))}/>}
      {(v?.source?.quote??detail.sources[0]?.quote)!==body(detail.requirement?.body??detail.candidate?.bodyBlocks)&&<p style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{v?.source?.quote??detail.sources[0]?.quote}</p>}<DetailTable title="출처" columns={['출처','항목','내용']} rows={detail.sources.flatMap((s,i)=>[
       {출처:i+1,항목:'원문 쪽',내용:s.trace?.regions.map(r=>r.pageNo).join(', ')??'PDF 인계 없음'},

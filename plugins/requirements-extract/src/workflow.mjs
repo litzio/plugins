@@ -113,12 +113,15 @@ export function submit(job, response) {
   try {return submitChecked(job,response);}
   catch(e) {if(e.diagnostics) throw e;reject('selection-shape','제안 본문의 구조를 보존할 수 없습니다',[response?.sectionKey??'selection']);}
 }
-function submitChecked(job, response) {
+function submitChecked(job, response, validationOnly = false, schemaCheck = new Ajv({ allErrors:true, strict:true }).compile(selectionSchema(job.profile))) {
   if(job.protectionVersion!==protectionVersion) reject('protection-version','예전 값 보호 판단은 resume 후 다시 검토해야 합니다');
   if (job.blocked) reject('input-blocked', '입력이 무효화됐습니다');
-  const schemaCheck = new Ajv({ allErrors:true, strict:true }).compile(selectionSchema(job.profile));
   if (!schemaCheck(response)) reject('selection-schema', '선택 schema 위반: ' + new Ajv().errorsText(schemaCheck.errors));
-  const b = batch(job, response.sectionKey);
+  // Revalidation needs ticket/section metadata, not the assistant display's full
+  // source catalog or corpus-wide comparison hints for every single section.
+  const section = validationOnly ? job.corpus.sections.find(s=>s.key===response.sectionKey) : null;
+  if(validationOnly&&!section) reject('section','없는 구획');
+  const b = validationOnly ? {requestId:job.tickets[section.key],inputDigest:job.inputDigest,policyDigest:job.policyDigest,epoch:job.epoch,section} : batch(job, response.sectionKey);
   for (const k of ['requestId', 'inputDigest', 'policyDigest', 'epoch']) if (response[k] !== b[k]) reject('late-response', '입력·정책·구획 요청이 바뀐 늦은 응답');
   if (job.responses[response.sectionKey]) reject('late-response', '이미 처리한 구획입니다. reopen 뒤 새 요청을 읽으세요');
   const reason = value => { if (!value.trim()) reject('reason', '빈 이유는 허용하지 않습니다'); };
@@ -183,6 +186,7 @@ function submitChecked(job, response) {
       target = other.duplicateOf;
     }
   }
+  if (validationOnly) return;
   const next = structuredClone(job); next.responses[response.sectionKey] = response;
   for (const d of response.decisions.filter(d => d.decision === 'adopt')) for (let i=0;i<d.outputs.length;i++) {
     const key = identity(d,i); next.ids[key] ??= newRequirement({}).id;
@@ -243,7 +247,8 @@ export function proposal(job) {
   if(job.protectionVersion!==protectionVersion) reject('protection-version','이전 보호 정책의 제안은 다시 검토해야 합니다');
   if(job.blocked || job.corpus.sections.some(s=>!job.responses[s.key])) reject('incomplete-review','모든 구획(후보 없는 곳 포함)을 비서가 확인해야 새 제안 문서를 만들 수 있습니다');
   // Revalidate saved judgments before producing any document or completion marker.
-  for(const [sectionKey,response] of Object.entries(job.responses)) {const responses={...job.responses};delete responses[sectionKey];submit({...job,responses},response);}
+  const schemaCheck = new Ajv({ allErrors:true, strict:true }).compile(selectionSchema(job.profile));
+  for(const [sectionKey,response] of Object.entries(job.responses)) {const responses={...job.responses};delete responses[sectionKey];submitChecked({...job,responses},response,true,schemaCheck);}
   const requirements=[];
   for (const s of job.corpus.sections) for (const d of job.responses[s.key].decisions.filter(d=>d.decision==='adopt')) for (const [i,o] of d.outputs.entries()) {
     const selected=o.sourceCandidateKeys.map(k=>job.corpus.candidates[k]);
