@@ -61,7 +61,7 @@ coverage 검사는 실제 native 캡션·그림·미주·중첩 목록·수식�
 
 readInspection에는 동일 revision의 공식 compare snapshot도 필요하다. inspect만 주면 projection-unverified 오류로 내보내기를 막는다. sourceCli.read는 revision 일치와 읽기 경쟁 조건을 검사한다. 사용자 편집으로 confirmedDigest가 달라져도 자동 재확정하지 않는다.
 
-런타임은 xmlbuilder2 4.0.3이며 전이 버전/integrity는 package-lock에 고정했다. [전체 고지](docs/THIRD-PARTY-NOTICES.md)를 배포물에도 포함해야 한다. Host 진입점·설치 manifest·화면·출처 어댑터는 만들지 않는다.
+런타임은 xmlbuilder2 4.0.3이며 전이 버전/integrity는 package-lock에 고정했다. [전체 고지](docs/THIRD-PARTY-NOTICES.md)를 배포물에도 포함해야 한다. Host 진입점·설치 manifest·화면은 후속이다. 출처 어댑터와 후보 처리는 아래 현재 절을 따른다.
 
 ## 현재 rich body 지원 (PR 가)
 
@@ -81,3 +81,12 @@ PR #10 리뷰 수정: 문서별 로컬 레이블과 XHTML ID 전수 검사, 실�
 `src/provenance.mjs`는 확정된 인계 계약 v1을 파일로만 읽는다. 현재 문서를 공식 inspect로 재확인하고 complete/digest/revision/inventory/target/좌표/손실/그림을 독립 검사한다. 출처의 선택 trace JSON 열은 native 왕복과 ReqIF SourceReferences/SourcePages에 보존한다. 계약 v1은 unreviewed이므로 정식 내보내기와 requireReviewed는 항상 거부한다. 시험 출력은 명시적으로 표시한다.
 
 [출처 실행 방법·결과·한계](docs/provenance.md)를 따른다. 현재 단위 검사 84개(출처 25개). 실제 고정 LSR 생성물의 출처 4후보·다대다·복수 쪽·병합 경고·수식 차단, native trace 왕복과 시험 ReqIF 표준 검증을 별도 확인했다. PDF 글자 층은 표 전체 영역의 인용 4개만 확인했으며 셀별 쪽/수식 의미 동등성/검수 완료는 미확인이다. 새 Node 의존성 Ajv는 정확 버전/lock과 전이 고지를 포함하고 PDF 도구는 제품에 묶지 않는다.
+
+
+## 후보 수집과 비서 절차 (PR3)
+
+[파일 실행 방법·선택/보호 토큰·원장·검증 경계](docs/candidates.md)를 따른다. `src/candidate-cli.mjs`가 prepare/resume/batch/schema/tokens/submit/supplement/reopen/report/propose를 제공한다. 후보 없는 구획도 확인하고, 문제·판단 차이를 먼저 모으며, 가짜 출처·수치 변경·늦은 응답을 거부한다. 모든 변경에서 출처 파일과 현재 CLI 읽기를 다시 검증한다. 새 문서만 만들며 미검수 출처의 제안은 draft다.
+
+기본 업무 판단·어휘·단위·상한은 `profiles/default.json`, 비서 절차는 [번들 스킬](skills/requirements-candidates/SKILL.md)에 있다. Host 설치/스킬 자동 등록/공개 operation 실제 호출·화면은 아직 검증하지 않았다. 공개 작업을 꾸며 내지 않고 현재 단계는 명시적인 파일 CLI로 실행한다.
+
+현재 단위 검사 128개(후보/원장 44개), 실제 CLI 통합은 LSR 23구획·122후보의 결정적 가짜 응답 → 새 초안 1건 → 원문/출처 왕복 → 시험 ReqIF XSD·50 ID/참조·독립 파서 왕복을 확인했다. 실제 AI 품질·PDF 재대조·사람 확정·수백 쪽 성능은 미확인이다.
