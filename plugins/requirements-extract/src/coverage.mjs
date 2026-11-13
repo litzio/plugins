@@ -38,6 +38,12 @@ export function auditCoverage(input, snapshot, consumed, issue, bodyPaths = new 
       if (Array.isArray(c.children)) inline(c.children, owner, context);
     }
   }
+  function caption(value, owner) {
+    if (value === undefined) return;
+    if (Array.isArray(value)) { inline(value, owner, 'caption'); return; }
+    extras(value, ['path', 'text', 'content', 'editable'], owner, 'caption.node');
+    inline(value.content, owner, 'caption.node'); plainText(value, owner);
+  }
   function plainText(value, owner) {
     if (value.content?.every(c => c.kind === 'text') && value.content.map(c => c.text).join('') !== value.text) {
       issue(owner, 'projection-mismatch', '평문과 인라인 의미 값이 일치하지 않습니다');
@@ -84,9 +90,9 @@ export function auditCoverage(input, snapshot, consumed, issue, bodyPaths = new 
     else if (bodyFields[b.block]) {
       extras(b, [...common, ...bodyFields[b.block], 'editable'], b, b.block);
       if (b.block === 'list') list(Object.fromEntries(Object.entries(b).filter(([k]) => !common.includes(k))), b);
-      inline(b.caption, b, b.block);
+      caption(b.caption, b);
       if (b.block === 'figure') for (const n of input.nodes.filter(n => n.type === 'caption' && n.path[0] === b.path[0])) {
-        observed.add(key(n)); if (JSON.stringify(n.content) !== JSON.stringify(b.caption)) issue(n, 'projection-mismatch', '그림 캡션 내용이 일치하지 않습니다');
+        observed.add(key(n)); if (JSON.stringify(n.content) !== JSON.stringify(Array.isArray(b.caption) ? b.caption : b.caption?.content)) issue(n, 'projection-mismatch', '그림 캡션 내용이 일치하지 않습니다');
       }
     } else issue(b, 'unmapped-element', '의미 스냅샷에서 지원하지 않는 블록: ' + b.block);
   }

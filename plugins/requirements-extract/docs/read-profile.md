@@ -27,3 +27,5 @@
 ReqIF XSD는 ol@start를 허용하지 않는다. 시작 번호/스타일/구분자를 잃지 않도록 비기본 순서 목록은 ul 안에 원래 번호(3., c), IV. 등)를 명시한다. 4000 이상 로마 숫자는 진단한다. 자동 표시 번호를 원문 번호로 추정하지 않는다. 그림/수식 PNG·ReqIFZ·선택 집합 밖 참조·참고문헌 대상 매핑은 미완료다.
 
 검증: test/fixtures/rich는 새 빌드 CLI의 실제 inspect/compare 출력이다. validation/rich.mjs는 공식 생성→읽기→재작성→재읽기 digest, 지수 10³/단위 m³/s/아래첨자 H₂O, 캡션 조건, rich 셀, 중첩 목록, 미주를 검사한다. 공식 XSD·ID/참조·독립 reqif 왕복도 별도 실행한다. 설치·화면·ALM은 미확인이다. PR1의 과거 표와 실행 결과는 커밋 이력과 pr1-validation.md에 남긴다.
+
+그림의 compare caption은 `{path,text,content,editable}` 객체이며 table.caption 배열과 구별한다. 모델에는 그 content 배열을 보존한다. 자세한 실제 fixture·scope/ID/예외 경계 검증은 [PR #10 리뷰 수정](rich-review.md)에 있다. XHTML ID는 setId와 label로 문서별 구분하며 파일 전체 중복 검사를 통과해야 반환한다.

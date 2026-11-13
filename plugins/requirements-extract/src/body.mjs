@@ -7,11 +7,26 @@ export const bodyFields = {
   figure: ['label', 'contentKind', 'imageUrl', 'imageAlt', 'caption', 'mermaidSource', 'enumerator'],
 };
 export function fromSnapshot(b) {
+  const shape = message => { throw Object.assign(new Error(message), { code: 'projection-shape', location: b.path }); };
+  const inline = value => {
+    if (!Array.isArray(value)) shape('인라인 내용이 배열이 아닙니다');
+    for (const c of value) { if (!c || typeof c.kind !== 'string') shape('인라인 항목 모양이 올바르지 않습니다'); if (c.children !== undefined) inline(c.children); }
+  };
+  if (b.content !== undefined) inline(b.content);
+  const caption = b.caption && !Array.isArray(b.caption) ? b.caption.content : b.caption;
+  if (b.caption !== undefined) inline(caption);
+  if (b.block === 'table') {
+    if (!Array.isArray(b.rows)) shape('표 행이 배열이 아닙니다');
+    for (const row of b.rows) { if (!Array.isArray(row?.cells)) shape('표 셀이 배열이 아닙니다'); for (const c of row.cells) { if (!c || typeof c.text !== 'string') shape('셀 text가 문자열이 아닙니다'); if (c.content !== undefined) inline(c.content); } }
+  }
+  const list = value => { if (!Array.isArray(value?.items)) shape('목록 항목이 배열이 아닙니다'); for (const item of value.items) { if (!item) shape('목록 항목이 없습니다'); inline(item.content); if (item.list !== undefined) list(item.list); } };
+  if (b.block === 'list') list(b);
   const result = { kind: b.block };
   for (const key of bodyFields[b.block] ?? []) if (b[key] !== undefined) result[key] = structuredClone(b[key]);
   // Keep the original plain PR1 models stable; rich text always uses content.
   if (result.content?.every(c => c.kind === 'text')) delete result.content;
   if (b.block === 'table') result.rows = b.rows.map(row => row.cells.map(c => c.content?.some(v => v.kind !== 'text') ? structuredClone(c.content) : c.text));
+  if (b.caption !== undefined) result.caption = structuredClone(caption);
   return result;
 }
 export function validateBody(r, add, labels = new Set()) {

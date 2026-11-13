@@ -34,8 +34,9 @@ export function validate(sets, { formal = false } = {}) {
   const add = (s, r, code, message, severity = 'error') => diagnostics.push({ file: s.file ?? '', location: r?.location ?? [1], code, severity, message });
   const ids = new Map(), setIds = new Set();
   const ns = sets[0]?.exportNamespace;
-  const labels = new Set(sets.flatMap(s => s.requirements.flatMap(r => [r.id, ...r.body.filter(b => b.label).map(b => b.label)])));
+  const requirementIds = sets.flatMap(s => s.requirements.map(r => r.id));
   for (const s of sets) {
+    const labels = new Set([...requirementIds, ...s.requirements.flatMap(r => r.body.filter(b => b.label).map(b => b.label))]);
     diagnostics.push(...(s.diagnostics ?? []));
     if (s.profile !== 'requirements-extract/1') add(s, null, 'profile', '지원하지 않는 문서 프로파일');
     if (!uuid.test(s.setId?.slice(4)) || !s.setId?.startsWith('set-')) add(s, null, 'set-id', 'set-UUID v4가 필요합니다');

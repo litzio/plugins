@@ -8,8 +8,12 @@ export const registryFields = ['sourceKey', 'artifactDigest', 'nativeFile', 'nat
 export const sourceFields = ['sourceKey', 'elementRef', 'selector', 'quote', 'quoteDigest'];
 export const relationFields = ['role', 'targetId', 'rationale'];
 
-export function readInspection(input, file = '', snapshot) {
+function readProfile(input, file = '', snapshot) {
   if (!input.ok || !Array.isArray(input.nodes)) throw new Error('성공한 CLI inspect JSON이 필요합니다');
+  if (snapshot) {
+    if (!Array.isArray(snapshot.blocks)) throw new Error('snapshot blocks 배열이 필요합니다');
+    for (const block of snapshot.blocks) fromSnapshot(block); // shape preflight for every location
+  }
   const diagnostics = [];
   const issue = (node, code, message) => diagnostics.push({ file, location: node?.path ?? [1], code, severity: 'error', message });
   const top = input.nodes.filter(n => n.path.length === 1);
@@ -60,6 +64,7 @@ export function readInspection(input, file = '', snapshot) {
           take(); bodyPaths.add(b.path[0]);
           for (const node of input.nodes.filter(n => n.path[0] === b.path[0])) consume(node);
           r.body.push(fromSnapshot(rich));
+          if (['figure', 'equation'].includes(b.type)) issue(b, b.type === 'figure' ? 'attachment-required' : 'formula-render-required', '캡션/수식은 보존했으며 PNG·첨부 내보내기는 이후 PR입니다');
         }
         else if (b.type === 'paragraph') {
           take();
@@ -101,6 +106,12 @@ export function readInspection(input, file = '', snapshot) {
     if (contents.some(content => content?.some(c => c.kind !== 'text'))) issue(b, 'formatted-profile', '속성·표·제목의 인라인 서식은 PR1 프로파일에서 허용하지 않습니다');
   }
   return s;
+}
+export function readInspection(input, file = '', snapshot) {
+  try { return readProfile(input, file, snapshot); }
+  catch (error) {
+    return { file, title: input?.title ?? '', profile: 'requirements-extract/1', registry: [], requirements: [], diagnostics: [{ file, location: Array.isArray(error.location) ? error.location : [1], code: 'projection-shape', severity: 'error', message: '지원하지 않는 공개 읽기 출력 모양입니다. 내보내기를 차단합니다' }] };
+  }
 }
 
 export function authoring(s) {

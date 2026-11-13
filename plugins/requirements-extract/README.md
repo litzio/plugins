@@ -11,7 +11,7 @@ npm ci --ignore-scripts
 npm test
 ```
 
-54개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
+59개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
 
 실제 도구 검사는 별도다. 공개 Litzio checkout의 README에 따라 의존성을 준비하고 **새 임시 디렉터리**를 만든 뒤 다음 인자를 전달한다. 기존 자료 폴더를 지정하지 않는다. daemon을 시작하거나 연결하지 않으며 단건 프로세스는 종료한다. 임시 자료는 보존한다.
 
@@ -65,7 +65,7 @@ readInspection에는 동일 revision의 공식 compare snapshot도 필요하다.
 
 ## 현재 rich body 지원 (PR 가)
 
-기존 PR1의 차단 목록은 [현재 읽기 프로파일](docs/read-profile.md)이 대체한다. 위·아래첨자, 표 캡션/rich 셀, 중첩 목록, 미주, 인용·주의 상자·코드 블록·링크·취소선·줄바꿈을 보존한다. 수식 LaTeX와 그림/캡션도 모델에는 보존하지만 PNG/첨부가 필요한 내보내기는 차단한다. 참조는 집합 안 요구사항/표 label에 연결하며, 없는 대상과 참고문헌 인용은 차단한다. 현재 단위 검사 54개.
+기존 PR1의 차단 목록은 [현재 읽기 프로파일](docs/read-profile.md)이 대체한다. 위·아래첨자, 표 캡션/rich 셀, 중첩 목록, 미주, 인용·주의 상자·코드 블록·링크·취소선·줄바꿈을 보존한다. 수식 LaTeX와 그림/캡션도 모델에는 보존하지만 PNG/첨부가 필요한 내보내기는 차단한다. 참조는 집합 안 요구사항/표 label에 연결하며, 없는 대상과 참고문헌 인용은 차단한다. 현재 단위 검사 59개.
 
 새 CLI 검사는 별도 최신 master 임시 worktree에서 `pnpm install --frozen-lockfile`, `pnpm --filter @litzio/cli build` 후 실행한다. 인자는 빌드한 cli.mjs와 기존의 빈 임시 폴더다.
 
@@ -73,3 +73,5 @@ readInspection에는 동일 revision의 공식 compare snapshot도 필요하다.
 node validation/rich.mjs <built-cli.mjs> <scratch-folder>
 python validation/standard.py verify <schema-cache> <scratch-folder>/rich.reqif
 ```
+
+PR #10 리뷰 수정: 문서별 로컬 레이블과 XHTML ID 전수 검사, 실제 figure.caption 객체 보존, 예상 밖 읽기 모양의 위치 진단을 추가했다. [검증 기록](docs/rich-review.md)을 참고한다. 추가 실제 CLI 검사는 `node validation/rich_review.mjs <built-cli.mjs> <new-scratch-folder>`다.

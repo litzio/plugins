@@ -417,3 +417,9 @@ reader는 inspect/compare의 모든 블록·셀을 소비 기록과 대조하고
 | --- | --- | --- |
 | 미주 표기 방식 | 요구사항별 [label] 및 끝 주석 | XHTML 본문 정책 |
 | 비기본 목록 번호 | 번호를 글자로 보존 | 목록 XHTML 정책 |
+
+### PR #10 리뷰 수정
+
+[재현·수정·실제 fixture 검증](rich-review.md): 문서별 setId로 XHTML anchor를 구분하고, 로컬 표 참조와 전역 요구사항 참조 scope를 구별한다. 내보내기 직전에 IDENTIFIER/id/xml:id 전체 유일성을 검사한다. 미주/목록은 ID를 생성하지 않으며 그림/수식 내보내기는 계속 차단이다.
+
+공식 compare의 figure.caption 객체에서 content를 보존한다. 전체 읽기 구조를 선행 검사하며 예기치 않은 모양은 위치가 있는 projection-shape 오류로 반환한다. 실제 CLI 출력 fixture로 지원 확장 요소 전체를 검사했고 단위 59개와 XSD/독립 parser를 통과했다.
