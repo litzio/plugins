@@ -90,3 +90,7 @@ PR 3은 생성 묶음을 바꾸지 않고 별도 [검수 대상 v1](review-targe
 미주 source item은 create receipt의 실제 재배치된 footnote block target에 연결된다. 원래 번호/문자와 sourceText는 보존되지만 화면의 미주 번호는 첫 참조 순서로 달라진다. 표 전용 배치·문자 표지 손실은 유지한다. 원문 call site는 유일한 source marker와 작은 raised PDF item·인접 baseline·소유 범위로 확인한 경우만 연결하며 missing/ambiguous는 손실로 보존한다.
 
 중첩 목록 source item은 이를 포함하는 최상위 list-item target으로 연결된다(그 target의 text는 포함된 하위 목록까지의 평문). 이는 포함 범위 대응이며 하위 항목을 정밀하게 선택하는 locator가 아니다. 기존 opaque structure에 보존하는 listProjection.indexPath와 noteBinding/noteReferences는 생성 검사의 부가 근거다. 소비자는 이 값을 영속 identity나 새 selector로 사용하지 않는다. 정밀 부분 범위가 필수이면 현재 v1로 충족하지 못한다고 표시해야 한다. 기존 생성 v1 묶음도 reader로 다시 검증했다.
+
+## 교정본 v1.1
+
+교정 없는 v1.0.0은 위 규칙을 유지한다. 소유자 허가로 추가한 [교정본 인계 v1.1](corrections.md)은 생성 증거를 보존하고 현재 문서의 차이를 단일 교정 이력 파일로 검증한다. complete의 minor 버전이 1.1.0이면 위 생성 전용 읽기만으로 수락하지 않는다. reviewed 상태의 추가는 아니다.

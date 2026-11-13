@@ -1,3 +1,4 @@
+import { createCorrections } from "./corrections.js";
 import {
   readFile,
   writeFile,
@@ -216,7 +217,23 @@ export function createJobs(settings, { launch, claim = writeJob } = {}) {
       { report } = await readReview(output, join(output, "review"));
     return { s, handoff, report };
   };
+  const correction = async (method, { jobId, ...input }) => {
+    const s = await current(jobId);
+    need(s.state === "ready", "job-not-ready");
+    const { root, cli } = await paths();
+    const output = await confined(root, s.output);
+    const service = createCorrections(output, cli);
+    return service[method](method === "material" ? input.groupId : input);
+  };
   return {
+    material: (input) => correction("material", input),
+    correctionSubmit: (input) => correction("submit", input),
+    correctionUndo: (input) => correction("undo", input),
+    correctionReconcile: (input) => correction("reconcile", input),
+    reviewProgress: (input) => correction("progress", input),
+    reviewCheckpoint: (input) => correction("checkpoint", input),
+    reviewStop: (input) => correction("stop", input),
+    reviewResume: (input) => correction("resume", input),
     async health() {
       try {
         await paths();

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 export const schemas = Object.fromEntries(
   await Promise.all(
-    ["provenance", "losses", "complete", "review-targets", "review-complete", "pdf-evidence"].map(async (name) => [
+    ["provenance", "losses", "complete", "review-targets", "review-complete", "pdf-evidence", "correction-submission", "correction-history"].map(async (name) => [
       name,
       JSON.parse(
         await readFile(

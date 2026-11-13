@@ -53,3 +53,5 @@ series는 **같은 kind/reasonCode 또는 비교 범위 패턴 집합**인 묶�
 ## 검증·다음 소비자
 
 소비자는 schema 외에도 source/token/group ID 참조, revision, finding별 필수 근거, 1–3쪽 범위, 모든 mapped 수식의 필수 검수 후보·blocking 손실 근거 포함, 모든 finding/page의 group 포함, 대표/series 포함, 통계 재계산을 검사한다. 후보와 근거를 직접 읽은 뒤에만 검사 이력을 남길 수 있다. 대표 하나를 읽고 series 전체를 검수 완료로 바꾸지 않는다. 현재 schema는 unreviewed/candidate만 허용한다. 이후 비서 지침/화면은 이 파일을 읽되 reviewed/교정 이력은 별도 계약을 확정해야 한다.
+
+교정 뒤에도 이 세 검수 파일과 생성 revision은 불변이다. [교정본 v1.1](corrections.md)의 이력과 플러그인 진행 원장이 현재 revision의 변경/검사 상태를 설명한다. 기존 후보를 고쳤다고 원본 findings/status나 모든 page 범위를 검사 완료로 바꾸지 않는다.
