@@ -1,3 +1,4 @@
+import { inlineText } from "./rich-content.js";
 import { protectedTokens } from "./tokens.js";
 import { isDeepStrictEqual as equal } from "node:util";
 import { createHash } from "node:crypto";
@@ -27,7 +28,15 @@ export function valueAt(snapshot, target) {
   return target.kind === "equation" ? n.latex : n.text;
 }
 // Text-only edits: rich atoms/marks, structure, captions and heading inference are excluded.
-export function projectEdit(snapshot, target, before, after, revision) {
+export function projectEdit(
+  snapshot,
+  target,
+  before,
+  after,
+  revision,
+  afterContent,
+  beforeContent,
+) {
   const result = structuredClone(snapshot),
     n = targetNode(result, target);
   need(valueAt(result, target) === before, "before-conflict");
@@ -35,11 +44,27 @@ export function projectEdit(snapshot, target, before, after, revision) {
   else {
     need(
       !n.content ||
+        equal(n.content, beforeContent) ||
         equal(n.content, before ? [{ kind: "text", text: before }] : []),
       "rich-target-unsupported",
     );
+    if (afterContent !== undefined) {
+      need(
+        target.kind === "cell" &&
+          Array.isArray(afterContent) &&
+          afterContent.every(
+            (c) =>
+              ["text", "math"].includes(c.kind) &&
+              typeof (c.kind === "math" ? c.value : c.text) === "string",
+          ) &&
+          inlineText(afterContent) === after,
+        "invalid-cell-content",
+      );
+    }
     n.text = after;
-    if (n.content) n.content = after ? [{ kind: "text", text: after }] : [];
+    if (n.content)
+      n.content =
+        afterContent ?? (after ? [{ kind: "text", text: after }] : []);
   }
   result.revision = revision;
   return result;
@@ -51,7 +76,7 @@ export function validateHistory(
   generationId,
 ) {
   need(
-    history.schemaVersion === "1.1.0" &&
+    ["1.1.0", "1.2.0"].includes(history.schemaVersion) &&
       history.generationId === generationId &&
       history.baselineRevision === baseline.revision &&
       history.changes.length > 0,
@@ -69,11 +94,20 @@ export function validateHistory(
         c.receipt.command === "apply-batch" &&
         c.receipt.applied === 1 &&
         c.receipt.revision === c.afterRevision &&
-        c.evidence?.refs?.length &&
+        (c.evidence?.refs?.length ||
+          c.evidence?.kind === "human-source-region") &&
         c.validation?.readback === true,
       "history-chain",
     );
-    state = projectEdit(state, c.target, c.before, c.after, c.afterRevision);
+    state = projectEdit(
+      state,
+      c.target,
+      c.before,
+      c.after,
+      c.afterRevision,
+      c.afterContent,
+      c.beforeContent,
+    );
   }
   need(
     state.revision === currentRevision && equal(state, history.currentSnapshot),
@@ -81,12 +115,12 @@ export function validateHistory(
   );
   return state;
 }
-export function operation(target, before, after) {
+export function operation(target, before, after, content) {
   if (target.kind === "cell")
     return {
       command: "update-table-cell",
       path: [...target.path, target.row, target.column].join(","),
-      text: after,
+      ...(content === undefined ? { text: after } : { content }),
     };
   return {
     command:
@@ -106,7 +140,10 @@ export function verifyCorrectionEvidence(
   for (const c of history.changes) {
     need(
       c.sourceHash === provenance.source.pdf.sha256 &&
-        equal(c.inverse, operation(c.target, c.after, c.before)),
+        equal(
+          c.inverse,
+          operation(c.target, c.after, c.before, c.beforeContent),
+        ),
       "history-source",
     );
     const group = report.groups.find((g) => g.id === c.groupId);
@@ -117,6 +154,34 @@ export function verifyCorrectionEvidence(
         .flatMap((f) => f.sourceIds),
     );
     const items = provenance.items.filter((i) => sourceIds.has(i.sourceId));
+    if (c.evidence.kind === "human-source-region") {
+      need(
+        history.schemaVersion === "1.2.0" &&
+          c.actor === "human" &&
+          c.validation.protectedTokens === false &&
+          c.validation.evidenceRecheck === "human-source-region",
+        "history-human-evidence",
+      );
+      verifyVisualScope(c, group, report, evidence, items);
+      if (c.undoOf) {
+        const original = history.changes.find((x) => x.changeId === c.undoOf);
+        need(
+          original &&
+            original.afterRevision === c.beforeRevision &&
+            equal(original.target, c.target) &&
+            original.after === c.before &&
+            original.before === c.after &&
+            equal(original.beforeContent, c.afterContent),
+          "history-undo",
+        );
+      }
+      continue;
+    }
+    need(c.before.trim().length > 0, "history-empty-before-requires-human");
+    need(
+      c.beforeContent === undefined && c.afterContent === undefined,
+      "history-content-requires-human",
+    );
     const checks = items.flatMap((i) =>
       c.target.kind === "cell"
         ? i.cells
@@ -243,12 +308,17 @@ export function validateCorrectionLedger(history, ledger, reconciling = false) {
         ? row.status === "pending-reconcile"
         : row.afterRevision === c.afterRevision &&
             row.status ===
-              (c.validation.protectedTokens ? "applied" : "uncertain"),
+              (c.validation.protectedTokens ||
+              c.validation.evidenceRecheck === "human-source-region"
+                ? "applied"
+                : "uncertain"),
       "history-ledger-submission",
     );
   }
 }
 export function evidenceRecheck(change, tokenMatch) {
+  if (change.evidence?.kind === "human-source-region")
+    return "human-source-region";
   if (
     !protectedTokens(change.before).length &&
     !protectedTokens(change.after).length
@@ -256,4 +326,97 @@ export function evidenceRecheck(change, tokenMatch) {
     return "not-applicable";
   if (change.undoOf && !tokenMatch) return "undo-restoration";
   return tokenMatch ? "verified-protected-tokens" : "unverified";
+}
+
+export function verifyVisualScope(change, group, report, pdf, items = []) {
+  need(
+    change.actor === "human" &&
+      change.evidence?.kind === "human-source-region" &&
+      change.evidence.refs?.length === 0,
+    "human-evidence-required",
+  );
+  const mapped = items
+    .filter((i) =>
+      [...i.targets, ...i.cells.flatMap((c) => c.targets)].some(
+        (t) =>
+          equal(t.path, change.target.path) &&
+          (change.target.kind !== "cell" ||
+            (t.selector.kind === "cell" &&
+              t.selector.row === change.target.row &&
+              t.selector.column === change.target.column)),
+      ),
+    )
+    .map((i) => i.sourceId);
+  const findings = report.findings.filter(
+    (f) =>
+      group.findingIds.includes(f.id) &&
+      (f.sourceIds.some((id) => mapped.includes(id)) ||
+        f.targets.some(
+          (t) =>
+            equal(t.path, change.target.path) &&
+            (change.target.kind !== "cell" ||
+              (t.selector.kind === "cell" &&
+                t.selector.row === change.target.row &&
+                t.selector.column === change.target.column)),
+        )),
+  );
+  need(
+    items.some((i) =>
+      [...i.targets, ...i.cells.flatMap((c) => c.targets)].some(
+        (t) =>
+          equal(t.path, change.target.path) &&
+          (change.target.kind !== "cell" ||
+            (t.selector.kind === "cell" &&
+              t.selector.row === change.target.row &&
+              t.selector.column === change.target.column)),
+      ),
+    ) ||
+      findings.some(
+        (f) =>
+          f.targets.some(
+            (t) =>
+              equal(t.path, change.target.path) &&
+              (change.target.kind !== "cell" ||
+                (t.selector.kind === "cell" &&
+                  t.selector.row === change.target.row &&
+                  t.selector.column === change.target.column)),
+          ) ||
+          (f.sourceIds.some((id) =>
+            report.checks.some((c) => c.sourceId === id),
+          ) &&
+            change.target.kind !== "cell" &&
+            f.targets.some((t) => equal(t.path, change.target.path))),
+      ),
+    "visual-target-outside-group",
+  );
+  need(
+    change.evidence.scope?.length > 0 &&
+      change.evidence.scope.every((r) => {
+        const page = pdf.pages.find((p) => p.pageNo === r.pageNo),
+          b = r.bbox;
+        return (
+          page &&
+          Array.isArray(b) &&
+          b.length === 4 &&
+          b.every(Number.isFinite) &&
+          b[0] >= 0 &&
+          b[1] >= 0 &&
+          b[2] > b[0] &&
+          b[3] > b[1] &&
+          b[2] <= page.width &&
+          b[3] <= page.height &&
+          findings.some((f) =>
+            f.regions.some(
+              (x) =>
+                x.pageNo === r.pageNo &&
+                b[0] >= x.bbox[0] &&
+                b[1] >= x.bbox[1] &&
+                b[2] <= x.bbox[2] &&
+                b[3] <= x.bbox[3],
+            ),
+          )
+        );
+      }),
+    "visual-scope-outside-group",
+  );
 }

@@ -1,0 +1,317 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.2.0"
+    },
+    "generationId": {
+      "type": "string"
+    },
+    "documentRevision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "humanDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "ready": {
+          "const": true
+        },
+        "uncovered": {
+          "const": 0
+        },
+        "human": {
+          "const": 0
+        },
+        "blocking": {
+          "const": 0
+        },
+        "failures": {
+          "const": 0
+        },
+        "tokenDifferences": {
+          "const": 0
+        },
+        "expressionUnconfirmed": {
+          "const": 0
+        }
+      },
+      "required": [
+        "ready",
+        "uncovered",
+        "human",
+        "blocking",
+        "failures",
+        "tokenDifferences",
+        "expressionUnconfirmed"
+      ],
+      "additionalProperties": false
+    },
+    "lossConfirmations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lossId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetPath": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "changeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "actor": {
+            "const": "human"
+          },
+          "meaning": {
+            "const": "expression-semantic-preservation"
+          },
+          "comparison": {
+            "const": "source-and-current-side-by-side"
+          },
+          "decision": {
+            "enum": [
+              "meaning-preserved",
+              "meaning-changed",
+              "deferred"
+            ]
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "lossId",
+          "sourceId",
+          "reasonCode",
+          "groupId",
+          "revision",
+          "note",
+          "time",
+          "targetPath",
+          "pageNo",
+          "changeCount",
+          "actor",
+          "meaning",
+          "comparison",
+          "decision"
+        ]
+      }
+    },
+    "expressionReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lossId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 1
+          },
+          "classification": {
+            "const": "expression"
+          },
+          "originalValue": {},
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          },
+          "confirmation": {
+            "type": "object",
+            "properties": {
+              "lossId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reasonCode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "groupId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              },
+              "time": {
+                "type": "string",
+                "minLength": 1
+              },
+              "targetPath": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "pageNo": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "changeCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "actor": {
+                "const": "human"
+              },
+              "meaning": {
+                "const": "expression-semantic-preservation"
+              },
+              "comparison": {
+                "const": "source-and-current-side-by-side"
+              },
+              "decision": {
+                "enum": [
+                  "meaning-preserved",
+                  "meaning-changed",
+                  "deferred"
+                ]
+              },
+              "invalidatedAt": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "lossId",
+              "sourceId",
+              "reasonCode",
+              "groupId",
+              "revision",
+              "note",
+              "time",
+              "targetPath",
+              "pageNo",
+              "changeCount",
+              "actor",
+              "meaning",
+              "comparison",
+              "decision"
+            ]
+          },
+          "representation": {
+            "enum": [
+              "unlinked-annotation",
+              "numbered-endnote",
+              "native-expression"
+            ]
+          },
+          "sourceDefect": {
+            "enum": [
+              "duplicate-local-note-marker",
+              "none"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "lossId",
+          "sourceId",
+          "reasonCode",
+          "basis",
+          "classification",
+          "originalValue",
+          "targets",
+          "confirmation",
+          "representation",
+          "sourceDefect"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "documentRevision",
+    "time",
+    "scopes",
+    "humanDecisions",
+    "conditions",
+    "lossConfirmations",
+    "expressionReviews"
+  ],
+  "additionalProperties": false
+}

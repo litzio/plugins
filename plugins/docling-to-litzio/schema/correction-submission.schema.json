@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:litzio:docling-to-litzio:correction-submission:1.1",
+  "$id": "urn:litzio:docling-to-litzio:correction-submission:1.2",
   "type": "object",
   "properties": {
     "changeId": {
@@ -80,7 +80,7 @@
       "properties": {
         "refs": {
           "type": "array",
-          "minItems": 1,
+          "minItems": 0,
           "items": {
             "type": "string",
             "minLength": 1
@@ -111,6 +111,12 @@
             ],
             "additionalProperties": false
           }
+        },
+        "kind": {
+          "enum": [
+            "pdf-tokens",
+            "human-source-region"
+          ]
         }
       },
       "required": [
@@ -122,6 +128,12 @@
     "undoOf": {
       "type": "string",
       "minLength": 1
+    },
+    "afterContent": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
     }
   },
   "required": [
