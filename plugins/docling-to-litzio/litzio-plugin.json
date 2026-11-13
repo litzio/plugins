@@ -1168,14 +1168,11 @@
         "type": "string",
         "title": "작업 폴더",
         "description": "입력 묶음과 새 generation을 담을 Host의 절대 폴더. 열린 폴더 목록과 별개입니다."
-      },
-      "cliEntry": {
-        "type": "string",
-        "title": "공식 CLI 진입 파일",
-        "description": "Host가 context.cli를 제공하지 않을 때만 쓰는 공식 CLI 진입 파일."
       }
     },
-    "additionalProperties": false
+    "additionalProperties": {
+      "type": "string"
+    }
   },
   "skills": [
     {
