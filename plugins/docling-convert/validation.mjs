@@ -38,3 +38,60 @@ export function validateServer(server,api,capabilities,request){
  if(!stage?.presets?.some(p=>p.id===value))throw Error('서버 preset 미지원: '+key);
  }
 }
+
+// Preserve uint64 origin hashes as numeric JSON tokens, without Number rounding.
+export function parseServerJson(bytes){
+ return JSON.parse(bytes.toString('utf8'),(key,value,context)=>
+  typeof value==='number'&&Number.isInteger(value)&&!Number.isSafeInteger(value)
+   ? JSON.rawJSON(context.source):value);
+}
+export function validateTaskIdentity(response,task,required=false){
+ if((required||Object.hasOwn(response,'task_id'))&&response.task_id!==task)
+  throw Error('task_id mismatch or missing: expected '+task+', received '+String(response?.task_id));
+}
+export function validateDocument(doc,source){
+ const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
+ const require=(condition,message)=>{if(!condition)throw Error('Invalid DoclingDocument: '+message)};
+ require(object(doc)&&doc.schema_name==='DoclingDocument'&&doc.version==='1.10.0','schema_name/version');
+ require(typeof doc.name==='string'&&object(doc.origin),'name/origin');
+ require(doc.origin.filename===source.basename&&doc.origin.mimetype==='application/pdf','source filename/MIME mismatch');
+ const token=doc.origin.binary_hash?.rawJSON??doc.origin.binary_hash;
+ require((typeof token==='number'&&Number.isSafeInteger(token))||(typeof token==='string'&&/^\d+$/.test(token)),'origin binary_hash uint64');
+ require(BigInt(token)===BigInt('0x'+source.sha256.slice(-16)),'source digest mismatch');
+ const nodes=new Map();
+ function node(item,ref,root=false){
+  require(object(item)&&item.self_ref===ref&&Array.isArray(item.children)&&typeof item.label==='string',ref+' node');
+  require(root?item.parent===null:object(item.parent)&&typeof item.parent.$ref==='string',ref+' parent');
+  require(new Set(item.children.map(c=>c?.$ref)).size===item.children.length,'duplicate child');
+  nodes.set(ref,item);
+ }
+ node(doc.body,'#/body',true);node(doc.furniture,'#/furniture',true);
+ for(const key of ['groups','texts','pictures','tables','key_value_items','form_items']){
+  require(Array.isArray(doc[key]),key+' collection');
+  doc[key].forEach((item,i)=>{node(item,`#/${key}/${i}`);
+   if(key==='texts')require(typeof item.text==='string'&&typeof item.orig==='string','text/orig');
+   if(key==='tables')require(object(item.data)&&Array.isArray(item.data.table_cells)&&Number.isInteger(item.data.num_rows)&&item.data.num_rows>=0&&Number.isInteger(item.data.num_cols)&&item.data.num_cols>=0,'table data');
+  });
+ }
+ require(object(doc.pages),'pages object');
+ for(const [key,page]of Object.entries(doc.pages)){
+  require(object(page)&&String(page.page_no)===key&&Number.isInteger(page.page_no)&&page.page_no>0,'page_no');
+  require(object(page.size)&&['width','height'].every(k=>Number.isFinite(page.size[k])&&page.size[k]>0),'page size');
+ }
+ function references(x){if(!object(x)&&!Array.isArray(x))return;
+  if(Object.hasOwn(x,'$ref'))require(typeof x.$ref==='string'&&nodes.has(x.$ref),'unresolved reference');
+  for(const value of Object.values(x))references(value);
+ }
+ references(doc);
+ for(const [ref,item]of nodes){
+  for(const child of item.children)require(object(child)&&nodes.has(child.$ref)&&nodes.get(child.$ref).parent?.$ref===ref,'child/parent relation');
+  if(item.parent)require(nodes.get(item.parent.$ref)?.children.some(c=>c.$ref===ref),'parent/child relation');
+  if(!['#/body','#/furniture'].includes(ref)&&!ref.startsWith('#/groups/')){
+   require(Array.isArray(item.prov),'provenance');
+   for(const p of item.prov)require(object(p)&&Number.isInteger(p.page_no)&&object(doc.pages[p.page_no])&&object(p.bbox)&&['l','t','r','b'].every(k=>Number.isFinite(p.bbox[k]))&&['TOPLEFT','BOTTOMLEFT'].includes(p.bbox.coord_origin),'provenance page/bbox');
+  }
+ }
+ const visited=new Set(),active=new Set();
+ function visit(ref){require(!active.has(ref),'children cycle');if(visited.has(ref))return;active.add(ref);for(const c of nodes.get(ref).children)visit(c.$ref);active.delete(ref);visited.add(ref)}
+ visit('#/body');visit('#/furniture');require(visited.size===nodes.size,'unreachable node');
+}

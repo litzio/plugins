@@ -81,3 +81,43 @@ Host에서 읽을 수 있는 경로여야 한다. 이번 시험은 artifact를 �
 | ![옵션](docs/assets/options.png) | ![진행](docs/assets/progress.png) | ![완료](docs/assets/complete.png) |
 
 미확인: 수백 쪽/스캔/다른 언어/다른 서버 버전, 동시 외부 사용자, 비정상 종료 복구, 1800초 경계·파일시스템 fault injection, PNG 외 형식, 실제 Desktop 패키지·원격 Host·소유자 시각 승인. 원본 쪽 수는 호출자가 확인하므로 잘못된 쪽 수 입력을 독립 PDF parser로 검출하지 않는다. UUID 이름과 rename을 쓰며 악의적 동시 파일시스템 변경/전원 장애의 원자성까지 보장하지 않는다.
+
+## 독립 리뷰 보완 — 2026-11-13
+
+리뷰 대상 `691f5716`에서 가짜 HTTP 응답을 바꿔 `wrong-task`, `wrong-result-task`, `structure-missing` 검사를 먼저 실행했다. 세 검사 모두 예상 `failed` 대신 실제 `complete`를 받아 실패했다. 즉 기존 16개 검사는 성공 오판의 두 원인을 놓쳤다. 아래 항목은 이전 검증 기록을 대체하지 않는 추가 회귀 검증이다.
+
+- poll은 접수 task_id와 같은 ID를 반드시 반환해야 한다. result envelope에 task_id가 있으면 같은 ID여야 한다(공개 결과 envelope에 없는 ID를 새로 필수화하지 않는다). recover도 같은 대조를 수행한다.
+- 저장 전 지원 schema 이름/버전, name/origin, body/furniture, 필수 컬렉션 타입, self_ref, 부모↔자식 관계, 중복 자식/순환/미도달 항목, 모든 참조의 해석 가능성, 쪽 번호·양수 크기, provenance의 쪽·좌표 형식을 검사한다. 이것은 지원하는 최소 구조 검사이며 전체 Docling JSON Schema 검증이나 의미 동등성 검사가 아니다. 유효한 빈 body/컬렉션을 단순히 비었다는 이유로 거부하지 않는다.
+- origin.filename/MIME와 원본 digest를 대조한다. Docling 2.142.1은 PDF SHA-256을 만들고 docling-core 2.104.0은 origin.binary_hash에 하위 64비트를 보존한다. [파일 hash 구현](https://github.com/docling-project/docling/blob/v2.142.1/docling/utils/utils.py), [origin uint64 변환](https://github.com/docling-project/docling-core/blob/v2.104.0/docling_core/types/doc/common/origin.py)을 대조했다. JSON.parse reviver의 원문 숫자 토큰과 JSON.rawJSON을 사용해 64비트 정수를 반올림 없이 비교·저장한다. record.source의 전체 SHA-256은 실제 송신한 PDF bytes와 보존된 사본에 결합한다. 서버 응답의 digest는 64비트이므로 전체 SHA-256의 충돌 저항성이나 악의적인 서버에 대한 인증을 주장하지 않는다. 이미 반올림된 옛 결과의 숫자를 허용하도록 기준을 낮추지 않는다.
+- 구조/식별자 오류는 complete=false, state=failed로 후보 기록에 남고 완성 폴더로 공개되지 않는다. 부분 변환·이미지 불완전은 기존 계약대로 incomplete로 진단한다.
+- 비차단 메모 중 제출 전 로컬 입력 오류가 후속 파일을 막는 조건만 한 줄로 좁혔다(initial/preflight는 다음 파일을 막지 않음). Host 재시작 복원, 전체 queue 실패 조합, 1800초 경계·전원 장애·한글/공백 이름·Desktop/소유자 승인은 이번 수정에서 확장하지 않았다.
+
+### 완전 성공 조건별 거부 검사 대조
+
+각 `reject response condition NAME` 검사는 가짜 HTTP로 조건 하나를 어긴 응답을 넣고 complete 거부, `.docling-candidate-` 보존, record.complete가 true가 아님, 오류 진단 존재를 함께 확인한다.
+
+| 조건 | 위반 응답/검사 이름 | 판정 |
+| --- | --- | --- |
+| 접수 task ID 존재 | no-submit-id | uncertain, 공개 없음 |
+| poll ID 존재·접수 ID와 동일 | no-poll-id, review regression wrong-task | failed |
+| result ID가 제공되면 접수 ID와 동일 | review regression wrong-result-task | failed; ID가 없는 정상 envelope는 별도 성공 검사 |
+| task success | fake HTTP failure, partial task cannot be promoted by a success result | failed/incomplete |
+| JSON 결과 형식 | result-mime | failed |
+| result success | fake HTTP partial, result-status, result-status-missing | incomplete |
+| errors=[] | fake HTTP errors, errors-missing, errors-object, errors-null | incomplete |
+| document/json_content 존재 | document-missing, json-content-missing, review regression structure-missing | failed |
+| 입력 파일명/MIME/digest 일치 | filename, mime, digest, digest-rounded, origin-missing | failed |
+| schema 이름/지원 버전 | schema, version, schema-missing, version-missing | failed |
+| name/body/furniture와 자식 배열 | name, body, body-children, furniture | failed |
+| 필수 컬렉션 타입 | texts, tables, pictures, groups, key-values, forms | failed |
+| self_ref·참조·부모/자식·순환·중복 | reference, self-ref, parent, cycle, duplicate-child, unreachable | failed |
+| 내용/표/출처 정보 타입 | text-value, table-data, provenance-type, provenance-page, bbox | failed |
+| 모든 쪽과 정확한 page_no/크기 | fake HTTP missing, page-number, page-size, page-zero-size | failed |
+| 쪽·그림 이미지 존재, 오프라인 디코딩 | page-image, picture-image, remote-image, fake HTTP broken, decode real fixture | failed/incomplete |
+| recover의 task ID 일치 | recover refuses a status from another task | 읽기 오류, 다른 작업 상태를 반환하지 않음 |
+| 결과 묶음의 필수 기록 필드/bytes 결합 | published bundle fields are derived from the exact sent and received bytes | PDF bytes/크기/전체 SHA-256, 프로필 전체/ID/두 hash, 서버 버전/OpenAPI hash, actual_request/overrides, task/status, UTC/elapsed, result status/errors/body hash, document hash/schema/version/page_count 전부 실제 bytes와 대조 |
+| 완성 뒤 새 폴더로 공개 | success writes standalone bundle + 각 거부 검사 | 기존 결과 보존, 거부 후보는 공개 이름 없음 |
+
+실제 서버는 수정 후 **한 번만** 재확인했다. 기존 컨테이너 ID를 유지하고 pull/recreate 없이 시작, 권장 프로필 LSR 13쪽이 약 18초에 complete였다. schema/참조/파일명·uint64 digest 검사와 15개 PNG 디코딩을 통과했다. 원본 숫자 토큰은 결과 JSON에 보존된다. 직접 시작한 컨테이너는 종료해 Exited (0)을 확인했다. 이번 수정에서는 새 AI 호출·리치오 화면 실행을 하지 않았다. 이전 화면 검증과 구분한다.
+
+최종 단위/가짜 HTTP 검사는 **69/69 통과**했다(약 11초). 재현 검사 3개는 수정 전 모두 실패했고 수정 후 통과했다. 전체 조건별 표와 필수 기록 bytes 대조는 위와 같다.
