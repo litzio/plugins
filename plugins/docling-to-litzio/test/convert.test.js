@@ -27,7 +27,7 @@ test("fixed bundle inventory is exhaustive, rules versioned, source untouched", 
     ),
   );
   assert.equal(p.items.filter((i) => i.disposition === "omitted").length, 0);
-  assert(Object.values(RULES).every((v) => v === "1.0.0"));
+  assert(Object.values(RULES).every((v) => /^1\.\d+\.0$/.test(v)));
   assert.equal(JSON.stringify(original), before);
 });
 test("reject schema, broken references, cycles and parent mismatch", () => {

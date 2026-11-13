@@ -57,6 +57,18 @@ test(
       const saved = await readFile(join(out, "document.md"));
       await assert.rejects(generate(resolve(folder), out, cli), /EEXIST/);
       assert.equal(hash(saved), hash(await readFile(join(out, "document.md"))));
+      const correction = Buffer.concat([
+        saved,
+        Buffer.from("\nTemporary correction fixture\n"),
+      ]);
+      await writeFile(join(out, "document.md"), correction);
+      await assert.rejects(generate(resolve(folder), out, cli), /EEXIST/);
+      assert.equal(
+        hash(await readFile(join(out, "document.md"))),
+        hash(correction),
+      );
+      await assert.rejects(loadHandoff(out), /file-digest/);
+      await writeFile(join(out, "document.md"), saved); // Restore only this test-owned injection.
       const report = JSON.parse(
         await readFile(join(out, "provenance.json"), "utf8"),
       );
@@ -88,6 +100,19 @@ test(
         );
       }
       if (oracle) {
+        assert.deepEqual(
+          snapshot.nodes
+            .filter((n) => n.type === "equation")
+            .map((n) => n.enumerator),
+          ["1", "2", "3"],
+        );
+        assert.deepEqual(
+          snapshot.nodes
+            .filter((n) => n.type === "figure")
+            .map((n) => n.enumerator),
+          ["K.1", "K.2"],
+        );
+
         const scored = JSON.parse(
           await readFile(join(out, "score.json"), "utf8"),
         );

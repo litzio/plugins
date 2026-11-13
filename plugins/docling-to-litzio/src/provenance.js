@@ -1,3 +1,4 @@
+import { projectTable, sourceStructure } from "./table-rule.js";
 import { isDeepStrictEqual } from "node:util";
 import { auditSourceNative } from "./source-audit.js";
 import { readFile, lstat, writeFile } from "node:fs/promises";
@@ -38,6 +39,7 @@ export function textAt(snapshot, path, selector = { kind: "block" }) {
 }
 export function buildProvenance(plan, items, snapshot, receipt, doc) {
   const target = (t, selector) => ({
+    role: t.role ?? "content",
     path: t.path,
     documentRevision: t.documentRevision,
     bindingState: t.bindingState ?? "current",
@@ -59,6 +61,14 @@ export function buildProvenance(plan, items, snapshot, receipt, doc) {
     sourceId: i.sourceId,
     selfRef: i.selfRef,
     label: i.label ?? "",
+    structure:
+      i.structure ??
+      sourceStructure(
+        i.selfRef
+          .slice(2)
+          .split("/")
+          .reduce((o, k) => o[k], doc),
+      ),
     sourceText: i.sourceText,
     originalText: i.originalText,
     reviewState: "unreviewed",
@@ -103,6 +113,7 @@ export function buildProvenance(plan, items, snapshot, receipt, doc) {
     })),
     losses: i.losses.map((l) => ({
       sourceId: i.sourceId,
+      category: l.category,
       reasonCode: l.reasonCode,
       severity: l.severity,
       resolution: l.resolution,
@@ -275,6 +286,32 @@ export function validateEvidence(p, doc, record, snapshot, receipt) {
         i.label === (n.label ?? ""),
       "source-text",
     );
+    const rawStructure = sourceStructure(n);
+    for (const [key, value] of Object.entries(rawStructure))
+      need(equal(i.structure[key], value), "source-structure");
+    if (n.data?.table_cells && i.disposition === "mapped") {
+      const model = projectTable(n.data).model;
+      need(equal(i.structure.tableModel, model), "table-model");
+      const notes = i.targets.filter((t) => t.role === "explanation");
+      need(
+        model.note
+          ? notes.length === 1 && notes[0].text === model.note
+          : notes.length === 0,
+        "table-explanation",
+      );
+      if (model.note)
+        need(
+          i.targets.some(
+            (t) =>
+              t.role === "content" &&
+              t.path[0] + 1 === notes[0].path[0] &&
+              snapshot.nodes.some(
+                (n) => n.type === "table" && equal(n.path, t.path),
+              ),
+          ),
+          "table-explanation-order",
+        );
+    }
     const expected = regions(n.prov ?? [], doc).map((r) => ({
       pageNo: r.pageNo,
       bbox: r.bbox,

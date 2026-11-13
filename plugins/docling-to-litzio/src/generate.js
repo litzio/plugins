@@ -81,6 +81,7 @@ export async function generate(
       (bindings.get(l.key) ?? []).map((t) => ({
         ...t,
         selector: l.selector,
+        role: l.role ?? "content",
         bindingState: "current",
       })),
     );
@@ -100,9 +101,15 @@ export async function generate(
       losses: i.losses.map((l) => ({ ...l, outputTargets: targets })),
       cells: i.cells?.map((c) => ({
         ...c,
-        targets: targets.flatMap((t) =>
-          c.selectors.map((selector) => ({ ...t, selector })),
-        ),
+        targets: targets
+          .filter((t) =>
+            snapshot.nodes.some(
+              (n) =>
+                n.type === "table" &&
+                JSON.stringify(n.path) === JSON.stringify(t.path),
+            ),
+          )
+          .flatMap((t) => c.selectors.map((selector) => ({ ...t, selector }))),
       })),
     };
   });

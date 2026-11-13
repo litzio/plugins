@@ -32,7 +32,7 @@ export function auditSourceNative(doc, provenance, snapshot) {
       .reduce((o, k) => o[k], doc);
     if (item.disposition === "mapped" && typeof source.text === "string")
       for (const t of item.targets) {
-        if (t.bindingState !== "current") continue;
+        if (t.bindingState !== "current" || t.role === "explanation") continue;
         const n = node(t.path),
           actual = inspect(t);
         let expected = source.text;
@@ -42,7 +42,7 @@ export function auditSourceNative(doc, provenance, snapshot) {
           actual !== expected
         ) {
           const m =
-            /^\s*(?:Figure|Fig\.?|그림)\s+(\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
+            /^\s*(?:Figure|Fig\.?|그림)\s+((?:[A-Z]\.)?\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
               expected,
             );
           const number = snapshot.numbering?.targets?.find(
@@ -87,17 +87,88 @@ export function auditSourceNative(doc, provenance, snapshot) {
             kind: "source-code-language",
           });
       }
-    for (const c of item.cells)
-      for (const t of c.targets)
+    if (item.cells.length && item.disposition === "mapped") {
+      const grid = Array.from({ length: source.data.num_rows }, () =>
+        Array(source.data.num_cols).fill(null),
+      );
+      source.data.table_cells.forEach((c, i) => {
+        for (let r = c.start_row_offset_idx; r < c.end_row_offset_idx; r++)
+          for (
+            let col = c.start_col_offset_idx;
+            col < c.end_col_offset_idx;
+            col++
+          )
+            grid[r][col] = i;
+      });
+      let headerRows = 0;
+      for (const row of grid) {
         if (
-          t.bindingState === "current" &&
-          inspect(t) !== source.data.table_cells[c.cellIndex].text
+          row.every(
+            (i) => i !== null && source.data.table_cells[i].column_header,
+          )
         )
+          headerRows++;
+        else break;
+      }
+      if (headerRows === grid.length) headerRows = 1;
+      const collapse = Math.max(1, headerRows),
+        offset = collapse - 1;
+      const header = grid[0].map((_, col) => {
+        const indices = [];
+        for (let r = 0; r < collapse; r++) {
+          const index = grid[r][col];
+          if (index !== null && !indices.includes(index)) indices.push(index);
+        }
+        return indices.map((i) => source.data.table_cells[i].text).join(" – ");
+      });
+      for (const c of item.cells) {
+        const sc = source.data.table_cells[c.cellIndex],
+          expectedPositions = new Set();
+        for (let r = sc.start_row_offset_idx; r < sc.end_row_offset_idx; r++)
+          for (
+            let col = sc.start_col_offset_idx;
+            col < sc.end_col_offset_idx;
+            col++
+          )
+            expectedPositions.add(`${r < collapse ? 0 : r - offset}:${col}`);
+        const actualPositions = new Set();
+        for (const t of c.targets) {
+          if (t.bindingState !== "current") continue;
+          for (
+            let r = t.selector.row;
+            r < t.selector.row + t.selector.rowSpan;
+            r++
+          )
+            for (
+              let col = t.selector.column;
+              col < t.selector.column + t.selector.columnSpan;
+              col++
+            ) {
+              actualPositions.add(`${r}:${col}`);
+              const expected =
+                r === 0 && headerRows > 1 ? header[col] : sc.text;
+              const actual = inspect({
+                ...t,
+                selector: { ...t.selector, row: r, column: col },
+              });
+              if (actual !== expected)
+                mismatches.push({
+                  selfRef: item.selfRef,
+                  cellIndex: c.cellIndex,
+                  kind: "source-cell-text",
+                  expected,
+                  actual,
+                });
+            }
+        }
+        if (!same([...expectedPositions].sort(), [...actualPositions].sort()))
           mismatches.push({
             selfRef: item.selfRef,
             cellIndex: c.cellIndex,
-            kind: "source-cell-text",
+            kind: "source-cell-position",
           });
+      }
+    }
   }
   return { mismatches };
 }

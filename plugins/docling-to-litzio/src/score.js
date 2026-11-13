@@ -202,7 +202,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
         ["text", "paragraph"].includes(s?.label),
         n?.type === "paragraph",
       );
-    const literal =
+    let literal =
       listText ??
       n?.text ??
       n?.latex ??
@@ -210,6 +210,14 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
         (c) => c.type === "caption" && c.path[0] === n?.path[0],
       )?.text ??
       "";
+    if (s?.label === "caption" && n?.type === "figure" && n.enumerator) {
+      const m =
+        /^\s*(?:Figure|Fig\.?|그림)\s+((?:[A-Z]\.)?\d+(?:[.-]\d+)*)(?=[:.]?(?:\s|$))[:.]?\s*(.*)$/is.exec(
+          s.text,
+        );
+      if (m && n.enumerator === m[1])
+        literal = s.text.slice(0, s.text.length - m[2].length) + literal;
+    }
     if (e.text && e.text_scoring === "strict")
       measure(
         "literal",
@@ -239,6 +247,8 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
     if (e.table) {
       const t = e.table,
         d = s?.data;
+      const headerRows = i?.structure.tableModel?.headerRows ?? 0,
+        offset = Math.max(0, headerRows - 1);
       const cells = snapshot.nodes.filter(
         (v) => v.type === "cell" && v.path[0] === n?.path[0],
       );
@@ -249,6 +259,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
         cells.length === t.num_rows * t.num_cols &&
           Math.max(-1, ...cells.map((v) => v.path[1])) + 1 === t.num_rows &&
           Math.max(-1, ...cells.map((v) => v.path[2])) + 1 === t.num_cols,
+        headerRows > 1,
       );
       for (const c of t.cells) {
         const sc = d?.table_cells.find(
@@ -256,7 +267,12 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
               v.start_row_offset_idx === c.r0 &&
               v.start_col_offset_idx === c.c0,
           ),
-          nc = cells.find((v) => v.path[1] === c.r0 && v.path[2] === c.c0);
+          nc = cells.find(
+            (v) =>
+              v.path[1] ===
+                (c.r0 < Math.max(1, headerRows) ? 0 : c.r0 - offset) &&
+              v.path[2] === c.c0,
+          );
         measure(
           "cell_span",
           id,
@@ -269,6 +285,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
           id,
           clean(c.text) === clean(sc?.text),
           clean(c.text) === clean(nc?.text),
+          headerRows > 1 && c.r0 < headerRows,
         );
         if (/[0-9≤≥±%]/.test(c.text))
           measure(
@@ -276,6 +293,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
             id,
             clean(c.text) === clean(sc?.text),
             clean(c.text) === clean(nc?.text),
+            headerRows > 1 && c.r0 < headerRows,
           );
       }
     }
@@ -292,13 +310,7 @@ export function scoreOracle(gt, doc, plan, receipt, snapshot) {
         !!sourceOK,
         native(b).some(
           (n) =>
-            n.type === "figure" &&
-            snapshot.nodes.some(
-              (c) =>
-                c.type === "caption" &&
-                c.path[0] === n.path[0] &&
-                c.text?.includes(a?.sourceText ?? "\u0000"),
-            ),
+            n.type === "figure" && native(a).some((c) => equal(c.path, n.path)),
         ),
         true,
       );

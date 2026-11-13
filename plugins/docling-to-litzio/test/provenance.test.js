@@ -135,12 +135,21 @@ async function fixture() {
       { type: "cell", path: [2, 0, 1], text: cell.text },
     ],
   };
+  snapshot.nodes.push({
+    type: "paragraph",
+    path: [3],
+    text: plan.request.authoring.inputs[2].blocks[0].text,
+  });
   const items = plan.items.map((i) => ({
     ...i,
     targets: i.links.flatMap((l) =>
       receipt.inputs
         .find((r) => r.key === l.key)
-        .targets.map((t) => ({ ...t, selector: l.selector })),
+        .targets.map((t) => ({
+          ...t,
+          selector: l.selector,
+          role: l.role ?? "content",
+        })),
     ),
     cells: i.cells?.map((c) => ({
       ...c,
@@ -181,7 +190,7 @@ test("v1 schemas validate; coverage complete; generated is never reviewed", asyn
   const f = await fixture();
   assert.deepEqual((await loadHandoff(f.out)).coverage, {
     sourceItems: 4,
-    blocks: 2,
+    blocks: 3,
     cells: 1,
     assets: 0,
   });
@@ -338,4 +347,25 @@ test("semantic equality does not depend on JSON property order", async () => {
     ),
   );
   validateEvidence(p, f.doc, f.record, f.snapshot, f.receipt);
+});
+
+test("merged structure and document explanation are mandatory evidence", async () => {
+  const f = await fixture();
+  for (const change of [
+    (p) =>
+      p.items
+        .find((i) => i.cells.length)
+        .structure.tableModel.mergedRanges.pop(),
+    (p) => {
+      const i = p.items.find((i) => i.cells.length);
+      i.targets = i.targets.filter((t) => t.role !== "explanation");
+    },
+  ]) {
+    const p = structuredClone(f.p);
+    change(p);
+    assert.throws(
+      () => validateEvidence(p, f.doc, f.record, f.snapshot, f.receipt),
+      /table-(model|explanation)/,
+    );
+  }
 });

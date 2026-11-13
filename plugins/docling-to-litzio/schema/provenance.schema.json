@@ -348,6 +348,12 @@
             "string",
             "null"
           ]
+        },
+        "role": {
+          "enum": [
+            "content",
+            "explanation"
+          ]
         }
       },
       "required": [
@@ -355,7 +361,8 @@
         "documentRevision",
         "bindingState",
         "selector",
-        "text"
+        "text",
+        "role"
       ],
       "additionalProperties": false
     },
@@ -452,6 +459,13 @@
           "items": {
             "$ref": "#/$defs/target"
           }
+        },
+        "category": {
+          "enum": [
+            "native-format",
+            "authoring-input",
+            "plugin-pending"
+          ]
         }
       },
       "required": [
@@ -460,7 +474,8 @@
         "severity",
         "resolution",
         "originalValue",
-        "targets"
+        "targets",
+        "category"
       ],
       "additionalProperties": false
     },
@@ -525,6 +540,9 @@
           "items": {
             "$ref": "#/$defs/loss"
           }
+        },
+        "structure": {
+          "type": "object"
         }
       },
       "required": [
@@ -538,7 +556,8 @@
         "disposition",
         "targets",
         "cells",
-        "losses"
+        "losses",
+        "structure"
       ],
       "additionalProperties": false
     }

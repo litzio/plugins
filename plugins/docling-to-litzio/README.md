@@ -35,8 +35,8 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 | 순서·문단 | body/group children 순서; 다중 prov 보존 | 별개 문단/표를 페이지 경계에서 합치지 않음 |
 | 제목 | title H1, section_header level 그대로 | 1–6 밖은 문단+손실; 자동 계층 추정 없음 |
 | 목록 | 연속 같은 부모/종류를 최대 100항목으로 묶음; 숫자 start | 중첩 평탄화, 문자 marker 손실 |
-| 표 | 모든 셀 범위 검증, 직사각형 격자; 병합 글자 반복 | 병합·복합 header/row role·rich cell은 손실; 첫 행 header 강제 |
-| 수식 | LaTeX 그대로; 전부 위치가 있는 검수 목록 | 명시 번호 연결 없음; 의미 정확성 판정 없음 |
+| 표 | 모든 셀 범위 검증, 직사각형 격자; 병합 글자 반복 | 병합·복합 header/row role·rich cell은 손실; 첫 행 header 강제; 명시 복합 머리는 합치고 병합 표 아래 설명+검수 |
+| 수식 | LaTeX 그대로; 전부 위치가 있는 검수 목록 | 같은 요소의 명시 번호는 fixed로 연결; 의미 정확성 판정 없음 |
 | 그림 | data URI → 공식 images; byte digest 보존 | 누락은 pending+손실, 손상은 거부; child 텍스트도 보존 |
 | 캡션·번호 | 그림 caption, 표 caption 별도 문단; 유일한 Arabic 번호만 fixed | Roman/문자/모호한 번호는 literal+번호 없음; table caption 입력 필요 |
 | 각주·위첨자 | footnote 문단; 원문 글자 보존 | call site 추정 없음; inline 서식/링크는 손실 |
@@ -57,7 +57,7 @@ python src/audit_bookmarks.py SOURCE_PDF > bookmark-evidence.json
 - generation.json: incomplete → generated-draft/generation-mismatch. 초안 생성 성공은 reviewComplete가 아니다. 진단용이다. 인계 완결성의 권위는 마지막에 배타적으로 게시되는 complete.json이며 loadHandoff가 실제 bytes와 의미를 검증한다.
 - score.json: LSR 작성자 기대와 **실제 native snapshot** 비교. match/conversion/representation/generation을 분리한다. 기하 대응은 작은 면적 기준 50% 겹침이며 picture oracle은 picture collection에 제한한다. 한 출력에 여러 기대가 대응할 수 있으므로 mismatch 수를 실제 오류 개수/절대 점수로 읽지 않는다. 순서는 원본 children 순회와 출력 path를 별도로 비교한다. 기대 구조 없는 NIST에는 oracle 점수를 만들지 않는다.
 
-수식의 값싼 점검은 빈/해독 실패·괄호/환경 짝·intertext 안 일반 문장만 검사한다. LSR 세 번째 수식의 문장 혼입을 잡고 첫 두 수식은 의심하지 않는 검사를 고정했다. 통과는 수학적으로 맞다는 뜻이 아니다. 근 지수/합 범위가 그럴듯하게 틀린 경우, 알 수 없는 명령, 반복/영역 대비 길이, 번호 결합은 아직 검사하지 않는다. PDF 글자 층 숫자 대조는 새 parser/좌표 대응 범위를 피하려고 PR 3으로 미룬다. 모든 수식은 이유 유무와 관계없이 사람이 검토한다.
+수식의 값싼 점검은 빈/해독 실패·괄호/환경 짝·intertext 안 일반 문장만 검사한다. LSR 세 번째 수식의 문장 혼입을 잡고 첫 두 수식은 의심하지 않는 검사를 고정했다. 통과는 수학적으로 맞다는 뜻이 아니다. 근 지수/합 범위가 그럴듯하게 틀린 경우, 알 수 없는 명령, 반복/영역 대비 길이, 떨어진 번호의 결합은 추측하지 않는다. 같은 요소의 명시 번호는 fixed로 옮긴다. PDF 글자 층 숫자 대조는 새 parser/좌표 대응 범위를 피하려고 PR 3으로 미룬다. 모든 수식은 이유 유무와 관계없이 사람이 검토한다.
 
 ## 검사 구분
 
@@ -85,3 +85,6 @@ node src/read-handoff.js OUTPUT --require-reviewed
 loadHandoff는 marker→파일 bytes/digest→schema→원본/문서 revision→전수 inventory/블록/셀/영역→원본↔snapshot 보존→그림 원본 digest→marker 재확인을 한다. bindingState=current는 위치 유효성이지 검수 완료가 아니다. uncertain은 확정 위치로 사용하지 않는다. reader가 반환한 정보는 읽은 bytes에만 결합되며, 사용 직전 수정이 있었다면 다시 검사한다. 편집 후 대응 자동 갱신과 검수 완료 인계는 미구현이며 요구를 낮춰 우회하지 않는다.
 
 검사에는 schema/버전·digest/revision·누락/잘린 표지·미도달 target·좌표 bounds·셀 범위·불확실 대응·새 출력 강제·교정 보존·source가 이미 oracle과 다른 상태의 추가 손상을 포함한다. 검증기/검사는 플러그인 안에 있고 다른 플러그인은 파일 계약을 독립 구현한다. PR 2 실측은 [results-pr2.md](docs/results-pr2.md).
+
+
+2026-11-13 추가 조사: 병합/복합 머리·머리 열은 플랫폼 형식 유지 한계이며, 이 플러그인이 반복·머리 합치기·원문 범위·표 아래 설명·전수 검수 표시로 처리한다. 손실 category는 native-format/authoring-input/plugin-pending. 원본 inline/관계는 items.structure, rich cell은 sourceCell에 보존한다. [표본 전후](docs/table-examples.md)에 실제 생성 전후와 선택 이유가 있다. 이미 지원되는 수식/그림 fixed 번호를 사용해, LSR의 식 번호 3개와 K.1/K.2 미이관 손실은 제거했다. LaTeX는 그대로다.

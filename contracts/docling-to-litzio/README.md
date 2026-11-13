@@ -31,12 +31,12 @@ JSON Schema 2020-12의 기계 판독 정의는 설치 단위 안의 다음 파�
 - source.pdf/docling/conversionRecord는 각 `{relativePath,sha256}`. paths는 **출력 묶음 기준** POSIX 상대 경로이며 절대 경로·역슬래시·콜론·`.`/`..` segment·symlink/junction은 거부한다. 파일 자체와 상위 디렉터리는 일반 파일/디렉터리여야 한다.
 - sourceId = SHA-256(UTF-8 `doclingSha256:selfRef`), 셀은 `doclingSha256:selfRef:cellIndex`. selfRef는 이 원본 JSON 안에서만 식별된다. sourceId/path는 영속적인 문서 블록 ID가 아니다.
 - items는 body/furniture/group 및 모든 원본 collection의 고유 selfRef를 전수 포함한다. disposition은 mapped/container/furniture/omitted/unsupported. mapped는 targets가 있고 그 외는 없다. losses를 숨기지 않는다. PR 1의 그림 caption이 container로 표시되면서 target을 가진 경우는 v1에서 mapped로 일관되게 분류했다(내용/블록 변화 없음).
-- targets는 다대다 배열이다. `{path,documentRevision,bindingState,selector,text}`. path는 공식 receipt의 블록 경로이고 selector를 path 뒤에 붙이지 않는다. text는 해당 revision의 실제 inspect에서 읽은 literal 문자열이다. 표/목록 전체처럼 단일 문자열이 없으면 null이다.
-- selector는 `{kind:"block"}`, `{kind:"list-item",index}`, `{kind:"cell",row,column,rowSpan,columnSpan}`. 모든 인덱스는 0-based이며 span은 양의 정수다. 셀 원본 span은 `cells[].sourceCell`에 별도로 있다. 현재 병합 입력은 여러 1×1 targets로 반복되지만 향후 하나의 range target도 **동일 v1 형식**이다. 표현 지원 확장 시 targets와 losses만 달라지고 sourceId나 schemaVersion은 바뀌지 않는다. 실제 플랫폼의 새 snapshot 의미를 검증하는 코드는 보강해야 한다.
+- targets는 다대다 배열이다. `{path,documentRevision,bindingState,selector,text,role}`. path는 공식 receipt의 블록 경로이고 selector를 path 뒤에 붙이지 않는다. role은 content 또는 explanation이다. explanation은 표 원문에서 유도해 생성한 안내이며 원문 인용으로 쓰지 않는다. text는 해당 revision의 실제 inspect에서 읽은 literal 문자열이다. 표/목록 전체처럼 단일 문자열이 없으면 null이다.
+- selector는 `{kind:"block"}`, `{kind:"list-item",index}`, `{kind:"cell",row,column,rowSpan,columnSpan}`. 모든 인덱스는 0-based이며 span은 양의 정수다. 셀 원본 span은 `cells[].sourceCell`에 별도로 있다. 현재 병합 입력은 여러 1×1 targets로 반복되지만 하나의 range target도 **동일 v1 형식**으로 표현할 수 있다. 다만 실제 리치오는 병합을 지원하지 않고 형식을 바꾸지 않는 방침이므로, 그 지원을 기다리지 않고 반복/복합 머리 합치기를 플러그인이 처리한다. 플랫폼이 rich 작성 입력을 보강하면 targets와 losses만 달라지고 sourceId나 schemaVersion은 바뀌지 않는다. 실제 플랫폼의 새 snapshot 의미를 검증하는 코드는 보강해야 한다.
 - regions는 물리 PDF 1-based pageNo, TOPLEFT pt bbox `[left,top,right,bottom]`, 원래 provenance 전체(original)를 갖는다. pages에는 쪽 크기·단위·원점·rotation·printedLabel을 둔다. 입력에 회전/인쇄 쪽 근거가 없으면 null. 원래 좌표를 남기고 Docling 쪽 높이로 BOTTOMLEFT를 변환한다. 표 셀의 sourceCell.bbox는 원래 데이터다. 셀별 쪽 귀속이 없어 regionPrecision=`table`; 페이지를 추측하지 않으며 표의 모든 regions를 함께 쓴다.
 - 원문 sourceText/originalText와 셀 sourceCell.text는 원본 글자 그대로다. originalText는 Docling orig이지 PDF 글자 층을 독립 추출한 값이 아니다.
 - bindingState는 current/uncertain/deleted/no-source. 이번 생성기는 current만 낸다. current는 이 revision에서 위치를 확인했다는 뜻이며 **검수됨이라는 뜻이 아니다**. uncertain은 확정 위치로 사용할 수 없다. deleted/no-source는 미래의 이력 표현 값으로 예약하며 현 생성 결과에 사용하지 않는다. 편집 후 원래 경로에 자동 재연결하지 않는다.
-- 손실에는 sourceId/reasonCode/originalValue/severity(blocking/advisory)/resolution(unreviewed)/targets가 있다. diagnostics에는 변환 옵션 부재·쪽 이미지 부재·부분 변환이 남는다. 미검수·차단 손실은 후속 후보에 그대로 전파한다.
+- 손실 category는 native-format(형식이 담지 않음), authoring-input(공식 작성 입력 보강 예정), plugin-pending(미인식/아직 하지 않음)이다. 손실에는 sourceId/reasonCode/originalValue/severity(blocking/advisory)/resolution(unreviewed)/targets가 있다. diagnostics에는 변환 옵션 부재·쪽 이미지 부재·부분 변환이 남는다. 미검수·차단 손실은 후속 후보에 그대로 전파한다.
 
 ## 읽는 순서와 거부 조건
 
@@ -65,3 +65,15 @@ JSON Schema 2020-12의 기계 판독 정의는 설치 단위 안의 다음 파�
 소비자의 `full`은 block selector, `cell:r:c`는 해당 row/column을 포함하는 cell selector에 대응한다. `text:start:end`(code point)는 **원본 sourceText 기준으로 소비자가 선택**하는 범위이며 이 생성기가 native 문자열과 같은 오프셋이라고 보장하지 않는다. 새 문서를 편집하면 revision이 달라져 이 v1 연결을 재사용할 수 없다.
 
 작은 [LSR 발췌 예시](examples/provenance.excerpt.json)는 실제 고정 입력의 문단 1개와 병합 셀 1개를 보여 준다. JSON Schema 검사는 가능하지만 전체 inventory와 완료 표지가 없는 **설명용 부분 파일**이므로 정상 인계 디렉터리로 읽으면 안 된다.
+
+## 표와 번호의 확정 규칙 (2026-11-13 조사 반영)
+
+리치오의 #597/#778 단일 표 정책에 따라 병합 셀과 복합 머리·머리 열은 native 형식을 바꾸지 않는다. 병합 값은 반복하고, 명시된 완전한 연속 column_header 행만 ‘상위 머리 – 하위 머리’ 한 행으로 합친다. sourceCell의 원본 시작/끝/span과 structure.tableModel의 mergedRanges/headerContributions에 원래 구조를 남기며, 합친 header에 기여한 여러 원본 셀은 같은 출력 칸으로 연결된다.
+
+병합이 있었던 표는 모두 tableModel.reviewRequired=true다. mergedRanges에 role과 risks(열 묶음, 행/열 간 공유, 합계/범위/공통 조건 가능성)를 표시한다. 이는 의미 판정이 아니며 검수 우선순위 근거다. 값 반복은 공통 조건을 행별 독립 값으로 잘못 읽히게 할 수 있다. 빈 칸은 누락으로 오해하기 쉬워 택하지 않고, 표 바로 아래에 원문 R/C 범위와 반복/머리 합치기 설명을 plain 문단으로 둔다. 그 target role은 explanation이다. 모든 원본 셀과 원래 숫자·부호는 그대로 보존한다.
+
+원본 형식의 유지 한계: 병합/복합 머리·머리 열, 표 전용 주석 구역과 표지, 셀 안 줄바꿈·여러 문단·목록, 정적 목차 역할. 작성 입력 보강 예정: 표 caption/label, 미주 표시/정의 연결, 중첩 목록·문자 표지, inline 서식·위/아래첨자, rich cell, label/상호 참조 및 읽기 출력의 inline 구조. 전자는 형식 확장을 기다리지 않으며 후자는 근거를 structure/sourceCell/source JSON에 보존한 채 후속 필드를 채운다.
+
+이미 제공되는 equation/figure.enumerator는 플러그인이 사용한다. 같은 formula.orig에 유일한 괄호 접두 번호가 있고 LaTeX에 tag/label이 없을 때 fixed 번호로 옮긴다. LaTeX는 바꾸지 않는다. 단일 그림 caption의 Arabic 또는 K.1 같은 명시 절 번호는 prefix를 떼어 fixed 번호로 둔다. 중복·접미사·다중 caption·불명확한 번호는 literal/unbound+검수 손실이다. 번호 미인식은 authoring-input 한계가 아니라 plugin-pending이다.
+
+items.structure는 원본 parent/children/formatting/hyperlink/meta/captions/footnotes/references/codeLanguage를 그대로 보존하는 중간 표현이다. tableModel과 numberEvidence는 생성 규칙의 근거를 더한다. sourceCell은 raw 셀 전체이므로 추후 rich 작성 필드를 채울 때 plain 문자열로부터 구조를 복원할 필요가 없다.
