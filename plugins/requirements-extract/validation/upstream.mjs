@@ -12,7 +12,7 @@ cli.create(f.upper[0],'upper.md');cli.create(f.lower[0],'lower.md');
 const config=join(root,'links.json');writeFileSync(config,JSON.stringify({cliEntry:entry,job:join(root,'job'),upper:[{root,file:'upper.md'}],lower:[{root,file:'lower.md'}]}),{flag:'wx'});
 executeLinks(['prepare',config]);let current=loadLedger(join(root,'job')),job=current.state;
 assert.equal(executeLinks(['all',config,Object.keys(f.expected)[0]]).candidates.length,30);
-for(const [id,target] of Object.entries(f.expected))job=submitLinks(job,linkDecision(job,id,target));
+for(const [index,[id,target]] of Object.entries(f.expected).entries())job=submitLinks(job,linkDecision(job,id,target,index===0?{coverage:'partial',covered:'Startup behavior',remaining:'Shutdown behavior is not yet covered'}:{}));
 saveLedger(join(root,'job'),job,current.head);
 assert.equal(linkReport(job).readyForHumanReview,true);
 const result=executeLinks(['propose',config,'linked-proposal']);assert.equal(result.files.length,1);
@@ -21,5 +21,6 @@ for(const r of reread.requirements)assert.deepEqual(r.relations,p.sets[1].requir
 assert.throws(()=>executeLinks(['propose',config,'linked-proposal']));
 const sets=[cli.read('upper.md'),reread],first=exportReqif(sets,{testOnly:true}),second=exportReqif(sets,{testOnly:true,previous:first.manifest});
 writeFileSync(join(root,'upstream.reqif'),first.xml,{flag:'wx'});
+assert.ok(first.xml.includes('Shutdown behavior is not yet covered'));assert.ok(first.xml.includes('partial'));assert.equal(result.report.fulfillmentComplete,false);
 const ids=xml=>[...xml.matchAll(/IDENTIFIER="([^"]+)"/g)].map(m=>m[1]);assert.deepEqual(ids(first.xml),ids(second.xml));
 console.log(JSON.stringify({ok:true,upper:30,lower:60,relations:reread.requirements.reduce((n,r)=>n+r.relations.length,0),uniqueIdentifiers:ids(first.xml).length,reviewState:'draft-only',quality:'deterministic public-text synthetic judgments; no AI'}));

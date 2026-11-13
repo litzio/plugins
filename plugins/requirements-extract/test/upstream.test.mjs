@@ -69,3 +69,11 @@ test('level policy and unknown fields cannot be bypassed by a valid-looking rela
  f.upper[0].requirements[0].level='system';let j=prepareLinks(f.upper,f.lower,f.profile);assert.throws(()=>submitLinks(j,linkDecision(j,id,target)));
  j=f.job;const d=linkDecision(j,id,target);d.choices[0].confidence=1;assert.throws(()=>submitLinks(j,d));
 });
+test('obsolete targets are excluded or marked, rejected on selection and invalidate existing judgments',()=>{
+ const f=fixture(),[id,target]=Object.entries(f.expected)[0],decided=submitLinks(f.job,linkDecision(f.job,id,target)),upper=structuredClone(f.upper);upper[0].requirements[0].status='obsolete';
+ const j=refreshLinks(decided,upper,f.lower,f.profile);assert.equal(Object.keys(j.decisions).length,0);assert.throws(()=>submitLinks(j,linkDecision(j,id,target)),/ineligible-upper-status/);
+ assert.ok(!linkBatch(j,id).candidates.some(i=>i.requirement.id===target));assert.equal(linkBatch(j,id,{all:true}).candidates.find(i=>i.requirement.id===target).eligible,false);
+ assert.throws(()=>linkProposal(j));assert.equal(linkReport(j).readyForHumanReview,false);
+ const lower=structuredClone(f.lower);lower[0].requirements[0].relations=[{role:'refines',targetId:target,rationale:'existing'}];const existing=prepareLinks(upper,lower,f.profile);assert.ok(linkReport(existing).problems.some(p=>p.code==='upper-changed-ineligible-status'));assert.throws(()=>linkProposal(existing));
+ const bad=structuredClone(f.profile);bad.linking.eligibleUpperStatuses=['obsolete'];assert.throws(()=>prepareLinks(upper,lower,bad));
+});

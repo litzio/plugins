@@ -51,3 +51,11 @@ propose는 모든 하위를 판단하고 누락을 분류한 뒤 **같은 하위
 
 사람의 실제 관계 판정, AI 후보 정확도, 검색 시간 절반 목표, 화면, StrictDoc/Polarion, 실제 ALM 반복 가져오기는 미검증이다. Host·daemon·Docling 서버를 시작하지 않았으며 설치된 앱·사용자 자료는 변경하지 않았다.
 
+
+## 독립 리뷰 반영
+
+프로파일의 linking.eligibleUpperStatuses(기본 reviewed/confirmed)로 상위 자격을 정의한다. obsolete는 허용 목록 자체에서도 거부한다. 후보에서 제외하거나 all/전체 목록에서 eligible=false로 표시하고 제출 시 다시 검사한다. 기존 관계의 상위가 폐기되면 입력 digest 변경으로 판단을 무효화하고 upper-changed-ineligible-status로 재검토를 요구한다.
+
+관계 판단은 ReqIF RelationJudgments STRING 속성에 원래 sourceId/role/targetId/rationale와 추가 필드를 전부 보존한다. 부분 충족의 covered/remaining도 그 안에 유지한다. 대칭 relatesTo 하나로 합쳐져도 양쪽 assertion을 모두 보관한다. 관계 근거 변경도 manifest digest에 포함한다. [필드 전수 대응표](export-field-map.md)에 모델의 모든 필드를 보존/의도적 제외/차단으로 분류했다. 미분류 최상위 필드와 지원하지 않는 번호 style, 상한을 넘는 속성은 진단과 함께 차단한다.
+
+실제 30/60 CLI 검증을 부분 충족 하나를 포함해 다시 실행했다. 공식 새 문서 재읽기와 RelationJudgments의 남은 범위 보존, XSD·293개 ID/참조·독립 parser 왕복을 통과했다. 이 검사는 실제 의미 충족이나 사람 승인이 아니다.

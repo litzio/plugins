@@ -1,6 +1,6 @@
 import Ajv from 'ajv';
 import {randomUUID} from 'node:crypto';
-import {canonical,sha256,digest,validate,policy} from './model.mjs';
+import {canonical,sha256,digest,validate,policy,effectiveStatus} from './model.mjs';
 const need=(value,code)=>{if(!value) throw Object.assign(new Error(code),{diagnostics:[{file:'upstream-links',location:[],severity:'error',code,message:code}]});};
 const equal=(a,b)=>canonical(a)===canonical(b);
 const str={type:'string',minLength:1,pattern:'\\S'};
@@ -10,6 +10,7 @@ export const gapSchema=obj({inputDigest:str,policyDigest:str,gapKey:str,classifi
 const ajv=new Ajv({strict:true}),checkLink=ajv.compile(linkSchema),checkGap=ajv.compile(gapSchema);
 export function linkPolicy(profile) {
  const p=profile.linking;
+ need(Array.isArray(p?.eligibleUpperStatuses)&&p.eligibleUpperStatuses.length&&p.eligibleUpperStatuses.every(s=>['draft','reviewed','confirmed'].includes(s)),'upper-status-profile');
  need(p&&Number.isInteger(p.topK)&&p.topK>0&&p.topK<=50&&equal(p.roles,['refines','relatesTo'])&&Array.isArray(profile.allowedRefinesLevels)&&profile.allowedRefinesLevels.length&&profile.allowedRefinesLevels.every(pair=>pair.length===2&&pair.every(l=>policy.level.includes(l)))&&p.synonyms&&typeof p.synonyms==='object'&&!Array.isArray(p.synonyms)&&Object.entries(p.synonyms).every(([k,v])=>k.trim()&&Array.isArray(v)&&v.every(s=>typeof s==='string'&&s.trim())),'link-profile');
  need(Array.isArray(p.allowedUnlinked)&&p.allowedUnlinked.every(v=>['out-of-scope','independent'].includes(v))&&equal(p.gapClasses,['missing','out-of-scope','independent','hold']),'gap-profile');return p;
 }
@@ -39,8 +40,9 @@ function sourceRefs(item) {return new Set(item.requirement.sources.map(s=>[item.
 export function linkBatch(job,lowerId,{all=false}={}) {
  need(job.kind==='upstream-links/1','link-job');const lower=selected(job.lower).find(i=>i.requirement.id===lowerId);need(lower,'unknown-lower');
  const terms=words(lower.requirement,job.profile),refs=sourceRefs(lower);
- const ranking=selected(job.upper).map(upper=>{const shared=[...words(upper.requirement,job.profile)].filter(t=>terms.has(t)).sort(),sources=[...sourceRefs(upper)].filter(s=>refs.has(s));return {...upper,score:shared.length+sources.length*5,reasons:{sharedTerms:shared,sharedSourceReferences:sources}};}).sort((a,b)=>b.score-a.score||a.requirement.id.localeCompare(b.requirement.id));
- return {inputDigest:job.inputDigest,policyDigest:job.policyDigest,lower,candidates:all?ranking:ranking.slice(0,job.profile.linking.topK),entireUpperCatalog:ranking.map(i=>({id:i.requirement.id,title:i.requirement.title,setId:i.setId,revision:i.revision})),previous:job.decisions[lowerId]??null,judgment:'ranking is not a relation or proof of satisfaction'};
+ const eligible=r=>job.profile.linking.eligibleUpperStatuses.includes(effectiveStatus(r));
+ const ranking=selected(job.upper).map(upper=>{const shared=[...words(upper.requirement,job.profile)].filter(t=>terms.has(t)).sort(),sources=[...sourceRefs(upper)].filter(s=>refs.has(s));return {...upper,eligible:eligible(upper.requirement),effectiveStatus:effectiveStatus(upper.requirement),score:shared.length+sources.length*5,reasons:{sharedTerms:shared,sharedSourceReferences:sources}};}).sort((a,b)=>b.score-a.score||a.requirement.id.localeCompare(b.requirement.id));
+ return {inputDigest:job.inputDigest,policyDigest:job.policyDigest,lower,candidates:all?ranking:ranking.filter(i=>i.eligible).slice(0,job.profile.linking.topK),entireUpperCatalog:ranking.map(i=>({id:i.requirement.id,title:i.requirement.title,setId:i.setId,revision:i.revision,eligible:i.eligible,effectiveStatus:i.effectiveStatus})),previous:job.decisions[lowerId]??null,judgment:'ranking is not a relation or proof of satisfaction'};
 }
 function validateDecision(job,d) {
  need(checkLink(d),'link-schema');need(d.inputDigest===job.inputDigest&&d.policyDigest===job.policyDigest,'stale-link-decision');
@@ -48,7 +50,7 @@ function validateDecision(job,d) {
  const control=d.choices.filter(c=>['none','more','hold'].includes(c.choice));need(!control.length||d.choices.length===1,'mixed-link-control');
  for(const c of d.choices) {
    if(['refines','relatesTo'].includes(c.choice)) {
-    const upper=b.candidates.find(i=>i.requirement.id===c.upperId);need(upper&&!seen.has(c.upperId),'unknown-or-duplicate-upper');seen.add(c.upperId);
+    const upper=b.candidates.find(i=>i.requirement.id===c.upperId);need(upper&&!seen.has(c.upperId),'unknown-or-duplicate-upper');need(upper.eligible,'ineligible-upper-status');seen.add(c.upperId);
     if(c.choice==='refines')need(c.basis==='satisfies-obligation'&&['full','partial'].includes(c.coverage)&&job.profile.allowedRefinesLevels.some(pair=>equal(pair,[b.lower.requirement.level,upper.requirement.level])),'refines-basis');
     else need(c.coverage==='not-applicable','related-not-satisfaction');
     need(c.coverage==='partial'?c.remaining.trim().length>0:c.remaining==='','remaining-scope');
@@ -81,6 +83,7 @@ export function linkReport(job) {
    const refs=r.relations.filter(rel=>rel.role==='refines'&&upperIds.has(rel.targetId));
    if(!refs.length)add('lower-without-upper',r.id);
    for(const rel of refs)incoming.get(rel.targetId).push(r.id);
+   for(const rel of r.relations.filter(rel=>upperIds.has(rel.targetId))) {const target=selected(job.upper).find(i=>i.requirement.id===rel.targetId).requirement;if(!job.profile.linking.eligibleUpperStatuses.includes(effectiveStatus(target)))problems.push({code:'upper-changed-ineligible-status',id:r.id,targetId:target.id,status:effectiveStatus(target)});}
    const d=job.decisions[r.id];if(!d)problems.push({code:'unprocessed-lower',id:r.id});
    for(const c of d?.choices??[])if(c.coverage==='partial'||['more','hold'].includes(c.choice))problems.push({code:c.coverage==='partial'?'partial-fulfillment':c.choice,id:r.id,...c});
   }
