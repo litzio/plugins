@@ -29,11 +29,13 @@ function readProfile(input, file = '', snapshot) {
     const cells = input.nodes.filter(c => c.type === 'cell' && c.path[0] === n.path[0]);
     const rows = [];
     for (const c of cells) { consume(c); (rows[c.path[1]] ??= [])[c.path[2]] = c.text; }
-    const actualColumns = columns === sourceFields && JSON.stringify(rows[0]) === JSON.stringify([...columns, 'trace']) ? [...columns, 'trace'] : columns;
+    const extras=['trace','nativeLocation'].filter(k=>rows[0]?.includes(k));
+    const actualColumns = columns === sourceFields ? [...columns,...extras] : columns;
     if (JSON.stringify(rows[0]) !== JSON.stringify(actualColumns) || rows.some(r => r.length !== actualColumns.length)) issue(n, 'table-columns', '표 열 또는 모양이 프로파일과 다릅니다');
     return rows.slice(1).map(r => {
       const row = Object.fromEntries(actualColumns.map((k, i) => [k, r[i] ?? '']));
       if (Object.hasOwn(row, 'trace')) { try { row.trace = JSON.parse(row.trace); } catch { issue(n, 'source-trace', '출처 trace JSON이 올바르지 않습니다'); } }
+      if (Object.hasOwn(row, 'nativeLocation')) { try { row.nativeLocation=JSON.parse(row.nativeLocation);if(row.nativeLocation===null)delete row.nativeLocation; } catch { issue(n,'source-native-location','native 위치 JSON이 올바르지 않습니다'); } }
       return row;
     });
   }
@@ -123,8 +125,8 @@ export function readInspection(input, file = '', snapshot) {
 export function authoring(s) {
   const p = (keys, value) => ({ kind: 'table', rows: [['필드', '값'], ...keys.map(k => [k, value[k] ?? ''])] });
   const t = (columns, rows) => {
-    if (columns === sourceFields && rows.some(r => r.trace)) columns = [...columns, 'trace'];
-    return { kind: 'table', rows: [columns, ...rows.map(r => columns.map(k => k === 'trace' ? canonical(r.trace ?? null) : r[k] ?? ''))] };
+    if (columns === sourceFields) columns = [...columns,...['trace','nativeLocation'].filter(k=>rows.some(r=>r[k]))];
+    return { kind: 'table', rows: [columns, ...rows.map(r => columns.map(k => ['trace','nativeLocation'].includes(k) ? canonical(r[k] ?? null) : r[k] ?? ''))] };
   };
   const h = (level, text) => ({ kind: 'heading', level, text });
   return { title: s.title, inputs: [

@@ -29,3 +29,8 @@ ReqIF XSD는 ol@start를 허용하지 않는다. 시작 번호/스타일/구분�
 검증: test/fixtures/rich는 새 빌드 CLI의 실제 inspect/compare 출력이다. validation/rich.mjs는 공식 생성→읽기→재작성→재읽기 digest, 지수 10³/단위 m³/s/아래첨자 H₂O, 캡션 조건, rich 셀, 중첩 목록, 미주를 검사한다. 공식 XSD·ID/참조·독립 reqif 왕복도 별도 실행한다. 설치·화면·ALM은 미확인이다. PR1의 과거 표와 실행 결과는 커밋 이력과 pr1-validation.md에 남긴다.
 
 그림의 compare caption은 `{path,text,content,editable}` 객체이며 table.caption 배열과 구별한다. 모델에는 그 content 배열을 보존한다. 자세한 실제 fixture·scope/ID/예외 경계 검증은 [PR #10 리뷰 수정](rich-review.md)에 있다. XHTML ID는 setId와 label로 문서별 구분하며 파일 전체 중복 검사를 통과해야 반환한다.
+
+
+## PR5 native 출처 위치
+
+화면의 인계 없는 입력은 출처 표의 선택 JSON 열 `nativeLocation`에 `{sourceId,file,revision,path,precision,limitations,listItem?}`을 보존한다. file은 작업 폴더 기준 상대 경로, revision은 공식 읽기와 파일 바이트가 같은 SHA-256, path는 공식 NodePath다. listItem은 목록 블록 안의 0부터 시작하는 항목 번호이며 화면 이동은 그 블록을 강조한다. native 입력에는 PDF trace를 만들지 않는다. 선택 열은 기존 필수 5열 뒤에 trace, nativeLocation 순서이며 각 열은 실제 값이 있을 때만 작성한다. ReqIF의 SourceReferences JSON에는 nativeLocation도 통째로 남긴다.

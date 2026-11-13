@@ -60,6 +60,10 @@ export function validate(sets, { formal = false } = {}) {
       if (r.origin === 'derived' && !r.rationale?.trim()) add(s, r, 'rationale', '도출 근거가 필요합니다');
       if (!r.sources?.length) add(s, r, 'sources', '하나 이상의 출처가 필요합니다');
       for (const src of r.sources ?? []) {
+        if(src.nativeLocation) {
+          const n=src.nativeLocation,registration=s.registry.find(v=>v.sourceKey===src.sourceKey);
+          if(!/^[a-f0-9]{64}$/.test(n.sourceId)||!/^[a-f0-9]{64}$/.test(n.revision)||!Array.isArray(n.path)||!n.path.length||!n.path.every(Number.isInteger)||n.path[0]<1||n.path.some(v=>v<0)||typeof n.file!=='string'||/^(?:[a-z]:|[\\/])|(?:^|[\\/])\.\.(?:[\\/]|$)/i.test(n.file)||registration?.nativeDigest!=='sha256:'+n.revision||registration?.nativeFile!==n.file) add(s,r,'source-native-location','native 위치와 출처 등록/revision이 다릅니다');
+        }
         if (src.trace) {
           if (!['docling-to-litzio/1.0.0','docling-to-litzio/1.1.0'].includes(src.trace.contract) || src.trace.reviewState !== 'unreviewed' || src.trace.eligibleConfirmed !== false) add(s, r, 'source-trace', '알 수 없거나 승격된 v1 출처 trace를 거부합니다');
           if (!Array.isArray(src.trace.targets) || !Array.isArray(src.trace.regions) || !Array.isArray(src.trace.pages) || !/^[a-f0-9]{64}$/.test(src.trace.sourceId) || !/^[a-f0-9]{64}$/.test(src.trace.documentRevision) || !['current', 'uncertain'].includes(src.trace.bindingState)) add(s, r, 'source-trace', '출처 trace의 위치/식별 구조가 올바르지 않습니다');

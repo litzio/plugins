@@ -1,0 +1,334 @@
+{
+  "id": "local.requirements-extract",
+  "name": "요구사항 도출",
+  "description": "후보 검토, 상위 연결, 사람 확정과 ReqIF",
+  "icon": "FileText",
+  "entry": "host.mjs",
+  "screen": "screen.jsx",
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "workspaceDirectory": {
+        "type": "string",
+        "minLength": 1,
+        "title": "작업 폴더"
+      }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "skills": [
+    {
+      "id": "candidates",
+      "directory": "skills/requirements-candidates"
+    }
+  ],
+  "healthCheck": "health",
+  "operations": [
+    {
+      "id": "health",
+      "version": 1,
+      "scope": "host",
+      "effect": "read",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "start",
+      "version": 1,
+      "scope": "host",
+      "effect": "write",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[a-f0-9-]{36}$"
+          },
+          "action": {
+            "enum": [
+              "prepare",
+              "submit",
+              "reopen",
+              "links",
+              "link-submit",
+              "gap",
+              "task",
+              "confirm",
+              "save",
+              "export",
+              "stop",
+              "resume",
+              "unlinked"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "requestId",
+          "action",
+          "payload"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9-]{36}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "not_found"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {},
+          "requestHash": {
+            "type": "string",
+            "minLength": 1
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "inspect",
+      "version": 1,
+      "scope": "host",
+      "effect": "write",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^[a-f0-9-]{36}$"
+          },
+          "method": {
+            "enum": [
+              "summary",
+              "detail",
+              "batch",
+              "schema",
+              "linkBatch",
+              "profiles"
+            ]
+          },
+          "payload": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "requestId",
+          "method",
+          "payload"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9-]{36}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "not_found"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {},
+          "requestHash": {
+            "type": "string",
+            "minLength": 1
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "job",
+      "version": 1,
+      "scope": "host",
+      "effect": "read",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9-]{36}$"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f0-9-]{36}$"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "not_found"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {},
+          "requestHash": {
+            "type": "string",
+            "minLength": 1
+          },
+          "diagnostics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          },
+          "request": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "jobs",
+      "version": 1,
+      "scope": "host",
+      "effect": "read",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "jobs"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

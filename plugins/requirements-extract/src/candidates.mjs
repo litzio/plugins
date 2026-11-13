@@ -6,7 +6,7 @@ export const keyOf = value => sha256(canonical(value)).slice(7);
 export function collectCandidates(inputs, profile) {
   if (!(profile.limits.candidates > 0 && profile.limits.characters > 0)) throw new Error('프로파일 구획 상한이 필요합니다');
   const sources = {}, units = [], sections = [];
-  const intern = source => { const key = keyOf({ sourceKey: source.sourceKey, sourceId: source.trace.sourceId, selector: source.selector, quoteDigest: source.quoteDigest }); sources[key] = source; return key; };
+  const intern = source => { const key = keyOf({ sourceKey: source.sourceKey, sourceId: source.trace?.sourceId??source.nativeLocation?.sourceId, selector: source.selector, quoteDigest: source.quoteDigest }); sources[key] = source; return key; };
   for (const input of inputs) {
     const { bundle, key: documentKey } = input, p = bundle.provenance, nodes = bundle.snapshot.nodes;
     const blockFor = n => input.blocks?.find(b => b.path[0] === n.path[0]) ?? null;
@@ -21,6 +21,7 @@ export function collectCandidates(inputs, profile) {
       push(); group = [];
     };
     function resolveAt(node, selector) {
+      if(input.nativeResolver) return input.nativeResolver(node,selector).map(intern);
       const found = [];
       for (const item of p.items) {
         if (selector.kind === 'cell') {
@@ -129,5 +130,5 @@ export function collectCandidates(inputs, profile) {
   return { sections, candidates, sources, units, comparisons };
 }
 export function candidateKey(unit, sources, profile) {
-  return keyOf({ ruleVersion: profile.ruleVersion, sources: unit.sourceKeys.map(key => { const s = sources[key]; return { artifact: s.trace.sourceId, elementRef: s.elementRef, selector: s.selector, quoteDigest: s.quoteDigest }; }).sort((a, b) => canonical(a).localeCompare(canonical(b))), ...(unit.sourceKeys.length ? {} : { provisionalLocator: unit.key }), kind: unit.kind });
+  return keyOf({ ruleVersion: profile.ruleVersion, sources: unit.sourceKeys.map(key => { const s = sources[key]; return { artifact: s.trace?.sourceId??s.nativeLocation?.sourceId, elementRef: s.elementRef, selector: s.selector, quoteDigest: s.quoteDigest }; }).sort((a, b) => canonical(a).localeCompare(canonical(b))), ...(unit.sourceKeys.length ? {} : { provisionalLocator: unit.key }), kind: unit.kind });
 }

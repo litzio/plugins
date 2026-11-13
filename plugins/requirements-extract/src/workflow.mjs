@@ -34,7 +34,7 @@ export function prepare(inputs, profile) {
   let corpus;
   try { corpus = collectCandidates(inputs, profile); }
   catch (e) { if (e.diagnostics) throw e; reject('projection-shape', '공개 읽기 구조를 후보로 보존할 수 없습니다', e.location); }
-  const job = { schemaVersion: 2, protectionVersion, jobId: randomUUID(), epoch: 1, ...f, profile, corpus, responses: {}, ids: {}, history: [], proposals: [], set: newSet({ title: '요구사항 제안' }), registry: inputs.map(i => ({ sourceKey: i.key, artifactDigest: 'sha256:' + i.bundle.provenance.source.docling.sha256, nativeDigest: 'sha256:' + i.bundle.provenance.document.revision, nativeFile: i.key + '/' + i.bundle.provenance.document.relativePath, mapFile: i.key + '/provenance.json' })) };
+  const job = { schemaVersion: 2, protectionVersion, jobId: randomUUID(), epoch: 1, ...f, profile, corpus, responses: {}, ids: {}, history: [], proposals: [], set: newSet({ title: '요구사항 제안' }), registry: inputs.map(i => (i.registry??{ sourceKey: i.key, artifactDigest: 'sha256:' + i.bundle.provenance.source.docling.sha256, nativeDigest: 'sha256:' + i.bundle.provenance.document.revision, nativeFile: i.key + '/' + i.bundle.provenance.document.relativePath, mapFile: i.key + '/provenance.json' })) };
   job.tickets = tickets(job); return job;
 }
 export function refresh(job, inputs, profile) {
@@ -212,7 +212,7 @@ export function supplement(job, sectionKey, unitKeys) {
 }
 export function report(job) {
   const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[],reviewFirst=[];
-  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace.correctionNotice) reviewFirst.push({code:'source-corrected',needsHumanReview:true,sourceKey,source, message:source.trace.correctionNotice,corrections:source.trace.corrections});
+  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace?.correctionNotice) reviewFirst.push({code:'source-corrected',needsHumanReview:true,sourceKey,source, message:source.trace.correctionNotice,corrections:source.trace.corrections});
   if(job.protectionVersion!==protectionVersion) problems.unshift({code:'protection-version',message:'이전 판단은 무효입니다. resume 후 재검토해야 합니다'});
   for (const s of job.corpus.sections) {
     const response=job.responses[s.key];
@@ -223,10 +223,10 @@ export function report(job) {
       if (d.decision==='adopt') {
         for(const [index,output] of d.outputs.entries()) for(const exclusion of output.contextExclusions??[]) {const candidates=d.outputs.flatMap(o=>o.sourceCandidateKeys).map(k=>job.corpus.candidates[k]);const context=candidates.flatMap(c=>c.contexts).find(c=>c.key===exclusion.contextKey);reviewFirst.push({code:'output-context-excluded',needsHumanReview:true,sectionKey:s.key,candidateKey:d.candidateKey,outputKey:output.outputKey,requirementId:job.ids[identity(d,index)],contextKey:exclusion.contextKey,contextKind:context?.kind,contextText:context?.text,sourceCandidateKeys:[...new Set(candidates.filter(c=>c.contexts.some(c=>c.key===exclusion.contextKey)).map(c=>c.candidateKey))],reason:exclusion.reason});}
         accepted.push({sectionKey:s.key,candidateKey:d.candidateKey,outputCount:d.outputs.length,decisionDigest:sha256(canonical(d))});
-        problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'source-review-required',message:'후보 판단은 출처 검수 완료가 아닙니다'});
+        if(job.corpus.candidates[d.candidateKey].sourceKeys.some(k=>job.corpus.sources[k].trace)) problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'source-review-required',message:'후보 판단은 출처 검수 완료가 아닙니다'});
         if(d.choices.quality!=='same') problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'judgment-difference',reason:d.reason});
       } else if (!['non-requirement','duplicate'].includes(d.decision)) problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:d.decision,reason:d.reason,unresolved:d.unresolved});
-      for (const key of job.corpus.candidates[d.candidateKey].sourceKeys) for (const diagnostic of job.corpus.sources[key].trace.diagnostics) if(diagnostic.code!=='source-review-required') problems.push({sectionKey:s.key,candidateKey:d.candidateKey,...diagnostic});
+      for (const key of job.corpus.candidates[d.candidateKey].sourceKeys) for (const diagnostic of (job.corpus.sources[key].trace?.diagnostics??[])) if(diagnostic.code!=='source-review-required') problems.push({sectionKey:s.key,candidateKey:d.candidateKey,...diagnostic});
     }
   }
   return {jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,blocked:job.blocked??null,counts:{sections:job.corpus.sections.length,checkedSections:Object.keys(job.responses).length,candidates:Object.keys(job.corpus.candidates).length,decisions:Object.values(job.responses).reduce((n,r)=>n+r.decisions.length,0),adopted:accepted.length},reviewFirst,problems:[...reviewFirst,...problems],accepted,reviewState:'draft-only'};
