@@ -39,3 +39,6 @@
 - [적용 교정 대조](assets/compare/correction-1440.png)
 
 직접 시작한 Host 프로세스 트리와 검증 브라우저를 종료했고 시험 포트의 listener 0개를 확인했다. 사용자 설치·daemon·자료와 다른 플러그인, docs/progress.md는 수정하지 않았다. 임시 자료는 보존하며 경로는 기록하지 않는다.
+
+
+최신 공개 플랫폼 반영 및 동일 표본 재평가는 [플랫폼 반영 결과](results-platform-adoption.md)를 따른다. 이 문서의 이전 측정은 당시 기록으로 보존한다.

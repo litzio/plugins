@@ -76,8 +76,8 @@ export async function settingsPaths(settings, suppliedCli) {
 }
 export async function preflight(root, bundle) {
   need(
-    typeof bundle === "string" && bundle.length > 0 && !isAbsolute(bundle),
-    "relative-bundle-required",
+    typeof bundle === "string" && bundle.length > 0,
+    "bundle-required",
   );
   const folder = await confined(root, bundle);
   await confined(root, join(folder, "document.json"));
@@ -94,7 +94,7 @@ export async function preflight(root, bundle) {
   return {
     folder,
     public: {
-      bundle,
+      bundle: relative(await realpath(root), folder).split("\\").join("/") || ".",
       fingerprint,
       sourceName: basename(pdf),
       pages: record.document.page_count,
@@ -219,7 +219,7 @@ export function createJobs(
     const output = await confined(root, s.output);
     const handoff = await loadHandoff(output),
       { report } = await readReview(output, join(output, "review"));
-    return { s, handoff, report };
+    return { s, output, handoff, report };
   };
   const correction = async (method, { jobId, ...input }) => {
     const s = await current(jobId);
@@ -356,7 +356,7 @@ export function createJobs(
       } catch {
         return {
           ok: false,
-          message: "설정에서 작업 폴더와 공식 CLI 진입 파일을 지정하세요",
+          message: "작업 폴더 설정을 확인하세요",
         };
       }
     },
@@ -453,7 +453,7 @@ export function createJobs(
       };
     },
     async summary({ jobId }) {
-      const { s, handoff: h, report: r } = await ready(jobId);
+      const { s, output, handoff: h, report: r } = await ready(jobId);
       const losses = h.provenance.items.flatMap((i) => i.losses);
       const count = (key) =>
         Object.fromEntries(
@@ -466,7 +466,7 @@ export function createJobs(
         job: s,
         generationId: h.provenance.generationId,
         revision: h.provenance.document.revision,
-        document: `${s.output}/document.md`,
+        document: await confined(output, "document.md"),
         blocks: h.coverage.blocks,
         assets: h.coverage.assets,
         sourceElements: h.coverage.sourceItems,

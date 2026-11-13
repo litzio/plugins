@@ -159,3 +159,12 @@ PR 5 추가: [손실 분류](docs/lsr-loss-classification.md)와 항목별 표�
 
 
 독립 리뷰 보완: 완료 조건 C0–C9와 사건별 무효화 표, actor의 비인증 선언 경계는 [인계 계약](../../contracts/docling-to-litzio/human-review.md)을 따른다. 검사는 저장소 루트의 기존 명령과 플러그인 폴더의 `npm test` 양쪽에서 실행할 수 있으며 fixture는 테스트 모듈 위치로 해석한다.
+
+
+## 최신 플랫폼의 선택·문서 열기
+
+변환 결과 묶음은 열린 폴더의 선택 대화로 고른다. 설정한 작업 폴더 안에 있어야 하며, 선택된 절대 경로는 처리 코드가 실제 경로 경계를 확인하고 상대 경로로 바꾼다. 입력 확인 뒤 생성은 그 경로와 fingerprint를 사용한다. 문서 열기는 기존 탭으로 열며 거부 응답을 표시한다. 손 편집 뒤 인계 차단은 유지한다.
+
+기본 설정에는 작업 폴더만 표시한다. 최신 공개 Host의 context.cli를 우선 사용한다. context.cli가 없는 옛 Host에서만 공개 CLI `plugins settings --file`의 설정 JSON에 `cliEntry` 문자열을 추가할 수 있다. 화면 설정에 CLI 위치 입력을 노출하지 않는다. 다른 추가 설정을 사용하는 것은 지원하지 않는다.
+
+셀 대조는 현재 검증된 NodePath 전체를 DocumentView에 전달한다. 원문 PDF 근거 영역은 원래 대응의 정밀도를 유지하므로 문서 셀 강조가 PDF 셀 좌표의 정밀성을 뜻하지 않는다. 최신 실측은 [플랫폼 반영 결과](docs/results-platform-adoption.md)를 따른다.

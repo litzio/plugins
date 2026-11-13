@@ -46,6 +46,11 @@ test("preflight checks a fixed input; rejects escape and unsupported schema with
   assert.equal(p.public.pages, 13);
   assert.equal(p.public.schemaVersion, "1.10.0");
   assert.equal(p.public.pictures, 2);
+  const picked = await preflight(root, input);
+  assert.equal(picked.public.bundle, "inputs/lsr");
+  assert.equal(picked.public.fingerprint, p.public.fingerprint);
+  await assert.rejects(preflight(root, resolve(root, "..")), /outside-workspace/);
+
   assert(!JSON.stringify(p.public).includes(root));
   await assert.rejects(preflight(root, "../"), /outside-workspace/);
   const record = JSON.parse(
@@ -294,6 +299,7 @@ test(
     await jobs.dispose();
     assert.equal((await jobs.job({ jobId: accepted.jobId })).state, "ready");
     const summary = await jobs.summary({ jobId: accepted.jobId });
+    assert.equal(summary.document, join(root, accepted.output, "document.md"));
     assert.equal(summary.blocks, 113);
     assert.equal(summary.losses, 31);
     assert.equal(summary.statistics.groups, 15);
@@ -310,7 +316,7 @@ test(
     );
     const again = createJobs(settings);
     assert.equal((await again.start(request)).jobId, accepted.jobId);
-    const file = join(root, summary.document),
+    const file = summary.document,
       original = await readFile(file);
     await writeFile(
       file,

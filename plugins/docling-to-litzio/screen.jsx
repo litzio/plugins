@@ -42,7 +42,7 @@ const lossText = (loss) => {
       .join("; ");
   return v.text ?? JSON.stringify(v);
 };
-export default function Screen({ React, ui, invoke, openDocument }) {
+export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
   const [bundle, setBundle] = React.useState(""),
     [check, setCheck] = React.useState(null),
     [job, setJob] = React.useState(null),
@@ -320,7 +320,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
     request.current ??= crypto.randomUUID();
     try {
       const j = await invoke("start", {
-        bundle,
+        bundle: check.bundle,
         fingerprint: check.fingerprint,
         requestId: request.current,
       });
@@ -374,19 +374,27 @@ export default function Screen({ React, ui, invoke, openDocument }) {
       {!result ? (
         <>
           <ui.Toolbar>
-            <label>
-              변환 결과 묶음 위치
-              <ui.Input
-                value={bundle}
-                placeholder="예: inputs/lsr"
-                onChange={(e) => {
-                  setBundle(e.target.value);
+            <ui.Button
+              disabled={busy || ["queued", "running"].includes(job?.state)}
+              onClick={async () => {
+                setBusy(true);
+                setError("");
+                try {
+                  const selected = await pickPath({ kind: "folder" });
+                  if (!selected) return;
+                  setBundle(selected.path);
                   setCheck(null);
                   request.current = null;
-                }}
-                disabled={busy || ["queued", "running"].includes(job?.state)}
-              />
-            </label>
+                } catch (e) {
+                  message(e);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              변환 결과 묶음 고르기
+            </ui.Button>
+            <span>{check?.bundle ?? (bundle ? "묶음 선택됨" : "선택된 묶음 없음")}</span>
             <ui.Button
               onClick={inspect}
               disabled={
@@ -396,10 +404,6 @@ export default function Screen({ React, ui, invoke, openDocument }) {
               입력 확인
             </ui.Button>
           </ui.Toolbar>
-          <p>
-            설정된 작업 폴더 안의 상대 경로를 입력하세요. 현재 공개 화면에는
-            Host 폴더 선택기가 없습니다.
-          </p>
           {check && (
             <>
               <ui.Toolbar>
@@ -506,12 +510,15 @@ export default function Screen({ React, ui, invoke, openDocument }) {
           </ui.Notice>
           <ui.Toolbar>
             <ui.Button
-              disabled={!openDocument}
-              onClick={() =>
-                openDocument({
-                  path: comparison?.document ?? result.document,
-                }).catch(message)
-              }
+              onClick={async () => {
+                try {
+                  const opened = await openDocument({ path: result.document });
+                  if (opened.status !== "opened")
+                    setError(opened.message || "문서를 열 수 없습니다.");
+                } catch (e) {
+                  message(e);
+                }
+              }}
             >
               문서 열기
             </ui.Button>
@@ -670,8 +677,7 @@ export default function Screen({ React, ui, invoke, openDocument }) {
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <p>
-                    현재 문서 · {comparison.revision.slice(0, 8)} · 표 셀은 표
-                    전체 강조
+                    현재 문서 · {comparison.revision.slice(0, 8)}
                   </p>
                   <ui.DocumentView
                     path={comparison.document}
