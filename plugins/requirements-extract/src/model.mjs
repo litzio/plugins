@@ -61,7 +61,7 @@ export function validate(sets, { formal = false } = {}) {
       if (!r.sources?.length) add(s, r, 'sources', '하나 이상의 출처가 필요합니다');
       for (const src of r.sources ?? []) {
         if (src.trace) {
-          if (src.trace.contract !== 'docling-to-litzio/1.0.0' || src.trace.reviewState !== 'unreviewed' || src.trace.eligibleConfirmed !== false) add(s, r, 'source-trace', '알 수 없거나 승격된 v1 출처 trace를 거부합니다');
+          if (!['docling-to-litzio/1.0.0','docling-to-litzio/1.1.0'].includes(src.trace.contract) || src.trace.reviewState !== 'unreviewed' || src.trace.eligibleConfirmed !== false) add(s, r, 'source-trace', '알 수 없거나 승격된 v1 출처 trace를 거부합니다');
           if (!Array.isArray(src.trace.targets) || !Array.isArray(src.trace.regions) || !Array.isArray(src.trace.pages) || !/^[a-f0-9]{64}$/.test(src.trace.sourceId) || !/^[a-f0-9]{64}$/.test(src.trace.documentRevision) || !['current', 'uncertain'].includes(src.trace.bindingState)) add(s, r, 'source-trace', '출처 trace의 위치/식별 구조가 올바르지 않습니다');
           add(s, r, 'source-review-required', 'v1 인계는 미검수 출처입니다. 정식 내보내기 전에 검수본 계약이 필요합니다', formal ? 'error' : 'warning');
         }

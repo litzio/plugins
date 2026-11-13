@@ -1,0 +1,18 @@
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {handoff,read,write,h,reseal} from './handoff-fixture.mjs';
+export function correctedFixture() {
+ const root=handoff(),p=read(root,'provenance.json'),baseline=read(root,'snapshot.json'),before=baseline.nodes[0].text,after='Corrected voltage ≤ 5 V';
+ writeFileSync(join(root,'document.md'),'corrected synthetic native bytes'); const revision=h(readFileSync(join(root,'document.md')));
+ const current=structuredClone(baseline);current.revision=revision;current.nodes[0].text=after;current.nodes[0].content=[{kind:'text',text:after}];
+ const bbox=[10,10,120,30],region={pageNo:1,bbox,unit:'pt',origin:'TOPLEFT'},refs=['t0','t1','t2'];
+ const evidence={schemaVersion:'1.0.0',pdfSha256:p.source.pdf.sha256,reader:{name:'pdfjs-dist',version:'6.5.438',license:'Apache-2.0',mode:'synthetic'},coordinateMethod:'synthetic',pages:[{pageNo:1,width:200,height:300,rotation:0,unit:'pt',origin:'TOPLEFT',status:'available',items:[],tokens:['≤','5','V'].map((value,i)=>({id:refs[i],itemId:'i',value,kind:i===1?'number':i===0?'operator':'unit',start:i,end:i+1,bbox}))}],outline:{status:'absent',count:0}};
+ const finding={id:'f',kind:'protected-token-difference',priority:'high',sourceIds:[p.items[2].sourceId],selfRefs:['#/texts/0'],regions:[region],targets:p.items[2].targets,evidence:{},status:'candidate'};
+ mkdirSync(join(root,'review'));write(root,'review/pdf-evidence.json',evidence);
+ const report={schemaVersion:'1.0.0',detectorVersion:'1',generationId:p.generationId,documentRevision:baseline.revision,baselineRevision:baseline.revision,bindingState:'current',pdfSha256:p.source.pdf.sha256,reviewState:'unreviewed',findings:[finding],groups:[{id:'g',scope:'synthetic',kinds:[finding.kind],priority:'high',pageNos:[1],findingIds:['f'],representativeId:'f',reviewState:'unreviewed'}],series:[],checks:[{sourceId:p.items[2].sourceId,selectorKey:'block',status:'available',confidence:'synthetic',pdfTokenIds:refs,nativeTokens:['≤','5','V'],regions:[region]}],statistics:{pages:1,findings:1,groups:1,groupsPerPage:1,foldedRows:0,byKind:{},unavailableChecks:0},limitations:[],inputs:{provenanceSha256:h(readFileSync(join(root,'provenance.json'))),snapshotSha256:h(readFileSync(join(root,'snapshot.json')))},evidenceFile:{relativePath:'pdf-evidence.json',sha256:h(readFileSync(join(root,'review/pdf-evidence.json')))}};
+ write(root,'review/review-targets.json',report);
+ const change={changeId:'c',groupId:'g',actor:'assistant',time:'synthetic',sourceHash:p.source.pdf.sha256,beforeRevision:baseline.revision,afterRevision:revision,target:{kind:'paragraph',path:[1]},before,after,evidence:{refs,scope:[{pageNo:1,bbox}]},reason:'Synthetic processing test; no semantic review',receipt:{ok:true,command:'apply-batch',applied:1,revision},undoOf:null,validation:{readback:true,protectedTokens:true,evidenceRecheck:'verified-protected-tokens'},inverse:{command:'update-node-text',path:'1',from:after,to:before}};
+ write(root,'correction-history.json',{schemaVersion:'1.1.0',generationId:p.generationId,baselineRevision:baseline.revision,changes:[change],currentSnapshot:current});
+ write(root,'correction-ledger.json',{version:1,generationId:p.generationId,sourceHash:p.source.pdf.sha256,revision,pending:null,changes:[change],submissions:[{changeId:'c',status:'applied',afterRevision:revision}],scopes:[{id:'g'}]});
+ const complete=read(root,'complete.json');complete.schemaVersion='1.1.0';complete.documentRevision=revision;for(const relativePath of ['correction-history.json','review/pdf-evidence.json','review/review-targets.json']) complete.files.push({relativePath,sha256:'pending'});write(root,'complete.json',complete);reseal(root);return root;
+}
