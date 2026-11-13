@@ -1,0 +1,56 @@
+{
+  "id": "local.docling-convert",
+  "name": "PDF Docling 변환",
+  "icon": "FileText",
+  "entry": "host.mjs",
+  "screen": "screen.jsx",
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "serverUrl": {
+        "type": "string",
+        "title": "Docling 서버 주소",
+        "default": "http://127.0.0.1:5001"
+      }
+    },
+    "additionalProperties": false
+  },
+  "operations": [
+    {
+      "outputSchema": {
+        "type": "object"
+      },
+      "version": 1,
+      "id": "defaults",
+      "scope": "host",
+      "effect": "read",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "candidate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate"
+        ]
+      },
+      "scope": "host",
+      "version": 1,
+      "outputSchema": {
+        "type": "object"
+      },
+      "id": "recover",
+      "effect": "read"
+    }
+  ]
+}
