@@ -1,3 +1,4 @@
+import { snapshotLookup } from "./lookup.js";
 import { createCorrections } from "./corrections.js";
 import {
   readFile,
@@ -75,10 +76,7 @@ export async function settingsPaths(settings, suppliedCli) {
   return paths;
 }
 export async function preflight(root, bundle) {
-  need(
-    typeof bundle === "string" && bundle.length > 0,
-    "bundle-required",
-  );
+  need(typeof bundle === "string" && bundle.length > 0, "bundle-required");
   const folder = await confined(root, bundle);
   await confined(root, join(folder, "document.json"));
   const recordPath = await confined(
@@ -94,7 +92,10 @@ export async function preflight(root, bundle) {
   return {
     folder,
     public: {
-      bundle: relative(await realpath(root), folder).split("\\").join("/") || ".",
+      bundle:
+        relative(await realpath(root), folder)
+          .split("\\")
+          .join("/") || ".",
       fingerprint,
       sourceName: basename(pdf),
       pages: record.document.page_count,
@@ -217,8 +218,10 @@ export function createJobs(
     need(s.state === "ready", "job-not-ready");
     const { root } = await paths();
     const output = await confined(root, s.output);
-    const handoff = await loadHandoff(output),
-      { report } = await readReview(output, join(output, "review"));
+    const { handoff, report } = await readReview(
+      output,
+      join(output, "review"),
+    );
     return { s, output, handoff, report };
   };
   const correction = async (method, { jobId, ...input }) => {
@@ -246,16 +249,14 @@ export function createJobs(
       need(s.state === "ready", "job-not-ready");
       const output = await confined(root, s.output),
         service = createCorrections(output, cli);
-      const progress = changeId
-        ? JSON.parse(
-            await readFile(join(output, "correction-ledger.json"), "utf8"),
-          )
-        : { changes: [] };
+      const context = await readReview(output, join(output, "review"));
+      const h = context.handoff;
+      const progress = changeId ? h.ledger : { changes: [] };
       const change =
-        changeId && progress.changes.find((c) => c.changeId === changeId);
+        changeId && progress?.changes.find((c) => c.changeId === changeId);
       need(!changeId || change, "change-not-found");
-      const m = await service.material(change?.groupId ?? groupId),
-        h = await loadHandoff(output);
+      const m = await service.material(change?.groupId ?? groupId, context);
+      const lookup = snapshotLookup(h.snapshot);
       const ids = new Set(m.findings.flatMap((f) => f.sourceIds));
       let targets = h.provenance.items
         .filter((i) => ids.has(i.sourceId))
@@ -274,12 +275,7 @@ export function createJobs(
         for (const t of f.targets) {
           if (t.selector.kind !== "cell") continue;
           const path = [...t.path, t.selector.row, t.selector.column];
-          if (
-            !h.snapshot.nodes.some(
-              (n) => JSON.stringify(n.path) === JSON.stringify(path),
-            )
-          )
-            continue;
+          if (!lookup.node(path)) continue;
           if (
             !targets.some(
               (x) =>

@@ -1,3 +1,4 @@
+import { snapshotLookup } from "./lookup.js";
 import {
   completionGate,
   lossCatalog,
@@ -23,15 +24,20 @@ const need = (condition, code) => {
   if (!condition) throw new Error(`handoff-${code}`);
 };
 export const relativePath = (p) => p.replace(/^\.\//, "").replaceAll("\\", "/");
-export function textAt(snapshot, path, selector = { kind: "block" }) {
-  const n = snapshot.nodes.find((n) => equal(n.path, path));
+export function textAt(snapshot, path, selector = { kind: "block" }, lookup) {
+  const n = lookup
+    ? lookup.node(path)
+    : snapshot.nodes.find((n) => equal(n.path, path));
   need(n, "target-missing");
   if (selector.kind === "cell")
     return (
-      snapshot.nodes.find(
-        (c) =>
-          c.type === "cell" &&
-          equal(c.path, [...path, selector.row, selector.column]),
+      (lookup
+        ? lookup.node([...path, selector.row, selector.column], "cell")
+        : snapshot.nodes.find(
+            (c) =>
+              c.type === "cell" &&
+              equal(c.path, [...path, selector.row, selector.column]),
+          )
       )?.text ?? null
     );
   if (selector.kind === "list-item")
@@ -43,13 +49,17 @@ export function textAt(snapshot, path, selector = { kind: "block" }) {
     n.latex ??
     n.code ??
     (n.type === "figure"
-      ? (snapshot.nodes.find(
-          (c) => c.type === "caption" && c.path[0] === path[0],
+      ? ((lookup
+          ? lookup.caption(path[0])
+          : snapshot.nodes.find(
+              (c) => c.type === "caption" && c.path[0] === path[0],
+            )
         )?.text ?? "")
       : null)
   );
 }
 export function buildProvenance(plan, items, snapshot, receipt, doc) {
+  const lookup = snapshotLookup(snapshot, { strict: true });
   const target = (t, selector) => ({
     role: t.role ?? "content",
     path: t.path,
@@ -67,6 +77,7 @@ export function buildProvenance(plan, items, snapshot, receipt, doc) {
         (t.selector?.listItem !== undefined
           ? { kind: "list-item", index: t.selector.listItem }
           : { kind: "block" }),
+      lookup,
     ),
   });
   const normalized = items.map((i) => ({
@@ -172,7 +183,7 @@ export function buildProvenance(plan, items, snapshot, receipt, doc) {
         .map((n) => ({
           path: n.path,
           kind: n.type,
-          text: textAt(snapshot, n.path),
+          text: textAt(snapshot, n.path, undefined, lookup),
         })),
     },
     pages: Object.values(doc.pages).map((p) => ({
@@ -225,6 +236,10 @@ export function createReadSet() {
 }
 export function validateEvidence(p, doc, record, snapshot, receipt) {
   validateSchema(p, schemas.provenance);
+  return validateEvidenceContents(p, doc, record, snapshot, receipt);
+}
+function validateEvidenceContents(p, doc, record, snapshot, receipt) {
+  const lookup = snapshotLookup(snapshot, { strict: true });
   const nodes = validate(doc, record);
   need(p.items.length === nodes.size, "inventory-count");
   need(
@@ -242,7 +257,7 @@ export function validateEvidence(p, doc, record, snapshot, receipt) {
     .map((n) => ({
       path: n.path,
       kind: n.type,
-      text: textAt(snapshot, n.path),
+      text: textAt(snapshot, n.path, undefined, lookup),
     }));
   need(equal(p.document.blocks, blocks), "block-inventory");
   need(
@@ -262,19 +277,17 @@ export function validateEvidence(p, doc, record, snapshot, receipt) {
   );
   const ids = new Set(),
     covered = new Set();
+  const blockPaths = new Set(blocks.map((b) => JSON.stringify(b.path)));
   const checkTarget = (t) => {
     need(t.documentRevision === p.document.revision, "target-revision");
-    need(
-      blocks.some((b) => equal(b.path, t.path)),
-      "target-block",
-    );
+    need(blockPaths.has(JSON.stringify(t.path)), "target-block");
     need(
       t.bindingState !== "current" ||
-        t.text === textAt(snapshot, t.path, t.selector),
+        t.text === textAt(snapshot, t.path, t.selector, lookup),
       "target-text",
     );
     if (t.selector.kind === "cell") {
-      const n = snapshot.nodes.find((n) => equal(n.path, t.path));
+      const n = lookup.node(t.path);
       need(n.type === "table", "cell-kind");
       for (let r = t.selector.row; r < t.selector.row + t.selector.rowSpan; r++)
         for (
@@ -282,20 +295,10 @@ export function validateEvidence(p, doc, record, snapshot, receipt) {
           c < t.selector.column + t.selector.columnSpan;
           c++
         )
-          need(
-            snapshot.nodes.some(
-              (n) => n.type === "cell" && equal(n.path, [...t.path, r, c]),
-            ),
-            "cell-range",
-          );
+          need(lookup.node([...t.path, r, c], "cell"), "cell-range");
     }
     if (t.selector.kind === "list-item")
-      need(
-        snapshot.nodes.find((n) => equal(n.path, t.path))?.items?.[
-          t.selector.index
-        ],
-        "list-range",
-      );
+      need(lookup.node(t.path)?.items?.[t.selector.index], "list-range");
   };
   for (const i of p.items) {
     const n = nodes.get(i.selfRef);
@@ -525,10 +528,13 @@ export async function loadHandoff(
       ),
       "completion-evidence-required",
     );
-    const report = JSON.parse(files.get("review/review-targets.json"));
-    const evidence = JSON.parse(files.get("review/pdf-evidence.json"));
-    validateSchema(evidence, schemas["pdf-evidence"]);
-    validateReview(report, result.baseline ?? result, evidence);
+    const verified = validateReviewBytes(
+      files,
+      result.baseline ?? result,
+      result.validatedReview,
+    );
+    result.validatedReview = verified;
+    const { report, evidence } = verified;
     need(
       report.evidenceFile.sha256 ===
         hash(files.get("review/pdf-evidence.json")) &&
@@ -659,7 +665,7 @@ async function validateFileSet(
     ),
     "loss-report",
   );
-  const coverage = validateEvidence(p, doc, record, snapshot, receipt);
+  const coverage = validateEvidenceContents(p, doc, record, snapshot, receipt);
   need(
     auditSourceNative(doc, p, snapshot).mismatches.length === 0,
     "source-native",
@@ -682,17 +688,23 @@ async function validateFileSet(
     record.source.bytes === files.get(p.source.pdf.relativePath).length,
     "pdf-bytes",
   );
-  const baseline = { provenance: p, losses, marker, snapshot, coverage };
+  const baseline = {
+    provenance: p,
+    losses,
+    marker,
+    snapshot,
+    coverage,
+    sourceDocument: doc,
+    sourceRecord: record,
+  };
   if (!history) return baseline;
   validateSchema(history, schemas["correction-history"]);
   need(
     history.schemaVersion !== "1.2.0" || marker.schemaVersion === "1.2.0",
     "history-version",
   );
-  const evidence = json("review/pdf-evidence.json"),
-    report = json("review/review-targets.json");
-  validateSchema(evidence, schemas["pdf-evidence"]);
-  validateReview(report, baseline, evidence);
+  const validatedReview = validateReviewBytes(files, baseline);
+  const { report, evidence } = validatedReview;
   need(
     report.evidenceFile.sha256 === hash(files.get("review/pdf-evidence.json")),
     "history-evidence-digest",
@@ -711,6 +723,7 @@ async function validateFileSet(
     marker.documentRevision,
     p.generationId,
   );
+  const lookup = snapshotLookup(current, { strict: true });
   const updated = structuredClone(p);
   updated.schemaVersion = history.schemaVersion;
   updated.document.revision = current.revision;
@@ -719,7 +732,7 @@ async function validateFileSet(
     .map((n) => ({
       path: n.path,
       kind: n.type,
-      text: textAt(current, n.path),
+      text: textAt(current, n.path, undefined, lookup),
     }));
   for (const i of updated.items)
     for (const t of [
@@ -728,7 +741,7 @@ async function validateFileSet(
       ...i.losses.flatMap((l) => l.targets),
     ]) {
       t.documentRevision = current.revision;
-      t.text = textAt(current, t.path, t.selector);
+      t.text = textAt(current, t.path, t.selector, lookup);
     }
   return {
     provenance: updated,
@@ -738,7 +751,29 @@ async function validateFileSet(
     coverage,
     history,
     baseline,
+    validatedReview,
   };
+}
+// A receipt for exact bytes inside ONE load/readReview invocation, never across operations.
+function validateReviewBytes(files, baseline, previous) {
+  const reportBytes = files.get("review/review-targets.json");
+  const evidenceBytes = files.get("review/pdf-evidence.json");
+  need(reportBytes && evidenceBytes, "required-file");
+  const reportHash = hash(reportBytes),
+    evidenceHash = hash(evidenceBytes);
+  if (previous) {
+    need(
+      previous.reportHash === reportHash &&
+        previous.evidenceHash === evidenceHash,
+      "review-bytes-changed",
+    );
+    return previous;
+  }
+  const report = JSON.parse(reportBytes),
+    evidence = JSON.parse(evidenceBytes);
+  validateSchema(evidence, schemas["pdf-evidence"]);
+  validateReview(report, baseline, evidence);
+  return { report, evidence, reportHash, evidenceHash };
 }
 export function currentTargets(item) {
   need(item.reviewState === "unreviewed", "review-state");

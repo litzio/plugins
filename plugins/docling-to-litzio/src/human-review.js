@@ -1,4 +1,5 @@
-import { sourceItemText } from "./rich-content.js";
+import { firstBy, tokenLookup } from "./lookup.js";
+import { createSourceReader } from "./rich-content.js";
 import { createHash } from "node:crypto";
 import { protectedTokens, difference } from "./tokens.js";
 const requiredKinds = new Set([
@@ -163,6 +164,11 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
   const expressionUnconfirmed = expressionReviews(s, catalog, revision).filter(
     (l) => l.confirmation?.decision !== "meaning-preserved",
   ).length;
+  const reader = handoff
+    ? createSourceReader(handoff.snapshot, handoff.provenance)
+    : null;
+  const itemsById = firstBy(handoff?.provenance.items ?? [], (i) => i.sourceId);
+  const tokensFor = evidence ? tokenLookup(evidence) : null;
   const tokenDifferences =
     handoff &&
     evidence &&
@@ -170,9 +176,7 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
     Array.isArray(evidence.pages)
       ? report.checks.filter((c) => {
           if (c.status !== "available") return false;
-          const item = handoff.provenance.items.find(
-            (i) => i.sourceId === c.sourceId,
-          );
+          const item = itemsById.get(c.sourceId);
           const cell = c.selectorKey.startsWith("cell:")
             ? item?.cells.find(
                 (cell) => cell.cellIndex === Number(c.selectorKey.slice(5)),
@@ -201,21 +205,14 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
           if (humanReviewed) return false;
           const text = (targets ?? [])
             .map((t) => {
-              let value = sourceItemText(
-                handoff.snapshot,
-                t,
-                item,
-                handoff.provenance,
-              );
+              let value = reader.text(t, item);
               if (
                 cell &&
                 item.structure.tableModel?.headerRows > 1 &&
                 cell.sourceCell.column_header
               )
                 return cell.sourceCell.text;
-              const node = handoff.snapshot.nodes.find(
-                (n) => JSON.stringify(n.path) === JSON.stringify(t.path),
-              );
+              const node = reader.node(t.path);
               if (
                 item.label === "caption" &&
                 ["figure", "table"].includes(node?.type) &&
@@ -228,10 +225,7 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
             })
             .filter((t) => t !== null)
             .join(" ");
-          const ids = new Set(c.pdfTokenIds),
-            tokens = evidence.pages
-              .flatMap((p) => p.tokens)
-              .filter((t) => ids.has(t.id));
+          const tokens = tokensFor(c.pdfTokenIds);
           const diff = difference(tokens, protectedTokens(text));
           return diff.missing.length || diff.extra.length;
         }).length

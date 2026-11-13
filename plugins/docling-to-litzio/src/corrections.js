@@ -169,7 +169,7 @@ export function createCorrections(root, cli) {
     );
   };
 
-  const material = async (groupId, context) => {
+  const material = async (groupId, context, inspectedSnapshot) => {
     const {
       handoff: h,
       report,
@@ -180,7 +180,7 @@ export function createCorrections(root, cli) {
     const group = report.groups.find((g) => g.id === groupId);
     need(group, "group-not-found");
 
-    const snapshot = await inspect(read);
+    const snapshot = inspectedSnapshot ?? (await inspect(read));
     need(equal(snapshot, h.snapshot), "stale-document");
 
     const findings = report.findings.filter((f) =>
@@ -191,9 +191,7 @@ export function createCorrections(root, cli) {
 
     const items = h.provenance.items.filter((i) => ids.has(i.sourceId));
 
-    const doc = JSON.parse(
-      await read(root, h.provenance.source.docling.relativePath),
-    );
+    const doc = (h.baseline ?? h).sourceDocument;
 
     const fragments = items.map((i) => ({
       sourceId: i.sourceId,
@@ -240,8 +238,10 @@ export function createCorrections(root, cli) {
     };
   };
 
-  const publish = async (s) => {
-    const snapshot = await inspect();
+  const publish = async (s, inspectedSnapshot) => {
+    if (inspectedSnapshot)
+      await assertWriteRevision(inspectedSnapshot.revision);
+    const snapshot = inspectedSnapshot ?? (await inspect());
 
     need(
       snapshot.revision === s.pending.afterRevision &&
@@ -429,7 +429,7 @@ export function createCorrections(root, cli) {
             input.note.trim(),
           "loss-note-required",
         );
-        const m = await material(input.groupId, context);
+        const m = await material(input.groupId, context, snap);
         need(
           m.findings.some((f) => f.sourceIds.includes(loss.sourceId)) &&
             loss.targets.some(
@@ -601,7 +601,11 @@ export function createCorrections(root, cli) {
         need(!s.pending, "pending-reconcile");
         need(!s.stopped, "review-stopped");
 
-        const m = await material(input.groupId);
+        const context = await readReview(root, join(root, "review"));
+        const snapshot = await inspect(
+          input.decision === "uncertain" ? context.read : undefined,
+        );
+        const m = await material(input.groupId, context, snapshot);
 
         need(
           input.generationId === s.generationId &&
@@ -816,7 +820,6 @@ export function createCorrections(root, cli) {
           input.afterContent === undefined || input.target.kind === "cell",
           "cell-content-only",
         );
-        const snapshot = await inspect();
         need(
           snapshot.revision === input.revision &&
             valueAt(snapshot, input.target) === input.before,
@@ -944,7 +947,7 @@ export function createCorrections(root, cli) {
           );
           await save(file, s);
 
-          await publish(s);
+          await publish(s, actual);
         } catch {
           s.scopes.find((t) => t.id === input.groupId).state = "실패";
           await save(file, s);
