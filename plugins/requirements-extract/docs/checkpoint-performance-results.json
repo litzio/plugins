@@ -1,0 +1,338 @@
+{
+  "before13": {
+    "factor": 1,
+    "pages": 13,
+    "sections": 25,
+    "candidates": 122,
+    "decisions": 122,
+    "requirements": 2,
+    "stateBytes": 8523440,
+    "ledgerBytes": 219805481,
+    "maxCheckpointBytes": 8523630,
+    "files": 27,
+    "times": {
+      "handoff": {
+        "calls": 1,
+        "totalMs": 598.0257,
+        "meanMs": 598.0257,
+        "maxMs": 598.0257
+      },
+      "collect": {
+        "calls": 1,
+        "totalMs": 962.6127000000001,
+        "meanMs": 962.6127000000001,
+        "maxMs": 962.6127000000001
+      },
+      "create": {
+        "calls": 1,
+        "totalMs": 242.70949999999993,
+        "meanMs": 242.70949999999993,
+        "maxMs": 242.70949999999993
+      },
+      "submit": {
+        "calls": 25,
+        "totalMs": 72511.34289999999,
+        "meanMs": 2900.4537159999995,
+        "maxMs": 5087.732300000003
+      },
+      "reload": {
+        "calls": 3,
+        "totalMs": 20528.411999999982,
+        "meanMs": 6842.803999999994,
+        "maxMs": 7601.189499999993
+      },
+      "refresh": {
+        "calls": 3,
+        "totalMs": 404.54580000000715,
+        "meanMs": 134.8486000000024,
+        "maxMs": 184.28489999999874
+      },
+      "groups": {
+        "calls": 3,
+        "totalMs": 32.11509999999544,
+        "meanMs": 10.705033333331812,
+        "maxMs": 13.692999999999302
+      },
+      "proposal": {
+        "calls": 3,
+        "totalMs": 12543.056299999997,
+        "meanMs": 4181.018766666665,
+        "maxMs": 5315.200800000006
+      },
+      "document": {
+        "calls": 1,
+        "totalMs": 3.358300000007148,
+        "meanMs": 3.358300000007148,
+        "maxMs": 3.358300000007148
+      },
+      "export": {
+        "calls": 1,
+        "totalMs": 32.03630000000703,
+        "meanMs": 32.03630000000703,
+        "maxMs": 32.03630000000703
+      }
+    },
+    "outputDigests": {
+      "document": "sha256:8cb94ef702ce55025eb3975f8ca0d165a21c887dd7d9d36e6fa6279b3ee2c923",
+      "xml": "sha256:7c17d663e26b3c9f7ad4faba73d6442a9cbb6ce3cc802ac8dfbee1347e96cd20"
+    }
+  },
+  "after13": {
+    "factor": 1,
+    "pages": 13,
+    "sections": 25,
+    "candidates": 122,
+    "decisions": 122,
+    "requirements": 2,
+    "stateBytes": 8523440,
+    "ledgerBytes": 3121529,
+    "maxCheckpointBytes": 2911190,
+    "files": 27,
+    "times": {
+      "handoff": {
+        "calls": 1,
+        "totalMs": 679.8475999999999,
+        "meanMs": 679.8475999999999,
+        "maxMs": 679.8475999999999
+      },
+      "collect": {
+        "calls": 1,
+        "totalMs": 1192.9749,
+        "meanMs": 1192.9749,
+        "maxMs": 1192.9749
+      },
+      "create": {
+        "calls": 1,
+        "totalMs": 378.82169999999996,
+        "meanMs": 378.82169999999996,
+        "maxMs": 378.82169999999996
+      },
+      "submit": {
+        "calls": 25,
+        "totalMs": 9510.7914,
+        "meanMs": 380.431656,
+        "maxMs": 450.28070000000116
+      },
+      "reload": {
+        "calls": 3,
+        "totalMs": 633.3223999999991,
+        "meanMs": 211.10746666666637,
+        "maxMs": 218.41349999999875
+      },
+      "refresh": {
+        "calls": 3,
+        "totalMs": 404.9974000000002,
+        "meanMs": 134.9991333333334,
+        "maxMs": 153.36299999999937
+      },
+      "groups": {
+        "calls": 3,
+        "totalMs": 30.65520000000106,
+        "meanMs": 10.218400000000353,
+        "maxMs": 11.261700000000928
+      },
+      "proposal": {
+        "calls": 3,
+        "totalMs": 84.77050000000008,
+        "meanMs": 28.25683333333336,
+        "maxMs": 45.93760000000003
+      },
+      "document": {
+        "calls": 1,
+        "totalMs": 2.516299999999319,
+        "meanMs": 2.516299999999319,
+        "maxMs": 2.516299999999319
+      },
+      "export": {
+        "calls": 1,
+        "totalMs": 23.560199999999895,
+        "meanMs": 23.560199999999895,
+        "maxMs": 23.560199999999895
+      }
+    },
+    "outputDigests": {
+      "document": "sha256:c34e65a9681ea53e20ce96f377363533013197901f913ea9fdb46ab6a456da94",
+      "xml": "sha256:cb9d1873f999bc82ac62986a905af227b7fb764fe06916dcc1a614a9869981c7"
+    },
+    "priorDisplayHintsProposalMs": {
+      "calls": 3,
+      "totalMs": 66.55789999999797,
+      "meanMs": 22.18596666666599,
+      "maxMs": 28.630799999999
+    }
+  },
+  "before130": {
+    "completed": false,
+    "completedSubmissions": 21,
+    "checkpointFiles": 22,
+    "ledgerBytes": 2033742980,
+    "timeLowerBoundMs": 636717.4455,
+    "submissionMs": [
+      5199.529099999998,
+      7955.284100000001,
+      10059.197000000004,
+      12314.270100000002,
+      16389.817499999997,
+      17713.3563,
+      19268.3897,
+      21605.339599999992,
+      22508.55649999999,
+      25554.440700000006,
+      28206.886,
+      31702.20980000001,
+      34386.08620000002,
+      40089.085900000005,
+      38113.38250000001,
+      42744.2181,
+      44827.75100000005,
+      50760.56479999999,
+      45632.71379999997,
+      54500.21790000005,
+      51709.12829999998
+    ]
+  },
+  "after130": {
+    "factor": 10,
+    "pages": 130,
+    "sections": 250,
+    "candidates": 1220,
+    "decisions": 1220,
+    "requirements": 20,
+    "stateBytes": 94008880,
+    "ledgerBytes": 40023221,
+    "maxCheckpointBytes": 37928877,
+    "files": 252,
+    "times": {
+      "handoff": {
+        "calls": 1,
+        "totalMs": 527.1110000000001,
+        "meanMs": 527.1110000000001,
+        "maxMs": 527.1110000000001
+      },
+      "collect": {
+        "calls": 1,
+        "totalMs": 11799.7803,
+        "meanMs": 11799.7803,
+        "maxMs": 11799.7803
+      },
+      "create": {
+        "calls": 1,
+        "totalMs": 4450.229600000001,
+        "meanMs": 4450.229600000001,
+        "maxMs": 4450.229600000001
+      },
+      "submit": {
+        "calls": 250,
+        "totalMs": 861762.7337000004,
+        "meanMs": 3447.050934800002,
+        "maxMs": 6210.533100000001
+      },
+      "reload": {
+        "calls": 3,
+        "totalMs": 5587.727900000056,
+        "meanMs": 1862.5759666666854,
+        "maxMs": 1941.4597000000067
+      },
+      "refresh": {
+        "calls": 3,
+        "totalMs": 3071.151599999983,
+        "meanMs": 1023.7171999999942,
+        "maxMs": 1048.80979999993
+      },
+      "groups": {
+        "calls": 3,
+        "totalMs": 257.16709999984596,
+        "meanMs": 85.72236666661532,
+        "maxMs": 87.92609999992419
+      },
+      "proposal": {
+        "calls": 3,
+        "totalMs": 195.77089999999987,
+        "meanMs": 65.25696666666663,
+        "maxMs": 84.94979999999998
+      },
+      "document": {
+        "calls": 1,
+        "totalMs": 10.148199999937788,
+        "meanMs": 10.148199999937788,
+        "maxMs": 10.148199999937788
+      },
+      "export": {
+        "calls": 1,
+        "totalMs": 50.47139999992214,
+        "meanMs": 50.47139999992214,
+        "maxMs": 50.47139999992214
+      }
+    },
+    "outputDigests": {
+      "document": "sha256:6b9d693b343928f6a5cd8b32668c1f2323730c7b9b257482aba710ce6cc57956",
+      "xml": "sha256:e9050314e92cbd9c8859f17b21653d17e6348e5764586d26b6c3e20b767c3214"
+    },
+    "priorDisplayHintsProposalMs": {
+      "calls": 3,
+      "totalMs": 5709.882299999939,
+      "meanMs": 1903.2940999999798,
+      "maxMs": 1966.5540999999503
+    }
+  },
+  "sameStateScreen13": {
+    "initialCheckpointCount": 1,
+    "before": {
+      "refresh": 3444.4758,
+      "links": 11441.6403,
+      "detail": 10853.329300000001,
+      "confirm": 20579.282400000004,
+      "save": 11592.939799999993,
+      "export": 9934.305500000002
+    },
+    "after": {
+      "refresh": 887.6825,
+      "links": 6313.1159,
+      "detail": 1606.2644,
+      "confirm": 4129.849799999998,
+      "save": 6230.305699999997,
+      "export": 2719.0547000000006
+    }
+  },
+  "sameStateSubmit13": {
+    "sameState": true,
+    "sections": 25,
+    "candidates": 122,
+    "results": {
+      "before": {
+        "validationMs": 117.86860000000013,
+        "saveMs": 378.3648999999998,
+        "totalMs": 496.2365000000001
+      },
+      "after": {
+        "validationMs": 106.731,
+        "saveMs": 209.58650000000011,
+        "totalMs": 316.3188
+      }
+    }
+  },
+  "parity": {
+    "sameSeedState": true,
+    "proposalBytes": 69251,
+    "reqifBytes": 112689,
+    "proposalSha256": "sha256:8cb94ef702ce55025eb3975f8ca0d165a21c887dd7d9d36e6fa6279b3ee2c923",
+    "reqifSha256": "sha256:7c17d663e26b3c9f7ad4faba73d6442a9cbb6ce3cc802ac8dfbee1347e96cd20"
+  },
+  "sameStateSubmit130": {
+    "sameState": true,
+    "sections": 250,
+    "candidates": 1220,
+    "results": {
+      "before": {
+        "validationMs": 1113.2781999999997,
+        "saveMs": 3724.8071,
+        "totalMs": 4838.0896
+      },
+      "after": {
+        "validationMs": 1146.3045999999995,
+        "saveMs": 2274.3983000000007,
+        "totalMs": 3420.7044000000005
+      }
+    }
+  }
+}
