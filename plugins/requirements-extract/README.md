@@ -11,7 +11,7 @@ npm ci --ignore-scripts
 npm test
 ```
 
-59개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
+84개 단위 검사는 네트워크·리치오·Python 없이 실행한다. `test/sample.mjs`는 사람이 작성한 가상 전장 2문서·6요구사항 모델이다. `test/fixtures`는 공식 CLI가 생성한 native 문서와 고정 inspect/compare 출력이다. 출처는 합성이며 실제 PDF 대응 증거가 아니다.
 
 실제 도구 검사는 별도다. 공개 Litzio checkout의 README에 따라 의존성을 준비하고 **새 임시 디렉터리**를 만든 뒤 다음 인자를 전달한다. 기존 자료 폴더를 지정하지 않는다. daemon을 시작하거나 연결하지 않으며 단건 프로세스는 종료한다. 임시 자료는 보존한다.
 
@@ -75,3 +75,9 @@ python validation/standard.py verify <schema-cache> <scratch-folder>/rich.reqif
 ```
 
 PR #10 리뷰 수정: 문서별 로컬 레이블과 XHTML ID 전수 검사, 실제 figure.caption 객체 보존, 예상 밖 읽기 모양의 위치 진단을 추가했다. [검증 기록](docs/rich-review.md)을 참고한다. 추가 실제 CLI 검사는 `node validation/rich_review.mjs <built-cli.mjs> <new-scratch-folder>`다.
+
+## 출처 어댑터 (PR 나)
+
+`src/provenance.mjs`는 확정된 인계 계약 v1을 파일로만 읽는다. 현재 문서를 공식 inspect로 재확인하고 complete/digest/revision/inventory/target/좌표/손실/그림을 독립 검사한다. 출처의 선택 trace JSON 열은 native 왕복과 ReqIF SourceReferences/SourcePages에 보존한다. 계약 v1은 unreviewed이므로 정식 내보내기와 requireReviewed는 항상 거부한다. 시험 출력은 명시적으로 표시한다.
+
+[출처 실행 방법·결과·한계](docs/provenance.md)를 따른다. 현재 단위 검사 84개(출처 25개). 실제 고정 LSR 생성물의 출처 4후보·다대다·복수 쪽·병합 경고·수식 차단, native trace 왕복과 시험 ReqIF 표준 검증을 별도 확인했다. PDF 글자 층은 표 전체 영역의 인용 4개만 확인했으며 셀별 쪽/수식 의미 동등성/검수 완료는 미확인이다. 새 Node 의존성 Ajv는 정확 버전/lock과 전이 고지를 포함하고 PDF 도구는 제품에 묶지 않는다.

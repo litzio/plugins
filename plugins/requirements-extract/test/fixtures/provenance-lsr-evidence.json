@@ -1,0 +1,690 @@
+{
+  "artifactRole": "read-only public synthetic test evidence; not a complete handoff",
+  "sourcePdfSha256": "63cda884de96dfd0357843a534895f1beb7a10b24f3244398d930817a32b82ea",
+  "candidates": [
+    {
+      "title": "정상 대역 경계",
+      "sources": [
+        {
+          "elementRef": "#/tables/4",
+          "selector": "cell:2:0",
+          "quote": "1.16 < u ≤ 1.24",
+          "quoteDigest": "sha256:02427a0ee2e1f447cdf5c181e7ee1844deffb061428d99bb14579562e26f9d52",
+          "sourceId": "863106681739abf67b09e57ee77f51940f76477a3c2062dbe2c15b518cce33e6",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                42
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 2,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "1.16 < u ≤ 1.24"
+            }
+          ],
+          "regions": [
+            {
+              "pageNo": 6,
+              "bbox": [
+                52.709259033203125,
+                155.83718872070312,
+                558.7341918945312,
+                385.0757141113281
+              ],
+              "unit": "pt",
+              "origin": "TOPLEFT",
+              "original": {
+                "page_no": 6,
+                "bbox": {
+                  "l": 52.709259033203125,
+                  "t": 636.1628112792969,
+                  "r": 558.7341918945312,
+                  "b": 406.9242858886719,
+                  "coord_origin": "BOTTOMLEFT"
+                },
+                "charspan": [
+                  0,
+                  0
+                ]
+              }
+            }
+          ],
+          "precision": "table",
+          "reviewState": "unreviewed",
+          "tableModel": {
+            "headerRows": 1,
+            "headerContributions": [
+              {
+                "column": 0,
+                "sourceCellIndices": [
+                  0
+                ],
+                "text": "Record band"
+              },
+              {
+                "column": 1,
+                "sourceCellIndices": [
+                  1
+                ],
+                "text": "Mode"
+              },
+              {
+                "column": 2,
+                "sourceCellIndices": [
+                  2
+                ],
+                "text": "Minimum retention"
+              },
+              {
+                "column": 3,
+                "sourceCellIndices": [
+                  3
+                ],
+                "text": "Maximum reaction"
+              }
+            ],
+            "rowHeaderRoles": [],
+            "mergedRanges": [],
+            "reviewRequired": false,
+            "note": null
+          }
+        },
+        {
+          "elementRef": "#/tables/5",
+          "selector": "cell:2:0",
+          "quote": "5.6 < r ≤ 6.4 Hz",
+          "quoteDigest": "sha256:16e820ffec9b65ebbe3fa76502d43b7ba3aaf154164ad71bf3a42178e03acf49",
+          "sourceId": "af273cec24292afd10f404c61889f4f336adebf0615f0c7b1a9850e5ddf7a385",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                49
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 2,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "5.6 < r ≤ 6.4 Hz"
+            }
+          ],
+          "regions": [
+            {
+              "pageNo": 7,
+              "bbox": [
+                52.5888786315918,
+                209.8147735595703,
+                558.7789306640625,
+                403.2719421386719
+              ],
+              "unit": "pt",
+              "origin": "TOPLEFT",
+              "original": {
+                "page_no": 7,
+                "bbox": {
+                  "l": 52.5888786315918,
+                  "t": 582.1852264404297,
+                  "r": 558.7789306640625,
+                  "b": 388.7280578613281,
+                  "coord_origin": "BOTTOMLEFT"
+                },
+                "charspan": [
+                  0,
+                  0
+                ]
+              }
+            }
+          ],
+          "precision": "table",
+          "reviewState": "unreviewed",
+          "tableModel": {
+            "headerRows": 1,
+            "headerContributions": [
+              {
+                "column": 0,
+                "sourceCellIndices": [
+                  0
+                ],
+                "text": "Record band"
+              },
+              {
+                "column": 1,
+                "sourceCellIndices": [
+                  1
+                ],
+                "text": "Mode"
+              },
+              {
+                "column": 2,
+                "sourceCellIndices": [
+                  2
+                ],
+                "text": "Minimum retention"
+              },
+              {
+                "column": 3,
+                "sourceCellIndices": [
+                  3
+                ],
+                "text": "Maximum reaction"
+              }
+            ],
+            "rowHeaderRoles": [],
+            "mergedRanges": [],
+            "reviewRequired": false,
+            "note": null
+          }
+        }
+      ]
+    },
+    {
+      "title": "대역 유지 시간",
+      "sources": [
+        {
+          "elementRef": "#/tables/4",
+          "selector": "cell:2:2",
+          "quote": "0.8 s",
+          "quoteDigest": "sha256:c8bf89c4547f14c8bf2a33cfac9dc0a87ad309c0ebd17d1631f65c833b9e9b15",
+          "sourceId": "3ff762ff05dbe510f3bc62a66727fa1006e7971c49ba38bccbd02da087a955ea",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                42
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 2,
+                "column": 2,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "0.8 s"
+            }
+          ],
+          "regions": [
+            {
+              "pageNo": 6,
+              "bbox": [
+                52.709259033203125,
+                155.83718872070312,
+                558.7341918945312,
+                385.0757141113281
+              ],
+              "unit": "pt",
+              "origin": "TOPLEFT",
+              "original": {
+                "page_no": 6,
+                "bbox": {
+                  "l": 52.709259033203125,
+                  "t": 636.1628112792969,
+                  "r": 558.7341918945312,
+                  "b": 406.9242858886719,
+                  "coord_origin": "BOTTOMLEFT"
+                },
+                "charspan": [
+                  0,
+                  0
+                ]
+              }
+            }
+          ],
+          "precision": "table",
+          "reviewState": "unreviewed",
+          "tableModel": {
+            "headerRows": 1,
+            "headerContributions": [
+              {
+                "column": 0,
+                "sourceCellIndices": [
+                  0
+                ],
+                "text": "Record band"
+              },
+              {
+                "column": 1,
+                "sourceCellIndices": [
+                  1
+                ],
+                "text": "Mode"
+              },
+              {
+                "column": 2,
+                "sourceCellIndices": [
+                  2
+                ],
+                "text": "Minimum retention"
+              },
+              {
+                "column": 3,
+                "sourceCellIndices": [
+                  3
+                ],
+                "text": "Maximum reaction"
+              }
+            ],
+            "rowHeaderRoles": [],
+            "mergedRanges": [],
+            "reviewRequired": false,
+            "note": null
+          }
+        },
+        {
+          "elementRef": "#/tables/4",
+          "selector": "cell:2:0",
+          "quote": "1.16 < u ≤ 1.24",
+          "quoteDigest": "sha256:02427a0ee2e1f447cdf5c181e7ee1844deffb061428d99bb14579562e26f9d52",
+          "sourceId": "863106681739abf67b09e57ee77f51940f76477a3c2062dbe2c15b518cce33e6",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                42
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 2,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "1.16 < u ≤ 1.24"
+            }
+          ],
+          "regions": [
+            {
+              "pageNo": 6,
+              "bbox": [
+                52.709259033203125,
+                155.83718872070312,
+                558.7341918945312,
+                385.0757141113281
+              ],
+              "unit": "pt",
+              "origin": "TOPLEFT",
+              "original": {
+                "page_no": 6,
+                "bbox": {
+                  "l": 52.709259033203125,
+                  "t": 636.1628112792969,
+                  "r": 558.7341918945312,
+                  "b": 406.9242858886719,
+                  "coord_origin": "BOTTOMLEFT"
+                },
+                "charspan": [
+                  0,
+                  0
+                ]
+              }
+            }
+          ],
+          "precision": "table",
+          "reviewState": "unreviewed",
+          "tableModel": {
+            "headerRows": 1,
+            "headerContributions": [
+              {
+                "column": 0,
+                "sourceCellIndices": [
+                  0
+                ],
+                "text": "Record band"
+              },
+              {
+                "column": 1,
+                "sourceCellIndices": [
+                  1
+                ],
+                "text": "Mode"
+              },
+              {
+                "column": 2,
+                "sourceCellIndices": [
+                  2
+                ],
+                "text": "Minimum retention"
+              },
+              {
+                "column": 3,
+                "sourceCellIndices": [
+                  3
+                ],
+                "text": "Maximum reaction"
+              }
+            ],
+            "rowHeaderRoles": [],
+            "mergedRanges": [],
+            "reviewRequired": false,
+            "note": null
+          }
+        }
+      ]
+    },
+    {
+      "title": "병합 표의 범위 조건",
+      "sources": [
+        {
+          "elementRef": "#/tables/2",
+          "selector": "cell:2:3",
+          "quote": "0.4 ≤ u ≤ 1.3",
+          "quoteDigest": "sha256:56b66402bb254da2fab8dd25131ddc3505301d65e74c02c33e129f7465660897",
+          "sourceId": "050613e9d225e40c5bca93bdbb0967000950666fc49fcf5a6b6b1cc2f7517ec9",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                26
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "cell",
+                "row": 1,
+                "column": 3,
+                "rowSpan": 1,
+                "columnSpan": 1
+              },
+              "text": "0.4 ≤ u ≤ 1.3"
+            }
+          ],
+          "regions": [
+            {
+              "pageNo": 4,
+              "bbox": [
+                52.66168975830078,
+                199.92620849609375,
+                558.7369384765625,
+                491.4291687011719
+              ],
+              "unit": "pt",
+              "origin": "TOPLEFT",
+              "original": {
+                "page_no": 4,
+                "bbox": {
+                  "l": 52.66168975830078,
+                  "t": 592.0737915039062,
+                  "r": 558.7369384765625,
+                  "b": 300.5708312988281,
+                  "coord_origin": "BOTTOMLEFT"
+                },
+                "charspan": [
+                  0,
+                  0
+                ]
+              }
+            }
+          ],
+          "precision": "table",
+          "reviewState": "unreviewed",
+          "tableModel": {
+            "headerRows": 2,
+            "headerContributions": [
+              {
+                "column": 0,
+                "sourceCellIndices": [
+                  0
+                ],
+                "text": "Parameter"
+              },
+              {
+                "column": 1,
+                "sourceCellIndices": [
+                  1,
+                  3
+                ],
+                "text": "Steady observations – Accuracy"
+              },
+              {
+                "column": 2,
+                "sourceCellIndices": [
+                  1,
+                  4
+                ],
+                "text": "Steady observations – Window"
+              },
+              {
+                "column": 3,
+                "sourceCellIndices": [
+                  1,
+                  5
+                ],
+                "text": "Steady observations – Range"
+              },
+              {
+                "column": 4,
+                "sourceCellIndices": [
+                  2,
+                  6
+                ],
+                "text": "Transient observations – Accuracy"
+              },
+              {
+                "column": 5,
+                "sourceCellIndices": [
+                  2,
+                  7
+                ],
+                "text": "Transient observations – Window"
+              },
+              {
+                "column": 6,
+                "sourceCellIndices": [
+                  2,
+                  8
+                ],
+                "text": "Transient observations – Range"
+              }
+            ],
+            "rowHeaderRoles": [],
+            "mergedRanges": [
+              {
+                "cellIndex": 0,
+                "row": 0,
+                "column": 0,
+                "rowSpan": 2,
+                "columnSpan": 1,
+                "role": "column-group",
+                "risks": [
+                  "column-group-becomes-flat",
+                  "shared-across-rows"
+                ]
+              },
+              {
+                "cellIndex": 1,
+                "row": 0,
+                "column": 1,
+                "rowSpan": 1,
+                "columnSpan": 3,
+                "role": "column-group",
+                "risks": [
+                  "column-group-becomes-flat"
+                ]
+              },
+              {
+                "cellIndex": 2,
+                "row": 0,
+                "column": 4,
+                "rowSpan": 1,
+                "columnSpan": 3,
+                "role": "column-group",
+                "risks": [
+                  "column-group-becomes-flat"
+                ]
+              }
+            ],
+            "reviewRequired": true,
+            "note": "원문 표 구조 안내: 원문 R1–2/C1, R1/C2–4, R1/C5–7 칸은 병합돼 있었습니다. 원문의 머리 2행은 ‘상위 머리 – 하위 머리’로 합쳤습니다. 좌표는 원문 기준입니다. 반복된 값은 행별 독립 값이 아니라 공통 조건·범위·합계일 수 있으므로 원문 구조를 검수해야 합니다."
+          }
+        }
+      ]
+    },
+    {
+      "title": "합성 식의 적용 조건",
+      "sources": [
+        {
+          "elementRef": "#/texts/74",
+          "selector": "full",
+          "quote": "J = \\sum _ { k = 2 } ^ { 7 } \\frac { a _ { k } ^ { 2 } } { 1 + k ^ { 2 } }",
+          "quoteDigest": "sha256:95661768db7f4ef3a87e35b735964fa7855d327f088fccc2934158727c5539ba",
+          "sourceId": "b13222cb20193953f68fbf3433cdb52af14a2accc4217898398efd7a0124e81e",
+          "targets": [
+            {
+              "role": "content",
+              "path": [
+                57
+              ],
+              "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+              "bindingState": "current",
+              "selector": {
+                "kind": "block"
+              },
+              "text": "J = \\sum _ { k = 2 } ^ { 7 } \\frac { a _ { k } ^ { 2 } } { 1 + k ^ { 2 } }"
+            }
+          ],
+          "regions": [
+            {
+              "pageNo": 8,
+              "bbox": [
+                101,
+                191.33333333333337,
+                543.1650390000001,
+                269.66666666666674
+              ],
+              "unit": "pt",
+              "origin": "TOPLEFT",
+              "original": {
+                "page_no": 8,
+                "bbox": {
+                  "l": 101,
+                  "t": 600.6666666666666,
+                  "r": 543.1650390000001,
+                  "b": 522.3333333333333,
+                  "coord_origin": "BOTTOMLEFT"
+                },
+                "charspan": [
+                  0,
+                  23
+                ]
+              }
+            }
+          ],
+          "precision": "element",
+          "reviewState": "unreviewed"
+        }
+      ]
+    }
+  ],
+  "pdfEvidence": [
+    {
+      "elementRef": "#/tables/4",
+      "selector": "cell:2:0",
+      "pages": [
+        {
+          "pageNo": 6,
+          "bbox": [
+            52.709259033203125,
+            155.83718872070312,
+            558.7341918945312,
+            385.0757141113281
+          ],
+          "quoteFoundWithWhitespaceOnlyNormalization": true
+        }
+      ],
+      "precision": "table",
+      "result": "quote found within declared PDF region",
+      "perCellPageAttribution": "not supplied by handoff contract"
+    },
+    {
+      "elementRef": "#/tables/5",
+      "selector": "cell:2:0",
+      "pages": [
+        {
+          "pageNo": 7,
+          "bbox": [
+            52.5888786315918,
+            209.8147735595703,
+            558.7789306640625,
+            403.2719421386719
+          ],
+          "quoteFoundWithWhitespaceOnlyNormalization": true
+        }
+      ],
+      "precision": "table",
+      "result": "quote found within declared PDF region",
+      "perCellPageAttribution": "not supplied by handoff contract"
+    },
+    {
+      "elementRef": "#/tables/4",
+      "selector": "cell:2:2",
+      "pages": [
+        {
+          "pageNo": 6,
+          "bbox": [
+            52.709259033203125,
+            155.83718872070312,
+            558.7341918945312,
+            385.0757141113281
+          ],
+          "quoteFoundWithWhitespaceOnlyNormalization": true
+        }
+      ],
+      "precision": "table",
+      "result": "quote found within declared PDF region",
+      "perCellPageAttribution": "not supplied by handoff contract"
+    },
+    {
+      "elementRef": "#/tables/2",
+      "selector": "cell:2:3",
+      "pages": [
+        {
+          "pageNo": 4,
+          "bbox": [
+            52.66168975830078,
+            199.92620849609375,
+            558.7369384765625,
+            491.4291687011719
+          ],
+          "quoteFoundWithWhitespaceOnlyNormalization": true
+        }
+      ],
+      "precision": "table",
+      "result": "quote found within declared PDF region",
+      "perCellPageAttribution": "not supplied by handoff contract"
+    },
+    {
+      "elementRef": "#/texts/74",
+      "selector": "full",
+      "pages": [
+        {
+          "pageNo": 8,
+          "bbox": [
+            101,
+            191.33333333333337,
+            543.1650390000001,
+            269.66666666666674
+          ],
+          "quoteFoundWithWhitespaceOnlyNormalization": false
+        }
+      ],
+      "precision": "element",
+      "result": "formula semantic equivalence unverified",
+      "perCellPageAttribution": "not supplied by handoff contract"
+    }
+  ]
+}

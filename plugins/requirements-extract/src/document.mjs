@@ -2,6 +2,7 @@
 import { validate } from './model.mjs';
 import { auditCoverage } from './coverage.mjs';
 import { bodyFields, fromSnapshot, walkContent } from './body.mjs';
+import { canonical } from './model.mjs';
 export const fields = ['id', 'kind', 'level', 'origin', 'strength', 'status', 'verification', 'rationale', 'confirmedDigest'];
 export const setFields = ['profile', 'setId', 'exportNamespace', 'defaultLevel'];
 export const registryFields = ['sourceKey', 'artifactDigest', 'nativeFile', 'nativeDigest', 'mapFile'];
@@ -28,8 +29,13 @@ function readProfile(input, file = '', snapshot) {
     const cells = input.nodes.filter(c => c.type === 'cell' && c.path[0] === n.path[0]);
     const rows = [];
     for (const c of cells) { consume(c); (rows[c.path[1]] ??= [])[c.path[2]] = c.text; }
-    if (JSON.stringify(rows[0]) !== JSON.stringify(columns) || rows.some(r => r.length !== columns.length)) issue(n, 'table-columns', '표 열 또는 모양이 프로파일과 다릅니다');
-    return rows.slice(1).map(r => Object.fromEntries(columns.map((k, i) => [k, r[i] ?? ''])));
+    const actualColumns = columns === sourceFields && JSON.stringify(rows[0]) === JSON.stringify([...columns, 'trace']) ? [...columns, 'trace'] : columns;
+    if (JSON.stringify(rows[0]) !== JSON.stringify(actualColumns) || rows.some(r => r.length !== actualColumns.length)) issue(n, 'table-columns', '표 열 또는 모양이 프로파일과 다릅니다');
+    return rows.slice(1).map(r => {
+      const row = Object.fromEntries(actualColumns.map((k, i) => [k, r[i] ?? '']));
+      if (Object.hasOwn(row, 'trace')) { try { row.trace = JSON.parse(row.trace); } catch { issue(n, 'source-trace', '출처 trace JSON이 올바르지 않습니다'); } }
+      return row;
+    });
   }
   function properties(expected) {
     const rows = table(['필드', '값']); const result = {};
@@ -116,7 +122,10 @@ export function readInspection(input, file = '', snapshot) {
 
 export function authoring(s) {
   const p = (keys, value) => ({ kind: 'table', rows: [['필드', '값'], ...keys.map(k => [k, value[k] ?? ''])] });
-  const t = (columns, rows) => ({ kind: 'table', rows: [columns, ...rows.map(r => columns.map(k => r[k] ?? ''))] });
+  const t = (columns, rows) => {
+    if (columns === sourceFields && rows.some(r => r.trace)) columns = [...columns, 'trace'];
+    return { kind: 'table', rows: [columns, ...rows.map(r => columns.map(k => k === 'trace' ? canonical(r.trace ?? null) : r[k] ?? ''))] };
+  };
   const h = (level, text) => ({ kind: 'heading', level, text });
   return { title: s.title, inputs: [
     { key: 'set', blocks: [h(1, s.heading ?? '요구사항 문서'), p(setFields, s), t(registryFields, s.registry)] },

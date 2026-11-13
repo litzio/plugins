@@ -60,6 +60,11 @@ export function validate(sets, { formal = false } = {}) {
       if (r.origin === 'derived' && !r.rationale?.trim()) add(s, r, 'rationale', '도출 근거가 필요합니다');
       if (!r.sources?.length) add(s, r, 'sources', '하나 이상의 출처가 필요합니다');
       for (const src of r.sources ?? []) {
+        if (src.trace) {
+          if (src.trace.contract !== 'docling-to-litzio/1.0.0' || src.trace.reviewState !== 'unreviewed' || src.trace.eligibleConfirmed !== false) add(s, r, 'source-trace', '알 수 없거나 승격된 v1 출처 trace를 거부합니다');
+          if (!Array.isArray(src.trace.targets) || !Array.isArray(src.trace.regions) || !Array.isArray(src.trace.pages) || !/^[a-f0-9]{64}$/.test(src.trace.sourceId) || !/^[a-f0-9]{64}$/.test(src.trace.documentRevision) || !['current', 'uncertain'].includes(src.trace.bindingState)) add(s, r, 'source-trace', '출처 trace의 위치/식별 구조가 올바르지 않습니다');
+          add(s, r, 'source-review-required', 'v1 인계는 미검수 출처입니다. 정식 내보내기 전에 검수본 계약이 필요합니다', formal ? 'error' : 'warning');
+        }
         if (!keys.has(src.sourceKey) || !src.elementRef) add(s, r, 'broken-source', '출처 등록 또는 요소 참조가 없습니다');
         if (!/^(full|text:\d+:\d+|cell:\d+:\d+)$/.test(src.selector) || (src.selector.startsWith('text:') && Number(src.selector.split(':')[1]) >= Number(src.selector.split(':')[2]))) add(s, r, 'selector', '출처 범위가 올바르지 않습니다');
         if (!src.quote || src.quoteDigest !== sha256(src.quote)) add(s, r, 'quote-digest', '인용문 해시가 일치하지 않습니다');
