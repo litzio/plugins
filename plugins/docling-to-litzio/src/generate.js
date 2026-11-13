@@ -1,3 +1,4 @@
+import { extractPdf } from "./pdf-evidence.js";
 import { auditSourceNative } from "./source-audit.js";
 import {
   buildProvenance,
@@ -19,8 +20,12 @@ export async function generate(
   bookmarkEvidenceFile,
 ) {
   const bundle = await readBundle(bundleFolder),
+    pdfEvidence = await extractPdf(
+      await readFile(resolve(bundleFolder, bundle.record.source.file)),
+    ),
     plan = makePlan({
       ...bundle,
+      pdfEvidence,
       bookmarkEvidence: bookmarkEvidenceFile
         ? JSON.parse(await readFile(bookmarkEvidenceFile, "utf8"))
         : undefined,

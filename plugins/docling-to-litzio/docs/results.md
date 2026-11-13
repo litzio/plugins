@@ -1,3 +1,5 @@
+> 이 문서는 해당 PR 당시 측정이다. 최신 생성·손실·탐지 수치는 [보강된 작성 입력 결과](results-richer-authoring.md)를 따른다.
+
 # PR 1 실제 검증 (2026-11-13)
 
 공개 플랫폼 checkout `8f41d0da6ad3cfe06299dfa04b39d1dcd6bea386`에서 문서대로 CLI production build 성공. fallback worktree는 사용하지 않았다. 소스/추적 파일 변경 없음. 설치된 앱/daemon 사용 없음. 모든 CLI 명령은 새 임시 출력에서 실행하고 종료했다.

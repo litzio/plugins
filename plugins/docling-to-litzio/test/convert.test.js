@@ -248,6 +248,6 @@ test("readback checks list start, code language and fixed enumerator", () => {
   };
   assert.deepEqual(
     verifyNative(plan, receipt, snapshot).mismatches.map((m) => m.field),
-    ["list-start", "code-language", "enumerator"],
+    ["list-start", "list-structure", "code-language", "enumerator"],
   );
 });

@@ -57,6 +57,7 @@ export async function evaluate(root) {
       mutate: (s) => {
         const n = targetNode(s, number);
         n.text = n.text.replace("0.7", "0.8");
+        n.content = [{ kind: "text", text: n.text }];
       },
     },
     {
@@ -65,6 +66,7 @@ export async function evaluate(root) {
       mutate: (s) => {
         const n = targetNode(s, operator);
         n.text = n.text.replace("≤", "<");
+        n.content = [{ kind: "text", text: n.text }];
       },
     },
     {
@@ -73,6 +75,7 @@ export async function evaluate(root) {
       mutate: (s) => {
         const n = targetNode(s, unit);
         n.text = n.text.replace("Hz", "kHz");
+        n.content = [{ kind: "text", text: n.text }];
       },
     },
     {
@@ -82,6 +85,7 @@ export async function evaluate(root) {
         const a = targetNode(s, number),
           b = targetNode(s, unit);
         [a.text, b.text] = [b.text, a.text];
+        [a.content, b.content] = [b.content, a.content];
       },
     },
     {
