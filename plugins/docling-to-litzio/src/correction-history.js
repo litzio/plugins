@@ -37,8 +37,28 @@ export function projectEdit(
   afterContent,
   beforeContent,
 ) {
-  const result = structuredClone(snapshot),
-    n = targetNode(result, target);
+  return applyProjection(
+    structuredClone(snapshot),
+    target,
+    before,
+    after,
+    revision,
+    afterContent,
+    beforeContent,
+  );
+}
+
+// Private replay state is cloned once, then every link is checked and applied.
+function applyProjection(
+  result,
+  target,
+  before,
+  after,
+  revision,
+  afterContent,
+  beforeContent,
+) {
+  const n = targetNode(result, target);
   need(valueAt(result, target) === before, "before-conflict");
   if (target.kind === "equation") n.latex = after;
   else {
@@ -99,7 +119,7 @@ export function validateHistory(
         c.validation?.readback === true,
       "history-chain",
     );
-    state = projectEdit(
+    state = applyProjection(
       state,
       c.target,
       c.before,

@@ -14,7 +14,7 @@ import { randomUUID } from "node:crypto";
 
 import { spawnSync } from "node:child_process";
 
-import { loadHandoff, readRelative } from "./provenance.js";
+import { loadHandoff, readRelative, createReadSet } from "./provenance.js";
 
 import { readReview } from "./review.js";
 
@@ -108,15 +108,18 @@ export function createCorrections(root, cli) {
     }
   };
 
-  const ledger = async () => {
+  const ledger = async (read = readRelative) => {
     try {
-      return await json(file);
+      return JSON.parse(await read(root, "correction-ledger.json"));
     } catch (e) {
       if (e.code !== "ENOENT") throw e;
     }
 
-    const h = await loadHandoff(root),
-      { report, evidence } = await readReview(root, join(root, "review"));
+    const {
+      handoff: h,
+      report,
+      evidence,
+    } = await readReview(root, join(root, "review"));
 
     need(!h.history, "correction-ledger-required");
     const state = {
@@ -148,25 +151,36 @@ export function createCorrections(root, cli) {
     return state;
   };
 
-  const inspect = async () => {
+  const inspect = async (read = readRelative) => {
     const snapshot = await call("inspect", []);
 
     need(
       snapshot.ok !== false &&
-        digest(await readRelative(root, "document.md")) === snapshot.revision,
+        digest(await read(root, "document.md")) === snapshot.revision,
       "inspection-revision",
     );
     return snapshot;
   };
 
-  const material = async (groupId) => {
-    const h = await loadHandoff(root),
-      { report, evidence } = await readReview(root, join(root, "review"));
+  const assertWriteRevision = async (revision) => {
+    need(
+      digest(await readRelative(root, "document.md")) === revision,
+      "stale-write-revision",
+    );
+  };
+
+  const material = async (groupId, context) => {
+    const {
+      handoff: h,
+      report,
+      evidence,
+      read,
+    } = context ?? (await readReview(root, join(root, "review")));
 
     const group = report.groups.find((g) => g.id === groupId);
     need(group, "group-not-found");
 
-    const snapshot = await inspect();
+    const snapshot = await inspect(read);
     need(equal(snapshot, h.snapshot), "stale-document");
 
     const findings = report.findings.filter((f) =>
@@ -178,7 +192,7 @@ export function createCorrections(root, cli) {
     const items = h.provenance.items.filter((i) => ids.has(i.sourceId));
 
     const doc = JSON.parse(
-      await readRelative(root, h.provenance.source.docling.relativePath),
+      await read(root, h.provenance.source.docling.relativePath),
     );
 
     const fragments = items.map((i) => ({
@@ -386,14 +400,16 @@ export function createCorrections(root, cli) {
           time: new Date().toISOString(),
         });
         invalidateReview(s);
+        await assertWriteRevision(s.revision);
         await save(file, s);
         return { recorded: true };
       }),
     lossDecision: (input) =>
       locked(async () => {
         const s = await ledger(),
-          snap = await inspect(),
-          h = await loadHandoff(root);
+          snap = await inspect();
+        const context = await readReview(root, join(root, "review"));
+        const { handoff: h } = context;
         need(
           !s.pending &&
             !s.stopped &&
@@ -401,7 +417,6 @@ export function createCorrections(root, cli) {
             snap.revision === s.revision,
           "stale-loss-decision",
         );
-        const { report } = await readReview(root, join(root, "review"));
         const loss = lossCatalog(h.losses.items, h).find(
           (l) => l.lossId === input.lossId,
         );
@@ -414,7 +429,7 @@ export function createCorrections(root, cli) {
             input.note.trim(),
           "loss-note-required",
         );
-        const m = await material(input.groupId);
+        const m = await material(input.groupId, context);
         need(
           m.findings.some((f) => f.sourceIds.includes(loss.sourceId)) &&
             loss.targets.some(
@@ -449,18 +464,16 @@ export function createCorrections(root, cli) {
           comparison: "source-and-current-side-by-side",
         });
         invalidateReview(s);
+        await assertWriteRevision(s.revision);
         await save(file, s);
         return { recorded: true };
       }),
     finalize: (input) =>
       locked(async () => {
         const s = await ledger(),
-          snap = await inspect(),
-          h = await loadHandoff(root);
-        const { report, evidence } = await readReview(
-          root,
-          join(root, "review"),
-        );
+          snap = await inspect();
+        const context = await readReview(root, join(root, "review"));
+        const { handoff: h, report, evidence } = context;
         need(input.revision === snap.revision, "stale-finalization");
         const gate = completionGate(
           s,
@@ -487,6 +500,7 @@ export function createCorrections(root, cli) {
             s.revision,
           ),
         };
+        await assertWriteRevision(s.revision);
         await save(join(root, "human-review.json"), completion);
         const marker = {
           ...h.marker,
@@ -504,9 +518,14 @@ export function createCorrections(root, cli) {
           if (!marker.files.some((f) => f.relativePath === name))
             marker.files.push({
               relativePath: name,
-              sha256: digest(await readRelative(root, name)),
+              sha256: digest(
+                name === "human-review.json"
+                  ? await readRelative(root, name)
+                  : await context.read(root, name),
+              ),
             });
         }
+        await assertWriteRevision(s.revision);
         s.completion = completion;
         await save(file, s);
         await save(join(root, "complete.json"), marker);
@@ -516,8 +535,9 @@ export function createCorrections(root, cli) {
 
     progress: () =>
       locked(async () => {
-        const s = await ledger();
-        const snap = await inspect();
+        const read = createReadSet();
+        const s = await ledger(read);
+        const snap = await inspect(read);
         if (snap.revision !== s.revision) {
           invalidateReview(s, { groups: null, resetScopes: true });
           await save(file, s);
@@ -530,16 +550,21 @@ export function createCorrections(root, cli) {
             humanQueue: [],
             gate: { ready: false },
           };
-        const { report, evidence } = await readReview(
-          root,
-          join(root, "review"),
+        const {
+          handoff: h,
+          report,
+          evidence,
+        } = await readReview(root, join(root, "review"), { read });
+        // Successful query decisions all use the captured handoff, not a second interpretation.
+        need(
+          equal(s, h.ledger) && equal(snap, h.snapshot),
+          "stale-query-state",
         );
-        const h = await loadHandoff(root);
         const gate = completionGate(
-          s,
+          h.ledger,
           report,
           h.losses.items,
-          snap.revision,
+          h.snapshot.revision,
           h,
           evidence,
         );
@@ -627,6 +652,7 @@ export function createCorrections(root, cli) {
               },
             },
           );
+          await assertWriteRevision(s.revision);
           await save(file, s);
           return row;
         }
@@ -849,6 +875,7 @@ export function createCorrections(root, cli) {
         s.submissions.push({ ...row, status: "pending-reconcile" });
         invalidateReview(s, { groups: null, resetScopes: true });
         s.scopes.find((t) => t.id === input.groupId).state = "검사중";
+        await assertWriteRevision(s.revision);
         await save(file, s);
 
         const opfile = join(
