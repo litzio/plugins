@@ -1,0 +1,45 @@
+{
+  "id": "finding-06f9360cc9fe00c79f16ea7a",
+  "kind": "formula-suspicion",
+  "priority": "high",
+  "sourceIds": [
+    "a4f29f2ee768d858d39c9bb8b4ab69b7dc6511fa1e6a0646da7eafddb1bfec1c"
+  ],
+  "selfRefs": [
+    "#/texts/129"
+  ],
+  "regions": [
+    {
+      "pageNo": 11,
+      "bbox": [
+        111,
+        409.6666666666667,
+        543.1650390000001,
+        485.6666666666667
+      ],
+      "unit": "pt",
+      "origin": "TOPLEFT"
+    }
+  ],
+  "targets": [
+    {
+      "role": "content",
+      "path": [
+        102
+      ],
+      "documentRevision": "6c113112167b270195dfc2b5787c45cd839ce1aa3745848391b0bbad298cf43b",
+      "bindingState": "current",
+      "selector": {
+        "kind": "block"
+      },
+      "text": "\\Theta = \\sqrt { \\sum _ { j = 2 } ^ { 3 } b _ { j } ^ { 3 } } \\\\ \\intertext { The root index is 3 . The mod i s e c h a l l }"
+    }
+  ],
+  "evidence": {
+    "reasons": [
+      "prose-inside-formula"
+    ],
+    "latex": "\\Theta = \\sqrt { \\sum _ { j = 2 } ^ { 3 } b _ { j } ^ { 3 } } \\\\ \\intertext { The root index is 3 . The mod i s e c h a l l }"
+  },
+  "status": "candidate"
+}

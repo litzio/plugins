@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 export const schemas = Object.fromEntries(
   await Promise.all(
-    ["provenance", "losses", "complete"].map(async (name) => [
+    ["provenance", "losses", "complete", "review-targets", "review-complete", "pdf-evidence"].map(async (name) => [
       name,
       JSON.parse(
         await readFile(
@@ -12,7 +12,7 @@ export const schemas = Object.fromEntries(
     ]),
   ),
 );
-// Implements only the JSON Schema keywords used in these three owned schemas.
+// Implements only the JSON Schema keywords used in the owned generation/review schemas.
 // Reject unknown keywords, rather than silently claiming general JSON Schema support.
 export function validateSchema(value, schema, root = schema, path = "$") {
   const error = () => {

@@ -1,6 +1,6 @@
 # docling-to-litzio 범위와 구현 계획
 
-상태: PR 1과 PR 2의 설치/화면 제외 범위 구현·CLI 검증 완료. 설치/화면과 PR 3 이후는 계획이다. 수치는 별도 표시가 없으면 제안 합격선이며, 실측은 results-pr2.md를 따른다.
+상태: PR 1과 PR 2의 설치/화면 제외 범위 구현·CLI 검증 완료. PR 3 처리 코드/독립 PDF 증거/검수 후보 계약도 검증했다. 설치/화면·비서/교정과 PR 4 이후는 계획이다. 수치는 별도 표시가 없으면 제안 합격선이며, 실측은 results-pr2.md를 따른다.
 
 ## 1. 목표와 경계
 
@@ -327,3 +327,17 @@ LSR은 `ground_truth/standards*.json`의 원래 `schema`(LSR-1.0 표기), proven
 
 
 PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.
+
+## PR 3 실제 결정과 측정
+
+검수 대상 v1은 별도 review-targets.json/pdf-evidence.json/review-complete.json으로 확정했다. provenance v1의 current 생성 revision만 공식 파일로 읽는다. changed read-model을 이용한 주입 시험은 baseline 경로를 uncertain으로 남기며, 편집 후 identity 갱신을 구현한 것이 아니다. 결과/분포/반례/실행법은 results-pr3.md, contracts/docling-to-litzio/review-targets.md를 따른다.
+
+PDF.js는 6.5.438 legacy ESM/worker를 묶고 Apache-2.0, 내장 core-js 3.51.0 MIT, CMaps Adobe BSD-style 원문과 hash를 보존했다. 추가 npm/native 설치 없이 Node worker에서 text layer/outline을 읽고 종료한다. 선택적 canvas/DOMMatrix/Path2D 경고는 stderr로 남기고 렌더링 지원으로 해석하지 않는다. standard font/Liberation·이미지 codec은 사용/배포하지 않는다. 글자/토큰 bbox는 근사, source 회전 결합은 미지원이다.
+
+계획의 폭넓은 반복 머리글/열 점프 휴리스틱 대신 고정 표본에서 효과가 있고 음성 반례를 가진 규칙으로 좁혔다. furniture는 명시된 긴 문자열과 body의 정확 일치만 사용한다(숫자 쪽 번호 단독 제외). 도표 자식 축 숫자의 y 역순은 본문 순서 후보에서 제외했다. 원문 위 caption→native 뒤 문단 7관계, 병합 표, raw source cell gap, 수식 문장 혼입, 문자 token 차이, 미대응 PDF 영역과 낮은 제목 근거를 독립 근거로 남긴다. 고아 caption/주석의 적용 범위·일반 중첩 목록/continuation 의미 판정·반복 수식/길이 비율 등 효과를 입증하지 못한 추가 휴리스틱은 하지 않았다. 추측 교정 없음.
+
+LSR 두 판은 각각 17/21묶음(1.31/1.62건/쪽), NIST는 14묶음(1.27건/쪽)이다. 같은 reason/action 비교 패턴 집합만 접어 첫 목록 11/12/8행으로 줄인다. 모든 구성원·위치·차이는 보존하며 대표 하나로 전체를 승인하지 않는다. 이는 표시 부담 감소이고 비서 해결 뒤 사람에게 남는 양의 측정이 아니다. 300쪽 외삽은 계층별 표/그림/본문 밀도에 따라 약 382–485묶음 수준일 수 있어 장문 사용성 합격으로 보지 않는다. 비서의 실제 해결률/판단 불가율/시간과 사람의 U/B/H 분량은 PR 4 이후에 측정한다.
+
+알려진 셋째 수식/병합 표/북마크 없음/숫자 셀 4곳의 기록 부재를 잡지만, 벡터 수식의 수치 자체는 text layer에서 검증하지 못한다. 정상 빈 칸 1개도 gap 후보가 되는 오경보다. 수치/부호/단위/셀 교환/문단 누락/머리글 삽입의 주입 6종은 탐지했고, oracle와 같은 숫자 셀 21개 token 대조의 오경보는 0/21이다. 전체 문서/다른 후보의 오경보율과 시각/의미 품질은 미측정이다. 수식에서 문장 혼입을 없앤 그럴듯한 오답은 놓치며, bookmark가 있어도 개별 제목의 정확성을 보증하지 않는다.
+
+모든 수식은 의심 유무와 별개로 formula-review-required 후보와 각 수식 scope의 검수 묶음을 가진다. 의심 없는 두 수식도 검수에서 빠지지 않으며, 같은 필수 검수 패턴의 접기는 승인/검토 생략이 아니다.

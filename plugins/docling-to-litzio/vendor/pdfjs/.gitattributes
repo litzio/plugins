@@ -1,0 +1,4 @@
+# Preserve exact upstream bytes and vendored hash reproducibility.
+* -text
+# Keep two original trailing spaces in the Adobe redistribution notice.
+cmaps/LICENSE whitespace=-blank-at-eol

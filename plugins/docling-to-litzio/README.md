@@ -91,3 +91,27 @@ loadHandoff는 marker→파일 bytes/digest→schema→원본/문서 revision→
 
 
 PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.
+
+## PR 3 문제 탐지와 독립 PDF 증거
+
+생성 v1의 원본 PDF·Docling·실제 native snapshot/provenance를 읽고 **검수 전 후보**만 만든다. 설치/AI/교정은 없다. 후보 없음은 정답 판정이 아니다. PDF.js 6.5.438 legacy ESM과 worker/CMaps/라이선스를 vendor에 고정했으며 Node에서 npm install 없이 실행한다. 내장 core-js는 MIT, CMaps는 Adobe BSD-style, PDF.js는 Apache-2.0이다. 상세는 [vendor 고지](vendor/pdfjs/NOTICE.md).
+
+```sh
+node src/review.js GENERATION NEW_REVIEW_DIRECTORY
+node src/review.js --read GENERATION REVIEW_DIRECTORY
+```
+
+review-targets.json, pdf-evidence.json, 마지막 review-complete.json을 만든다. [검수 대상 계약](../../contracts/docling-to-litzio/review-targets.md)에 schema/읽는 순서/거부 조건과 kind별 근거가 있다. 고정 revision만 읽고 변경된 문서는 stale로 거부한다. 처리 핵심의 시험용 changed snapshot은 uncertain이며 identity 재연결 증거가 아니다.
+
+표본 측정과 테스트는 **저장소 루트**에서 실행한다. built CLI는 이전과 같은 격리 소스 빌드다.
+
+```powershell
+$env:DOCLING_TEST_CLI = 'BUILT_CLI'
+node plugins/docling-to-litzio/test/measure-corpus.js
+# 위 명령이 출력한 보존 corpus 경로
+$env:DOCLING_DETECTION_CORPUS = 'CORPUS_DIRECTORY'
+node plugins/docling-to-litzio/test/evaluate-detection.js $env:DOCLING_DETECTION_CORPUS
+node --test plugins/docling-to-litzio/test/*.test.js
+```
+
+corpus/CLI 환경 변수가 없으면 해당 통합·corpus 검사를 skip한다. vendored PDF reader·라이선스 hash·임시 독립 복사 실행은 별도로 검사한다. 라이브러리의 선택적 canvas/DOMMatrix/Path2D 경고는 stderr로 보내며 렌더링 성공을 주장하지 않는다. worker는 작업 후 종료된다. [실측과 놓치는 것](docs/results-pr3.md), [기계 측정](docs/detection-results.json).

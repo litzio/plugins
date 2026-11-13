@@ -80,3 +80,5 @@ items.structure는 원본 parent/children/formatting/hyperlink/meta/captions/foo
 
 
 PR #7 리뷰 정정: v1 유지 범위는 기존 block/list-item/cell selector와 raw source 구조·다대다 target으로 표현 가능한 생성 대응에 한한다. caption/inline 부분 범위의 정밀 selector, 셀별 page precision, reviewed 상태는 현재 v1에 없다. regionPrecision=table, reviewState=unreviewed는 그대로이며 정밀 위치/검수 완료를 같은 v1에서 지원한다고 약속하지 않는다. 새 공개 snapshot을 실제 확보하면 계약 예시와 소비 검사를 추가하고 버전 변경 필요를 판단한다.
+
+PR 3은 생성 묶음을 바꾸지 않고 별도 [검수 대상 v1](review-targets.md)을 내놓는다. review-targets.json은 후보/미검수 상태이며 provenance의 reviewed 상태나 교정 이력을 확장하지 않는다.
