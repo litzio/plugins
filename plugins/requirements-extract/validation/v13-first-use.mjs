@@ -1,12 +1,15 @@
 // v1.3 owner-guide rehearsal through public operations.
 // Deterministic declarations exercise plumbing, not human or AI review quality.
 // Conversion is intentionally external: use only a frozen bundle unless an already-running server was authorized.
-import {readFileSync,writeFileSync} from 'node:fs';
+import {readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
 import {loadProvenance,resolveSource} from '../src/provenance.mjs';
+import {sourceCli} from '../src/cli.mjs';
+import {traceStore,traceRecord,exportSourceReferences} from '../src/trace-store.mjs';
+import {create} from 'xmlbuilder2';
 import {loadLedger} from '../src/ledger.mjs';
 import {fake} from '../test/candidate-fixture.mjs';
 const [entry,workspace,host,phase='generate']=process.argv.slice(2),root=resolve(workspace),input=join(root,'operation-input.json'),marker=join(root,'reviewed-flow.json');
@@ -66,10 +69,25 @@ if(phase==='generate'){
   s=await inspect('summary',{jobId:id});assert.equal(s.requirements.length,2); // One machine-only paragraph and one value from a rule-approved merged table.
   if(!s.links){s=await act('links',{jobId:id,reviewRevision:s.review.revision});s=await act('unlinked',{jobId:id,reviewRevision:s.review.revision,ids:s.linkRequirements.map(r=>r.id),classification:'independent',reason:'Isolated public fixture workflow test; separate machine-only paragraph and rule-approved table value'});}
   const details=[];
-  await assert.rejects(act('export',{jobId:id,name:'must-not-export-before-confirm',reviewRevision:s.review.revision}));
+  if(s.review.confirmedCount===0)await assert.rejects(act('export',{jobId:id,name:'must-not-export-before-confirm',reviewRevision:s.review.revision}));
   for(const req of s.requirements){const detail=await inspect('detail',{jobId:id,requirementId:req.id});assert.ok(detail.sources.every(v=>v.trace.reviewState==='reviewed'));details.push(detail);s=await act('confirm',{jobId:id,ids:[req.id],planDigest:detail.review.planDigest,inputDigest:detail.review.inputDigest,reviewed:[detail.review]});}
   assert.ok(details.some(d=>d.sources.some(v=>v.trace.ruleApprovals.length>0)));assert.ok(details.some(d=>d.sources.some(v=>v.trace.machineOnlyPages.length>0)));
-  await act('save',{jobId:id,name:'v13-proposal',reviewRevision:s.review.revision});await act('export',{jobId:id,name:'v13-formal',reviewRevision:s.review.revision});
-  save(marker,{...m,consumerJobId:id});save(join(root,'consumer-detail.json'),details);console.log(JSON.stringify({phase,candidates:s.report.counts.candidates,requirements:s.requirements.length,confirmed:s.review.confirmedCount,formal:true,machineOnlySource:true,ruleApprovedSource:true}));
+  if(!existsSync(join(root,'v13-proposal.md')))await act('save',{jobId:id,name:'v13-proposal',reviewRevision:s.review.revision});
+  if(!existsSync(join(root,'v13-formal.reqif')))await act('export',{jobId:id,name:'v13-formal',reviewRevision:s.review.revision});
+  const saved=sourceCli({root,entry:resolve(entry)}).read('v13-proposal.md');assert.ok(!saved.diagnostics.some(d=>d.severity==='error'));
+  for(const r of saved.requirements)assert.deepEqual(r.sources,details.find(d=>d.requirement.id===r.id).sources);
+  const xml=create(readFileSync(join(root,'v13-formal.reqif'),'utf8')).node;
+  const definitions=new Set([...xml.getElementsByTagName('ATTRIBUTE-DEFINITION-STRING')].filter(n=>n.getAttribute('LONG-NAME')==='SourceReferences').map(n=>n.getAttribute('IDENTIFIER')));
+  const values=[...xml.getElementsByTagName('ATTRIBUTE-VALUE-STRING')].filter(n=>definitions.has(n.getElementsByTagName('ATTRIBUTE-DEFINITION-STRING-REF')[0]?.textContent)).map(n=>n.getAttribute('THE-VALUE'));
+  assert.ok(values.every(v=>v.length<=65535));assert.deepEqual(values.map(JSON.parse),saved.requirements.map(r=>exportSourceReferences(r.sources)));
+  const store=traceStore({document:join(root,'v13-proposal.md'),scope:p=>p});
+  for(const r of saved.requirements)for(const source of r.sources){const record=traceRecord(source.trace);assert.deepEqual(store.resolve(record.ref,record.summary),source.trace);}store.verify();
+  const ref=traceRecord(saved.requirements[0].sources[0].trace).ref,sidecar=join(root,'.requirements-traces',ref.id+'.json'),bytes=readFileSync(sidecar);
+  try{
+   writeFileSync(sidecar,'{}');const broken=sourceCli({root,entry:resolve(entry)}).read('v13-proposal.md');assert.ok(broken.diagnostics.some(d=>d.code==='source-trace-reference'));
+   await assert.rejects(act('export',{jobId:id,name:'must-not-export-broken-ref',reviewRevision:s.review.revision}));assert.equal(existsSync(join(root,'must-not-export-broken-ref.reqif')),false);
+  }finally{writeFileSync(sidecar,bytes);}
+
+  save(marker,{...m,consumerJobId:id});save(join(root,'consumer-detail.json'),details);console.log(JSON.stringify({phase,candidates:s.report.counts.candidates,requirements:s.requirements.length,confirmed:s.review.confirmedCount,formal:true,machineOnlySource:true,ruleApprovedSource:true,nativeTraceRoundtrip:true,reqifReferencesVerified:true,brokenReferenceExportRejected:true}));
  }else throw new Error('unknown-phase');
 }

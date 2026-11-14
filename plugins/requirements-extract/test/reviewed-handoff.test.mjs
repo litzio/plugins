@@ -1,3 +1,4 @@
+import {referencedTrace} from './export-trace-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {read,write,reseal,h} from './handoff-fixture.mjs';
@@ -14,14 +15,14 @@ test('v1.1 bundle/source bytes remain identical',()=>{const root=correctedFixtur
 for(const history of [false,true])test('v1.2 completion is recomputed, with or without correction history: '+history,()=>{
  const root=reviewedFixture({history}),bundle=load(root,{requireReviewed:true});assert.equal(bundle.reviewState,'reviewed');assert.ok(Object.values(bundle.review.conditions).every(v=>v===true));
  const src=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/tables/0',selector:'cell:1:0'}).source;assert.ok(reviewedTrace(src.trace));assert.match(src.trace.actorLimitation,/비인증/);assert.match(src.trace.mergedTableConfirmation,/요구사항 확정은 별도/);assert.equal(src.trace.expressionReviews[0].confirmation.meaning,'expression-semantic-preservation');assert.ok(!src.trace.diagnostics.some(d=>d.code==='merged-table-review'));
- const sets=sample(),r=sets[0].requirements[0];r.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+r.sources[0].trace.documentRevision;r.confirmedDigest=digest(r);const xml=exportReqif(sets).xml;for(const value of ['expression-semantic-preservation','사람으로 기록된 확인','비인증','merged-cell-repeated'])assert.ok(xml.includes(value),value);
+ const sets=sample(),r=sets[0].requirements[0];r.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+r.sources[0].trace.documentRevision;r.confirmedDigest=digest(r);const xml=exportReqif(sets).xml;assert.deepEqual(referencedTrace(xml,src).expressionReviews,src.trace.expressionReviews);
  r.status='draft';assert.throws(()=>exportReqif(sets));
  const first=report(prepare([{key:'synthetic',bundle}],profile)).reviewFirst;assert.ok(first.some(p=>p.code==='source-reviewed'));assert.ok(first.some(p=>p.code==='source-expression-confirmed'));
 });
 test('human region correction is never promoted to machine verification',()=>{
  const root=reviewedFixture({human:true}),bundle=load(root,{requireReviewed:true}),src=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/texts/0'}).source;
  assert.equal(bundle.snapshot.nodes[0].text,'Voltage ≤ 7 V');assert.equal(src.quote,'Voltage ≤ 5 V');assert.match(src.trace.humanCorrectionNotice,/기계 토큰 검증 아님/);assert.equal(src.trace.corrections[0].validation.protectedTokens,false);assert.equal(src.trace.corrections[0].validation.evidenceRecheck,'human-source-region');
- const sets=sample(),r=sets[0].requirements[0];r.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+r.sources[0].trace.documentRevision;r.confirmedDigest=digest(r);assert.ok(exportReqif(sets).xml.includes('human-source-region'));
+ const sets=sample(),r=sets[0].requirements[0];r.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+r.sources[0].trace.documentRevision;r.confirmedDigest=digest(r);assert.equal(referencedTrace(exportReqif(sets).xml,src).corrections[0].evidence.kind,'human-source-region');
 });
 const mutations={
  'C0 generation':l=>l.generationId='different', 'C1 pending':l=>l.pending={}, 'C2 stopped':l=>l.stopped=true, 'C3 revision':l=>l.revision='a'.repeat(64),
@@ -137,7 +138,7 @@ test('human-filled gap retains an empty original quote and table-region provenan
  hist.schemaVersion='1.2.0';hist.currentSnapshot=structuredClone(snapshot);hist.currentSnapshot.revision=c.documentRevision;Object.assign(hist.currentSnapshot.nodes.find(n=>n.type==='cell'&&n.path[1]===1&&n.path[2]===0),{text:'7 V',content:change.afterContent});l.changes=hist.changes;l.completion=null;l.lossConfirmations=[];l.humanDecisions=[];c.reviewState='unreviewed';c.files=c.files.filter(f=>f.relativePath!=='human-review.json');write(root,'complete.json',c);write(root,'correction-history.json',hist);write(root,'correction-ledger.json',l);reviewSeal(root);
  const bundle=load(root),src=resolveSource(bundle,{sourceKey:'synthetic',elementRef:table.selfRef,selector:'cell:1:0'}).source;assert.equal(src.quote,'');assert.equal(src.trace.sourceId,table.sourceId);assert.equal(src.trace.sourceCell,undefined);assert.equal(src.trace.gapTarget.originalConversionValue,'');assert.equal(src.trace.corrections[0].after,'7 V');assert.equal(src.trace.precision,'table');
  const job=prepare([{key:'synthetic',bundle}],profile),candidate=Object.values(job.corpus.candidates).find(c=>c.text==='7 V');assert.ok(candidate);assert.ok(candidate.sourceKeys.some(k=>job.corpus.sources[k].trace.gapTarget));
- const sets=sample(),req=sets[0].requirements[0];req.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+req.sources[0].trace.documentRevision;req.confirmedDigest=digest(req);assert.ok(exportReqif(sets,{testOnly:true}).xml.includes('source-cell-unavailable')||exportReqif(sets,{testOnly:true}).xml.includes('originalConversionValue'));assert.throws(()=>exportReqif(sets));
+ const sets=sample(),req=sets[0].requirements[0];req.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+req.sources[0].trace.documentRevision;req.confirmedDigest=digest(req);assert.equal(referencedTrace(exportReqif(sets,{testOnly:true}).xml,src).gapTarget.originalConversionValue,'');assert.throws(()=>exportReqif(sets));
 });
 import * as fixtureFs from 'node:fs';
 import * as fixturePath from 'node:path';

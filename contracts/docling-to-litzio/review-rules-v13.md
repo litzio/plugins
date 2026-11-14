@@ -83,4 +83,6 @@ C7은 유효 meaning-preserved 개별 확인 또는 현재 검증에 성공한 �
 
 ruleConfirmation은 `{ruleId,decisionId,actor:"human",time,revision,contentDigest,policyDigest,meaning:"rule-approved-representation"}`다. time/revision/contentDigest/policyDigest는 승인 결정의 값을 그대로 쓰고 현재 항목의 재검증 digest로 덮지 않는다. 현재 항목의 digest는 별도 ruleReviews.items[].contentDigest다. expressionReviews는 catalog의 expression 순서이며 confirmation과 ruleConfirmation을 모두 가지되 해당하지 않는 값은 null이다.
 
-소비자는 v1.3을 독립 검증하고 `docling-to-litzio/1.3.0` trace에 해당 source의 pageComparisons, machineOnlyPages(번호 배열), ruleApprovals(관련 승인 결정), ruleOpenReceipts(그 승인 openIds의 영수증), ruleVerifications(현재 항목 검증), expressionReviews의 두 확인 경로를 보존한다. inputDigest는 재계산한 완료 증거 전체를 포함한다. 요구사항 문서의 출처 JSON과 ReqIF SourceReferences는 이 값을 그대로 보존한다. 기계 전용 쪽을 사람 확인이라고 부르지 않는다. 기존 v1.0~v1.2 소비 경로는 그대로다.
+소비자는 v1.3을 독립 검증하고 `docling-to-litzio/1.3.0` trace에 해당 source의 pageComparisons, machineOnlyPages(번호 배열), ruleApprovals(관련 승인 결정), ruleOpenReceipts(그 승인 openIds의 영수증), ruleVerifications(현재 항목 검증), expressionReviews의 두 확인 경로를 보존한다. inputDigest는 재계산한 완료 증거 전체를 포함한다. 요구사항 모델에는 이 값을 보존한다. 저장 문서와 ReqIF SourceReferences는 [소비자 근거 참조](../../plugins/requirements-extract/docs/source-traces.md)의 짧은 요약·ID·digest를 쓰고, 전체 trace는 .requirements-traces 자료에 보존한다. 공개 읽기·내보내기는 원문 bytes digest와 참조를 검증한다. 기계 전용 쪽을 사람 확인이라고 부르지 않는다. 기존 v1.0~v1.2 소비 경로는 그대로다.
+
+**지금 하지 않는 것: 근거 파일을 ReqIF와 함께 묶어 내보내기 / 다시 볼 조건: 받는 쪽 도구에서 전체 근거가 실제로 필요해질 때.** ReqIF 파일만으로는 전체 출처 근거가 따라가지 않는다.

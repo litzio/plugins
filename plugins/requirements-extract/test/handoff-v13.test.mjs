@@ -1,3 +1,4 @@
+import {referencedTrace} from './export-trace-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fixtureV13,read,write,reseal,currentSnapshot} from './v13-fixture.mjs';
@@ -19,7 +20,7 @@ for(const options of [{},{history:true},{rules:true},{rules:true,history:true},{
  if(options.rules){assert.equal(src.trace.expressionReviews[0].confirmation,null);assert.equal(src.trace.ruleApprovals.length,1);assert.equal(src.trace.ruleOpenReceipts.length,1);assert.equal(src.trace.expressionReviews[0].ruleConfirmation.meaning,'rule-approved-representation');}
  if(options.machine&&!options.humanPage){assert.deepEqual(src.trace.machineOnlyPages,[1]);assert.ok(src.trace.diagnostics.some(d=>d.code==='source-machine-only'));}
  const sets=sample(),r=sets[0].requirements[0];r.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+src.trace.documentRevision;r.confirmedDigest=digest(r);
- const xml=exportReqif(sets).xml;assert.ok(xml.includes('docling-to-litzio/1.3.0'));if(options.rules)for(const text of ['rule-approved-representation','ruleOpenReceipts','ruleApprovals'])assert.ok(xml.includes(text));if(options.machine)assert.ok(xml.includes('machineOnlyPages'));
+ const xml=exportReqif(sets).xml,exported=referencedTrace(xml,src);assert.equal(exported.contract,'docling-to-litzio/1.3.0');if(options.rules){assert.deepEqual(exported.ruleApprovals,src.trace.ruleApprovals);assert.deepEqual(exported.ruleOpenReceipts,src.trace.ruleOpenReceipts);}if(options.machine)assert.deepEqual(exported.machineOnlyPages,src.trace.machineOnlyPages);
 });
 const mutations={
  'C0 mixed generation':l=>l.generationId='other', 'C1 pending':l=>l.pending={},'C2 stopped':l=>l.stopped=true,'C3 stale revision':l=>l.revision='a'.repeat(64),

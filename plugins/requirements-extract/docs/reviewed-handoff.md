@@ -29,7 +29,7 @@ human-source-region은 actor=human, refs=[], 원문 그룹의 대응 대상/빈 
 
 trace에 현재 완료 재검증 증거·발급 digest/revision, 관련 사람 결정·교정 이력·표현 항목/확인을 싣는다. actor는 **비인증 자기 선언**이며 ‘사람으로 기록된 확인’이다. 인증된 사람 승인으로 표시하지 않는다. 표현의 뜻 보존은 호출 소유 관계, 업무 승인, 기계 검증을 뜻하지 않는다. 병합 표의 유효한 표현 확인을 출처 측 확인으로 인정하는 가정은 설계 12절에 남겼다. 요구사항 본문·관계에 대한 별도 confirm과 해시 재검사는 유지한다.
 
-사람 우선 보고는 같은 문서의 검수 상태와 같은 표의 표현 확인을 묶으며 대상 sourceKeys와 근거를 보존한다. 전체 trace를 후보마다 요약에 복제하지 않는다. 화면은 backend의 그룹·행·페이지를 그대로 그린다. 상세는 전체 출처, 교정 검증 종류, 표현 보존 확인과 actor 한계를 표시한다. ReqIF의 기존 SourceReferences JSON 속성에 trace 전체가 보존되며 별도 boolean만으로 정식 출처로 승격하지 않는다.
+사람 우선 보고는 같은 문서의 검수 상태와 같은 표의 표현 확인을 묶으며 대상 sourceKeys와 근거를 보존한다. 전체 trace를 후보마다 요약에 복제하지 않는다. 화면은 backend의 그룹·행·페이지를 그대로 그린다. 상세는 전체 출처, 교정 검증 종류, 표현 보존 확인과 actor 한계를 표시한다. 현재 저장과 ReqIF는 [요약·근거 참조](source-traces.md)를 사용한다. 전체 trace는 플러그인 자료에 남고 별도 boolean만으로 정식 출처로 승격하지 않는다.
 
 ## 계약에서 모호한 것
 
@@ -49,6 +49,6 @@ v1.2 교정 이력이 있는 출처의 후보 키에는 현재 본문도 포함�
 
 v1.3은 이전 판정 함수와 분리된 reader로 review-v13/review-rules-v13 계약을 재계산한다. scope inventory, 내용에 결합된 실제 검사·사람 확인, method v3의 봉인된 쪽 대조 범위·미조사 쪽 사람 confirmed, 현재 표현 규칙 검증, 승인 당시 교정 prefix의 대표·모든 비교 영수증, C0~C9와 발급 배열의 정확한 일치를 모두 요구한다. 교정의 입력 digest도 해당 쓰기 직전 국소 자료에서 다시 계산한다. 현재 원장·발급 파일 문자열을 성공 근거로 대신하지 않는다. v1.2 판정과 golden은 유지한다.
 
-출처의 pageComparisons/machineOnlyPages/ruleApprovals/ruleOpenReceipts/ruleVerifications/expressionReviews는 입력 해시·사람 우선 보고·저장 문서·ReqIF SourceReferences에 남는다. 규칙 승인으로 병합 표의 출처 확인을 인정하는 것은 [설계 12절](design.md)의 가정이며 요구사항 확정은 별도다. 기계 전용 쪽은 글자 대조만 통과한 것이며 제목·읽는 순서·의미 확인으로 표시하지 않는다.
+출처의 pageComparisons/machineOnlyPages/ruleApprovals/ruleOpenReceipts/ruleVerifications/expressionReviews는 입력 해시·사람 우선 보고·전체 근거 파일에 남는다. 저장 문서·ReqIF SourceReferences에는 사람이 읽는 요약과 그 파일의 참조·digest를 남긴다. 규칙 승인으로 병합 표의 출처 확인을 인정하는 것은 [설계 12절](design.md)의 가정이며 요구사항 확정은 별도다. 기계 전용 쪽은 글자 대조만 통과한 것이며 제목·읽는 순서·의미 확인으로 표시하지 않는다.
 
 [실제 Host 실행과 한계](v13-first-use.md)를 따른다. 새 화면·기능·성능 작업은 포함하지 않는다. 초기 v1.3 완료 묶음은 최종 쪽 증거가 없어 거부하며 다시 완료 발급해야 한다. 미완료 자료는 근거가 유효하면 초안으로 계속 읽는다.

@@ -65,6 +65,7 @@ export function validate(sets, { formal = false } = {}) {
       if (r.origin === 'derived' && !r.rationale?.trim()) add(s, r, 'rationale', '도출 근거가 필요합니다');
       if (!r.sources?.length) add(s, r, 'sources', '하나 이상의 출처가 필요합니다');
       for (const src of r.sources ?? []) {
+        if(src.traceRef)add(s,r,'source-trace-reference','미해결 출처 근거 참조는 내보낼 수 없습니다');
         if(src.nativeLocation) {
           const n=src.nativeLocation,registration=s.registry.find(v=>v.sourceKey===src.sourceKey);
           if(!/^[a-f0-9]{64}$/.test(n.sourceId)||!/^[a-f0-9]{64}$/.test(n.revision)||!Array.isArray(n.path)||!n.path.length||!n.path.every(Number.isInteger)||n.path[0]<1||n.path.some(v=>v<0)||typeof n.file!=='string'||/^(?:[a-z]:|[\\/])|(?:^|[\\/])\.\.(?:[\\/]|$)/i.test(n.file)||registration?.nativeDigest!=='sha256:'+n.revision||registration?.nativeFile!==n.file) add(s,r,'source-native-location','native 위치와 출처 등록/revision이 다릅니다');
