@@ -263,7 +263,7 @@ export function createCorrections(root, cli) {
       "review/pdf-evidence.json",
       "review/review-targets.json",
     ])
-      marker.files.push({
+      if (!marker.files.some((file)=>file.relativePath === name)) marker.files.push({
         relativePath: name,
         sha256: digest(await readRelative(root, name)),
       });

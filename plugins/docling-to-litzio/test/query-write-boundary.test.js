@@ -256,6 +256,18 @@ test("finalize rechecks revision after a successful official check result", asyn
 
 test("schema reuse is bound to exact bytes even if a captured buffer and review marker change", async () => {
   const x = await copy();
+  // Establish the history validation receipt, then exercise the supported
+  // unsealed review-marker path. Other tests cover the stronger outer seal;
+  // this probe must still reach the exact-byte cache recheck itself.
+  const report = await json(join(x.root,"review/review-targets.json"));
+  const groupId = report.groups[0].id;
+  await observed(x.service,"submit",{changeId:"cache-probe",generationId:x.h.provenance.generationId,revision:x.h.snapshot.revision,
+    groupId,actor:"human",decision:"correct",target:{kind:"cell",path:[1],row:0,column:0},before:"0.12 s",after:"0.12 s temporary",
+    reason:note,evidence:{kind:"human-source-region",refs:[],scope:report.findings[0].regions.map((region)=>({pageNo:region.pageNo,bbox:region.bbox}))}});
+  await observed(x.service,"undo",{changeId:"cache-undo",undoOf:"cache-probe",actor:"human",reason:note});
+  const marker = await json(join(x.root,"complete.json"));
+  marker.files = marker.files.filter((file)=>file.relativePath !== "review/review-complete.json");
+  await fs.writeFile(join(x.root,"complete.json"),JSON.stringify(marker));
   let reportBuffer,
     injected = false;
   afterRead = async (file, bytes) => {

@@ -1,3 +1,4 @@
+import { validatePageCoverage } from "./page-comparison.js";
 import { reviewBindings } from "./review-bindings.js";
 import { snapshotLookup } from "./lookup.js";
 import {
@@ -701,6 +702,7 @@ async function validateFileSet(
     sourceDocument: doc,
     sourceRecord: record,
   };
+  baseline.pageCoverage = marker.schemaVersion === "1.3.0" ? validatePageCoverage(files,baseline) : null;
   if (!history) return baseline;
   validateSchema(history, schemas[history.schemaVersion === "1.3.0" ? "correction-history-v13" : "correction-history"]);
   need(
@@ -757,6 +759,7 @@ async function validateFileSet(
     history,
     baseline,
     validatedReview,
+    pageCoverage: baseline.pageCoverage,
   };
 }
 

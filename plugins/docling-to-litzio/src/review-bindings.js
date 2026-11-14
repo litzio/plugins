@@ -35,6 +35,7 @@ export function materialContentDigest(material, memo = new WeakMap()) {
 // calls. Hash blocks/items/pages once, then combine their ordered hashes.
 export function createPageBindingProjection(report, handoff, evidence) {
   const blocks = new Map(), sources = new Map(), pageSources = new Map();
+  const coverageByPage = new Map((handoff.pageCoverage?.pages ?? []).map((page)=>[page.pageNo,page]));
   for (const node of handoff.snapshot.nodes) {
     const key = node.path[0];
     if (!blocks.has(key)) blocks.set(key, []);
@@ -66,7 +67,7 @@ export function createPageBindingProjection(report, handoff, evidence) {
       sources: ids.map((id) => [id, sources.get(id)?.item, checkHashes.get(id) ?? null]),
       blocks: paths.map((path) => [path, blockHashes.get(path) ?? null]),
       pages: [[pageNo, pages.get(pageNo) ?? null]],
-      extra: null,
+      extra: coverageByPage.has(pageNo) ? {comparisonCoverage:coverageByPage.get(pageNo)} : null,
     };
   };
 }

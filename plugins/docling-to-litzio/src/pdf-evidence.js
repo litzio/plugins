@@ -1,12 +1,12 @@
 import { Worker } from "node:worker_threads";
 // Isolate upstream diagnostic stdout from the caller's JSON CLI output.
 // No global console mutation, renderer shim or optional native installation.
-export function extractPdf(bytes) {
+export function extractPdf(bytes, { coverage = false } = {}) {
   return new Promise((resolve, reject) => {
     const worker = new Worker(
       new URL("./pdf-reader-worker.js", import.meta.url),
       {
-        workerData: Uint8Array.from(bytes),
+        workerData: coverage ? {bytes:Uint8Array.from(bytes),coverage:true} : Uint8Array.from(bytes),
         execArgv: [],
         stdout: true,
         stderr: true,
@@ -23,7 +23,7 @@ export function extractPdf(bytes) {
       if (code !== 0 || !response)
         reject(new Error("PDF reader worker failed"));
       else if (response.error) reject(new Error(response.error));
-      else resolve(response.evidence);
+      else resolve(coverage ? response : response.evidence);
     });
   });
 }
