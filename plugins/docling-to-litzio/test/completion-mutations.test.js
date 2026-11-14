@@ -301,7 +301,9 @@ for (const [name, event] of Object.entries(events))
       ].includes(name)
     ) {
       assert(state.lossConfirmations.every((r) => r.invalidatedAt));
-      assert(state.humanDecisions.every((r) => r.invalidatedAt));
+      const affected=new Set([x.groupId,...x.report.groups.find((group)=>group.id===x.groupId).pageNos.map((page)=>"page:"+page)]);
+      assert(state.humanDecisions.filter((r)=>affected.has(r.groupId)).every((r) => r.invalidatedAt));
+      assert(state.humanDecisions.filter((r)=>!affected.has(r.groupId)).every((r) => !r.invalidatedAt),"independent page confirmations survive an edit elsewhere");
     }
   });
 const mutations = {

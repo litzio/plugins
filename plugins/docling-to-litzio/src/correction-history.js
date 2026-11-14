@@ -1,18 +1,19 @@
 import { diagnostic } from "./diagnostics.js";
 import { inlineText } from "./rich-content.js";
 import { protectedTokens } from "./tokens.js";
+import { snapshotLookup } from "./lookup.js";
 import { isDeepStrictEqual as equal } from "node:util";
 import { createHash } from "node:crypto";
 export const need = (v, code) => {
   if (!v) throw Object.assign(new Error(diagnostic(code)), { code });
 };
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
-export function targetNode(snapshot, target) {
+export function targetNode(snapshot, target, lookup) {
   const path =
     target.kind === "cell"
       ? [...target.path, target.row, target.column]
       : target.path;
-  const n = snapshot.nodes.find((n) => equal(n.path, path));
+  const n = lookup ? lookup.node(path) : snapshot.nodes.find((n) => equal(n.path, path));
   need(
     n &&
       (target.kind === "cell"
@@ -58,9 +59,10 @@ function applyProjection(
   revision,
   afterContent,
   beforeContent,
+  lookup,
 ) {
-  const n = targetNode(result, target);
-  need(valueAt(result, target) === before, "before-conflict");
+  const n = targetNode(result, target, lookup);
+  need((target.kind === "equation" ? n.latex : n.text) === before, "before-conflict");
   if (target.kind === "equation") n.latex = after;
   else {
     need(
@@ -88,6 +90,14 @@ function applyProjection(
         afterContent ?? (after ? [{ kind: "text", text: after }] : []);
   }
   result.revision = revision;
+  return result;
+}
+
+// Historical rule witnesses have already passed validateHistory. Replay only
+// text edits, cloning/indexing the snapshot once, independent of change count.
+export function replayEdits(snapshot,changes) {
+  const result=structuredClone(snapshot),lookup=snapshotLookup(result,{strict:true});
+  for (const change of changes) applyProjection(result,change.target,change.before,change.after,change.afterRevision,change.afterContent,change.beforeContent,lookup);
   return result;
 }
 export function validateHistory(

@@ -2,8 +2,47 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { hash } from "./convert.js";
 import { protectedTokens } from "./tokens.js";
-export async function readPdf(bytes) {
-  const { getDocument, GlobalWorkerOptions, version } = await import(
+export function operatorCoverage(operators,OPS) {
+  let rasterObjects=0,vectorPaints=0;
+  const rasterOps=new Set(Object.entries(OPS).filter(([name])=>/^paint.*Image/.test(name)).map(([,value])=>value));
+  const vectorOps=new Set(["stroke","closeStroke","fill","eoFill","fillStroke","eoFillStroke","closeFillStroke","closeEOFillStroke","shadingFill","rawFillPath"].map((name)=>OPS[name]).filter(Number.isInteger));
+  for (const [index,operation] of operators.fnArray.entries()) {
+    if (rasterOps.has(operation)) rasterObjects++;
+    if (vectorOps.has(operation)) vectorPaints++;
+    if (operation === OPS.constructPath) {
+      // PDF.js 6 stores the painting opcode in constructPath's first argument.
+      // Counting only standalone fill/stroke silently misses optimized paths.
+      const paint=operators.argsArray[index]?.[0];
+      if (vectorOps.has(paint)) vectorPaints++;
+      else if (paint !== OPS.endPath) throw new Error("unknown-path-paint");
+    }
+  }
+  return {rasterObjects,vectorPaints};
+}
+
+// These structures can execute paint outside the page's flat operator list.
+// Do not interpret their programs or infer that an unobserved program is empty.
+export function assertInspectablePaints(operators,OPS,font) {
+  const nested=new Set(["paintFormXObjectBegin","paintFormXObjectEnd","beginGroup","endGroup",
+    "setFillColorN","setStrokeColorN","beginAnnotation","endAnnotation","paintXObject",
+    "beginInlineImage","beginImageData","endInlineImage"].map((name)=>OPS[name]).filter(Number.isInteger));
+  const inspectFont=(id)=> {
+    const value=font(id);
+    if (!value || typeof value.isType3Font !== "boolean" || value.isType3Font || value.isInvalidPDFjsFont === true)
+      throw new Error("unassessed-font-program");
+  };
+  for (const [index,operation] of operators.fnArray.entries()) {
+    if (nested.has(operation)) throw new Error("unassessed-nested-paint");
+    const args=operators.argsArray[index];
+    if (operation === OPS.setFont) inspectFont(args?.[0]);
+    if (operation === OPS.setGState) for (const [key,value] of args?.[0] ?? []) {
+      if (key === "Font") inspectFont(value?.[0]);
+      if (key === "SMask") throw new Error("unassessed-soft-mask");
+    }
+  }
+}
+export async function readPdf(bytes, { coverage = false } = {}) {
+  const { getDocument, GlobalWorkerOptions, version, OPS } = await import(
     "../vendor/pdfjs/build/pdf.mjs"
   );
   GlobalWorkerOptions.workerSrc = new URL(
@@ -22,9 +61,15 @@ export async function readPdf(bytes) {
     cMapPacked: true,
     verbosity: 0,
   });
-  const pages = [];
+  const pages = [], coveragePages = [];
   try {
     const pdf = await task.promise;
+    // isPureXfa depends on enabling XFA rendering. Inspect presence instead;
+    // this metadata flag is populated even when XFA rendering stays disabled.
+    let noXfa=false;
+    if (coverage) try {
+      noXfa=(await pdf.getMetadata()).info?.IsXFAPresent === false;
+    } catch { /* Unknown document form metadata is unassessed. */ }
     let outline;
     try {
       const stack = [...((await pdf.getOutline()) ?? [])];
@@ -83,6 +128,20 @@ export async function readPdf(bytes) {
           });
         }
       }
+      if (coverage) {
+        let rasterObjects=0, vectorPaints=0, operatorScan="complete";
+        try {
+          const operators=await page.getOperatorList();
+          ({rasterObjects,vectorPaints}=operatorCoverage(operators,OPS));
+          if (!noXfa) throw new Error("unassessed-xfa");
+          assertInspectablePaints(operators,OPS,(id)=>page.commonObjs.get(id));
+          // Appearance streams may be separate from the display operator list.
+          // Even a hidden/print-only or appearance-less annotation stays human.
+          if ((await page.getAnnotations({intent:"any"})).length) throw new Error("unassessed-annotation");
+        } catch { operatorScan="unavailable"; }
+        coveragePages.push({pageNo,textLayer:items.length ? "available" : "unavailable",operatorScan,rasterObjects,vectorPaints,
+          notCompared:[...(!items.length ? ["missing-text-layer"] : []),...(operatorScan !== "complete" ? ["operator-scan-unavailable"] : []),...(rasterObjects ? ["raster-content"] : []),...(vectorPaints ? ["vector-painted-content"] : [])]});
+      }
       pages.push({
         pageNo,
         width: viewport.width,
@@ -96,7 +155,7 @@ export async function readPdf(bytes) {
       });
       await page.cleanup();
     }
-    return {
+    const evidence = {
       schemaVersion: "1.0.0",
       pdfSha256: hash(bytes),
       outline,
@@ -110,6 +169,8 @@ export async function readPdf(bytes) {
         "text item ascent/descent + proportional character offsets; approximate; unrotated TOPLEFT PDF pt",
       pages,
     };
+    return coverage ? {evidence,pageCoverage:{schemaVersion:"1.3.0",pdfSha256:hash(bytes),reader:{name:"pdfjs-dist",version},method:"pdfjs-6.5.438-text-and-optimized-paint-v3",pages:coveragePages,
+      semanticLimits:["heading-hierarchy","reading-order","meaning"],regionPrecision:"whole-page"}} : evidence;
   } finally {
     await task.destroy();
   }

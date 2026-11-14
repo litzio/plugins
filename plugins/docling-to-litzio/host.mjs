@@ -1,3 +1,4 @@
+import { PluginPublicError } from "@litzio/plugin-sdk";
 import { diagnostic } from "./src/diagnostics.js";
 import { createJobs, safeError } from "./src/plugin-jobs.js";
 export function activate(context) {
@@ -6,13 +7,22 @@ export function activate(context) {
     try {
       return await fn(input);
     } catch (error) {
+      const known = /^[a-z][a-z0-9-]{0,63}$/.test(error?.code ?? "") ||
+        ["ENOENT","EACCES","EPERM","EEXIST"].includes(error?.code) ||
+        /^(?:handoff-|review-|schema-invalid)/.test(error?.message ?? "");
+      if (!known) throw error;
       const code = safeError(error);
       const field = code === "schema-invalid" ? /^schema-invalid (\$(?:\.[A-Za-z][A-Za-z0-9]*|\[\d+\])*)/.exec(error.message)?.[1] : null;
-      throw Object.assign(new Error(diagnostic(code) + (field ? ` Field: ${field}.` : "")), { code });
+      const message = diagnostic(code).replace(new RegExp(`^${code}: `), "");
+      throw new PluginPublicError(code, message + (field ? ` Field: ${field}.` : ""));
     }
   };
   return {
     operations: {
+      "page-compare": (input)=>call(jobs.pageCompare,input),
+      "rule-material": (input)=>call(jobs.ruleMaterial,input),
+      "rule-open": (input)=>call(jobs.ruleOpen,input),
+      "rule-decision": (input)=>call(jobs.ruleDecision,input),
       revision: (input) => call(jobs.revision, input),
       compare: (input) => call(jobs.compare, input),
       "loss-decision": (input) => call(jobs.lossDecision, input),

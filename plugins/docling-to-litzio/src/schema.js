@@ -8,6 +8,8 @@ export const schemas = Object.fromEntries(
       "review-targets",
       "review-complete",
       "pdf-evidence",
+      "page-coverage",
+      "page-coverage-complete",
       "correction-submission",
       "correction-history",
       "correction-history-v13",

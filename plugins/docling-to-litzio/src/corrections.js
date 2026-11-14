@@ -1,5 +1,7 @@
 import { createMaterialReader } from "./review-material.js";
-import { reviewBindings, materialContentDigest, currentReview, invalidateChangedReviews, interruptReview } from "./review-bindings.js";
+import { reviewBindings, materialContentDigest, pageMaterial, currentReview, invalidateChangedReviews, interruptReview } from "./review-bindings.js";
+import { pageComparisons } from "./page-comparison.js";
+import { ruleMaterials, ruleReviews, ruleOpeningState } from "./rule-review.js";
 import {
   completionGate,
   humanQueue,
@@ -263,7 +265,7 @@ export function createCorrections(root, cli) {
       "review/pdf-evidence.json",
       "review/review-targets.json",
     ])
-      marker.files.push({
+      if (!marker.files.some((file)=>file.relativePath === name)) marker.files.push({
         relativePath: name,
         sha256: digest(await readRelative(root, name)),
       });
@@ -306,6 +308,70 @@ export function createCorrections(root, cli) {
 
   return {
     material,
+    async ruleReview(ruleId) {
+      const c=await readReview(root,join(root,"review"));
+      const view=await this.ruleMaterial(ruleId,c);
+      return ruleOpeningState(c.handoff.ledger ?? {},view,lossCatalog(c.handoff.losses.items,c.handoff),c.report);
+    },
+    async ruleMaterial(ruleId,context) {
+      const c=context ?? await readReview(root,join(root,"review"));
+      need(equal(await inspect(c.read),c.handoff.snapshot),"stale-document");
+      const view=ruleMaterials(c.report,c.handoff,c.evidence,lossCatalog(c.handoff.losses.items,c.handoff)).find((rule)=>rule.ruleId===ruleId);
+      need(view,"rule-not-found");
+      return view;
+    },
+    ruleOpen: (input)=>locked(async()=> {
+      const s=await writableLedger(),snap=await inspect();
+      need(!s.pending && !s.stopped && input.revision===s.revision && snap.revision===s.revision,"stale-rule-open");
+      need(input.actor==="human","human-rule-required");
+      need(typeof input.openId==="string" && /^[a-zA-Z0-9-]{1,80}$/.test(input.openId),"invalid-rule-open");
+      const c=await readReview(root,join(root,"review")),view=ruleMaterials(c.report,c.handoff,c.evidence,lossCatalog(c.handoff.losses.items,c.handoff)).find((rule)=>rule.ruleId===input.ruleId);
+      need(view,"rule-not-found");
+      need(input.ruleContentDigest===view.contentDigest,"stale-rule-material");
+      const rep=view.representatives.find((rep)=>rep.lossId===input.lossId);
+      const comparison=rep?.comparisons.find((comparison)=>comparison.groupId===input.groupId && comparison.pageNo===input.pageNo);
+      need(comparison,"rule-representative-required");
+      assertMaterial(input,comparison.contentDigest);
+      s.ruleOpens ??= [];
+      const record={openId:input.openId,ruleId:input.ruleId,lossId:input.lossId,groupId:input.groupId,pageNo:input.pageNo,
+        ruleContentDigest:input.ruleContentDigest,contentDigest:input.contentDigest,revision:s.revision,changeCount:s.changes.length,
+        actor:"human",time:new Date().toISOString(),comparison:"source-and-current-side-by-side"};
+      const prior=s.ruleOpens.find((open)=>open.openId===input.openId);
+      if (prior) {
+        need(equal({...prior,time:record.time},record),"duplicate-conflict");
+        return prior;
+      }
+      s.ruleOpens.push(record);
+      invalidateReview(s);
+      await assertWriteRevision(s.revision);await save(file,s);
+      return record;
+    }),
+    ruleDecision: (input)=>locked(async()=> {
+      const s=await writableLedger(),snap=await inspect();
+      need(!s.pending && !s.stopped && input.revision===s.revision && snap.revision===s.revision,"stale-rule-decision");
+      need(input.actor==="human","human-rule-required");
+      need(["approved","deferred","rejected"].includes(input.decision) && typeof input.note==="string" && input.note.trim() && Array.isArray(input.openIds),"invalid-rule-decision");
+      const c=await readReview(root,join(root,"review")),catalog=lossCatalog(c.handoff.losses.items,c.handoff);
+      const view=ruleMaterials(c.report,c.handoff,c.evidence,catalog).find((rule)=>rule.ruleId===input.ruleId);
+      need(view,"rule-not-found");assertMaterial(input,view.contentDigest);
+      const record={decisionId:randomUUID(),ruleId:view.ruleId,policyDigest:view.policyDigest,memberIds:view.members.map((member)=>member.lossId),
+        contentDigest:input.contentDigest,revision:s.revision,changeCount:s.changes.length,actor:"human",time:new Date().toISOString(),
+        decision:input.decision,note:input.note,openIds:input.openIds};
+      s.ruleDecisions ??= [];
+      for (const old of s.ruleDecisions.filter((old)=>old.ruleId===view.ruleId)) old.invalidatedAt ??= record.time;
+      s.ruleDecisions.push(record);
+      need(ruleReviews(s,c.report,c.handoff,c.evidence,catalog).rules.find((rule)=>rule.ruleId===view.ruleId)?.decision?.decisionId===record.decisionId,"rule-representative-required");
+      invalidateReview(s);
+      await assertWriteRevision(s.revision);await save(file,s);
+      return record;
+    }),
+    async pageMaterial(pageNo,context) {
+      const c=context ?? await readReview(root,join(root,"review"));
+      const pages=pageComparisons(c.report,c.handoff,c.evidence);
+      need(pages.some((page)=>page.pageNo===pageNo && page.status === "requires-human"),"page-not-human-review");
+      need(equal(await inspect(c.read),c.handoff.snapshot),"stale-document");
+      return pageMaterial(c.report,c.handoff,c.evidence,pageNo);
+    },
     humanDecision: (input) =>
       locked(async () => {
         const s = await writableLedger(),
@@ -320,8 +386,9 @@ export function createCorrections(root, cli) {
         const { report, handoff, evidence } = await readReview(root, join(root, "review"));
         const bindings = s.reviewVersion === "1.3.0" ? reviewBindings(report, handoff, evidence) : null;
         need(
-          report.groups.some((g) => g.id === input.groupId),
-          "group-not-found",
+          report.groups.some((g) => g.id === input.groupId) ||
+            pageComparisons(report,handoff,evidence,bindings).some((page)=>page.scopeId===input.groupId && page.status === "requires-human"),
+          "human-scope-not-found",
         );
         need(
           ["confirmed", "deferred"].includes(input.decision) &&
@@ -442,6 +509,8 @@ export function createCorrections(root, cli) {
         );
         need(gate.ready, "review-incomplete");
         need((await call("check", [])).ok === true, "document-check-failed");
+        const bindings=reviewBindings(report,h,evidence),catalog=lossCatalog(h.losses.items,h);
+        const rules=ruleReviews(s,report,h,evidence,catalog,bindings);
         const completion = {
           schemaVersion: s.reviewVersion ?? "1.2.0",
           generationId: s.generationId,
@@ -455,8 +524,12 @@ export function createCorrections(root, cli) {
             s,
             lossCatalog(h.losses.items, h),
             s.revision,
-            s.reviewVersion === "1.3.0" ? reviewBindings(report, h, evidence) : undefined,
+            bindings,rules,
           ),
+          ruleOpens:s.ruleOpens ?? [],
+          ruleDecisions:s.ruleDecisions ?? [],
+          ruleReviews:rules,
+          pageComparisons: pageComparisons(report,h,evidence),
         };
         await assertWriteRevision(s.revision);
         await save(join(root, "human-review.json"), completion);
@@ -531,14 +604,18 @@ export function createCorrections(root, cli) {
           evidence,
         );
         const bindings = s.reviewVersion === "1.3.0" ? reviewBindings(report,h,evidence) : undefined;
+        const catalog=lossCatalog(h.losses.items,h),rules=ruleReviews(s,report,h,evidence,catalog,bindings);
+        const comparisons=pageComparisons(report,h,evidence,bindings);
         return {
           ...s,
+          ruleReviews:rules,
           scopeDigests: Object.fromEntries(bindings ?? []),
           currentHumanDecisions: (s.humanDecisions ?? []).filter((record) => currentReview(record,record.groupId,s,s.revision,bindings)),
-          expressionReviews: expressionReviews(s,lossCatalog(h.losses.items,h),s.revision,bindings),
+          expressionReviews: expressionReviews(s,catalog,s.revision,bindings,rules),
+          pageComparisons: pageComparisons(report,h,evidence,bindings),
           currentRevision: snap.revision,
           reviewComplete: h.reviewComplete,
-          humanQueue: humanQueue(s, report, s.reviewVersion === "1.3.0" ? reviewBindings(report, h, evidence) : undefined),
+          humanQueue: humanQueue(s, report, bindings, comparisons, {...rules,catalog}),
           losses: lossCatalog(h.losses.items, h),
           gate,
         };

@@ -119,6 +119,9 @@ test("v1.3 stop/resume cannot resurrect completion; unchanged inspections permit
   const legacy = structuredClone(await service.progress());
   const legacyCompletion = structuredClone(legacy.completion);
   legacyCompletion.schemaVersion = "1.2.0";
+  delete legacyCompletion.pageComparisons;
+  delete legacyCompletion.ruleOpens;delete legacyCompletion.ruleDecisions;delete legacyCompletion.ruleReviews;
+  for (const item of legacyCompletion.expressionReviews) delete item.ruleConfirmation;
   for (const scope of legacyCompletion.scopes) if (scope.checkpoint) delete scope.checkpoint.contentDigest;
   for (const record of [...legacyCompletion.humanDecisions,...legacyCompletion.lossConfirmations,...legacyCompletion.expressionReviews.map((r)=>r.confirmation)]) delete record.contentDigest;
   const legacyState = JSON.parse(await readFile(join(root,"correction-ledger.json")));

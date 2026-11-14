@@ -1,5 +1,6 @@
 import * as pdfjs from "./vendor/pdfjs/build/pdf.mjs";
 const labels = {
+  "machine-unassessed-page": "기계 대조 밖의 영역 · 사람 확인",
   "meaning-loss": "의미에 영향이 있는 손실",
   "formula-review-required": "수식 검수",
   "formula-suspicion": "수식 의심",
@@ -21,6 +22,7 @@ const labels = {
   "reading-order-backtrack": "읽는 순서 의심",
   "geometry-unavailable": "좌표 대조 불가",
 };
+const comparisonLimit = {"missing-text-layer":"글자 층 없음","operator-scan-unavailable":"그림·도형 조사 불가","raster-content":"이미지 안의 내용","vector-painted-content":"그림·도형 안의 내용","docling-picture":"그림으로 옮긴 내용","unavailable-protected-token-scope":"보호 token을 대조하지 못한 범위"};
 const priority = { high: "높음", medium: "보통", low: "낮음" };
 const targetText = (t) =>
   `블록 ${t.path.join(".")}${t.selector.kind === "cell" ? ` · 셀 ${t.selector.row + 1}/${t.selector.column + 1}` : t.selector.kind === "list-item" ? ` · 목록 ${t.selector.index + 1}` : ""} (${t.bindingState})`;
@@ -62,27 +64,31 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
     [readState, setReadState] = React.useState(null),
     [note, setNote] = React.useState(""),
     [after, setAfter] = React.useState("");
+  const [ruleView,setRuleView]=React.useState(null),[ruleNote,setRuleNote]=React.useState(""),
+    [activeRuleComparison,setActiveRuleComparison]=React.useState(null),[renderedPdf,setRenderedPdf]=React.useState("");
   const [humanVisual, setHumanVisual] = React.useState(false),
     [cellMath, setCellMath] = React.useState(false);
   const canvas = React.useRef(null),
     compareRequest = React.useRef(0);
-  const compare = async (selection) => {
+  const compare = async (selection,ruleContext=null) => {
     const ticket = ++compareRequest.current;
     setComparison(null);
+    setActiveRuleComparison(null);
+    setRenderedPdf("");
     setReadState(null);
     setAfter("");
     setHumanVisual(false);
     setCellMath(false);
     try {
-      const c = await invoke("compare", { jobId: job.jobId, ...selection });
+      const c = await invoke(selection.pageNo ? "page-compare" : "compare", { jobId: job.jobId, ...selection });
       if (ticket !== compareRequest.current) return;
       setNote("");
       setComparison(c);
+      setActiveRuleComparison(ruleContext?.ruleId ? ruleContext : null);
       setCompareKey((k) => k + 1);
-      setTargetIndex(0);
-      setPageNo(
-        c.targets[0]?.regions?.[0]?.pageNo ?? c.regions[0]?.pageNo ?? 1,
-      );
+      const index=ruleContext ? Math.max(0,c.targets.findIndex((target)=>target.sourceId===ruleContext.sourceId)) : 0;
+      setTargetIndex(index);
+      setPageNo(ruleContext?.pageNo ?? selection.pageNo ?? c.targets[index]?.regions?.[0]?.pageNo ?? c.regions[0]?.pageNo ?? 1);
       setZoom(1);
     } catch (e) {
       if (ticket === compareRequest.current) message(e);
@@ -132,6 +138,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
           (bottom - y) * zoom,
         );
       }
+      setRenderedPdf(`${comparison.material.contentDigest}:${pageNo}:${targetIndex}:${zoom}`);
       el.dataset.renderedSource =
         comparison.targets[targetIndex]?.sourceId ?? "";
     };
@@ -186,7 +193,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
     try {
       await invoke("human-decision", {
         jobId: job.jobId,
-        groupId: comparison.material.group.id,
+        groupId: comparison.pageScope ?? comparison.material.group.id,
         revision: comparison.revision,
         contentDigest: comparison.material.contentDigest,
         decision,
@@ -207,7 +214,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
       await invoke("loss-decision", {
         jobId: job.jobId,
         lossId: loss.lossId,
-        groupId: comparison.material.group.id,
+        groupId: comparison.pageScope ?? comparison.material.group.id,
         revision: comparison.revision,
         contentDigest: comparison.material.contentDigest,
         targetPath: [target.path[0]],
@@ -221,6 +228,27 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
     } finally {
       setBusy(false);
     }
+  };
+  const loadRule=async(ruleId)=>setRuleView(await invoke("rule-material",{jobId:job.jobId,ruleId}));
+  const openRuleComparison=async()=> {
+    if (!activeRuleComparison || !comparison) return;
+    setBusy(true);
+    try {
+      await invoke("rule-open",{jobId:job.jobId,actor:"human",openId:crypto.randomUUID(),
+        ruleId:activeRuleComparison.ruleId,lossId:activeRuleComparison.lossId,groupId:activeRuleComparison.groupId,
+        pageNo:activeRuleComparison.pageNo,revision:comparison.revision,ruleContentDigest:activeRuleComparison.ruleContentDigest,
+        contentDigest:comparison.material.contentDigest});
+      await loadRule(activeRuleComparison.ruleId);await loadReview(job.jobId);
+    } catch(e) {message(e);} finally {setBusy(false);}
+  };
+  const decideRule=async(decision)=> {
+    setBusy(true);
+    try {
+      await invoke("rule-decision",{jobId:job.jobId,actor:"human",ruleId:ruleView.material.ruleId,
+        revision:ruleView.material.documentRevision,contentDigest:ruleView.material.contentDigest,
+        decision,note:ruleNote,openIds:ruleView.openIds});
+      await loadReview(job.jobId);await loadRule(ruleView.material.ruleId);setRuleNote("");
+    } catch(e) {message(e);} finally {setBusy(false);}
   };
   const request = React.useRef(null);
   const loadReview = async (jobId) =>
@@ -247,7 +275,10 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
       setBusy(false);
     }
   };
-  const message = (e) => setError(String(e?.message ?? e));
+  const message = (e) => setError([
+    e?.code ? `${e.code}: ${e.message}` : String(e?.message ?? e),
+    ...(e?.inputIssues ?? []).map((issue) => `${issue.path}: ${issue.reason}`),
+  ].join("\n"));
   const reloadHistory = () =>
     invoke("jobs", {})
       .then((r) =>
@@ -345,6 +376,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
       message(e);
     }
   };
+  React.useEffect(()=>{setRuleView(null);setRuleNote("");setActiveRuleComparison(null);},[job?.jobId]);
   const hidden = new Set(
     expanded
       ? []
@@ -592,14 +624,57 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
               {review?.gate?.tokenDifferences ?? "—"}
             </span>
           </ui.Toolbar>
+          <section aria-label="쪽별 기계 대조" style={{display:"grid",gap:"var(--space-3)",paddingBlock:"var(--space-3)",minWidth:0}}>
+            <h3>쪽별 기계 대조</h3>
+            <p>숫자·단위·부호·식별자 token과 옮겨지지 않은 PDF 글자를 대조합니다. 제목 계층·읽는 순서·의미는 검사하지 않습니다.</p>
+            {(review?.pageComparisons ?? []).map((page)=>(
+              <div key={page.scopeId} data-page-status={page.status}>
+                <strong>{page.pageNo}쪽 · {{"machine-passed":"기계 대조만 통과", "requires-human":"기계가 대조하지 못한 부분 있음", "candidates-or-content-change":"후보 또는 내용 변경 있음"}[page.status]}</strong>
+                <span> · 대조 {page.checks}범위 / PDF token 참조 {page.pdfTokens}개</span>
+                {page.notCompared.length>0 && <p>대조하지 못함: {page.notCompared.map((kind)=>comparisonLimit[kind] ?? kind).join(", ")}</p>}
+                {page.status === "requires-human" && <p>{(review?.currentHumanDecisions ?? []).findLast((decision)=>decision.groupId===page.scopeId)?.decision === "confirmed" ? "사람이 이 쪽을 확인함" : "사람 확인 필요"}</p>}
+                {page.status === "requires-human" && <ui.Button variant="outline" disabled={busy} onClick={()=>compare({pageNo:page.pageNo})}>이 쪽 대조</ui.Button>}
+              </div>
+            ))}
+          </section>
+          <section aria-label="표현 변환 규칙" style={{display:"grid",gap:"var(--space-3)",paddingBlock:"var(--space-3)",minWidth:0}}>
+            <h3>표현 변환 규칙</h3>
+            <p>가장 크거나 복잡한 대표를 원문과 나란히 본 뒤 규칙을 한 번 승인합니다. 기계 검증 실패·검증 불가 항목은 개별 확인으로 남습니다.</p>
+            <ui.Toolbar>{(review?.ruleReviews?.rules ?? []).map((rule)=>(
+              <ui.Button key={rule.ruleId} variant="outline" disabled={busy} onClick={()=>loadRule(rule.ruleId).catch(message)}>{rule.title} · {{approved:"승인",deferred:"보류",rejected:"거부"}[rule.decision?.decision] ?? "승인 전"}</ui.Button>
+            ))}</ui.Toolbar>
+            {ruleView && <div data-rule-id={ruleView.material.ruleId} style={{display:"grid",gap:"var(--space-3)",minWidth:0}}>
+              <h4>{ruleView.material.title}</h4>
+              <p>적용 {ruleView.total}항목 · 기계 검증 통과 {ruleView.verified} · 개별 확인 예외 {ruleView.exceptions}</p>
+              <p>대표 선택: 병합 범위 크기 또는 머리 행×열 수 내림차순, 같은 크기는 항목 ID 순 · 최대 3개</p>
+              {ruleView.material.representatives.map((rep)=>(<div key={rep.lossId}>
+                <p>대표 {rep.lossId.slice(0,8)} · {lossText((review?.losses ?? []).find((loss)=>loss.lossId===rep.lossId) ?? {originalValue:{}})}</p>
+                <ui.Toolbar>{rep.comparisons.map((item)=>(<ui.Button key={`${item.groupId}:${item.pageNo}`} variant="outline" disabled={busy}
+                  onClick={()=>compare({groupId:item.groupId},{...item,ruleId:ruleView.material.ruleId,lossId:rep.lossId,sourceId:rep.sourceId,ruleContentDigest:ruleView.material.contentDigest})}>
+                  {item.pageNo}쪽 대표 대조 · {ruleView.comparisons.find((open)=>open.lossId===rep.lossId && open.groupId===item.groupId && open.pageNo===item.pageNo)?.openId ? "열람 기록 있음" : "열람 전"}
+                </ui.Button>))}</ui.Toolbar>
+              </div>))}
+              <details><summary>이 규칙의 모든 적용 항목</summary>
+                {ruleView.allItems.map(({loss,verification:item,comparisons})=>(<div key={item.lossId}>
+                  <p>{lossText(loss)} · {item.status} · {item.checkedCells}칸 대조 · {item.reason}</p>
+                  <ui.Toolbar>{comparisons.map((focus)=><ui.Button key={`${focus.groupId}:${focus.pageNo}`} variant="outline" disabled={busy} onClick={()=>compare({groupId:focus.groupId},focus)}>{focus.pageNo}쪽 이 항목 대조</ui.Button>)}</ui.Toolbar>
+                </div>))}
+              </details>
+              <ui.Toolbar><label>규칙 판단 근거 <ui.Input value={ruleNote} onChange={(e)=>setRuleNote(e.target.value)}/></label>
+                <ui.Button disabled={busy || !ruleNote.trim() || !ruleView.canApprove} onClick={()=>decideRule("approved")}>이 변환 규칙 승인</ui.Button>
+                <ui.Button variant="outline" disabled={busy || !ruleNote.trim()} onClick={()=>decideRule("deferred")}>규칙 보류·승인 철회</ui.Button>
+                <ui.Button variant="outline" disabled={busy || !ruleNote.trim()} onClick={()=>decideRule("rejected")}>이 규칙 거부</ui.Button>
+              </ui.Toolbar>
+            </div>}
+          </section>
           {comparison && (
             <section
               aria-label="원문과 문서 대조"
-              data-group-id={comparison.material.group.id}
+              data-group-id={comparison.pageScope ?? comparison.material.group.id}
             >
               <ui.Toolbar>
                 <strong>
-                  {comparison.material.group.kinds
+                  {(comparison.material.group?.kinds ?? ["machine-unassessed-page"])
                     .map((k) => labels[k] ?? k)
                     .join(", ")}
                 </strong>
@@ -702,7 +777,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
               {(review?.currentHumanDecisions ?? [])
                 .filter(
                   (d) =>
-                    d.groupId === comparison.material.group.id,
+                    d.groupId === (comparison.pageScope ?? comparison.material.group.id),
                 )
                 .slice(-1)
                 .map((d, i) => (
@@ -736,6 +811,11 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                   보류
                 </ui.Button>
               </ui.Toolbar>
+              {activeRuleComparison && <ui.Notice>
+                대표 사례 {activeRuleComparison.lossId.slice(0,8)} · {activeRuleComparison.pageNo}쪽을 대조하세요.
+                <ui.Button disabled={busy || readState?.state!=="ready" || pageNo!==activeRuleComparison.pageNo || renderedPdf!==`${comparison.material.contentDigest}:${pageNo}:${targetIndex}:${zoom}`}
+                  onClick={openRuleComparison}>이 대표의 원문·문서 열람 기록</ui.Button>
+              </ui.Notice>}
               <h3>선택 위치의 표현 손실</h3>
               <p>
                 원문과 현재 문서를 나란히 대조한 뒤 항목별로 결정하세요. 주석은
@@ -747,7 +827,8 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                     l.sourceId === comparison.targets[targetIndex]?.sourceId,
                 )
                 .map((loss) => {
-                  const record = review?.expressionReviews?.find((item) => item.lossId === loss.lossId)?.confirmation;
+                  const expression = review?.expressionReviews?.find((item) => item.lossId === loss.lossId);
+                  const record = expression?.confirmation;
                   return (
                     <div key={loss.lossId} data-loss-id={loss.lossId}>
                       <p>
@@ -765,7 +846,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                           "meaning-preserved": "뜻 보존 확인됨",
                           "meaning-changed": "뜻이 달라짐",
                           deferred: "보류",
-                        }[record?.decision] ?? "미확인"}
+                        }[record?.decision] ?? (expression?.ruleConfirmation ? "규칙 승인으로 확인됨" : "미확인")}
                       </p>
                       <p style={{ overflowWrap: "anywhere" }}>
                         {lossText(loss)}
@@ -814,7 +895,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                     </div>
                   );
                 })}
-              <details>
+              {!comparison.pageScope && <details>
                 <summary>교정 제출</summary>
                 <p>
                   선택 위치의 문단·셀·수식만 교정합니다. 빈 셀과 글자 층 대조가
@@ -939,7 +1020,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                         generationId: comparison.material.generationId,
                         revision: comparison.revision,
                         contentDigest: comparison.material.contentDigest,
-                        groupId: comparison.material.group.id,
+                        groupId: comparison.pageScope ?? comparison.material.group.id,
                         decision: "correct",
                         target,
                         before:
@@ -978,7 +1059,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                 >
                   교정 제출
                 </ui.Button>
-              </details>
+              </details>}
               <details>
                 <summary>기계 점검 결과</summary>
                 <pre
@@ -1004,7 +1085,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
             />
             <ui.SummaryCard label="판단 불가 묶음" value={uncertain} />
             <ui.SummaryCard
-              label="미검사 쪽"
+              label="수동 검사 기록 없는 쪽"
               value={
                 (review?.scopes ?? []).filter(
                   (s) => s.id.startsWith("page:") && s.state === "미검사",
@@ -1018,8 +1099,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
             </ui.Notice>
           )}
           <p>
-            교정 뒤 다른 범위는 재검사가 필요합니다. 숫자 재대조 통과는 전체
-            검수 완료가 아닙니다.
+            교정으로 내용과 근거가 바뀐 범위만 다시 검사합니다. 숫자 재대조 통과는 전체 검수 완료가 아닙니다.
           </p>
           <h2>적용된 교정</h2>
           <ui.DataTable

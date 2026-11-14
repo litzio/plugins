@@ -314,6 +314,17 @@ test(
         })
       ).findings.length,
     );
+    const progress=await jobs.reviewProgress({jobId:accepted.jobId});
+    assert.equal(progress.pageComparisons.length,13);
+    assert(progress.pageComparisons.some((page)=>page.pageNo===9 && page.status==="requires-human"));
+    const pageComparison=await jobs.pageCompare({jobId:accepted.jobId,pageNo:9});
+    assert.equal(pageComparison.pageScope,"page:9");
+    assert.equal(pageComparison.material.contentDigest,progress.scopeDigests["page:9"]);
+    assert.equal(progress.ruleReviews.rules.length,3);
+    const rule=await jobs.ruleMaterial({jobId:accepted.jobId,ruleId:progress.ruleReviews.rules[0].ruleId});
+    assert.equal(rule.canApprove,false);
+    assert.equal(rule.total,rule.allItems.length);
+    assert(rule.material.representatives.length>0);
     const again = createJobs(settings);
     assert.equal((await again.start(request)).jobId, accepted.jobId);
     const file = summary.document,

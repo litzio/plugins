@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { firstBy, snapshotLookup } from "./lookup.js";
 import { isDeepStrictEqual } from "node:util";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, rename } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { hash } from "./convert.js";
 import { loadHandoff, readRelative, createReadSet } from "./provenance.js";
@@ -212,9 +213,10 @@ export async function createReview(input, output) {
     p = handoff.provenance,
     doc = handoff.sourceDocument;
   if (handoff.history) throw new Error("review-baseline-required");
-  const evidence = await extractPdf(
-    await readRelative(input, p.source.pdf.relativePath),
-  );
+  const originalMarkerBytes = await readRelative(input,"complete.json");
+  if (!isDeepStrictEqual(JSON.parse(originalMarkerBytes),handoff.marker)) throw new Error("review-input-changed");
+  const extraction = await extractPdf(await readRelative(input,p.source.pdf.relativePath),{coverage:true});
+  const {evidence,pageCoverage} = extraction;
   // generation.json is diagnostic, so absent/unverified bookmark evidence stays unknown.
   const record = handoff.sourceRecord;
   const report = detectReview({
@@ -265,6 +267,25 @@ export async function createReview(input, output) {
     JSON.stringify(marker, null, 2) + "\n",
     { flag: "wx" },
   );
+  if (handoff.marker.schemaVersion === "1.3.0") {
+    const coverageBytes=Buffer.from(JSON.stringify(pageCoverage,null,2)+"\n");
+    const seal={schemaVersion:"1.3.0",generationId:p.generationId,baselineRevision:p.document.revision,
+      pdfSha256:p.source.pdf.sha256,evidenceSha256:hash(evidenceBytes),coverageSha256:hash(coverageBytes)};
+    validateSchema(pageCoverage,schemas["page-coverage"]);validateSchema(seal,schemas["page-coverage-complete"]);
+    await writeFile(join(output,"page-coverage.json"),coverageBytes,{flag:"wx"});
+    await writeFile(join(output,"page-coverage-complete.json"),JSON.stringify(seal,null,2)+"\n",{flag:"wx"});
+    if (resolve(output) === resolve(input,"review")) {
+      await loadHandoff(input);
+      if (!isDeepStrictEqual(await readRelative(input,"complete.json"),originalMarkerBytes)) throw new Error("review-input-changed");
+      const next={...handoff.marker,files:[...handoff.marker.files]};
+      for (const name of ["pdf-evidence.json","review-targets.json","review-complete.json","page-coverage.json","page-coverage-complete.json"])
+        next.files.push({relativePath:"review/"+name,sha256:hash(await readRelative(input,"review/"+name))});
+      const temporary=join(input,"complete.json."+randomUUID()+".tmp");
+      await writeFile(temporary,JSON.stringify(next,null,2)+"\n",{flag:"wx"});
+      await rename(temporary,join(input,"complete.json"));
+      await loadHandoff(input);
+    }
+  }
   return report;
 }
 export async function readReview(

@@ -1,8 +1,8 @@
 # 내용에 결합된 검수 v1.3
 
-이 문서는 v1.3.0에만 적용한다. v1.0~v1.2의 의미와 reader 검증은 바꾸지 않는다. 이미 발급된 v1.2 완료는 기존 규칙으로 읽는다. `reviewVersion`이 `1.3.0`이 아닌 진행 원장에 대한 새 검수 쓰기(교정·undo·사람 결정·표현 확인·checkpoint·완료·중단·재개·조정)는 `legacy-review-read-only` 오류다. 고정 변환 결과에서 새 문서를 생성해 다시 시작한다. 이관과 이전 형식 쓰기는 없다.
+이 문서는 v1.3.0에만 적용한다. **이 PR 이전의 v1.3 완료 묶음은 읽지 않는다. 다시 검수 완료해야 한다.** v1.0~v1.2의 의미와 reader 검증은 바꾸지 않는다. 이미 발급된 v1.2 완료는 기존 규칙으로 읽는다. `reviewVersion`이 `1.3.0`이 아닌 진행 원장에 대한 새 검수 쓰기(교정·undo·사람 결정·표현 확인·checkpoint·완료·중단·재개·조정)는 `legacy-review-read-only` 오류다. 고정 변환 결과에서 새 문서를 생성해 다시 시작한다. 이관과 이전 형식 쓰기는 없다.
 
-새 생성 및 교정·완료의 `complete.json.schemaVersion`은 `1.3.0`이다. 생성 증거, 교정 이력의 기존 schema와 투영·receipt·원장 대조 규칙은 그대로다. 교정 없는 v1.3도 허용한다. `reviewState`는 완료 전 `unreviewed`, 명시적 발급 후 `reviewed`다. `human-review.json`의 v1.3 정본은 [schema](../../plugins/docling-to-litzio/schema/human-review-v13.schema.json)다. v1.2와 같은 닫힌 필드를 가지되 아래 기록에 필수 `contentDigest`(소문자 SHA-256 hex 64자)를 추가한다.
+새 생성 및 교정·완료의 `complete.json.schemaVersion`은 `1.3.0`이다. 생성 증거, 교정 이력의 기존 schema와 투영·receipt·원장 대조 규칙은 그대로다. 교정 없는 v1.3도 허용한다. `reviewState`는 완료 전 `unreviewed`, 명시적 발급 후 `reviewed`다. `human-review.json`의 v1.3 정본은 [schema](../../plugins/docling-to-litzio/schema/human-review-v13.schema.json)다. v1.2의 기록에 아래 필수 digest를 더하고, PR 2의 쪽·규칙 증거 필드를 닫힌 schema로 추가한다. 아래 기록의 필수 `contentDigest`(소문자 SHA-256 hex 64자)를 추가한다.
 
 - `scopes[].checkpoint`가 객체이면 그 범위의 digest.
 - `humanDecisions[]`, `lossConfirmations[]`, `expressionReviews[].confirmation`은 `groupId` 범위의 digest.
@@ -39,7 +39,7 @@
 
 ### 물리 쪽
 
-쪽에는 별도의 material 공개 조회 작업을 추가하지 않는다. 진행 조회의 `scopeDigests["page:N"]`는 아래 내부 결합 투영으로 검사한 원본·대응·문서·PDF 범위를 식별한다. 진행 상태·완료 여부·문서 전체 교정 목록은 검사 근거와 구별한 참고용 조회다. 쪽의 결합 필드 목록은 `PAGE_BINDING_FIELDS`와 정확히 같아야 하며 추가·누락은 unbound-page-material-field다.
+기계 대조가 덮지 못한 부분이 있어 사람이 볼 쪽에 한해 `page-compare`가 아래와 같은 쪽 자료를 내준다. 후보가 없고 기계 대조를 통과한 쪽을 전부 다시 읽는 작업은 제공하지 않는다. 진행 조회의 `scopeDigests["page:N"]`는 아래 내부 결합 투영으로 검사한 원본·대응·문서·PDF 범위를 식별한다. 진행 상태·완료 여부·문서 전체 교정 목록은 검사 근거와 구별한 참고용 조회다. 쪽의 결합 필드 목록은 `PAGE_BINDING_FIELDS`와 정확히 같아야 하며 추가·누락은 unbound-page-material-field다.
 
 | 쪽 결합 필드 | 결합하는 검사 근거 전부 |
 | --- | --- |
@@ -48,7 +48,7 @@
 | sources | 해당 물리 쪽에 regions가 있는 sourceId와 현재 provenance item 전체 H, 그 sourceId의 모든 check 배열 H. 표·셀·캡션·미주·대응의 전체 속성을 포함 |
 | blocks | 위 source의 targets/cells.targets가 가리키는 path[0]별 현재 node 전부의 H. 모든 셀·caption·inline 내용을 원래 node 순서로 포함 |
 | pages | 해당 PDF 쪽 전체 H. items/tokens/좌표/상태/크기/회전 등 모든 속성 |
-| extra | 현재 null. 직렬화와 hash에 포함하며 몰래 제외하는 여분 필드가 아님 |
+| extra | page-coverage가 있으면 `{comparisonCoverage: 해당 쪽 기록 전체}`, 없으면 null. 직렬화와 hash에 포함 |
 
 쪽 투영에는 교정 이력·판정 이력·관측 순번이 없다. 쪽 내용이 중간에 바뀌면 checkpoint는 미검사로 돌아간다. 되돌림만으로 그 기록이 자동 재활성화되지는 않는다. 원래 자료로 돌아온 뒤에는 예전에 본 digest를 실은 **새 checkpoint 제출**이 유효하다. 내용이 다른 쪽에 예전 digest를 제출하면 거부한다. 기존 v1.2의 “같은 bytes여도 과거 확인 재사용 없음”은 그대로 v1.2에만 적용한다. v1.3은 자동 재사용을 금지하면서, 현재와 같은 자료에 대한 새 제출을 허용한다.
 
@@ -76,14 +76,14 @@ checkpoint·uncertain·사람 결정·표현 확인에 저장하는 contentDiges
 
 | 조건 | v1.3 판정 |
 | --- | --- |
-| C0 boundEvidence | 현재 generation/PDF/문서/근거 결합을 모두 검증 |
+| C0 boundEvidence | 현재 generation/PDF/문서/근거 결합 및 쪽 대조 증거·정확한 scope inventory를 모두 검증 |
 | C1 noPending | pending=null |
 | C2 running | stopped=false |
 | C3 currentRevision | 원장 revision=현재 문서 bytes revision. 설명 없는 손 편집은 계속 차단 |
-| C4 coverage | 모든 그룹·물리 쪽의 실제 검사 note와 유효 contentDigest. 판단불가는 유효 사람 confirmed 필요 |
+| C4 coverage | 그룹의 실제 검사와 쪽의 실제 검사/기계 대조만 통과/미대조 쪽 사람 confirmed를 추가 계약대로 재계산 |
 | C5 humanDecisions | 필수 사람 결정 충족. 어떤 revision에서든 마지막 명시적 deferred는 새 confirmed 없이 해제되지 않음 |
 | C6 contentLosses | 해소 대상 손실 0 |
-| C7 expressions | 각 표현 항목의 마지막 meaning-preserved가 현재 내용 digest와 일치하고 무효화되지 않음 |
+| C7 expressions | 유효 개별 meaning-preserved 또는 추가 계약에 따른 사람 규칙 승인+현재 기계 검증. 개별 부정·보류를 덮지 않음 |
 | C8 failureFree | 실패 범위 0 |
 | C9 protectedValues | 현재 값의 PDF 보호 token 대조 차이 0. undo는 직접 사람 근거 면제 아님 |
 
@@ -113,3 +113,13 @@ checkpoint·uncertain·사람 결정·표현 확인에 저장하는 contentDiges
 review-progress는 원본 이력 외에 처리 코드가 현재 digest로 판정한 `currentHumanDecisions`, `expressionReviews`를 제공한다. 화면은 이 값을 표시하며 revision만으로 다시 유효성을 계산하지 않는다.
 
 공개 작업의 처리 오류는 안정된 `code`와 다음 행동을 설명하는 `message`를 가진다. groupId는 `groups({jobId}).groups[].id`, scopeId는 `review-progress.scopes[].id`, 현재 교정 값·위치·PDF token/좌표는 `material`에서 얻는다. `page:N`은 groupId가 아니다. 입력 schema는 유지한다. 오류 객체를 외부 CLI까지 전달하는 플랫폼 능력의 현재 미지원은 PR 결과의 플랫폼 부족 사항으로 별도 기록한다. actor는 비인증 선언이며 비서는 사람 근거·사람 결정·표현 확인을 제출하지 않는다.
+
+
+## PR 2 추가: 기계 쪽 대조와 표현 규칙
+
+[기계 대조·규칙 승인 계약](review-rules-v13.md)은 이 문서의 C0/C4/C5/C7과 완료 파일에 덧붙인다. 쪽 결합에 이력을 넣지 않는 원칙은 그대로다. 사람이 보는 쪽 자료의 필드 목록과 결합 투영은 추가 계약 표를 따른다. 기존 v1.0~v1.2 reader의 뜻은 바뀌지 않는다.
+
+
+### 기계 전용 대조의 그리기 조사 경계
+
+기계 전용 인정은 **조사할 수 있었던 그리기 명령에 한한다. 조사하지 못한 구조가 있으면 사람 쪽**이다. 쪽 최상위 명령에 paint가 없다는 이유만으로 조사 완료라고 하지 않는다. 사용한 글꼴의 Type3 여부를 확인하지 못하거나 Type3이면 글자 프로그램 내부를 분석하지 않고 operatorScan=unavailable로 남긴다. Form XObject, 패턴, 투명도 그룹·soft mask, 주석 appearance(화면에서 숨겨진 인쇄 전용 포함), 문서의 XFA 존재도 같은 경로다. XFA 렌더링을 켰을 때만 작동하는 isPureXfa를 근거로 쓰지 않고 getMetadata().info.IsXFAPresent가 명시적으로 false인 문서만 XFA 없음으로 인정한다. 인식하지 못한 path paint나 조사 예외도 unavailable이며 notCompared의 operator-scan-unavailable은 requires-human을 강제한다. 알려진 최상위 paint 개수는 관측된 수일 뿐이며 unavailable일 때 0은 내부 그리기가 없다는 증거가 아니다. 정확한 신호와 method 버전은 [추가 계약](review-rules-v13.md)을 따른다.

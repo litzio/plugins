@@ -231,9 +231,24 @@ export function createJobs(
     const { root, cli } = await paths();
     const output = await confined(root, s.output);
     const service = createCorrections(output, cli);
-    return service[method](method === "material" ? input.groupId : input);
+    return service[method](method === "material" ? input.groupId : method === "ruleReview" ? input.ruleId : input);
   };
   return {
+    async pageCompare({jobId,pageNo}) {
+      const s=await current(jobId),{root,cli}=await paths();
+      need(s.state === "ready","job-not-ready");
+      const output=await confined(root,s.output),context=await readReview(output,join(output,"review")),h=context.handoff;
+      const material=await createCorrections(output,cli).pageMaterial(pageNo,context);
+      const regions=h.provenance.items.flatMap((item)=>item.regions.filter((region)=>region.pageNo===pageNo));
+      return {selection:{pageNo},pageCount:h.provenance.pages.length,pageScope:"page:"+pageNo,
+        material,document:join(output,"document.md"),revision:material.documentRevision,
+        targets:material.blocks.map((block)=>({revision:material.documentRevision,path:[block.path],regions:regions.filter((region)=>region.pageNo===pageNo)})),
+        regions,pdf:(await context.read(output,h.provenance.source.pdf.relativePath)).toString("base64"),
+        worker:await readFile(new URL("../vendor/pdfjs/build/pdf.worker.mjs",import.meta.url),"utf8")};
+    },
+    ruleMaterial: (input)=>correction("ruleReview",input),
+    ruleOpen: (input)=>correction("ruleOpen",input),
+    ruleDecision: (input)=>correction("ruleDecision",input),
     async revision({ jobId }) {
       const s = await current(jobId),
         { root } = await paths();
@@ -321,14 +336,7 @@ export function createJobs(
                 : t.path,
           })),
         regions: change?.evidence.scope ?? m.findings.flatMap((f) => f.regions),
-        pdf: (
-          await readFile(
-            await confined(
-              root,
-              join(output, h.provenance.source.pdf.relativePath),
-            ),
-          )
-        ).toString("base64"),
+        pdf: (await context.read(output,h.provenance.source.pdf.relativePath)).toString("base64"),
         worker: await readFile(
           new URL("../vendor/pdfjs/build/pdf.worker.mjs", import.meta.url),
           "utf8",

@@ -1183,6 +1183,188 @@
       "outputSchema": {
         "type": "object"
       }
+    },
+    {
+      "id": "page-compare",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "jobId",
+          "pageNo"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "rule-material",
+      "version": 1,
+      "effect": "read",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "jobId",
+          "ruleId"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "rule-open",
+      "version": 1,
+      "effect": "write",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "openId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9-]{1,80}$"
+          },
+          "actor": {
+            "const": "human"
+          },
+          "ruleId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lossId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "ruleContentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "jobId",
+          "openId",
+          "actor",
+          "ruleId",
+          "lossId",
+          "groupId",
+          "pageNo",
+          "revision",
+          "ruleContentDigest",
+          "contentDigest"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
+    },
+    {
+      "id": "rule-decision",
+      "version": 1,
+      "effect": "write",
+      "scope": "host",
+      "assistant": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "actor": {
+            "const": "human"
+          },
+          "ruleId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "decision": {
+            "enum": [
+              "approved",
+              "deferred",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "openIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "jobId",
+          "actor",
+          "ruleId",
+          "revision",
+          "contentDigest",
+          "decision",
+          "note",
+          "openIds"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object"
+      }
     }
   ],
   "healthCheck": "health",
