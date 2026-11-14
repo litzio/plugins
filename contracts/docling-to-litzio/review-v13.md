@@ -118,3 +118,8 @@ review-progress는 원본 이력 외에 처리 코드가 현재 digest로 판정
 ## PR 2 추가: 기계 쪽 대조와 표현 규칙
 
 [기계 대조·규칙 승인 계약](review-rules-v13.md)은 이 문서의 C0/C4/C5/C7과 완료 파일에 덧붙인다. 쪽 결합에 이력을 넣지 않는 원칙은 그대로다. 사람이 보는 쪽 자료의 필드 목록과 결합 투영은 추가 계약 표를 따른다. 기존 v1.0~v1.2 reader의 뜻은 바뀌지 않는다.
+
+
+### 기계 전용 대조의 그리기 조사 경계
+
+기계 전용 인정은 **조사할 수 있었던 그리기 명령에 한한다. 조사하지 못한 구조가 있으면 사람 쪽**이다. 쪽 최상위 명령에 paint가 없다는 이유만으로 조사 완료라고 하지 않는다. 사용한 글꼴의 Type3 여부를 확인하지 못하거나 Type3이면 글자 프로그램 내부를 분석하지 않고 operatorScan=unavailable로 남긴다. Form XObject, 패턴, 투명도 그룹·soft mask, 주석 appearance(화면에서 숨겨진 인쇄 전용 포함), pure XFA도 같은 경로다. 인식하지 못한 path paint나 조사 예외도 unavailable이며 notCompared의 operator-scan-unavailable은 requires-human을 강제한다. 알려진 최상위 paint 개수는 관측된 수일 뿐이며 unavailable일 때 0은 내부 그리기가 없다는 증거가 아니다. 정확한 신호와 method 버전은 [추가 계약](review-rules-v13.md)을 따른다.
