@@ -19,6 +19,10 @@ export function activate(context) {
   };
   return {
     operations: {
+      "page-compare": (input)=>call(jobs.pageCompare,input),
+      "rule-material": (input)=>call(jobs.ruleMaterial,input),
+      "rule-open": (input)=>call(jobs.ruleOpen,input),
+      "rule-decision": (input)=>call(jobs.ruleDecision,input),
       revision: (input) => call(jobs.revision, input),
       compare: (input) => call(jobs.compare, input),
       "loss-decision": (input) => call(jobs.lossDecision, input),

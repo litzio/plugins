@@ -1,7 +1,7 @@
 import { createMaterialReader } from "./review-material.js";
 import { reviewBindings, materialContentDigest, pageMaterial, currentReview, invalidateChangedReviews, interruptReview } from "./review-bindings.js";
 import { pageComparisons } from "./page-comparison.js";
-import { ruleMaterials, ruleReviews } from "./rule-review.js";
+import { ruleMaterials, ruleReviews, ruleOpeningState } from "./rule-review.js";
 import {
   completionGate,
   humanQueue,
@@ -308,6 +308,11 @@ export function createCorrections(root, cli) {
 
   return {
     material,
+    async ruleReview(ruleId) {
+      const c=await readReview(root,join(root,"review"));
+      const view=await this.ruleMaterial(ruleId,c);
+      return ruleOpeningState(c.handoff.ledger ?? {},view,lossCatalog(c.handoff.losses.items,c.handoff),c.report);
+    },
     async ruleMaterial(ruleId,context) {
       const c=context ?? await readReview(root,join(root,"review"));
       need(equal(await inspect(c.read),c.handoff.snapshot),"stale-document");
@@ -383,7 +388,7 @@ export function createCorrections(root, cli) {
         need(
           report.groups.some((g) => g.id === input.groupId) ||
             pageComparisons(report,handoff,evidence,bindings).some((page)=>page.scopeId===input.groupId && page.status === "requires-human"),
-          "group-not-found",
+          "human-scope-not-found",
         );
         need(
           ["confirmed", "deferred"].includes(input.decision) &&

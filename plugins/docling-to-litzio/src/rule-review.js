@@ -39,6 +39,27 @@ export function ruleMaterials(report,handoff,evidence,catalog,bindings) {
   });
 }
 
+export function ruleOpeningState(state,material,catalog,report) {
+  const comparisons=material.representatives.flatMap((rep)=>rep.comparisons.map((comparison)=> {
+    const receipt=(state.ruleOpens ?? []).findLast((open)=>open.actor === "human" && open.ruleId === material.ruleId &&
+      open.ruleContentDigest === material.contentDigest && open.revision === material.documentRevision &&
+      open.lossId === rep.lossId && open.groupId === comparison.groupId && open.pageNo === comparison.pageNo && open.contentDigest === comparison.contentDigest);
+    return {lossId:rep.lossId,...comparison,openId:receipt?.openId ?? null};
+  }));
+  const verified=material.members.filter((member)=>member.status === "verified").length;
+  const losses=new Map(catalog.map((loss)=>[loss.lossId,loss])),findings=new Map(report.findings.map((finding)=>[finding.id,finding])),bySource=new Map();
+  for (const group of report.groups) for (const id of new Set(group.findingIds.flatMap((id)=>findings.get(id).sourceIds))) {
+    if (!bySource.has(id)) bySource.set(id,[]);
+    bySource.get(id).push(group);
+  }
+  const allItems=material.members.map((item)=>({loss:losses.get(item.lossId),verification:item,
+    comparisons:(bySource.get(item.sourceId) ?? []).flatMap((group)=>group.pageNos.map((pageNo)=>({groupId:group.id,pageNo,sourceId:item.sourceId})))}));
+  return {material,total:material.members.length,verified,exceptions:material.members.length-verified,comparisons,
+    allItems,
+    canApprove:comparisons.length>0 && comparisons.every((comparison)=>comparison.openId!==null),
+    openIds:comparisons.flatMap((comparison)=>comparison.openId ? [comparison.openId] : [])};
+}
+
 // Recompute historical witnesses from validated baseline + correction history.
 // No approval can manufacture a current digest for material its caller never saw.
 // Caches belong to this single read operation, never to an instance or session.

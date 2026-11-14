@@ -34,6 +34,8 @@ test("public human page material and indexed checkpoint projection bind the same
     assert.notEqual(pageMaterialDigest(changed),material.contentDigest,field);
   }
   assert.throws(()=>pageMaterialDigest({...material,unbound:1}),/unbound-page-material-field/);
+  const nested=structuredClone(material);nested.sources[0].unbound=1;
+  assert.throws(()=>pageMaterialDigest(nested),/unbound-page-material-field/);
 });
 
 test("machine-only pages meet coverage; an unassessed page cannot be cleared by an assistant checkpoint",()=> {

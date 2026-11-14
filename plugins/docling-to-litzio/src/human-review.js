@@ -257,8 +257,8 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
       evidence.pdfSha256 === s.sourceHash &&
       handoff.snapshot?.revision === revision &&
       handoff.provenance.document?.revision === revision &&
-      (s.reviewVersion !== "1.3.0" || !!handoff.pageCoverage) &&
-      s.scopes.length === scopesById.size && scopesById.size === expected.length,
+      (s.reviewVersion !== "1.3.0" || (!!handoff.pageCoverage &&
+        s.scopes.length === scopesById.size && scopesById.size === expected.length)),
     noPending: s.pending === null,
     running: s.stopped === false,
     currentRevision: s.revision === revision,

@@ -1,5 +1,14 @@
 // Static remediation only: never echo input, paths, document text or raw errors.
 const guidance = {
+  "human-scope-not-found": "human-decision requires a group ID from groups or a requires-human page:N scope from review-progress.humanQueue. Open that group/page comparison and submit its current revision and contentDigest.",
+  "page-not-human-review": "page-compare accepts only a requires-human page. Get its pageNo from review-progress.pageComparisons; machine-passed pages need no rereading.",
+  "page-not-found": "pageNo must identify a physical PDF page. Get valid pageNo values from review-progress.pageComparisons.",
+  "rule-not-found": "ruleId must be a current conversion rule. Get ruleId values from review-progress.ruleReviews.rules and open rule-material.",
+  "human-rule-required": "Only a human may record representative views or rule decisions; actor must be human. Assistants leave these for the comparison screen.",
+  "stale-rule-material": "The rule item set or representative context changed. Read rule-material again and inspect its current representatives; submit its ruleContentDigest and the displayed comparison contentDigest.",
+  "rule-representative-required": "Approval requires the current rule's representative comparisons to be opened side by side. Obtain representatives from rule-material, record each displayed rule-open receipt and submit those openIds. Missing, stale or unrelated views cannot approve the rule.",
+  "invalid-rule-open": "openId must be a new unique letters/digits/hyphens ID of 1-80 characters. Obtain ruleId/lossId/groupId/pageNo and digests from rule-material and the actual comparison.",
+  "invalid-rule-decision": "Use approved, deferred or rejected with a nonempty note and openIds array. Read rule-material; only current representative-view receipts authorize approval.",
   "material-digest-required": "contentDigest is required. Copy it from the material/compare response you actually inspected; for a page checkpoint use review-progress.scopeDigests[scopeId]. Do not compute or guess it.",
   "stale-material": "The review material changed, even if document bytes returned to the same revision. Read material/compare again, inspect the new context and submit its contentDigest with its revision.",
   "legacy-review-read-only": "이 검수 기록은 이전 형식입니다. 기존 완료 묶음은 읽기만 가능합니다. 고정 변환 결과에서 preflight/start로 문서를 새로 생성해 검수를 다시 시작하세요. jobs에서 새 jobId를 얻으세요.",

@@ -99,6 +99,9 @@ export function pageMaterial(report,handoff,evidence,pageNo) {
 export function pageMaterialDigest(material) {
   if (JSON.stringify(Object.keys(material).sort())!==JSON.stringify([...PAGE_MATERIAL_FIELDS].sort()))
     throw Object.assign(new Error("unbound-page-material-field"),{code:"unbound-page-material-field"});
+  for (const [entries,fields] of [[material.sources,["checks","item"]],[material.blocks,["nodes","path"]]])
+    if (entries.some((entry)=>JSON.stringify(Object.keys(entry).sort())!==JSON.stringify(fields)))
+      throw Object.assign(new Error("unbound-page-material-field"),{code:"unbound-page-material-field"});
   return pageBindingDigest({generationId:material.generationId,sourceHash:material.sourceHash,
     sources:material.sources.map(({item,checks})=>[item.sourceId,reviewDigest(item),checks===null ? null : reviewDigest(checks)]),
     blocks:material.blocks.map(({path,nodes})=>[path,nodes.length ? reviewDigest(nodes) : null]),

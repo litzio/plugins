@@ -5,7 +5,7 @@ description: Docling 문서의 검수 묶음을 원본 PDF 근거와 대조하�
 
 # 묶음 검수
 
-actor는 인증된 신원이 아니라 제출자의 선언이다. 이 스킬을 수행하는 비서는 반드시 actor=assistant를 사용한다. actor=human을 선언하거나 human-source-region 근거·사람 결정·표현 보존 확인 경로를 사용하지 않는다. 빈 셀과 글자 층으로 입증하지 못한 값은 uncertain으로 남기고 사람 검수로 넘긴다.
+actor는 인증된 신원이 아니라 제출자의 선언이다. 이 스킬을 수행하는 비서는 반드시 actor=assistant를 사용한다. actor=human을 선언하거나 human-source-region 근거·사람 결정·표현 보존 확인·규칙 대표 열람 기록·규칙 승인/철회 경로를 사용하지 않는다. 빈 셀과 글자 층으로 입증하지 못한 값은 uncertain으로 남기고 사람 검수로 넘긴다.
 
 사용자가 준 jobId와 groupIds 범위만 처리한다. ID가 없으면 `jobs`, `groups`로 찾고 범위를 확인한다. `LITZIO_HOST_ORIGIN`이 없으면 중단한다. 다른 Host 주소를 추측하지 않는다. 모든 호출은 공개 CLI이며 입력 JSON은 비서 작업 폴더에 쓴다.
 
@@ -31,3 +31,8 @@ material.json은 `{"jobId":"...","groupId":"..."}`이다. 같은 형식으로 `g
 
 
 실패 응답의 code와 message를 읽고 message의 다음 행동 안내를 따른다. 입력 schema 거부의 inputIssues에는 거부한 path와 reason이 있으므로 공개 inputSchema와 대조해 해당 필드를 고친다. uncertain 쓰기 receipt는 적용 여부를 다시 관측하고 자동 재전송하지 않는다. 묶음 ID는 `groups.groups[].id`, checkpoint 범위는 `review-progress.scopes[].id`에서 얻는다. `page:N`은 묶음 ID가 아니므로 material/group/교정의 groupId에 넣지 않는다. 스키마 거부는 설치된 operation inputSchema와 대조한다. 근거 좌표는 material의 실제 PDF token bbox로 다시 계산한다. 오류 뒤 현재 값을 추측해 재전송하지 않는다.
+
+
+기계 대조만 통과한 쪽은 `review-progress.pageComparisons`의 status=machine-passed로 구별된다. checked/notCompared/semanticLimits를 함께 읽고, 이를 제목 계층·읽는 순서·의미까지 검수한 것으로 보고하지 않는다. 후보가 없는 통과 쪽을 다시 전부 읽거나 checkpoint로 덮지 않는다. requires-human은 글자 층 밖·그림·스캔 등 기계가 대조하지 못한 쪽이며 사람이 화면에서 확인한다. 비서의 checkpoint로 이를 면제하지 않는다.
+
+`review-progress.ruleReviews`는 표현 변환 규칙의 기계 검증과 사람의 대표 승인 결과다. verified 항목이 ruleConfirmation을 가지면 ‘규칙 승인으로 확인됨’으로 보고하며 그 항목을 사람이 하나씩 대조했다고 쓰지 않는다. failed/unverifiable 및 보류·거부된 규칙의 항목은 개별 확인에 남는다. 비서는 `page-compare`, `rule-material`, `rule-open`, `rule-decision`, `human-decision`, `loss-decision`의 사람 경로를 대신 제출하지 않는다. 원문·현재 문서의 나란히 보기는 사람이 열고 대표 규칙을 승인한다.
