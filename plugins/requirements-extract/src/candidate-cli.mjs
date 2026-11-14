@@ -56,6 +56,7 @@ export function execute(args) {
     for(const input of current.inputs) {
       const from=c.inputs.find(i=>i.key===input.key).root;
       const target=join(output,input.key);mkdirSync(target);
+      const sealedPaths=new Set(input.bundle.complete.files.map(f=>f.relativePath));
       for(const f of input.bundle.complete.files) {
         const destination=join(target,f.relativePath);mkdirSync(dirname(destination),{recursive:true});
         copyFileSync(join(from,f.relativePath),destination,constants.COPYFILE_EXCL);
@@ -65,10 +66,11 @@ export function execute(args) {
       if(input.bundle.history||['1.2.0','1.3.0'].includes(input.bundle.complete.schemaVersion)) {
         const ledger=join(from,'correction-ledger.json'),stat=lstatSync(ledger);
         if(!stat.isFile()||stat.isSymbolicLink()) reject('source-ledger','일반 교정 원장 파일이 필요합니다');
-        copyFileSync(ledger,join(target,'correction-ledger.json'),constants.COPYFILE_EXCL);
+        if(!sealedPaths.has('correction-ledger.json'))copyFileSync(ledger,join(target,'correction-ledger.json'),constants.COPYFILE_EXCL);
         const reviewMarker=join(from,'review/review-complete.json'),reviewStat=lstatSync(reviewMarker);
         if(!reviewStat.isFile()||reviewStat.isSymbolicLink()) reject('source-review-marker','일반 검수 표지 파일이 필요합니다');
-        copyFileSync(reviewMarker,join(target,'review/review-complete.json'),constants.COPYFILE_EXCL);
+        // v1.3 seals this marker in complete.files; older bundles may omit it.
+        if(!sealedPaths.has('review/review-complete.json'))copyFileSync(reviewMarker,join(target,'review/review-complete.json'),constants.COPYFILE_EXCL);
       }
       // Recheck marker and all bytes/revision after copying; no stale signed snapshot assumptions.
       const copiedCli=sourceCli({entry:c.cliEntry,root:target});
