@@ -30,4 +30,4 @@ material.json은 `{"jobId":"...","groupId":"..."}`이다. 같은 형식으로 `g
 6. 다음 묶음으로 간다. 평범한 턴 종료나 예산 부족으로 이번 응답을 끝낼 때는 아무 작업도 부르지 않는다. 끝낸 검사는 이미 기록돼 있다. `review-stop`은 사용자가 그만하라고 했거나 진행 중인 쓰기를 정리해야 할 때만 쓴다. stop/resume은 완료 발급을 지우지만 v1.3에서 내용과 근거가 같은 끝낸 검사·사람 확인은 유지한다. 검사 중이던 범위는 다시 검사한다. 남은 범위를 보고한다. 마지막에는 처리/교정/판단 불가/미검사 범위와 막힌 지점을 짧게 보고한다. 최종 검수 완료/reviewed를 발급하지 않는다.
 
 
-입력 오류는 코드 뒤의 다음 행동 안내를 따른다. 묶음 ID는 `groups.groups[].id`, checkpoint 범위는 `review-progress.scopes[].id`에서 얻는다. `page:N`은 묶음 ID가 아니므로 material/group/교정의 groupId에 넣지 않는다. 스키마 거부는 설치된 operation inputSchema와 대조한다. 근거 좌표는 material의 실제 PDF token bbox로 다시 계산한다. 오류 뒤 현재 값을 추측해 재전송하지 않는다.
+실패 응답의 code와 message를 읽고 message의 다음 행동 안내를 따른다. 입력 schema 거부의 inputIssues에는 거부한 path와 reason이 있으므로 공개 inputSchema와 대조해 해당 필드를 고친다. uncertain 쓰기 receipt는 적용 여부를 다시 관측하고 자동 재전송하지 않는다. 묶음 ID는 `groups.groups[].id`, checkpoint 범위는 `review-progress.scopes[].id`에서 얻는다. `page:N`은 묶음 ID가 아니므로 material/group/교정의 groupId에 넣지 않는다. 스키마 거부는 설치된 operation inputSchema와 대조한다. 근거 좌표는 material의 실제 PDF token bbox로 다시 계산한다. 오류 뒤 현재 값을 추측해 재전송하지 않는다.

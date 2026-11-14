@@ -247,7 +247,10 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
       setBusy(false);
     }
   };
-  const message = (e) => setError(String(e?.message ?? e));
+  const message = (e) => setError([
+    e?.code ? `${e.code}: ${e.message}` : String(e?.message ?? e),
+    ...(e?.inputIssues ?? []).map((issue) => `${issue.path}: ${issue.reason}`),
+  ].join("\n"));
   const reloadHistory = () =>
     invoke("jobs", {})
       .then((r) =>
