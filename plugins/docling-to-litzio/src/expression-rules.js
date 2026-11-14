@@ -19,7 +19,7 @@ export const RULES = Object.freeze({
 
 // Verify the rule's result against source coordinates and actual current cells.
 // This is deliberately separate from the generator's projection function.
-function tableEvidence(raw, path, lookup) {
+function tableEvidence(raw, path, lookup, baselineLookup) {
   const data = raw?.data;
   if (!data || !Array.isArray(data.table_cells)) return null;
   const grid = Array.from({length:data.num_rows},()=>Array(data.num_cols).fill(null));
@@ -48,11 +48,12 @@ function tableEvidence(raw, path, lookup) {
   const expected=(row,column)=>row===0 && headerRows>1
     ? headers[column].text
     : grid[row+offset][column]===null ? "" : data.table_cells[grid[row+offset][column]].text;
-  return {data,grid,headers,headerRows,collapsed,offset,at,expected};
+  const unchangedRich=(row,column)=>reviewDigest(at(row,column)?.content ?? null) === reviewDigest(baselineLookup.node([...path,row,column],"cell")?.content ?? null);
+  return {data,grid,headers,headerRows,collapsed,offset,at,expected,unchangedRich};
 }
 
 export function expressionRuleReviews(handoff, catalog) {
-  const lookup=snapshotLookup(handoff.snapshot), items=new Map(handoff.provenance.items.map((item)=>[item.sourceId,item]));
+  const lookup=snapshotLookup(handoff.snapshot), baselineLookup=snapshotLookup((handoff.baseline ?? handoff).snapshot), items=new Map(handoff.provenance.items.map((item)=>[item.sourceId,item]));
   const doc=(handoff.baseline ?? handoff).sourceDocument, tables=new Map();
   const results=catalog.filter((loss)=>loss.classification === "expression").map((loss)=> {
     const rule=RULES[loss.reasonCode], item=items.get(loss.sourceId);
@@ -61,7 +62,7 @@ export function expressionRuleReviews(handoff, catalog) {
     if (!tables.has(item.sourceId)) {
       const raw=item.selfRef.slice(2).split("/").reduce((value,key)=>value?.[key],doc);
       const path=item.targets.find((target)=>target.role === "content")?.path;
-      tables.set(item.sourceId,path ? tableEvidence(raw,path,lookup) : null);
+      tables.set(item.sourceId,path ? tableEvidence(raw,path,lookup,baselineLookup) : null);
     }
     const table=tables.get(item.sourceId), checks=[];
     if (!table) return {...base,status:"unverifiable",reason:"table-source-unavailable",checkedCells:0,complexity:0,contentDigest:reviewDigest(loss)};
@@ -69,7 +70,7 @@ export function expressionRuleReviews(handoff, catalog) {
     if (loss.reasonCode === "compound-header-flattened") {
       if (table.headerRows<=1) return {...base,status:"failed",reason:"compound-header-missing",checkedCells:0,complexity:0,contentDigest:reviewDigest(loss)};
       for (let column=0;column<table.data.num_cols;column++)
-        checks.push([0,column,table.expected(0,column),table.at(0,column)?.text ?? null]);
+        checks.push([0,column,table.expected(0,column),table.at(0,column)?.text ?? null,table.unchangedRich(0,column),table.at(0,column)]);
     } else if (cell) {
       const seen=new Set();
       for (let row=cell.start_row_offset_idx;row<cell.end_row_offset_idx;row++)
@@ -77,10 +78,10 @@ export function expressionRuleReviews(handoff, catalog) {
           const outputRow=row<table.collapsed ? 0 : row-table.offset, key=`${outputRow}:${column}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          checks.push([outputRow,column,table.expected(outputRow,column),table.at(outputRow,column)?.text ?? null]);
+          checks.push([outputRow,column,table.expected(outputRow,column),table.at(outputRow,column)?.text ?? null,table.unchangedRich(outputRow,column),table.at(outputRow,column)]);
         }
     }
-    const passed=checks.length>0 && checks.every(([, ,expected,actual])=>expected===actual);
+    const passed=checks.length>0 && checks.every(([, ,expected,actual,richPreserved])=>expected===actual && richPreserved);
     return {...base,status:passed ? "verified" : "failed",reason:passed ? "rule-matches-current-cells" : "rule-output-mismatch",
       checkedCells:checks.length,complexity:loss.reasonCode === "compound-header-flattened" ? table.headerRows*table.data.num_cols : (cell?.row_span ?? 0)*(cell?.col_span ?? 0),
       contentDigest:reviewDigest({lossId:loss.lossId,source:cell ?? table.headers,checks}),

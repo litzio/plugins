@@ -301,7 +301,8 @@ for (const [name, event] of Object.entries(events))
       ].includes(name)
     ) {
       assert(state.lossConfirmations.every((r) => r.invalidatedAt));
-      assert(state.humanDecisions.every((r) => r.invalidatedAt));
+      assert(state.humanDecisions.filter((r)=>r.groupId===x.groupId).every((r) => r.invalidatedAt));
+      assert(state.humanDecisions.filter((r)=>r.groupId!==x.groupId).every((r) => !r.invalidatedAt),"independent page confirmations survive an edit elsewhere");
     }
   });
 const mutations = {

@@ -9,7 +9,7 @@ export async function observed(service, method, input) {
       let groupId=input.groupId;
       if (!groupId && input.undoOf)
         groupId=(await service.progress()).changes.find((change)=>change.changeId===input.undoOf)?.groupId;
-      if (groupId) digest=(await service.material(groupId)).contentDigest;
+      if (groupId) digest=groupId.startsWith("page:") ? (await service.pageMaterial(Number(groupId.slice(5)))).contentDigest : (await service.material(groupId)).contentDigest;
     }
     input.contentDigest=digest ?? "0".repeat(64);
   }

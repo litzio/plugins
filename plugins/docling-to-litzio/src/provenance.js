@@ -1,4 +1,6 @@
+import { ruleReviews } from "./rule-review.js";
 import { validatePageCoverage } from "./page-comparison.js";
+import { pageComparisons } from "./page-comparison.js";
 import { reviewBindings } from "./review-bindings.js";
 import { snapshotLookup } from "./lookup.js";
 import {
@@ -12,7 +14,8 @@ import {
   validateCorrectionLedger,
   verifyCorrectionEvidence,
 } from "./correction-history.js";
-import { listText } from "./rich-content.js";
+import { projectReviewHandoff, textAt } from "./review-projection.js";
+export { textAt } from "./review-projection.js";
 import { projectList } from "./list-rule.js";
 import { projectTable, sourceStructure } from "./table-rule.js";
 import { isDeepStrictEqual } from "node:util";
@@ -26,40 +29,6 @@ const need = (condition, code) => {
   if (!condition) throw new Error(`handoff-${code}`);
 };
 export const relativePath = (p) => p.replace(/^\.\//, "").replaceAll("\\", "/");
-export function textAt(snapshot, path, selector = { kind: "block" }, lookup) {
-  const n = lookup
-    ? lookup.node(path)
-    : snapshot.nodes.find((n) => equal(n.path, path));
-  need(n, "target-missing");
-  if (selector.kind === "cell")
-    return (
-      (lookup
-        ? lookup.node([...path, selector.row, selector.column], "cell")
-        : snapshot.nodes.find(
-            (c) =>
-              c.type === "cell" &&
-              equal(c.path, [...path, selector.row, selector.column]),
-          )
-      )?.text ?? null
-    );
-  if (selector.kind === "list-item")
-    return n.items?.[selector.index]
-      ? listText({ items: [n.items[selector.index]] })
-      : null;
-  return (
-    n.text ??
-    n.latex ??
-    n.code ??
-    (n.type === "figure"
-      ? ((lookup
-          ? lookup.caption(path[0])
-          : snapshot.nodes.find(
-              (c) => c.type === "caption" && c.path[0] === path[0],
-            )
-        )?.text ?? "")
-      : null)
-  );
-}
 export function buildProvenance(plan, items, snapshot, receipt, doc) {
   const lookup = snapshotLookup(snapshot, { strict: true });
   const target = (t, selector) => ({
@@ -554,6 +523,9 @@ export async function loadHandoff(
         completion.documentRevision === marker.documentRevision,
       "completion-binding",
     );
+    const bindings=marker.schemaVersion === "1.3.0" ? reviewBindings(report,result,evidence) : undefined;
+    const catalog=lossCatalog(result.losses.items,result);
+    const rules=marker.schemaVersion === "1.3.0" ? ruleReviews(ledger,report,result,evidence,catalog,bindings) : undefined;
     reviewed =
       ledger?.generationId === marker.generationId &&
       ledger?.sourceHash === result.provenance.source.pdf.sha256 &&
@@ -562,12 +534,14 @@ export async function loadHandoff(
       equal(ledger.scopes, completion.scopes) &&
       equal(ledger.humanDecisions ?? [], completion.humanDecisions) &&
       equal(ledger.lossConfirmations ?? [], completion.lossConfirmations) &&
+      (marker.schemaVersion !== "1.3.0" || (equal(ledger.ruleOpens ?? [],completion.ruleOpens) && equal(ledger.ruleDecisions ?? [],completion.ruleDecisions) && equal(rules,completion.ruleReviews))) &&
+      (marker.schemaVersion !== "1.3.0" || equal(pageComparisons(report,result,evidence),completion.pageComparisons)) &&
       equal(
         expressionReviews(
           ledger,
           lossCatalog(result.losses.items, result),
           marker.documentRevision,
-          marker.schemaVersion === "1.3.0" ? reviewBindings(report, result, evidence) : undefined,
+          bindings,rules,
         ),
         completion.expressionReviews,
       ) &&
@@ -730,37 +704,7 @@ async function validateFileSet(
     marker.documentRevision,
     p.generationId,
   );
-  const lookup = snapshotLookup(current, { strict: true });
-  const updated = structuredClone(p);
-  updated.schemaVersion = history.schemaVersion;
-  updated.document.revision = current.revision;
-  updated.document.blocks = current.nodes
-    .filter((n) => n.path.length === 1 && n.type !== "caption")
-    .map((n) => ({
-      path: n.path,
-      kind: n.type,
-      text: textAt(current, n.path, undefined, lookup),
-    }));
-  for (const i of updated.items)
-    for (const t of [
-      ...i.targets,
-      ...i.cells.flatMap((c) => c.targets),
-      ...i.losses.flatMap((l) => l.targets),
-    ]) {
-      t.documentRevision = current.revision;
-      t.text = textAt(current, t.path, t.selector, lookup);
-    }
-  return {
-    provenance: updated,
-    losses,
-    marker,
-    snapshot: current,
-    coverage,
-    history,
-    baseline,
-    validatedReview,
-    pageCoverage: baseline.pageCoverage,
-  };
+  return {...projectReviewHandoff(baseline,current,history),marker,coverage,validatedReview};
 }
 
 // Observation ONLY, never an accepted handoff. Validate every sidecar and the

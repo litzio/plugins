@@ -35,3 +35,15 @@ test("representatives are the three largest cases with deterministic ID ties",()
   const many=["z","d","b","a"].map((lossId)=>({...item,lossId}));
   assert.deepEqual(expressionRuleReviews(handoff,many).rules[0].representatives.map((item)=>item.lossId),["a","b","d"]);
 });
+
+test("same visible text with changed math or marks fails the affected rule",()=> {
+  const {handoff,catalog}=fixture();
+  handoff.snapshot.nodes.find((node)=>JSON.stringify(node.path)==="[1,1,2]").content=[{kind:"text",text:"other"}];
+  handoff.baseline=structuredClone(handoff);
+  const before=expressionRuleReviews(handoff,catalog);
+  handoff.snapshot.nodes.find((node)=>JSON.stringify(node.path)==="[1,1,2]").content=[{kind:"math",value:"other"}];
+  const after=expressionRuleReviews(handoff,catalog);
+  assert.equal(after.items.find((item)=>item.lossId==="role").status,"failed");
+  assert.notEqual(after.items.find((item)=>item.lossId==="role").contentDigest,before.items.find((item)=>item.lossId==="role").contentDigest);
+  assert.deepEqual(after.items.filter((item)=>item.lossId!=="role"),before.items.filter((item)=>item.lossId!=="role"));
+});

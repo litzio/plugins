@@ -39,7 +39,7 @@
 
 ### 물리 쪽
 
-쪽에는 별도의 material 공개 조회 작업을 추가하지 않는다. 진행 조회의 `scopeDigests["page:N"]`는 아래 내부 결합 투영으로 검사한 원본·대응·문서·PDF 범위를 식별한다. 진행 상태·완료 여부·문서 전체 교정 목록은 검사 근거와 구별한 참고용 조회다. 쪽의 결합 필드 목록은 `PAGE_BINDING_FIELDS`와 정확히 같아야 하며 추가·누락은 unbound-page-material-field다.
+기계 대조가 덮지 못한 부분이 있어 사람이 볼 쪽에 한해 `page-compare`가 아래와 같은 쪽 자료를 내준다. 후보가 없고 기계 대조를 통과한 쪽을 전부 다시 읽는 작업은 제공하지 않는다. 진행 조회의 `scopeDigests["page:N"]`는 아래 내부 결합 투영으로 검사한 원본·대응·문서·PDF 범위를 식별한다. 진행 상태·완료 여부·문서 전체 교정 목록은 검사 근거와 구별한 참고용 조회다. 쪽의 결합 필드 목록은 `PAGE_BINDING_FIELDS`와 정확히 같아야 하며 추가·누락은 unbound-page-material-field다.
 
 | 쪽 결합 필드 | 결합하는 검사 근거 전부 |
 | --- | --- |
@@ -48,7 +48,7 @@
 | sources | 해당 물리 쪽에 regions가 있는 sourceId와 현재 provenance item 전체 H, 그 sourceId의 모든 check 배열 H. 표·셀·캡션·미주·대응의 전체 속성을 포함 |
 | blocks | 위 source의 targets/cells.targets가 가리키는 path[0]별 현재 node 전부의 H. 모든 셀·caption·inline 내용을 원래 node 순서로 포함 |
 | pages | 해당 PDF 쪽 전체 H. items/tokens/좌표/상태/크기/회전 등 모든 속성 |
-| extra | 현재 null. 직렬화와 hash에 포함하며 몰래 제외하는 여분 필드가 아님 |
+| extra | page-coverage가 있으면 `{comparisonCoverage: 해당 쪽 기록 전체}`, 없으면 null. 직렬화와 hash에 포함 |
 
 쪽 투영에는 교정 이력·판정 이력·관측 순번이 없다. 쪽 내용이 중간에 바뀌면 checkpoint는 미검사로 돌아간다. 되돌림만으로 그 기록이 자동 재활성화되지는 않는다. 원래 자료로 돌아온 뒤에는 예전에 본 digest를 실은 **새 checkpoint 제출**이 유효하다. 내용이 다른 쪽에 예전 digest를 제출하면 거부한다. 기존 v1.2의 “같은 bytes여도 과거 확인 재사용 없음”은 그대로 v1.2에만 적용한다. v1.3은 자동 재사용을 금지하면서, 현재와 같은 자료에 대한 새 제출을 허용한다.
 
@@ -113,3 +113,8 @@ checkpoint·uncertain·사람 결정·표현 확인에 저장하는 contentDiges
 review-progress는 원본 이력 외에 처리 코드가 현재 digest로 판정한 `currentHumanDecisions`, `expressionReviews`를 제공한다. 화면은 이 값을 표시하며 revision만으로 다시 유효성을 계산하지 않는다.
 
 공개 작업의 처리 오류는 안정된 `code`와 다음 행동을 설명하는 `message`를 가진다. groupId는 `groups({jobId}).groups[].id`, scopeId는 `review-progress.scopes[].id`, 현재 교정 값·위치·PDF token/좌표는 `material`에서 얻는다. `page:N`은 groupId가 아니다. 입력 schema는 유지한다. 오류 객체를 외부 CLI까지 전달하는 플랫폼 능력의 현재 미지원은 PR 결과의 플랫폼 부족 사항으로 별도 기록한다. actor는 비인증 선언이며 비서는 사람 근거·사람 결정·표현 확인을 제출하지 않는다.
+
+
+## PR 2 추가: 기계 쪽 대조와 표현 규칙
+
+[기계 대조·규칙 승인 계약](review-rules-v13.md)은 이 문서의 C0/C4/C5/C7과 완료 파일에 덧붙인다. 쪽 결합에 이력을 넣지 않는 원칙은 그대로다. 사람이 보는 쪽 자료의 필드 목록과 결합 투영은 추가 계약 표를 따른다. 기존 v1.0~v1.2 reader의 뜻은 바뀌지 않는다.

@@ -5,6 +5,8 @@ import { extractPdf } from "../src/pdf-evidence.js";
 import { repoPath } from "./paths.js";
 import { digest } from "../src/correction-history.js";
 import { pageComparisons, uncoveredKinds, validatePageCoverage } from "../src/page-comparison.js";
+import { pageMaterial,pageMaterialDigest,createPageBindingProjection,pageBindingDigest,PAGE_MATERIAL_FIELDS } from "../src/review-bindings.js";
+import { completionGate } from "../src/human-review.js";
 
 function fixture() {
   const page={pageNo:1,textLayer:"available",operatorScan:"complete",rasterObjects:0,vectorPaints:0,notCompared:[]};
@@ -17,6 +19,33 @@ test("a candidate-free unchanged page records machine comparison limits without 
   assert.deepEqual(page.notCompared,[]);
   assert.deepEqual(page.semanticLimits,["heading-hierarchy","reading-order","meaning"]);
   assert.deepEqual(page.checked,["protected-number-unit-sign-identifier-tokens","unmapped-pdf-text-detection"]);
+});
+
+test("public human page material and indexed checkpoint projection bind the same exhaustive fields",()=> {
+  const x=fixture(),material=pageMaterial(x.report,x.handoff,x.evidence,1);
+  assert.deepEqual(Object.keys(material).sort(),[...PAGE_MATERIAL_FIELDS].sort());
+  assert.equal(material.contentDigest,pageBindingDigest(createPageBindingProjection(x.report,x.handoff,x.evidence)(1)));
+  const mutations={generationId:(m)=>m.generationId+="x",sourceHash:(m)=>m.sourceHash+="x",
+    sources:(m)=>m.sources[0].item.selfRef+="x",blocks:(m)=>m.blocks[0].nodes[0].text+="x",
+    pages:(m)=>m.pages[0].items[0].text+="x",extra:(m)=>m.extra.comparisonCoverage.rasterObjects++};
+  assert.deepEqual(Object.keys(mutations).sort(),PAGE_MATERIAL_FIELDS.filter((field)=>!["contentDigest","documentRevision"].includes(field)).sort());
+  for (const [field,mutate] of Object.entries(mutations)) {
+    const changed=structuredClone(material);mutate(changed);
+    assert.notEqual(pageMaterialDigest(changed),material.contentDigest,field);
+  }
+  assert.throws(()=>pageMaterialDigest({...material,unbound:1}),/unbound-page-material-field/);
+});
+
+test("machine-only pages meet coverage; an unassessed page cannot be cleared by an assistant checkpoint",()=> {
+  const x=fixture();x.report.statistics={pages:1};x.handoff.provenance.document={revision:"revision"};
+  const state={reviewVersion:"1.3.0",generationId:"g",sourceHash:"pdf",revision:"revision",scopes:[{id:"page:1",state:"미검사",checkpoint:null}],pending:null,stopped:false};
+  assert.equal(completionGate(state,x.report,[],state.revision,x.handoff,x.evidence).uncovered,0);
+  x.handoff.pageCoverage.pages[0].rasterObjects=1;x.handoff.pageCoverage.pages[0].notCompared=["raster-content"];
+  const digest=pageMaterial(x.report,x.handoff,x.evidence,1).contentDigest;
+  state.scopes[0]={id:"page:1",state:"차이없음",checkpoint:{revision:state.revision,contentDigest:digest,note:"Synthetic assistant checkpoint"}};
+  assert.equal(completionGate(state,x.report,[],state.revision,x.handoff,x.evidence).uncovered,1);
+  state.humanDecisions=[{groupId:"page:1",revision:state.revision,contentDigest:digest,decision:"confirmed"}];
+  assert.equal(completionGate(state,x.report,[],state.revision,x.handoff,x.evidence).uncovered,0);
 });
 for (const kind of ["raster","vector","scan-failure","no-text"]) test(`${kind} leaves the page for a human`,()=> {
   const x=fixture(),page=x.handoff.pageCoverage.pages[0];
