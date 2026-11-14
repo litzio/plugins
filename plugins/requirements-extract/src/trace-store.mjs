@@ -49,3 +49,10 @@ export function exportSourceReferences(sources) {
   return {summary:`${source.sourceKey} · ${source.elementRef} · ${source.selector} · ${record.summary}`,traceRef:record.ref};
  });
 }
+
+export function verifyExportTraces(sets,store) {
+ for(const set of sets)for(const r of set.requirements)for(const source of r.sources??[])if(source.trace){
+  const record=traceRecord(source.trace),ref=store.put(source.trace);store.resolve(ref,record.summary);
+ }
+ store.verify();
+}

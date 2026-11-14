@@ -11,7 +11,7 @@ import {prepareLinks,refreshLinks,submitLinks,linkReport,linkProposal,classifyGa
 import {digest,canonical,sha256,validate,semantic} from './model.mjs';
 import {normalizeEvidence,textOf} from './protected.mjs';
 import {reviewRevision,reviewLists,detailReview,checkReviewed} from './screen-review.mjs';
-import {traceStore,traceRecord} from './trace-store.mjs';
+import {traceStore,verifyExportTraces} from './trace-store.mjs';
 import {exportReqif} from './reqif.mjs';
 const json=p=>JSON.parse(readFileSync(p,'utf8'));
 const need=(v,code)=>{if(!v)throw new Error(code);};
@@ -136,7 +136,7 @@ export function screenService({root,launcher,cli:providedCli}) {
     need(/^[a-zA-Z0-9가-힣_-]{1,80}$/.test(payload.name??''),'invalid-output-name');const p=checkedPlan(id,c);
     const file=payload.name+(action==='save'?'.md':'.reqif');need(!existsSync(cli.scoped(file)),'output-exists');
     if(action==='save') {cli.create(p.set,file);const actual=cli.read(file),meaning=r=>({...semantic(r),body:normalizeEvidence(r.body),footnotes:normalizeEvidence(r.footnotes??[]),status:r.status,confirmedDigest:r.confirmedDigest});need(!actual.diagnostics.some(d=>d.severity==='error')&&canonical(actual.requirements.map(meaning))===canonical(p.set.requirements.map(meaning))&&actual.requirements.every(r=>r.status!=='confirmed'||r.confirmedDigest===digest(r)),'saved-roundtrip');}
-    else {const evidence=traceStore({document:cli.scoped(file),scope:cli.scoped});for(const r of p.set.requirements)for(const source of r.sources??[])if(source.trace){const ref=evidence.put(source.trace);evidence.resolve(ref,traceRecord(source.trace).summary);}evidence.verify();const upper=c.s.upper.map(readUpper),out=exportReqif([...upper,p.set],{testOnly:payload.testOnly===true});writeFileSync(cli.scoped(file),out.xml,{flag:'wx'});}
+    else {const sets=[...c.s.upper.map(readUpper),p.set],evidence=traceStore({document:cli.scoped(file),scope:cli.scoped});verifyExportTraces(sets,evidence);const out=exportReqif(sets,{testOnly:payload.testOnly===true});writeFileSync(cli.scoped(file),out.xml,{flag:'wx'});}
     const last=fresh(id);need(last.state.inputDigest===p.inputDigest&&plan(id,last).planDigest===p.planDigest&&reviewRevision(last)===reviewRevision(c),'input-changed');
     return {file:cli.scoped(file),name:basename(file),reviewState:action==='export'&&payload.testOnly?'test-only':'human-selection'};
    }

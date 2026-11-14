@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,writeFileSync,unlinkSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {traceStore,traceRecord} from '../src/trace-store.mjs';
+import {traceStore,traceRecord,verifyExportTraces} from '../src/trace-store.mjs';
 import {authoring,readInspection} from '../src/document.mjs';
 import {canonical,digest} from '../src/model.mjs';
 import {fixtureV13,currentSnapshot} from './v13-fixture.mjs';
@@ -59,4 +59,13 @@ test('large repeated evidence exports short references under the unchanged ReqIF
  const root=fixtureV13({rules:true}),bundle=loadProvenance(root,{inspect:()=>currentSnapshot(root),requireReviewed:true}),source=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/tables/0',selector:'cell:1:0'}).source;
  const sets=sample(),r=sets[0].requirements[0];r.sources=Array.from({length:30},()=>structuredClone(source));sets[0].registry[0].nativeDigest='sha256:'+source.trace.documentRevision;r.confirmedDigest=digest(r);
  assert.ok(canonical(r.sources).length>65535);const xml=exportReqif(sets).xml;assert.ok(xml.includes('MAX-LENGTH="65535"'));assert.ok(!xml.includes('ruleOpenReceipts'));assert.deepEqual(referencedTrace(xml,source),source.trace);
+});
+
+test('all exported sets including upper documents bind evidence beside the ReqIF output',()=>{
+ const bundleRoot=fixtureV13({rules:true}),bundle=loadProvenance(bundleRoot,{inspect:()=>currentSnapshot(bundleRoot),requireReviewed:true}),sets=sample();
+ const upper=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/tables/0',selector:'cell:1:1'}).source,lower=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/tables/0',selector:'cell:1:0'}).source;
+ for(const [index,source] of [upper,lower].entries()){sets[index].requirements[0].sources=[source];sets[index].registry[0].nativeDigest='sha256:'+source.trace.documentRevision;sets[index].requirements[0].confirmedDigest=digest(sets[index].requirements[0]);}
+ const {root,store}=setup(),upperStore=traceStore({document:join(root,'upper','source.md'),scope:p=>p});upperStore.put(upper.trace);
+ assert.throws(()=>store.resolve(traceRecord(upper.trace).ref,traceRecord(upper.trace).summary));verifyExportTraces(sets,store);
+ const xml=exportReqif(sets).xml;for(const source of [upper,lower]){const record=traceRecord(source.trace);assert.deepEqual(store.resolve(record.ref,record.summary),referencedTrace(xml,source));}store.verify();
 });
