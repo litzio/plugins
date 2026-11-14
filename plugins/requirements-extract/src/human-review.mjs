@@ -52,6 +52,16 @@ export function completionProof({ledger:l,report:r,evidence:e,provenance:p,snaps
  const uncovered=expected.filter(id=>!l.scopes.some(s=>s.id===id&&s.checkpoint?.revision===revision&&typeof s.checkpoint.note==='string'&&s.checkpoint.note.trim()&&(['차이없음','교정후재검사'].includes(s.state)||(s.state==='판단불가'&&confirmed(id)))));
  const human=new Set(r.groups.filter(g=>g.kinds.some(k=>required.has(k))||l.scopes.some(s=>s.id===g.id&&s.state==='판단불가')||l.submissions.some(s=>s.groupId===g.id&&s.decision==='uncertain'&&s.revision===revision)).filter(g=>!confirmed(g.id)).map(g=>g.id));
  const last=new Map();for(const d of decisions)if(d.revision===revision)last.set(d.groupId,d);for(const [id,d] of last)if(d.decision==='deferred')human.add(id);
+ const tokenDifferences=protectedDifferenceCount({report:r,evidence:e,provenance:p,snapshot,history});
+ const counts={uncovered:uncovered.length,human:human.size,blocking:catalog.filter(v=>v.classification==='repair-required').length,expressionUnconfirmed:reviews.filter(v=>v.confirmation?.decision!=='meaning-preserved').length,failures:l.scopes.filter(s=>s.state==='실패').length,tokenDifferences};
+ const conditions={boundEvidence:p.generationId===l.generationId&&p.source.pdf.sha256===e.pdfSha256&&p.document.revision===revision,noPending:l.pending===null,running:l.stopped===false,currentRevision:l.revision===revision,coverage:counts.uncovered===0,humanDecisions:counts.human===0,contentLosses:counts.blocking===0,expressions:counts.expressionUnconfirmed===0,failureFree:counts.failures===0,protectedValues:counts.tokenDifferences===0};
+ const ready=Object.values(conditions).every(v=>v===true);
+ const receiptCurrent=!!completion&&completion.generationId===p.generationId&&completion.documentRevision===revision&&equal(l.completion,completion)&&equal(l.scopes,completion.scopes)&&equal(decisions,completion.humanDecisions)&&equal(confirmations,completion.lossConfirmations)&&equal(reviews,completion.expressionReviews);
+ const groupSources=Object.fromEntries(r.groups.map(g=>[g.id,[...new Set(r.findings.filter(f=>g.findingIds.includes(f.id)).flatMap(f=>f.sourceIds))]]));
+ return {reviewComplete:ready&&receiptCurrent,conditions,counts,receiptCurrent,expressionReviews:reviews,humanDecisions:structuredClone(decisions),lossConfirmations:structuredClone(confirmations),groupSources,completion:completion??null,actorLimitation};
+}
+
+export function protectedDifferenceCount({report:r,evidence:e,provenance:p,snapshot,history}) {
  let tokenDifferences=0;
  for(const c of r.checks.filter(c=>c.status==='available')) {
   const item=p.items.find(i=>i.sourceId===c.sourceId),cell=c.selectorKey.startsWith('cell:')?item?.cells.find(v=>v.cellIndex===Number(c.selectorKey.slice(5))):null;
@@ -63,10 +73,5 @@ export function completionProof({ledger:l,report:r,evidence:e,provenance:p,snaps
   for(const value of wanted){const index=actual.indexOf(value);if(index===-1){actual.push('__missing__');break;}actual.splice(index,1);}
   if(actual.length)tokenDifferences++;
  }
- const counts={uncovered:uncovered.length,human:human.size,blocking:catalog.filter(v=>v.classification==='repair-required').length,expressionUnconfirmed:reviews.filter(v=>v.confirmation?.decision!=='meaning-preserved').length,failures:l.scopes.filter(s=>s.state==='실패').length,tokenDifferences};
- const conditions={boundEvidence:p.generationId===l.generationId&&p.source.pdf.sha256===e.pdfSha256&&p.document.revision===revision,noPending:l.pending===null,running:l.stopped===false,currentRevision:l.revision===revision,coverage:counts.uncovered===0,humanDecisions:counts.human===0,contentLosses:counts.blocking===0,expressions:counts.expressionUnconfirmed===0,failureFree:counts.failures===0,protectedValues:counts.tokenDifferences===0};
- const ready=Object.values(conditions).every(v=>v===true);
- const receiptCurrent=!!completion&&completion.generationId===p.generationId&&completion.documentRevision===revision&&equal(l.completion,completion)&&equal(l.scopes,completion.scopes)&&equal(decisions,completion.humanDecisions)&&equal(confirmations,completion.lossConfirmations)&&equal(reviews,completion.expressionReviews);
- const groupSources=Object.fromEntries(r.groups.map(g=>[g.id,[...new Set(r.findings.filter(f=>g.findingIds.includes(f.id)).flatMap(f=>f.sourceIds))]]));
- return {reviewComplete:ready&&receiptCurrent,conditions,counts,receiptCurrent,expressionReviews:reviews,humanDecisions:structuredClone(decisions),lossConfirmations:structuredClone(confirmations),groupSources,completion:completion??null,actorLimitation};
+ return tokenDifferences;
 }

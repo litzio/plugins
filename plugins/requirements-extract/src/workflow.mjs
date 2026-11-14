@@ -24,7 +24,7 @@ export function checkProfile(p) {
 export function fingerprints(inputs, profile) {
   checkProfile(profile);
   if (!inputs.length || new Set(inputs.map(i => i.key)).size !== inputs.length || inputs.some(i => !/^[a-zA-Z0-9_-]+$/.test(i.key))) reject('inputs', '고유한 입력 키와 하나 이상의 문서가 필요합니다');
-  return { policyDigest: sha256(canonical({profile,protectionVersion})), inputDigest: sha256(canonical(inputs.map(i => ({ key: i.key, complete: i.bundle.complete, provenance: i.bundle.provenance, snapshot: i.bundle.snapshot,...(i.bundle.complete.schemaVersion==='1.2.0'?{review:i.bundle.review,groupingVersion:1}:{}) })).sort((a,b) => a.key.localeCompare(b.key)))) };
+  return { policyDigest: sha256(canonical({profile,protectionVersion})), inputDigest: sha256(canonical(inputs.map(i => ({ key: i.key, complete: i.bundle.complete, provenance: i.bundle.provenance, snapshot: i.bundle.snapshot,...(['1.2.0','1.3.0'].includes(i.bundle.complete.schemaVersion)?{review:i.bundle.review,groupingVersion:1,...(i.bundle.complete.schemaVersion==='1.3.0'?{sourceModelVersion:'docling-to-litzio/1.3.0/1'}:{})}:{}) })).sort((a,b) => a.key.localeCompare(b.key)))) };
 }
 function tickets(job) {
   return Object.fromEntries(job.corpus.sections.map(s => [s.key, randomUUID()]));
@@ -217,14 +217,18 @@ export function supplement(job, sectionKey, unitKeys) {
 export function report(job) {
   const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[],reviewFirst=[];
   for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace?.correctionNotice) reviewFirst.push({code:'source-corrected',needsHumanReview:true,sourceKey,source, message:source.trace.correctionNotice,corrections:source.trace.corrections});
-  const reviewedGroups=new Map(),expressionGroups=new Map();
-  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace?.contract==='docling-to-litzio/1.2.0') {
+  const reviewedGroups=new Map(),expressionGroups=new Map(),machineGroups=new Map(),ruleGroups=new Map();
+  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(['docling-to-litzio/1.2.0','docling-to-litzio/1.3.0'].includes(source.trace?.contract)) {
     const t=source.trace;
+    if(t.contract==='docling-to-litzio/1.3.0'){
+      if(t.machineOnlyPages?.length){const key=canonical({generation:t.generationId,pages:t.pageComparisons}),row=machineGroups.get(key)??{code:'source-machine-only',needsHumanReview:true,sourceKeys:[],message:'기계 대조만 거친 쪽 — 제목 계층·읽는 순서·의미는 검사하지 않음',machineOnlyPages:t.machineOnlyPages,pageComparisons:t.pageComparisons};row.sourceKeys.push(sourceKey);machineGroups.set(key,row);}
+      if(t.ruleApprovals?.length){const key=canonical({generation:t.generationId,approvals:t.ruleApprovals,verifications:t.ruleVerifications}),row=ruleGroups.get(key)??{code:'source-rule-approved',needsHumanReview:true,sourceKeys:[],message:'대표 사례를 본 사람의 규칙 승인과 현재 기계 검증으로 확인된 표현',ruleApprovals:t.ruleApprovals,ruleOpenReceipts:t.ruleOpenReceipts,ruleVerifications:t.ruleVerifications,actorLimitation:t.actorLimitation};row.sourceKeys.push(sourceKey);ruleGroups.set(key,row);}
+    }
     if(t.humanCorrectionNotice)reviewFirst.push({code:'source-human-correction',needsHumanReview:true,sourceKey,message:t.humanCorrectionNotice,actorLimitation:t.actorLimitation,corrections:t.corrections});
     if(t.mergedTableConfirmation){const key=canonical({generation:t.generationId,expressions:t.expressionReviews}),row=expressionGroups.get(key)??{code:'source-expression-confirmed',needsHumanReview:true,sourceKeys:[],message:t.mergedTableConfirmation,actorLimitation:t.actorLimitation,expressionReviews:t.expressionReviews};row.sourceKeys.push(sourceKey);expressionGroups.set(key,row);}
-    {const reviewed=reviewedTrace(t),key=t.generationId+':'+t.documentRevision+':'+reviewed,row=reviewedGroups.get(key)??{code:reviewed?'source-reviewed':'source-review-required',needsHumanReview:true,sourceKeys:[],message:reviewed?'현재 revision의 출처 검수 완료 — 사람으로 기록된 확인(비인증 선언)':'현재 유효한 출처 검수 완료 증거 없음',actorLimitation:t.actorLimitation,review:t.review};row.sourceKeys.push(sourceKey);reviewedGroups.set(key,row);}
+    {const reviewed=reviewedTrace(t),key=t.generationId+':'+t.documentRevision+':'+reviewed,row=reviewedGroups.get(key)??{code:reviewed?'source-reviewed':'source-review-required',needsHumanReview:true,sourceKeys:[],message:reviewed?(t.contract==='docling-to-litzio/1.3.0'?'현재 출처 완료 조건 충족 — 기계·사람·규칙 경로는 출처 기록에서 구별':'현재 revision의 출처 검수 완료 — 사람으로 기록된 확인(비인증 선언)'):'현재 유효한 출처 검수 완료 증거 없음',actorLimitation:t.actorLimitation,review:t.review};row.sourceKeys.push(sourceKey);reviewedGroups.set(key,row);}
   }
-  reviewFirst.push(...expressionGroups.values(),...reviewedGroups.values());
+  reviewFirst.push(...machineGroups.values(),...ruleGroups.values(),...expressionGroups.values(),...reviewedGroups.values());
   if(job.protectionVersion!==protectionVersion) problems.unshift({code:'protection-version',message:'이전 판단은 무효입니다. resume 후 재검토해야 합니다'});
   for (const s of job.corpus.sections) {
     const response=job.responses[s.key];
@@ -238,7 +242,7 @@ export function report(job) {
         if(job.corpus.candidates[d.candidateKey].sourceKeys.some(k=>job.corpus.sources[k].trace&&!reviewedTrace(job.corpus.sources[k].trace))) problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'source-review-required',message:'후보 판단은 출처 검수 완료가 아닙니다'});
         if(d.choices.quality!=='same') problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:'judgment-difference',reason:d.reason});
       } else if (!['non-requirement','duplicate'].includes(d.decision)) problems.push({sectionKey:s.key,candidateKey:d.candidateKey,code:d.decision,reason:d.reason,unresolved:d.unresolved});
-      for (const key of job.corpus.candidates[d.candidateKey].sourceKeys) for (const diagnostic of (job.corpus.sources[key].trace?.diagnostics??[])) if(!['source-review-required','source-human-correction','source-expression-confirmed','source-reviewed'].includes(diagnostic.code)) problems.push({sectionKey:s.key,candidateKey:d.candidateKey,...diagnostic});
+      for (const key of job.corpus.candidates[d.candidateKey].sourceKeys) for (const diagnostic of (job.corpus.sources[key].trace?.diagnostics??[])) if(!['source-review-required','source-human-correction','source-expression-confirmed','source-reviewed','source-machine-only','source-rule-approved'].includes(diagnostic.code)) problems.push({sectionKey:s.key,candidateKey:d.candidateKey,...diagnostic});
     }
   }
   return {jobId:job.jobId,epoch:job.epoch,inputDigest:job.inputDigest,policyDigest:job.policyDigest,blocked:job.blocked??null,counts:{sections:job.corpus.sections.length,checkedSections:Object.keys(job.responses).length,candidates:Object.keys(job.corpus.candidates).length,decisions:Object.values(job.responses).reduce((n,r)=>n+r.decisions.length,0),adopted:accepted.length},reviewFirst,problems:[...reviewFirst,...problems],accepted,reviewState:'draft-only'};

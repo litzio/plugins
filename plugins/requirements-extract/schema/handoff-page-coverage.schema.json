@@ -1,0 +1,103 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.3.0"
+    },
+    "pdfSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reader": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "const": "pdfjs-dist"
+        },
+        "version": {
+          "const": "6.5.438"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "textLayer": {
+            "enum": [
+              "available",
+              "unavailable"
+            ]
+          },
+          "operatorScan": {
+            "enum": [
+              "complete",
+              "unavailable"
+            ]
+          },
+          "rasterObjects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "vectorPaints": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notCompared": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "missing-text-layer",
+                "operator-scan-unavailable",
+                "raster-content",
+                "vector-painted-content"
+              ]
+            }
+          }
+        },
+        "required": [
+          "pageNo",
+          "textLayer",
+          "operatorScan",
+          "rasterObjects",
+          "vectorPaints",
+          "notCompared"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "semanticLimits": {
+      "const": [
+        "heading-hierarchy",
+        "reading-order",
+        "meaning"
+      ]
+    },
+    "regionPrecision": {
+      "const": "whole-page"
+    },
+    "method": {
+      "const": "pdfjs-6.5.438-text-and-optimized-paint-v3"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "pdfSha256",
+    "reader",
+    "pages",
+    "semanticLimits",
+    "regionPrecision",
+    "method"
+  ],
+  "additionalProperties": false
+}

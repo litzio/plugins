@@ -1,3 +1,4 @@
+import {referencedTrace} from './export-trace-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
@@ -21,7 +22,7 @@ test('corrected current values retain original quote and evidence in review-firs
  assert.equal(source.trace.correctionNotice,'원본 변환값과 다르게 교정됨(근거 있음)');assert.equal(source.trace.corrections[0].validation.evidenceRecheck,'verified-protected-tokens');
  assert.equal(report(prepare([{key:'synthetic',bundle}],profile)).reviewFirst[0].code,'source-corrected');
  const sets=sample(),r=sets[0].requirements[0];r.sources=[source];r.confirmedDigest=digest(r);
- assert.match(exportReqif(sets,{testOnly:true}).xml,/verified-protected-tokens/);assert.throws(()=>exportReqif(sets));
+ assert.equal(referencedTrace(exportReqif(sets,{testOnly:true}).xml,source).corrections[0].validation.evidenceRecheck,'verified-protected-tokens');assert.throws(()=>exportReqif(sets));
 });
 const mutations={
  'document only':root=>writeFileSync(join(root,'document.md'),'manual edit'),
@@ -53,7 +54,7 @@ test('multiple edits, exact undo, and undo then new edit describe current value 
   const restored=mode==='undo';assert.equal(source.trace.correctionState,restored?'restored-to-conversion-value':'currently-corrected');
   assert.deepEqual(source.trace.corrections,bundle.history.changes);
   assert.equal(!!source.trace.correctionNotice,!restored);assert.equal(report(prepare([{key:'synthetic',bundle}],profile)).reviewFirst.some(p=>p.code==='source-corrected'),!restored);
-  const sets=sample(),r=sets[0].requirements[0];r.sources=[source];r.confirmedDigest=digest(r);assert.equal(exportReqif(sets,{testOnly:true}).xml.includes('원본 변환값과 다르게 교정됨'),!restored);
+  const sets=sample(),r=sets[0].requirements[0];r.sources=[source];r.confirmedDigest=digest(r);assert.equal(!!referencedTrace(exportReqif(sets,{testOnly:true}).xml,source).correctionNotice,!restored);
  }
 });
 test('undo-restoration remains in complete source history and ReqIF without a current correction notice',()=>{
@@ -61,5 +62,5 @@ test('undo-restoration remains in complete source history and ReqIF without a cu
  const bundle=load(root),source=resolveSource(bundle,{sourceKey:'synthetic',elementRef:'#/texts/0'}).source;
  assert.equal(source.trace.correctionState,'restored-to-conversion-value');assert.deepEqual(source.trace.corrections,bundle.history.changes);assert.equal(source.trace.corrections.at(-1).validation.evidenceRecheck,'undo-restoration');assert.equal(source.trace.correctionNotice,undefined);
  assert.ok(!report(prepare([{key:'synthetic',bundle}],profile)).reviewFirst.some(p=>p.code==='source-corrected'));
- const sets=sample(),r=sets[0].requirements[0];r.sources=[source];r.confirmedDigest=digest(r);const xml=exportReqif(sets,{testOnly:true}).xml;assert.ok(xml.includes('undo-restoration'));assert.ok(!xml.includes('원본 변환값과 다르게 교정됨'));
+ const sets=sample(),r=sets[0].requirements[0];r.sources=[source];r.confirmedDigest=digest(r);const xml=exportReqif(sets,{testOnly:true}).xml;assert.equal(referencedTrace(xml,source).corrections.at(-1).validation.evidenceRecheck,'undo-restoration');assert.equal(referencedTrace(xml,source).correctionNotice,undefined);
 });

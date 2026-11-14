@@ -1,0 +1,1125 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.3.0"
+    },
+    "generationId": {
+      "type": "string"
+    },
+    "documentRevision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "미검사",
+              "검사중",
+              "차이없음",
+              "교정후재검사",
+              "판단불가",
+              "실패"
+            ]
+          },
+          "checkpoint": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "time": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "rulesVersion": {
+                    "const": "1.0.0"
+                  },
+                  "changeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "revision",
+                  "time",
+                  "rulesVersion",
+                  "contentDigest"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "checkpoint"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "humanDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "enum": [
+              "confirmed",
+              "deferred"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor": {
+            "const": "human"
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "groupId",
+          "revision",
+          "decision",
+          "note",
+          "actor",
+          "time",
+          "contentDigest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "ready": {
+          "const": true
+        },
+        "uncovered": {
+          "const": 0
+        },
+        "human": {
+          "const": 0
+        },
+        "blocking": {
+          "const": 0
+        },
+        "failures": {
+          "const": 0
+        },
+        "tokenDifferences": {
+          "const": 0
+        },
+        "expressionUnconfirmed": {
+          "const": 0
+        }
+      },
+      "required": [
+        "ready",
+        "uncovered",
+        "human",
+        "blocking",
+        "failures",
+        "tokenDifferences",
+        "expressionUnconfirmed"
+      ],
+      "additionalProperties": false
+    },
+    "lossConfirmations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lossId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetPath": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "changeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "actor": {
+            "const": "human"
+          },
+          "meaning": {
+            "const": "expression-semantic-preservation"
+          },
+          "comparison": {
+            "const": "source-and-current-side-by-side"
+          },
+          "decision": {
+            "enum": [
+              "meaning-preserved",
+              "meaning-changed",
+              "deferred"
+            ]
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "lossId",
+          "sourceId",
+          "reasonCode",
+          "groupId",
+          "revision",
+          "note",
+          "time",
+          "targetPath",
+          "pageNo",
+          "changeCount",
+          "actor",
+          "meaning",
+          "comparison",
+          "decision",
+          "contentDigest"
+        ]
+      }
+    },
+    "expressionReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lossId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "basis": {
+            "enum": [
+              "Note body retained as an unlinked annotation paragraph",
+              "Note body retained as a numbered endnote",
+              "Declared native representation limit; source values retained"
+            ]
+          },
+          "classification": {
+            "const": "expression"
+          },
+          "originalValue": {},
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          },
+          "confirmation": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "lossId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sourceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reasonCode": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "groupId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "time": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "targetPath": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "minItems": 1,
+                    "maxItems": 1
+                  },
+                  "pageNo": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "changeCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "actor": {
+                    "const": "human"
+                  },
+                  "meaning": {
+                    "const": "expression-semantic-preservation"
+                  },
+                  "comparison": {
+                    "const": "source-and-current-side-by-side"
+                  },
+                  "decision": {
+                    "enum": [
+                      "meaning-preserved",
+                      "meaning-changed",
+                      "deferred"
+                    ]
+                  },
+                  "invalidatedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "lossId",
+                  "sourceId",
+                  "reasonCode",
+                  "groupId",
+                  "revision",
+                  "note",
+                  "time",
+                  "targetPath",
+                  "pageNo",
+                  "changeCount",
+                  "actor",
+                  "meaning",
+                  "comparison",
+                  "decision",
+                  "contentDigest"
+                ]
+              }
+            ]
+          },
+          "representation": {
+            "enum": [
+              "unlinked-annotation",
+              "numbered-endnote",
+              "native-expression"
+            ]
+          },
+          "sourceDefect": {
+            "enum": [
+              "duplicate-local-note-marker",
+              "none"
+            ]
+          },
+          "ruleConfirmation": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "ruleId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "decisionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "actor": {
+                    "const": "human"
+                  },
+                  "time": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "revision": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "contentDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "policyDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "meaning": {
+                    "const": "rule-approved-representation"
+                  }
+                },
+                "required": [
+                  "ruleId",
+                  "decisionId",
+                  "actor",
+                  "time",
+                  "revision",
+                  "contentDigest",
+                  "policyDigest",
+                  "meaning"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "lossId",
+          "sourceId",
+          "reasonCode",
+          "basis",
+          "classification",
+          "originalValue",
+          "targets",
+          "confirmation",
+          "representation",
+          "sourceDefect",
+          "ruleConfirmation"
+        ]
+      }
+    },
+    "pageComparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "scopeId": {
+            "type": "string",
+            "pattern": "^page:[1-9][0-9]*$"
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "baselineDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "status": {
+            "enum": [
+              "machine-passed",
+              "requires-human",
+              "candidates-or-content-change"
+            ]
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checked": {
+            "const": [
+              "protected-number-unit-sign-identifier-tokens",
+              "unmapped-pdf-text-detection"
+            ]
+          },
+          "checks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pdfTokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notCompared": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "missing-text-layer",
+                "operator-scan-unavailable",
+                "raster-content",
+                "vector-painted-content",
+                "docling-picture",
+                "unavailable-protected-token-scope"
+              ]
+            }
+          },
+          "semanticLimits": {
+            "const": [
+              "heading-hierarchy",
+              "reading-order",
+              "meaning"
+            ]
+          },
+          "regionPrecision": {
+            "const": "whole-page"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "pageNo",
+          "scopeId",
+          "contentDigest",
+          "baselineDigest",
+          "status",
+          "groupIds",
+          "checked",
+          "checks",
+          "pdfTokens",
+          "notCompared",
+          "semanticLimits",
+          "regionPrecision"
+        ]
+      }
+    },
+    "ruleOpens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "openId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ruleId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lossId": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ruleContentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "changeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "actor": {
+            "const": "human"
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "comparison": {
+            "const": "source-and-current-side-by-side"
+          }
+        },
+        "required": [
+          "openId",
+          "ruleId",
+          "lossId",
+          "groupId",
+          "pageNo",
+          "ruleContentDigest",
+          "contentDigest",
+          "revision",
+          "changeCount",
+          "actor",
+          "time",
+          "comparison"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "ruleDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "decisionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ruleId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "policyDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "memberIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "changeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "actor": {
+            "const": "human"
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "enum": [
+              "approved",
+              "deferred",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "openIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "decisionId",
+          "ruleId",
+          "policyDigest",
+          "memberIds",
+          "contentDigest",
+          "revision",
+          "changeCount",
+          "actor",
+          "time",
+          "decision",
+          "note",
+          "openIds"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "ruleReviews": {
+      "type": "object",
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ruleId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "const": "1.0.0"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "method": {
+                "type": "string",
+                "minLength": 1
+              },
+              "policyDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "lossId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "sourceId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ruleId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "status": {
+                      "enum": [
+                        "verified",
+                        "failed",
+                        "unverifiable"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "checkedCells": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "complexity": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "contentDigest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "lossId",
+                    "sourceId",
+                    "ruleId",
+                    "status",
+                    "reason",
+                    "checkedCells",
+                    "complexity",
+                    "contentDigest"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "representatives": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "lossId": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "contentDigest": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$"
+                    },
+                    "sourceId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "targetPaths": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "items": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      }
+                    },
+                    "comparisons": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "groupId": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "pageNo": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "contentDigest": {
+                            "type": "string",
+                            "pattern": "^[a-f0-9]{64}$"
+                          }
+                        },
+                        "required": [
+                          "groupId",
+                          "pageNo",
+                          "contentDigest"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "lossId",
+                    "contentDigest",
+                    "sourceId",
+                    "targetPaths",
+                    "comparisons"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "generationId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "documentRevision": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "contentDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "decision": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "decisionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "ruleId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "policyDigest": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "memberIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        }
+                      },
+                      "contentDigest": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "revision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "changeCount": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "actor": {
+                        "const": "human"
+                      },
+                      "time": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "decision": {
+                        "enum": [
+                          "approved",
+                          "deferred",
+                          "rejected"
+                        ]
+                      },
+                      "note": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "openIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "invalidatedAt": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "decisionId",
+                      "ruleId",
+                      "policyDigest",
+                      "memberIds",
+                      "contentDigest",
+                      "revision",
+                      "changeCount",
+                      "actor",
+                      "time",
+                      "decision",
+                      "note",
+                      "openIds"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "ruleId",
+              "version",
+              "title",
+              "method",
+              "policyDigest",
+              "members",
+              "representatives",
+              "generationId",
+              "documentRevision",
+              "contentDigest",
+              "decision"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lossId": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "ruleId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "enum": [
+                  "verified",
+                  "failed",
+                  "unverifiable"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "checkedCells": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "complexity": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "contentDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "ruleConfirmation": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "ruleId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "decisionId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "actor": {
+                        "const": "human"
+                      },
+                      "time": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "revision": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "contentDigest": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "policyDigest": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$"
+                      },
+                      "meaning": {
+                        "const": "rule-approved-representation"
+                      }
+                    },
+                    "required": [
+                      "ruleId",
+                      "decisionId",
+                      "actor",
+                      "time",
+                      "revision",
+                      "contentDigest",
+                      "policyDigest",
+                      "meaning"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "lossId",
+              "sourceId",
+              "ruleId",
+              "status",
+              "reason",
+              "checkedCells",
+              "complexity",
+              "contentDigest",
+              "ruleConfirmation"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "rules",
+        "items"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "documentRevision",
+    "time",
+    "scopes",
+    "humanDecisions",
+    "conditions",
+    "lossConfirmations",
+    "expressionReviews",
+    "pageComparisons",
+    "ruleOpens",
+    "ruleDecisions",
+    "ruleReviews"
+  ],
+  "additionalProperties": false
+}

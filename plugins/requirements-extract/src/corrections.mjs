@@ -24,7 +24,7 @@ export function correctedSnapshot({history:h, report:r, evidence:e, ledger:l, ba
   for(const [index,c] of h.changes.entries()) {
     need(!seen.has(c.changeId),'history-duplicate'); seen.add(c.changeId);
     need(c.beforeRevision===state.revision && c.afterRevision!==c.beforeRevision && c.before!==c.after && c.receipt.revision===c.afterRevision,'history-chain');
-    const human=h.schemaVersion==='1.2.0'&&c.evidence.kind==='human-source-region';
+    const human=['1.2.0','1.3.0'].includes(h.schemaVersion)&&c.evidence.kind==='human-source-region';
     need(c.sourceHash===p.source.pdf.sha256 && equal(c.inverse,operation(c.target,c.after,c.before,c.beforeContent)),'history-inverse');
     const targetPath=c.target.kind==='cell'?[...c.target.path,c.target.row,c.target.column]:c.target.path;
     const n=state.nodes.find(n=>equal(n.path,targetPath));
@@ -50,7 +50,7 @@ export function correctedSnapshot({history:h, report:r, evidence:e, ledger:l, ba
       need(related.length>0&&(mapped.some(i=>ids.has(i.sourceId))||findings.some(f=>f.kind==='source-cell-unavailable'&&f.targets.some(matches))),'history-human-target');
       need(c.evidence.scope.length>0&&c.evidence.scope.every(s=>{const page=e.pages.find(p=>p.pageNo===s.pageNo),b=s.bbox;return page&&b.every(Number.isFinite)&&b[0]>=0&&b[1]>=0&&b[2]>b[0]&&b[3]>b[1]&&b[2]<=page.width&&b[3]<=page.height&&related.some(f=>f.regions.some(r=>r.pageNo===s.pageNo&&r.bbox[0]<=b[0]&&r.bbox[1]<=b[1]&&r.bbox[2]>=b[2]&&r.bbox[3]>=b[3]));}),'history-human-scope');
     } else {
-    need((h.schemaVersion!=='1.2.0'||c.before.trim().length>0)&&c.beforeContent===undefined&&c.afterContent===undefined,'history-token-target');
+    need((!['1.2.0','1.3.0'].includes(h.schemaVersion)||c.before.trim().length>0)&&c.beforeContent===undefined&&c.afterContent===undefined,'history-token-target');
     const checks=p.items.filter(i=>ids.has(i.sourceId)).flatMap(i=>c.target.kind==='cell' ? i.cells.filter(cell=>cell.targets.some(t=>equal(t.path,c.target.path)&&t.selector.kind==='cell'&&t.selector.row===c.target.row&&t.selector.column===c.target.column)).flatMap(cell=>r.checks.filter(k=>k.sourceId===i.sourceId&&k.selectorKey==='cell:'+cell.cellIndex)) : i.targets.some(t=>equal(t.path,c.target.path)&&t.selector.kind==='block') ? r.checks.filter(k=>k.sourceId===i.sourceId) : []);
     const refs=[...new Set(checks.flatMap(k=>k.pdfTokenIds))];
     need(refs.length>0 && equal([...c.evidence.refs].sort(),[...refs].sort()),'history-evidence');
@@ -63,6 +63,7 @@ export function correctedSnapshot({history:h, report:r, evidence:e, ledger:l, ba
     }
     if(c.undoOf) { const prev=h.changes[index-1]; need(prev?.changeId===c.undoOf && prev.afterRevision===c.beforeRevision && equal(prev.target,c.target) && prev.after===c.before && prev.before===c.after&&equal(prev.beforeContent,c.afterContent),'history-undo'); }
     const submissions=l.submissions.filter(s=>s.changeId===c.changeId);
+    if(h.schemaVersion==='1.3.0')need(submissions.length===1&&submissions[0].contentDigest===c.contentDigest,'history-material-digest');
     need(submissions.length===1 && submissions[0].afterRevision===c.afterRevision && submissions[0].status===(c.validation.protectedTokens||human?'applied':'uncertain') && l.scopes.some(s=>s.id===c.groupId),'history-submission');
   }
   need(state.revision===complete.documentRevision && equal(state,h.currentSnapshot) && equal(state,actual),'history-current');

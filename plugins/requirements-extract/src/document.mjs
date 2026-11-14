@@ -3,13 +3,14 @@ import { validate } from './model.mjs';
 import { auditCoverage } from './coverage.mjs';
 import { bodyFields, fromSnapshot, walkContent } from './body.mjs';
 import { canonical } from './model.mjs';
+import {traceRecord} from './trace-store.mjs';
 export const fields = ['id', 'kind', 'level', 'origin', 'strength', 'status', 'verification', 'rationale', 'confirmedDigest'];
 export const setFields = ['profile', 'setId', 'exportNamespace', 'defaultLevel'];
 export const registryFields = ['sourceKey', 'artifactDigest', 'nativeFile', 'nativeDigest', 'mapFile'];
 export const sourceFields = ['sourceKey', 'elementRef', 'selector', 'quote', 'quoteDigest'];
 export const relationFields = ['role', 'targetId', 'rationale'];
 
-function readProfile(input, file = '', snapshot) {
+function readProfile(input, file = '', snapshot, resolveTrace) {
   if (!input.ok || !Array.isArray(input.nodes)) throw new Error('성공한 CLI inspect JSON이 필요합니다');
   if (snapshot) {
     if (!Array.isArray(snapshot.blocks)) throw new Error('snapshot blocks 배열이 필요합니다');
@@ -29,12 +30,19 @@ function readProfile(input, file = '', snapshot) {
     const cells = input.nodes.filter(c => c.type === 'cell' && c.path[0] === n.path[0]);
     const rows = [];
     for (const c of cells) { consume(c); (rows[c.path[1]] ??= [])[c.path[2]] = c.text; }
-    const extras=['trace','nativeLocation'].filter(k=>rows[0]?.includes(k));
+    const extras=['trace','nativeLocation','traceRef'].filter(k=>rows[0]?.includes(k));
     const actualColumns = columns === sourceFields ? [...columns,...extras] : columns;
     if (JSON.stringify(rows[0]) !== JSON.stringify(actualColumns) || rows.some(r => r.length !== actualColumns.length)) issue(n, 'table-columns', '표 열 또는 모양이 프로파일과 다릅니다');
     return rows.slice(1).map(r => {
       const row = Object.fromEntries(actualColumns.map((k, i) => [k, r[i] ?? '']));
-      if (Object.hasOwn(row, 'trace')) { try { row.trace = JSON.parse(row.trace); } catch { issue(n, 'source-trace', '출처 trace JSON이 올바르지 않습니다'); } }
+      if(Object.hasOwn(row,'traceRef')){
+        try {
+          const ref=JSON.parse(row.traceRef);
+          if(ref===null){if(row.trace)throw new Error('unexpected-trace');delete row.trace;}
+          else {if(typeof resolveTrace!=='function')throw new Error('unresolved-trace');row.trace=resolveTrace(ref,row.trace);}
+          delete row.traceRef;
+        }catch{issue(n,'source-trace-reference','출처 근거 참조를 읽거나 검증하지 못했습니다. 함께 보관한 .requirements-traces 자료를 확인하세요');}
+      }else if (Object.hasOwn(row, 'trace')) { try { row.trace = JSON.parse(row.trace); } catch { issue(n, 'source-trace', '출처 trace JSON이 올바르지 않습니다'); } }
       if (Object.hasOwn(row, 'nativeLocation')) { try { row.nativeLocation=JSON.parse(row.nativeLocation);if(row.nativeLocation===null)delete row.nativeLocation; } catch { issue(n,'source-native-location','native 위치 JSON이 올바르지 않습니다'); } }
       return row;
     });
@@ -115,8 +123,8 @@ function readProfile(input, file = '', snapshot) {
   }
   return s;
 }
-export function readInspection(input, file = '', snapshot) {
-  try { return readProfile(input, file, snapshot); }
+export function readInspection(input, file = '', snapshot, {resolveTrace} = {}) {
+  try { return readProfile(input, file, snapshot, resolveTrace); }
   catch (error) {
     return { file, title: input?.title ?? '', profile: 'requirements-extract/1', registry: [], requirements: [], diagnostics: [{ file, location: Array.isArray(error.location) ? error.location : [1], code: 'projection-shape', severity: 'error', message: '지원하지 않는 공개 읽기 출력 모양입니다. 내보내기를 차단합니다' }] };
   }
@@ -125,8 +133,8 @@ export function readInspection(input, file = '', snapshot) {
 export function authoring(s) {
   const p = (keys, value) => ({ kind: 'table', rows: [['필드', '값'], ...keys.map(k => [k, value[k] ?? ''])] });
   const t = (columns, rows) => {
-    if (columns === sourceFields) columns = [...columns,...['trace','nativeLocation'].filter(k=>rows.some(r=>r[k]))];
-    return { kind: 'table', rows: [columns, ...rows.map(r => columns.map(k => ['trace','nativeLocation'].includes(k) ? canonical(r[k] ?? null) : r[k] ?? ''))] };
+    if (columns === sourceFields) columns = [...columns,...['trace','nativeLocation','traceRef'].filter(k=>k==='traceRef'?rows.some(r=>r.trace):rows.some(r=>r[k]))];
+    return { kind: 'table', rows: [columns, ...rows.map(r => columns.map(k => k==='traceRef'?canonical(r.trace?traceRecord(r.trace).ref:null):k==='trace'?(r.trace?traceRecord(r.trace).summary:''):k==='nativeLocation'?canonical(r[k]??null):r[k]??''))] };
   };
   const h = (level, text) => ({ kind: 'heading', level, text });
   return { title: s.title, inputs: [

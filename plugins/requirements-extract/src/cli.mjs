@@ -4,6 +4,7 @@ import { resolve, relative, isAbsolute, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { readInspection, authoring } from './document.mjs';
+import {traceStore} from './trace-store.mjs';
 import {verifyReviewedSources} from './provenance.mjs';
 
 // Caller explicitly supplies a source-checkout tsx executable/CLI entry and a
@@ -30,6 +31,8 @@ export function sourceCli({ node = process.execPath, tsx, entry, launcher, root,
   };
   function create(s, name) {
     const file = scoped(name);if(scratchDirectory)mkdirSync(scoped(scratchDirectory),{recursive:true});
+    const evidence=traceStore({document:file,scope:scoped});
+    for(const r of s.requirements)for(const source of r.sources??[])if(source.trace)evidence.put(source.trace);
     const input = scoped(join(scratchDirectory,randomUUID() + '.json'));
     writeFileSync(input, JSON.stringify({ authoring: authoring(s), images: [] }), { flag: 'wx' });
     run('create', file, '--input', input, '--format', 'json');
@@ -47,8 +50,10 @@ export function sourceCli({ node = process.execPath, tsx, entry, launcher, root,
     const file = scoped(name), inspection = run('inspect', file, '--format', 'json');
     const comparison = run('compare', file, file, '--json');
     if (comparison.receipt?.beforeRevision !== inspection.revision || comparison.receipt?.afterRevision !== inspection.revision) throw new Error('의미 읽기 revision 불일치');
-    const s = readInspection(inspection, name, comparison.before);
+    const evidence=traceStore({document:file,scope:scoped});
+    const s = readInspection(inspection, name, comparison.before,{resolveTrace:(ref,summary)=>evidence.resolve(ref,summary)});
     s.diagnostics.push(...verifyReviewedSources(s,{scope:scoped,inspect:file=>run('inspect',file,'--format','json')}));
+    evidence.verify();
     // Guard against an inspect/compare race, including metadata changes.
     if (inspection.revision !== run('inspect', file, '--format', 'json').revision) throw new Error('읽는 동안 문서가 변경되었습니다');
     return s;

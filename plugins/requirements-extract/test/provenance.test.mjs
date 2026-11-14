@@ -1,3 +1,4 @@
+import {referencedTrace} from './export-trace-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFileSync, unlinkSync, symlinkSync } from 'node:fs';
@@ -30,7 +31,7 @@ test('v1 source traces block formal output and appear intact in marked trial Req
   const source = resolveSource(load(handoff()), { sourceKey: 'synthetic', elementRef: '#/texts/0' }).source;
   const sets = sample(), r = sets[0].requirements[0]; r.sources = [source]; r.confirmedDigest = digest(r);
   assert.throws(() => exportReqif(sets), e => e.diagnostics.some(d => d.code === 'source-review-required'));
-  const trial = exportReqif(sets, { testOnly: true }); assert.match(trial.xml, /TEST ONLY/); assert.match(trial.xml, /documentRevision/);
+  const trial = exportReqif(sets, { testOnly: true }); assert.match(trial.xml, /TEST ONLY/); assert.equal(referencedTrace(trial.xml,source).documentRevision,source.trace.documentRevision);
   source.trace.reviewState = 'reviewed'; assert.throws(() => exportReqif(sets, { testOnly: true }));
 });
 test('requireReviewed always rejects v1; source offsets are original code points', () => {

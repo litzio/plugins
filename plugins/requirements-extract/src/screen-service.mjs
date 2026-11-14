@@ -11,6 +11,7 @@ import {prepareLinks,refreshLinks,submitLinks,linkReport,linkProposal,classifyGa
 import {digest,canonical,sha256,validate,semantic} from './model.mjs';
 import {normalizeEvidence,textOf} from './protected.mjs';
 import {reviewRevision,reviewLists,detailReview,checkReviewed} from './screen-review.mjs';
+import {traceStore,verifyExportTraces} from './trace-store.mjs';
 import {exportReqif} from './reqif.mjs';
 const json=p=>JSON.parse(readFileSync(p,'utf8'));
 const need=(v,code)=>{if(!v)throw new Error(code);};
@@ -48,7 +49,8 @@ export function screenService({root,launcher,cli:providedCli}) {
   const next=refresh(old.state,inputs(id,s),p);let current=old;
   if(next.inputDigest!==old.state.inputDigest||next.policyDigest!==old.state.policyDigest){current=saveLedger(path,next,old.head);invalidate(s,'input-or-policy-changed');save(id,s);}
   if(s.links) {
-   const lower=s.links.job.lower[0];need(cli.run('inspect',cli.scoped(lower.file),'--format','json').revision===lower.revision,'link-baseline-changed');
+   const lower=s.links.job.lower[0],currentLower=cli.read(lower.file);need(currentLower.revision===lower.revision,'link-baseline-changed');
+   const lowerErrors=currentLower.diagnostics.filter(d=>d.severity==='error');if(lowerErrors.length)throw Object.assign(new Error('link-baseline-invalid'),{diagnostics:lowerErrors});
    const links=refreshLinks(s.links.job,s.upper.map(readUpper),s.links.job.lower,next.profile);
    if(links.inputDigest!==s.links.job.inputDigest||links.policyDigest!==s.links.job.policyDigest){s.links.job=links;s.confirmations={};save(id,s);}
   }
@@ -134,7 +136,7 @@ export function screenService({root,launcher,cli:providedCli}) {
     need(/^[a-zA-Z0-9가-힣_-]{1,80}$/.test(payload.name??''),'invalid-output-name');const p=checkedPlan(id,c);
     const file=payload.name+(action==='save'?'.md':'.reqif');need(!existsSync(cli.scoped(file)),'output-exists');
     if(action==='save') {cli.create(p.set,file);const actual=cli.read(file),meaning=r=>({...semantic(r),body:normalizeEvidence(r.body),footnotes:normalizeEvidence(r.footnotes??[]),status:r.status,confirmedDigest:r.confirmedDigest});need(!actual.diagnostics.some(d=>d.severity==='error')&&canonical(actual.requirements.map(meaning))===canonical(p.set.requirements.map(meaning))&&actual.requirements.every(r=>r.status!=='confirmed'||r.confirmedDigest===digest(r)),'saved-roundtrip');}
-    else {const upper=c.s.upper.map(readUpper),out=exportReqif([...upper,p.set],{testOnly:payload.testOnly===true});writeFileSync(cli.scoped(file),out.xml,{flag:'wx'});}
+    else {const sets=[...c.s.upper.map(readUpper),p.set],evidence=traceStore({document:cli.scoped(file),scope:cli.scoped});verifyExportTraces(sets,evidence);const out=exportReqif(sets,{testOnly:payload.testOnly===true});writeFileSync(cli.scoped(file),out.xml,{flag:'wx'});}
     const last=fresh(id);need(last.state.inputDigest===p.inputDigest&&plan(id,last).planDigest===p.planDigest&&reviewRevision(last)===reviewRevision(c),'input-changed');
     return {file:cli.scoped(file),name:basename(file),reviewState:action==='export'&&payload.testOnly?'test-only':'human-selection'};
    }
