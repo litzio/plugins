@@ -1,4 +1,5 @@
 {
+  "method": "pdfjs-6.5.438-text-and-optimized-paint-v1",
   "pages": [
     {
       "page": 1,
@@ -17,28 +18,37 @@
     },
     {
       "page": 4,
-      "status": "candidates-or-content-change",
-      "unassessed": []
+      "status": "requires-human",
+      "unassessed": [
+        "vector-painted-content"
+      ]
     },
     {
       "page": 5,
-      "status": "candidates-or-content-change",
-      "unassessed": []
+      "status": "requires-human",
+      "unassessed": [
+        "vector-painted-content"
+      ]
     },
     {
       "page": 6,
-      "status": "candidates-or-content-change",
-      "unassessed": []
+      "status": "requires-human",
+      "unassessed": [
+        "vector-painted-content"
+      ]
     },
     {
       "page": 7,
-      "status": "machine-passed",
-      "unassessed": []
+      "status": "requires-human",
+      "unassessed": [
+        "vector-painted-content"
+      ]
     },
     {
       "page": 8,
       "status": "requires-human",
       "unassessed": [
+        "vector-painted-content",
         "unavailable-protected-token-scope"
       ]
     },
@@ -55,6 +65,7 @@
       "page": 10,
       "status": "requires-human",
       "unassessed": [
+        "vector-painted-content",
         "docling-picture",
         "unavailable-protected-token-scope"
       ]
@@ -63,6 +74,7 @@
       "page": 11,
       "status": "requires-human",
       "unassessed": [
+        "vector-painted-content",
         "unavailable-protected-token-scope"
       ]
     },

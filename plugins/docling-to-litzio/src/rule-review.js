@@ -22,8 +22,13 @@ export function ruleMaterials(report,handoff,evidence,catalog,bindings) {
     bySource.get(id).push(group);
   }
   return verification.rules.map((rule)=> {
-    const members=verification.items.filter((item)=>item.ruleId===rule.ruleId);
-    const representatives=rule.representatives.map((rep)=> {
+    const members=verification.items.filter((item)=>item.ruleId===rule.ruleId).map((item)=>
+      item.status === "verified" && !(bySource.get(item.sourceId) ?? []).some((group)=>group.pageNos.length>0) ?
+        {...item,status:"unverifiable",reason:"source-comparison-unavailable"} : item);
+    const representatives=members.filter((item)=>item.status === "verified")
+      .sort((a,b)=>b.complexity-a.complexity || (a.lossId<b.lossId ? -1 : a.lossId>b.lossId ? 1 : 0))
+      .slice(0,3).map(({lossId,contentDigest})=> {
+      const rep={lossId,contentDigest};
       const loss=losses.get(rep.lossId),groups=bySource.get(loss.sourceId) ?? [];
       const pages=[...new Set(groups.flatMap((group)=>group.pageNos))].sort((a,b)=>a-b);
       return {...rep,sourceId:loss.sourceId,targetPaths:loss.targets.map((target)=>target.path),
@@ -56,7 +61,7 @@ export function ruleOpeningState(state,material,catalog,report) {
     comparisons:(bySource.get(item.sourceId) ?? []).flatMap((group)=>group.pageNos.map((pageNo)=>({groupId:group.id,pageNo,sourceId:item.sourceId})))}));
   return {material,total:material.members.length,verified,exceptions:material.members.length-verified,comparisons,
     allItems,
-    canApprove:comparisons.length>0 && comparisons.every((comparison)=>comparison.openId!==null),
+    canApprove:material.representatives.length>0 && material.representatives.every((rep)=>rep.comparisons.length>0) && comparisons.every((comparison)=>comparison.openId!==null),
     openIds:comparisons.flatMap((comparison)=>comparison.openId ? [comparison.openId] : [])};
 }
 
@@ -82,7 +87,7 @@ export function ruleReviews(state,report,handoff,evidence,catalog,bindings) {
       if (decision.decision!=="approved") return true;
       const receipts=new Map((state.ruleOpens ?? []).map((open)=>[open.openId,open]));
       const required=old.representatives.flatMap((rep)=>rep.comparisons.map((comparison)=>({rep,comparison})));
-      return required.length>0 && decision.openIds.length===required.length && new Set(decision.openIds).size===required.length &&
+      return old.representatives.length>0 && old.representatives.every((rep)=>rep.comparisons.length>0) && required.length>0 && decision.openIds.length===required.length && new Set(decision.openIds).size===required.length &&
         required.every(({rep,comparison})=>decision.openIds.some((id)=> {
           const open=receipts.get(id);
           return open && open.actor==="human" && open.time && open.ruleId===old.ruleId && open.lossId===rep.lossId &&
@@ -99,8 +104,10 @@ export function ruleReviews(state,report,handoff,evidence,catalog,bindings) {
     return {...view,decision:valid ? decision : null};
   });
   const rulesById=new Map(rules.map((rule)=>[rule.ruleId,rule]));
+  const members=new Map(current.flatMap((rule)=>rule.members).map((item)=>[item.lossId,item]));
   const verification=expressionRuleReviews(handoff,catalog);
-  return {rules,items:verification.items.map((item)=> {
+  return {rules,items:verification.items.map((original)=> {
+    const item=members.get(original.lossId) ?? original;
     const rule=rulesById.get(item.ruleId),decision=rule?.decision;
     return {...item,ruleConfirmation:item.status==="verified" && decision?.decision==="approved" ?
       {ruleId:item.ruleId,decisionId:decision.decisionId,actor:"human",time:decision.time,revision:decision.revision,

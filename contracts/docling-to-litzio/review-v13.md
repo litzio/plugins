@@ -2,7 +2,7 @@
 
 이 문서는 v1.3.0에만 적용한다. v1.0~v1.2의 의미와 reader 검증은 바꾸지 않는다. 이미 발급된 v1.2 완료는 기존 규칙으로 읽는다. `reviewVersion`이 `1.3.0`이 아닌 진행 원장에 대한 새 검수 쓰기(교정·undo·사람 결정·표현 확인·checkpoint·완료·중단·재개·조정)는 `legacy-review-read-only` 오류다. 고정 변환 결과에서 새 문서를 생성해 다시 시작한다. 이관과 이전 형식 쓰기는 없다.
 
-새 생성 및 교정·완료의 `complete.json.schemaVersion`은 `1.3.0`이다. 생성 증거, 교정 이력의 기존 schema와 투영·receipt·원장 대조 규칙은 그대로다. 교정 없는 v1.3도 허용한다. `reviewState`는 완료 전 `unreviewed`, 명시적 발급 후 `reviewed`다. `human-review.json`의 v1.3 정본은 [schema](../../plugins/docling-to-litzio/schema/human-review-v13.schema.json)다. v1.2와 같은 닫힌 필드를 가지되 아래 기록에 필수 `contentDigest`(소문자 SHA-256 hex 64자)를 추가한다.
+새 생성 및 교정·완료의 `complete.json.schemaVersion`은 `1.3.0`이다. 생성 증거, 교정 이력의 기존 schema와 투영·receipt·원장 대조 규칙은 그대로다. 교정 없는 v1.3도 허용한다. `reviewState`는 완료 전 `unreviewed`, 명시적 발급 후 `reviewed`다. `human-review.json`의 v1.3 정본은 [schema](../../plugins/docling-to-litzio/schema/human-review-v13.schema.json)다. v1.2의 기록에 아래 필수 digest를 더하고, PR 2의 쪽·규칙 증거 필드를 닫힌 schema로 추가한다. 아래 기록의 필수 `contentDigest`(소문자 SHA-256 hex 64자)를 추가한다.
 
 - `scopes[].checkpoint`가 객체이면 그 범위의 digest.
 - `humanDecisions[]`, `lossConfirmations[]`, `expressionReviews[].confirmation`은 `groupId` 범위의 digest.
@@ -76,14 +76,14 @@ checkpoint·uncertain·사람 결정·표현 확인에 저장하는 contentDiges
 
 | 조건 | v1.3 판정 |
 | --- | --- |
-| C0 boundEvidence | 현재 generation/PDF/문서/근거 결합을 모두 검증 |
+| C0 boundEvidence | 현재 generation/PDF/문서/근거 결합 및 쪽 대조 증거·정확한 scope inventory를 모두 검증 |
 | C1 noPending | pending=null |
 | C2 running | stopped=false |
 | C3 currentRevision | 원장 revision=현재 문서 bytes revision. 설명 없는 손 편집은 계속 차단 |
-| C4 coverage | 모든 그룹·물리 쪽의 실제 검사 note와 유효 contentDigest. 판단불가는 유효 사람 confirmed 필요 |
+| C4 coverage | 그룹의 실제 검사와 쪽의 실제 검사/기계 대조만 통과/미대조 쪽 사람 confirmed를 추가 계약대로 재계산 |
 | C5 humanDecisions | 필수 사람 결정 충족. 어떤 revision에서든 마지막 명시적 deferred는 새 confirmed 없이 해제되지 않음 |
 | C6 contentLosses | 해소 대상 손실 0 |
-| C7 expressions | 각 표현 항목의 마지막 meaning-preserved가 현재 내용 digest와 일치하고 무효화되지 않음 |
+| C7 expressions | 유효 개별 meaning-preserved 또는 추가 계약에 따른 사람 규칙 승인+현재 기계 검증. 개별 부정·보류를 덮지 않음 |
 | C8 failureFree | 실패 범위 0 |
 | C9 protectedValues | 현재 값의 PDF 보호 token 대조 차이 0. undo는 직접 사람 근거 면제 아님 |
 

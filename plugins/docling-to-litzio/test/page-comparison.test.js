@@ -6,6 +6,7 @@ import { repoPath } from "./paths.js";
 import { digest } from "../src/correction-history.js";
 import { pageComparisons, uncoveredKinds, validatePageCoverage } from "../src/page-comparison.js";
 import { pageMaterial,pageMaterialDigest,createPageBindingProjection,pageBindingDigest,PAGE_MATERIAL_FIELDS } from "../src/review-bindings.js";
+import { operatorCoverage } from "../src/pdf-reader.js";
 import { completionGate } from "../src/human-review.js";
 
 function fixture() {
@@ -83,4 +84,27 @@ test("PDF operator coverage is sealed to the text evidence and detects partial c
   seal.coverageSha256=digest(files.get("review/page-coverage.json"));
   files.set("review/page-coverage-complete.json",Buffer.from(JSON.stringify(seal)));
   assert.throws(()=>validatePageCoverage(files,baseline),/page-coverage-inventory/);
+});
+
+
+test("optimized constructPath paints and standalone paints are both unassessed",()=> {
+  const OPS={constructPath:91,stroke:20,fill:22,endPath:28,paintImageXObject:85,rawFillPath:94};
+  assert.deepEqual(operatorCoverage({fnArray:[91,91,91,20,85,94],argsArray:[[22],[20],[28],[],[],[]]},OPS),{vectorPaints:4,rasterObjects:1});
+  assert.throws(()=>operatorCoverage({fnArray:[91],argsArray:[[999]]},OPS),/unknown-path-paint/);
+});
+
+test("a real PDF page with text and only optimized vector paths cannot get machine credit",async()=> {
+  const stream="BT /F1 12 Tf 20 90 Td (same) Tj ET 10 10 20 20 re f";
+  const objects=["<< /Type /Catalog /Pages 2 0 R >>","<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
+  let pdf="%PDF-1.7\n",offsets=[0];
+  for (const [index,object] of objects.entries()) {offsets.push(Buffer.byteLength(pdf));pdf+=`${index+1} 0 obj\n${object}\nendobj\n`;}
+  const xref=Buffer.byteLength(pdf);pdf+=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`+offsets.slice(1).map((offset)=>String(offset).padStart(10,"0")+" 00000 n \n").join("");
+  pdf+=`trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  const proof=await extractPdf(Buffer.from(pdf),{coverage:true});
+  assert.equal(proof.pageCoverage.pages[0].vectorPaints,1);
+  assert.deepEqual(proof.pageCoverage.pages[0].notCompared,["vector-painted-content"]);
+  const x=fixture();x.handoff.pageCoverage=proof.pageCoverage;x.evidence=proof.evidence;
+  assert.equal(pageComparisons(x.report,x.handoff,x.evidence)[0].status,"requires-human");
 });

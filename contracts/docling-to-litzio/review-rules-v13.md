@@ -6,7 +6,7 @@
 
 `review/page-coverage.json`과 `review/page-coverage-complete.json`의 닫힌 JSON 모양은 각각 같은 이름의 schema 파일이 정본이다. 생성 검수 때 PDF operator와 글자 층을 조사하고 두 파일과 기존 review 3파일 모두를 complete.json 파일 집합으로 봉인한다. 새 완료는 쪽 증거가 필요하다. 한 호출의 검증된 bytes로만 판정한다.
 
-쪽마다 textLayer=available/unavailable, operatorScan=complete/unavailable, rasterObjects/vectorPaints의 정수 개수, notCompared를 기록한다. notCompared는 순서대로 missing-text-layer, operator-scan-unavailable, raster-content, vector-painted-content 중 해당 값을 넣는다. raster는 PDF.js OPS 이름이 `^paint.*Image`에 맞는 호출 수다. vector는 stroke/closeStroke/fill/eoFill/fillStroke/eoFillStroke/closeFillStroke/closeEOFillStroke/shadingFill 호출 수다. 개수가 0이 아니면 해당 내용을 글자 대조가 검증했다는 주장을 하지 않는다. 영역 위치를 추정하지 않고 whole-page로 남긴다. semanticLimits는 항상 `["heading-hierarchy","reading-order","meaning"]`다.
+`method`는 `pdfjs-6.5.438-text-and-optimized-paint-v1`이다. 이 표지가 없는 개발 중 증거는 최종 대조 증거로 수락하지 않는다. 쪽마다 textLayer=available/unavailable, operatorScan=complete/unavailable, rasterObjects/vectorPaints의 정수 개수, notCompared를 기록한다. notCompared는 순서대로 missing-text-layer, operator-scan-unavailable, raster-content, vector-painted-content 중 해당 값을 넣는다. raster는 PDF.js OPS 이름이 `^paint.*Image`에 맞는 호출 수다. vector는 stroke/closeStroke/fill/eoFill/fillStroke/eoFillStroke/closeFillStroke/closeEOFillStroke/shadingFill/rawFillPath 호출 수다. PDF.js 6이 최적화한 constructPath의 argsArray[index][0]에 담긴 같은 paint opcode도 센다. endPath는 칠하지 않는 경로이므로 세지 않고, 모르는 constructPath paint는 operatorScan=unavailable로 남긴다. 개수가 0이 아니면 해당 내용을 글자 대조가 검증했다는 주장을 하지 않는다. 영역 위치를 추정하지 않고 whole-page로 남긴다. semanticLimits는 항상 `["heading-hierarchy","reading-order","meaning"]`다.
 
 봉인의 generationId/baselineRevision/PDF SHA-256은 생성 증거와 같아야 한다. evidenceSha256/coverageSha256은 각 파일의 실제 bytes SHA-256이다. 쪽 개수·순서·번호와 textLayer는 봉인된 PDF evidence와 같아야 한다. notCompared는 위 상태·개수에서 다시 계산한다. 한 파일만의 변경·누락은 실패다.
 
@@ -46,7 +46,7 @@ C4는 각 묶음의 유효 실제 checkpoint를 요구한다. 각 쪽은 유효 
 
 각 검증 항목의 contentDigest=H({lossId,source,checks}). source는 원본 해당 cell 전체, 복합 머리는 열별 `{indices,text}` 배열이다. checks는 출력 row/column 순서 중복 좌표 제거 후 `[row,column,expectedText,actualText,richPreserved,currentCellNode]`다. richPreserved는 현재와 생성 content(없으면 null)의 H 일치다. 없는 actualText는 null이다. status/reason/checkedCells/complexity는 완료 schema의 닫힌 필드를 따른다. 병합·역할 complexity는 row_span*col_span, 복합 머리는 headerRows*num_cols다.
 
-대표는 해당 규칙의 verified 항목 중 complexity 내림차순, lossId 문자열 오름차순으로 최대 3개다. 1~2개뿐이면 모두다. 실패 항목을 대표로 골라 전체를 승인하지 않는다. policyDigest=H({ruleId,version,title,method})다.
+기계 검증이 통과했어도 해당 source의 원문 쪽을 여는 comparisons가 하나도 없으면 status=unverifiable, reason=source-comparison-unavailable로 내려 개별 확인에 남긴다. 이 항목은 승인으로 면제하지 않는다. 대표는 해당 규칙의 verified 항목 중 complexity 내림차순, lossId 문자열 오름차순으로 최대 3개다. 1~2개뿐이면 모두다. 실패 항목을 대표로 골라 전체를 승인하지 않는다. policyDigest=H({ruleId,version,title,method})다.
 
 ## 규칙 자료·열람·결정 기록
 
@@ -54,7 +54,7 @@ C4는 각 묶음의 유효 실제 checkpoint를 요구한다. 각 쪽은 유효 
 
 사람은 대표의 모든 comparisons에 대해 대조 화면에서 PDF와 현재 문서가 열린 뒤 rule-open을 제출한다. ruleContentDigest는 본 규칙 자료의 값, contentDigest는 본 묶음 자료의 값이다. 처리 코드는 잠금 안에서 현재 revision·두 digest·대표 membership을 검증한다. openId는 caller가 만든 고유 ID다. ruleOpens의 필드는 완료 schema에 정확히 정의한다. actor=human은 선언이며 인증이 아니다. 비서는 열람·사람 결정·승인을 제출하지 않는다.
 
-rule-decision은 approved/deferred/rejected와 비지 않은 note, 본 규칙의 contentDigest, 실제 열람 영수증 openIds를 받는다. approved는 당시 대표의 모든 comparison에 서로 다른 유효 영수증 하나씩이 있어야 한다. 없으면 거부한다. deferred/rejected는 항목별 확인으로 남긴다. 결정은 policyDigest/memberIds/contentDigest/revision/changeCount/actor/time을 보존한다. 같은 규칙의 이전 결정은 invalidatedAt을 찍고 최신 결정만 선택한다. 이전 승인 자동 복구는 없다.
+rule-decision은 approved/deferred/rejected와 비지 않은 note, 본 규칙의 contentDigest, 실제 열람 영수증 openIds를 받는다. approved는 대표가 하나 이상이고 **각 대표에 비교가 하나 이상** 있어야 하며, 당시 대표의 모든 comparison에 서로 다른 유효 영수증 하나씩이 있어야 한다. 없으면 거부한다. deferred/rejected는 항목별 확인으로 남긴다. 결정은 policyDigest/memberIds/contentDigest/revision/changeCount/actor/time을 보존한다. 같은 규칙의 이전 결정은 invalidatedAt을 찍고 최신 결정만 선택한다. 이전 승인 자동 복구는 없다.
 
 reader는 승인 당시 changeCount까지 검증된 교정 사슬을 재투영해 그때의 규칙·대표·자료 digest를 다시 계산하고 영수증을 대조한다. 현재도 policyDigest와 memberIds의 순서 배열이 같아야 한다. 현재 각 항목을 다시 기계 검증해 verified인 항목만 ruleConfirmation을 받는다. 항목 내용이 바뀌어도 재검증을 통과하면 같은 승인이 이어지고, 실패하면 그 항목만 개별 확인으로 내려온다. 대표 문맥의 사후 변화만으로 이미 승인한 규칙 자체를 새 규칙으로 보지 않는다. 새 제출은 언제나 현재의 전체 자료 digest와 같아야 한다.
 

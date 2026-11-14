@@ -1,7 +1,7 @@
 import { listText } from "./rich-content.js";
 import { snapshotLookup } from "./lookup.js";
 import { isDeepStrictEqual as equal } from "node:util";
-import { need, projectEdit } from "./correction-history.js";
+import { need, replayEdits } from "./correction-history.js";
 export function textAt(snapshot, path, selector = { kind: "block" }, lookup) {
   const n = lookup
     ? lookup.node(path)
@@ -55,7 +55,6 @@ export function historicalReviewHandoff(handoff,changeCount) {
   need(Number.isInteger(changeCount) && changeCount>=0 && changeCount<=changes.length,"rule-history-count");
   if (changeCount===changes.length) return handoff;
   if (changeCount===0) return baseline;
-  let snapshot=baseline.snapshot;
-  for (const change of changes.slice(0,changeCount)) snapshot=projectEdit(snapshot,change.target,change.before,change.after,change.afterRevision,change.afterContent,change.beforeContent);
+  const snapshot=replayEdits(baseline.snapshot,changes.slice(0,changeCount));
   return projectReviewHandoff(baseline,snapshot,{...handoff.history,changes:changes.slice(0,changeCount),currentSnapshot:snapshot});
 }

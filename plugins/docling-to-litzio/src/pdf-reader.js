@@ -2,6 +2,23 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { hash } from "./convert.js";
 import { protectedTokens } from "./tokens.js";
+export function operatorCoverage(operators,OPS) {
+  let rasterObjects=0,vectorPaints=0;
+  const rasterOps=new Set(Object.entries(OPS).filter(([name])=>/^paint.*Image/.test(name)).map(([,value])=>value));
+  const vectorOps=new Set(["stroke","closeStroke","fill","eoFill","fillStroke","eoFillStroke","closeFillStroke","closeEOFillStroke","shadingFill","rawFillPath"].map((name)=>OPS[name]).filter(Number.isInteger));
+  for (const [index,operation] of operators.fnArray.entries()) {
+    if (rasterOps.has(operation)) rasterObjects++;
+    if (vectorOps.has(operation)) vectorPaints++;
+    if (operation === OPS.constructPath) {
+      // PDF.js 6 stores the painting opcode in constructPath's first argument.
+      // Counting only standalone fill/stroke silently misses optimized paths.
+      const paint=operators.argsArray[index]?.[0];
+      if (vectorOps.has(paint)) vectorPaints++;
+      else if (paint !== OPS.endPath) throw new Error("unknown-path-paint");
+    }
+  }
+  return {rasterObjects,vectorPaints};
+}
 export async function readPdf(bytes, { coverage = false } = {}) {
   const { getDocument, GlobalWorkerOptions, version, OPS } = await import(
     "../vendor/pdfjs/build/pdf.mjs"
@@ -87,12 +104,7 @@ export async function readPdf(bytes, { coverage = false } = {}) {
         let rasterObjects=0, vectorPaints=0, operatorScan="complete";
         try {
           const operators=await page.getOperatorList();
-          const rasterOps=new Set(Object.entries(OPS).filter(([name])=>/^paint.*Image/.test(name)).map(([,value])=>value));
-          const vectorOps=new Set(["stroke","closeStroke","fill","eoFill","fillStroke","eoFillStroke","closeFillStroke","closeEOFillStroke","shadingFill"].map((name)=>OPS[name]));
-          for (const operation of operators.fnArray) {
-            if (rasterOps.has(operation)) rasterObjects++;
-            if (vectorOps.has(operation)) vectorPaints++;
-          }
+          ({rasterObjects,vectorPaints}=operatorCoverage(operators,OPS));
         } catch { operatorScan="unavailable"; }
         coveragePages.push({pageNo,textLayer:items.length ? "available" : "unavailable",operatorScan,rasterObjects,vectorPaints,
           notCompared:[...(!items.length ? ["missing-text-layer"] : []),...(operatorScan !== "complete" ? ["operator-scan-unavailable"] : []),...(rasterObjects ? ["raster-content"] : []),...(vectorPaints ? ["vector-painted-content"] : [])]});
@@ -124,7 +136,7 @@ export async function readPdf(bytes, { coverage = false } = {}) {
         "text item ascent/descent + proportional character offsets; approximate; unrotated TOPLEFT PDF pt",
       pages,
     };
-    return coverage ? {evidence,pageCoverage:{schemaVersion:"1.3.0",pdfSha256:hash(bytes),reader:{name:"pdfjs-dist",version},pages:coveragePages,
+    return coverage ? {evidence,pageCoverage:{schemaVersion:"1.3.0",pdfSha256:hash(bytes),reader:{name:"pdfjs-dist",version},method:"pdfjs-6.5.438-text-and-optimized-paint-v1",pages:coveragePages,
       semanticLimits:["heading-hierarchy","reading-order","meaning"],regionPrecision:"whole-page"}} : evidence;
   } finally {
     await task.destroy();
