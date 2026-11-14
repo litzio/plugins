@@ -2,6 +2,29 @@
 
 범위는 결정 1과 결정 3의 플러그인 처리 코드 부분이다. 기계 대조 통과와 규칙 승인은 다음 PR이다. 요구사항 소비자는 아직 바꾸지 않았으므로 v1.3을 수락하지 않는다.
 
+## 독립 리뷰 차단 사항 수정
+
+초기 구현은 material.neighbors를 검사 근거로 내주면서 digest에는 넣지 않았다. 인접 표를 교정해도 그 표를 읽은 이전 묶음의 확인이 유지될 수 있는 거짓 완료 결함이었다. material과 결합을 같은 투영 함수로 만들고 모든 제공 필드를 [계약의 필드 대조표](../../../contracts/docling-to-litzio/review-v13.md)에 분류했다. 새 필드가 결합 목록에 없거나 기존 필드가 빠지면 기계 검사가 실패한다. global documentRevision은 결정 1에 따라 내용 hash에서 제외하되 제출·inspect·원장·이력에서 검증한다. 나머지 12개 자료 필드는 전부 결합한다. 표 머리·셀·캡션·미주 참조·inline 내용도 해당 node/raw/mapping의 전체 속성으로 포함된다.
+
+material.history는 소유자 결정에 따라 이 자료의 대상·이웃·원본 조각과 연결된 교정만 제공하고 그 전체를 결합한다. 문서 전체의 적용된 교정은 별도의 참고 목록이다. 이웃 자체의 범위는 줄이지 않았다.
+
+고정 LSR 북마크 원본 13쪽의 새 생성본(15묶음)에서 검사 자료가 내주는 서로 다른 편집 가능 비어 있지 않은 대상 154곳을 각각 한 번씩 변형했다. 실제 교정을 실행하거나 검수 성공으로 선언한 시험이 아니라 현재 값·대응 값·관련 이력 한 건의 영향 계산이다. **평균 2.6234묶음, 최소 1·최대 4묶음**이 무효화됐다. 1묶음 12곳, 2묶음 41곳, 3묶음 94곳, 4묶음 7곳이다. [전체 계수](review-v13-pr1-binding-impact.json), [재현 도구](../test/measure-binding-impact.js)를 제공한다. 총 15묶음 전체가 매번 무효화되지는 않는다. 이 비용은 실제로 내준 이웃 문맥의 대가이며 지금은 이웃을 줄이지 않는다.
+
+uncertain 제출은 실제 검사 note와 함께 contentDigest를 기록한다. uncertain→사람 confirmed 뒤 같은 내용의 checkpoint가 현재 검사로 인정되고 완료 발급·reader 수락까지 이어지는 회귀를 추가했다. 상태를 쓰는 모든 경로를 점검했다.
+
+| 상태 기록 경로 | checkpoint/결정 digest |
+| --- | --- |
+| 최초 미검사 | checkpoint=null, 검사한 것으로 세지 않음 |
+| 교정 접수의 검사중·편집 실패 | checkpoint=null, 성공 근거를 만들지 않음 |
+| 교정 게시의 교정후재검사 | checkpoint=null, 사람이든 비서든 새 검사 note가 필요 |
+| uncertain의 판단불가 | 실제 자료 digest·revision·reason note 기록, 유효 confirmed 필요 |
+| 명시적 checkpoint의 6가지 상태 | 모두 현재 자료 digest·revision·note 기록. 상태 자체에 따라 C4/C8을 별도 판정 |
+| 사람 confirmed/deferred | 모두 현재 자료 digest 기록. checkpoint를 임의 생성하지 않음 |
+| 내용 변경·손 편집 관측 | 영향 checkpoint=null, 관련 확인 invalidatedAt. 독립 기록은 유지 |
+| stop/resume | 진행 중 checkpoint만 null, 끝낸 검사·확인 유지. 완료 receipt는 무효 |
+
+아래 166건 검사·첫 측정 표는 초기 제출의 기록이다. 차단 사항을 수정한 뒤의 검사·계수는 별도 갱신한다.
+
 ## 바뀐 동작과 계약
 
 기존 교정은 접수와 게시 때 모두 전 범위·사람·표현 확인을 지웠다. v1.3은 검사한 블록·표와 PDF·대응·탐지 근거의 digest를 기록한다. 같은 표의 셀 변경은 관련 검사를 무효화하고 독립된 범위는 유지한다. stop은 검사 중 범위와 완료 receipt만 무효화한다. resume만으로 완료는 되살아나지 않는다. 완료 발급과 reader는 C0~C9를 매번 재계산한다.

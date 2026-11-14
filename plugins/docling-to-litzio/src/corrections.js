@@ -1,4 +1,5 @@
-import { reviewBindings, currentReview, invalidateChangedReviews, interruptReview } from "./review-bindings.js";
+import { createMaterialReader } from "./review-material.js";
+import { reviewBindings, materialContentDigest, currentReview, invalidateChangedReviews, interruptReview } from "./review-bindings.js";
 import {
   completionGate,
   humanQueue,
@@ -194,59 +195,7 @@ export function createCorrections(root, cli) {
     const snapshot = inspectedSnapshot ?? (await inspect(read));
     need(equal(snapshot, h.snapshot), "stale-document");
 
-    const findings = report.findings.filter((f) =>
-      group.findingIds.includes(f.id),
-    );
-
-    const ids = new Set(findings.flatMap((f) => f.sourceIds));
-
-    const items = h.provenance.items.filter((i) => ids.has(i.sourceId));
-
-    const doc = (h.baseline ?? h).sourceDocument;
-
-    const fragments = items.map((i) => ({
-      sourceId: i.sourceId,
-      selfRef: i.selfRef,
-      raw: i.selfRef
-        .slice(2)
-        .split("/")
-        .reduce((o, k) => o[k], doc),
-      mapping: i,
-    }));
-
-    const paths = new Set(
-      findings.flatMap((f) => f.targets.map((t) => t.path[0])),
-    );
-
-    return {
-      generationId: h.provenance.generationId,
-      documentRevision: snapshot.revision,
-      baselineRevision: report.baselineRevision,
-      sourceHash: h.provenance.source.pdf.sha256,
-      group,
-      findings,
-      fragments,
-      sourceNeighbors: h.provenance.items
-        .filter(
-          (i, index, all) =>
-            ids.has(all[index - 1]?.sourceId) ||
-            ids.has(all[index + 1]?.sourceId),
-        )
-        .map((i) => ({
-          selfRef: i.selfRef,
-          raw: i.selfRef
-            .slice(2)
-            .split("/")
-            .reduce((o, k) => o[k], doc),
-        })),
-      checks: report.checks.filter((c) => ids.has(c.sourceId)),
-      current: snapshot.nodes.filter((n) => paths.has(n.path[0])),
-      neighbors: snapshot.nodes.filter((n) =>
-        [...paths].some((p) => Math.abs(p - n.path[0]) === 1),
-      ),
-      pdf: evidence.pages.filter((p) => group.pageNos.includes(p.pageNo)),
-      history: h.history?.changes ?? [],
-    };
+    return createMaterialReader(report,h,evidence,snapshot)(groupId);
   };
 
   const publish = async (s, inspectedSnapshot) => {
@@ -659,6 +608,7 @@ export function createCorrections(root, cli) {
             {
               state: "판단불가",
               checkpoint: {
+                contentDigest: materialContentDigest(m),
                 revision: s.revision,
                 time: new Date().toISOString(),
                 changeId: input.changeId,
@@ -888,7 +838,7 @@ export function createCorrections(root, cli) {
 
         s.submissions.push({ ...row, status: "pending-reconcile" });
         invalidateReview(s);
-        s.scopes.find((t) => t.id === input.groupId).state = "검사중";
+        Object.assign(s.scopes.find((t) => t.id === input.groupId), { state: "검사중", checkpoint: null });
         await assertWriteRevision(s.revision);
         await save(file, s);
 
@@ -960,7 +910,7 @@ export function createCorrections(root, cli) {
 
           await publish(s, actual);
         } catch {
-          s.scopes.find((t) => t.id === input.groupId).state = "실패";
+          Object.assign(s.scopes.find((t) => t.id === input.groupId), { state: "실패", checkpoint: null });
           await save(file, s);
         }
 

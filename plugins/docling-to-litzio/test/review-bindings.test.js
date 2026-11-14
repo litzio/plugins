@@ -25,10 +25,11 @@ for (const code of ["group-not-found","invalid-checkpoint","legacy-review-read-o
 function context() {
   return {
     report: { groups: [1,2].map((i) => ({ id: `g${i}`, findingIds: [`f${i}`], pageNos: [i] })),
-      findings: [1,2].map((i) => ({ id: `f${i}`, sourceIds: [`s${i}`] })), checks: [] },
+      findings: [1,2].map((i) => ({ id: `f${i}`, sourceIds: [`s${i}`], targets:[{path:[i*10]}] })), checks: [] },
     handoff: { provenance: { generationId: "generation", source: { pdf: { sha256: "pdf" } },
-      items: [1,2].map((i) => ({ sourceId: `s${i}`, regions: [{ pageNo: i }], cells: [], targets: [{path:[i]}] })) },
-      snapshot: { revision: "r1", nodes: [1,2].map((i) => ({ path:[i], type:"paragraph", text:`text${i}` })) } },
+      items: [1,2].map((i) => ({ sourceId: `s${i}`, selfRef:`#/texts/${i-1}`, regions: [{ pageNo: i }], cells: [], targets: [{path:[i*10]}] })) },
+      sourceDocument:{texts:[{text:"source1"},{text:"source2"}]},
+      snapshot: { revision: "r1", nodes: [1,2].map((i) => ({ path:[i*10], type:"paragraph", text:`text${i}` })) } },
     evidence: { pages: [1,2].map((i) => ({pageNo:i,tokens:[]})) },
   };
 }

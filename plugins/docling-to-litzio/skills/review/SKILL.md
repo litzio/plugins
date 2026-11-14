@@ -16,7 +16,7 @@ litzio operation invoke local.docling-to-litzio.material --input material.json -
 material.json은 `{"jobId":"...","groupId":"..."}`이다. 같은 형식으로 `groups`에는 jobId만 준다. CLI 응답의 result를 읽는다.
 
 1. `review-progress`(jobId)로 pending·stopped·현재 revision을 확인한다. pending이면 `correction-reconcile`(jobId)로 관측하고 해결되지 않으면 중단한다. stopped이면 요청받은 범위를 재개할 때 `review-resume`(jobId)을 쓴다.
-2. 묶음마다 `material`을 새로 읽는다. generationId/sourceHash/documentRevision, current 블록·셀, fragments의 원본 값과 대응, checks의 대상별 PDF token refs/regions, pdf의 실제 token/좌표, 앞뒤 항목을 비교한다. 서로 다른 generation을 섞지 않는다. 자료가 크면 파일로 저장하고 해당 대상·쪽을 잘라 읽는다.
+2. 묶음마다 `material`을 새로 읽는다. generationId/sourceHash/documentRevision, current 블록·셀, fragments의 원본 값과 대응, checks의 대상별 PDF token refs/regions, pdf의 실제 token/좌표, 앞뒤 항목을 비교한다. material.history는 이 묶음에 내준 대상·이웃·원본 조각과 연결된 교정만 담는다. 문서 전체의 적용된 교정 목록은 별도 참고 조회이며 묶음 검사의 근거 범위와 구별한다. 서로 다른 generation을 섞지 않는다. 자료가 크면 파일로 저장하고 해당 대상·쪽을 잘라 읽는다.
 3. 원본 PDF 근거로 차이가 확실하면 `correction-submit`에 아래 JSON을 제출한다. target은 fragments.mapping.cells.targets의 path와 selector.row/column(0-based), 문단은 kind=paragraph/path, 수식은 kind=equation/path다. before는 current의 현재 값 그대로다. evidence.refs는 해당 sourceId/셀 index의 check.pdfTokenIds 전부, scope는 실제 읽은 **PDF token 좌표**의 pageNo/bbox다. Docling의 check.regions는 근사 대응 상자이므로 그대로 복사하면 PDF token이 범위 밖으로 나올 수 있다. refs에 해당하는 pdf.pages의 token.bbox를 쪽별로 모두 포함하는 사각형(각 축 min/max)을 만들고 그 영역을 읽었을 때만 scope로 낸다. 숫자·단위·부호를 바꾸거나 정규화하지 않는다.
 
 ```json

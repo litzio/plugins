@@ -1,3 +1,4 @@
+import { createMaterialReader, MATERIAL_FIELDS } from "./review-material.js";
 import { createHash } from "node:crypto";
 
 // Stable JSON: object keys sorted, array order retained. Revisions are audit
@@ -12,6 +13,23 @@ export function canonical(value) {
 }
 export const reviewDigest = (value) => createHash("sha256")
   .update(JSON.stringify(canonical(value)), "utf8").digest("hex");
+
+export function materialContentDigest(material, memo = new WeakMap()) {
+  const keys=Object.keys(material).sort(), declared=Object.keys(MATERIAL_FIELDS).sort();
+  if (JSON.stringify(keys)!==JSON.stringify(declared))
+    throw Object.assign(new Error("unbound-material-field: every material output field must have an explicit binding policy"),{code:"unbound-material-field"});
+  const hash=(value)=> {
+    if (!value || typeof value !== "object") return reviewDigest(value);
+    if (!memo.has(value)) memo.set(value,reviewDigest(value));
+    return memo.get(value);
+  };
+  const bound={};
+  for (const [key,policy] of Object.entries(MATERIAL_FIELDS)) {
+    if (policy === "current-revision-metadata") continue;
+    bound[key]=policy === "array" ? material[key].map(hash) : policy === "object" ? hash(material[key]) : material[key];
+  }
+  return reviewDigest(bound);
+}
 
 // Construct once per operation from the validated read set. Never cache between
 // calls. Hash blocks/items/pages once, then combine their ordered hashes.
@@ -39,7 +57,6 @@ export function reviewBindings(report, handoff, evidence) {
     checks.get(check.sourceId).push(check);
   }
   const checkHashes = new Map([...checks].map(([k, v]) => [k, reviewDigest(v)]));
-  const findings = new Map(report.findings.map((f) => [f.id, f]));
   const bind = (ids, pageNos, extra) => {
     ids = [...new Set(ids)].sort();
     const paths = [...new Set(ids.flatMap((id) => sources.get(id)?.paths ?? []))].sort((a,b) => a-b);
@@ -53,10 +70,9 @@ export function reviewBindings(report, handoff, evidence) {
     });
   };
   const result = new Map();
-  for (const group of report.groups) {
-    const members = group.findingIds.map((id) => findings.get(id));
-    result.set(group.id, bind(members.flatMap((f) => f.sourceIds), group.pageNos, { group, members }));
-  }
+  const material = createMaterialReader(report,handoff,evidence), memo = new WeakMap();
+  for (const group of report.groups)
+    result.set(group.id,materialContentDigest(material(group.id),memo));
   for (const page of evidence.pages)
     result.set("page:" + page.pageNo, bind(pageSources.get(page.pageNo) ?? [], [page.pageNo], null));
   return result;
