@@ -88,6 +88,9 @@ test("v1.3 stop/resume cannot resurrect completion; unchanged inspections permit
   await createReview(root,join(root,"review"));
   const fake = await fakeCli(root), service = createCorrections(root,(cmd,args)=> cmd === "check" ? {ok:true} : fake(cmd,args));
   let s = await service.progress();
+  await assert.rejects(service.material("page:2"),(error)=>error.code === "group-not-found" && error.message.includes("groups({jobId})"));
+  await assert.rejects(service.checkpoint({scopeId:"missing",revision:s.revision,state:"차이없음",note:"invalid scope"}),(error)=>error.code === "invalid-checkpoint" && error.message.includes("scopes[].id"));
+  await assert.rejects(service.submit({after:123}),(error)=>error.code === "schema-invalid" && error.message.includes("material"));
   for (const scope of s.scopes) await service.checkpoint({scopeId:scope.id,revision:s.revision,state:"차이없음",note:"Deterministic scope inspection"});
   s = await service.progress();
   for (const group of s.humanQueue) await service.humanDecision({groupId:group.id,revision:s.revision,decision:"confirmed",note:"Deterministic human decision"});

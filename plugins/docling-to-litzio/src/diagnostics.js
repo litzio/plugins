@@ -10,6 +10,18 @@ const guidance = {
   "pending-reconcile": "A write is unresolved. Run correction-reconcile({jobId}) then review-progress. Do not resend a correction based only on its visible value.",
   "review-stopped": "Review is stopped. Read review-progress and use review-resume({jobId}) only when continuing the requested review.",
   "review-incomplete": "Completion conditions are unmet. Read review-progress({jobId}).gate, scopes and humanQueue; resolve the reported blockers before review-finalize.",
+  "invalid-actor-reason": "actor must be assistant or human and reason must be nonempty. Assistants must declare assistant. Obtain generationId/revision/groupId and evidence from material.",
+  "invalid-edit": "decision=correct requires distinct string before/after values; before must equal the current material value. Assistants cannot fill empty values. If PDF token evidence is insufficient, submit uncertain.",
+  "invalid-inspection-scope": "evidence.scope must contain {pageNo,bbox:[x0,y0,x1,y1]} with four finite numbers on material.pdf pages. Derive bounds from the selected actual PDF token boxes, not Docling regions.",
+  "incomplete-evidence": "evidence.refs must include every check.pdfTokenIds entry for the selected material target. Read that check and actual material.pdf tokens again.",
+  "uninspected-evidence": "evidence.scope does not contain every selected PDF token. Use pageNo and the min/max bounding rectangle of the actual material.pdf token boxes that you inspected.",
+  "human-note-required": "decision must be confirmed or deferred with a nonempty note. Only a human submits this decision after compare; obtain groupId/revision from that comparison.",
+  "loss-note-required": "decision must be meaning-preserved, meaning-changed or deferred with a nonempty note. Only a human submits this after compare; obtain lossId from review-progress.losses.",
+  "duplicate-conflict": "changeId was already submitted with different content. Read review-progress.submissions and correction-reconcile before deciding whether a genuinely new correction needs a new unique changeId.",
+  "undo-stale": "undoOf must identify the last applicable correction at the current revision. Read review-progress.changes and current material; do not reverse an older edit against a changed document.",
+  "input-changed": "The conversion bundle changed after preflight. Run preflight({bundle}) again and use its new fingerprint when starting a new request.",
+  "request-id-conflict": "requestId is already bound to another input. Read job({jobId:requestId}); use a new UUID only for a genuinely new generation request.",
+  "outside-workspace": "The requested bundle or source file is outside the configured workspace. Choose a bundle and its recorded source PDF inside workspaceDirectory, then run preflight.",
   "human-evidence-required": "Human source-region evidence requires actor=human. Assistants must use PDF token evidence from material or submit decision=uncertain.",
 };
 export function diagnostic(code) {
