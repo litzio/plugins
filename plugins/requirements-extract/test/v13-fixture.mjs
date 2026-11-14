@@ -16,8 +16,8 @@ function project(p,s,version){
 }
 // Explicitly synthetic file-contract fixture; official inspect is stubbed.
 // Runtime interoperation with actual producer files is a separate Host check.
-export function fixtureV13({history=false,rules=false,humanPage=false,machine=false}={}){
- const root=reviewedFixture({history,expression:!machine}),p=read(root,'provenance.json'),baseline=read(root,'snapshot.json'),snapshot=currentSnapshot(root),c=read(root,'complete.json'),report=read(root,'review/review-targets.json'),evidence=read(root,'review/pdf-evidence.json'),l=read(root,'correction-ledger.json');
+export function fixtureV13({history=false,rules=false,rulesBefore=false,humanPage=false,machine=false,human=false}={}){
+ const root=reviewedFixture({history,expression:!machine,human}),p=read(root,'provenance.json'),baseline=read(root,'snapshot.json'),snapshot=currentSnapshot(root),c=read(root,'complete.json'),report=read(root,'review/review-targets.json'),evidence=read(root,'review/pdf-evidence.json'),l=read(root,'correction-ledger.json');
  c.schemaVersion='1.3.0';l.reviewVersion='1.3.0';l.ruleOpens=[];l.ruleDecisions=[];
  if(machine){report.groups=[];report.findings=[];report.statistics.findings=0;report.statistics.groups=0;report.statistics.groupsPerPage=0;report.statistics.foldedRows=0;report.statistics.byKind={};l.scopes=l.scopes.filter(s=>s.id.startsWith('page:'));l.scopes.forEach(s=>{s.state='미검사';s.checkpoint=null;});}
  const coverage={schemaVersion:'1.3.0',pdfSha256:p.source.pdf.sha256,reader:{name:'pdfjs-dist',version:'6.5.438'},pages:evidence.pages.map(page=>({pageNo:page.pageNo,textLayer:'available',operatorScan:humanPage?'unavailable':'complete',rasterObjects:0,vectorPaints:0,notCompared:humanPage?['operator-scan-unavailable']:[]})),semanticLimits:['heading-hierarchy','reading-order','meaning'],regionPrecision:'whole-page',method:'pdfjs-6.5.438-text-and-optimized-paint-v3'};
@@ -33,10 +33,12 @@ export function fixtureV13({history=false,rules=false,humanPage=false,machine=fa
  const materials=ruleMaterials({provenance:projected,snapshot,baseline,doc,report,catalog:lossCatalog(read(root,'losses.json').items,projected,snapshot),bindings});
  if(rules){
   l.lossConfirmations=[];l.humanDecisions=l.humanDecisions.filter(d=>d.groupId!=='expression');
-  for(const view of materials.rules){
+  const ruleTimeSnapshot=rulesBefore?baseline:snapshot,ruleCount=rulesBefore?0:l.changes.length;
+  const approvalMaterials=rulesBefore?ruleMaterials({provenance:project(p,baseline,'1.3.0'),snapshot:baseline,baseline,doc,report,catalog:lossCatalog(read(root,'losses.json').items,project(p,baseline,'1.3.0'),baseline),bindings:evidenceBindings({provenance:project(p,baseline,'1.3.0'),snapshot:baseline,report,evidence,doc,coverage})}):materials;
+  for(const view of approvalMaterials.rules){
    const openIds=[];
-   for(const rep of view.representatives)for(const cmp of rep.comparisons){const openId='open-'+l.ruleOpens.length;openIds.push(openId);l.ruleOpens.push({openId,ruleId:view.ruleId,lossId:rep.lossId,...cmp,ruleContentDigest:view.contentDigest,revision:snapshot.revision,changeCount:l.changes.length,actor:'human',time:'synthetic',comparison:'source-and-current-side-by-side'});}
-   l.ruleDecisions.push({decisionId:'decision-'+view.ruleId,ruleId:view.ruleId,policyDigest:view.policyDigest,memberIds:view.members.map(m=>m.lossId),contentDigest:view.contentDigest,revision:snapshot.revision,changeCount:l.changes.length,actor:'human',time:'synthetic',decision:'approved',note:'Deterministic declaration only',openIds});
+   for(const rep of view.representatives)for(const cmp of rep.comparisons){const openId='open-'+l.ruleOpens.length;openIds.push(openId);l.ruleOpens.push({openId,ruleId:view.ruleId,lossId:rep.lossId,...cmp,ruleContentDigest:view.contentDigest,revision:ruleTimeSnapshot.revision,changeCount:ruleCount,actor:'human',time:'synthetic',comparison:'source-and-current-side-by-side'});}
+   l.ruleDecisions.push({decisionId:'decision-'+view.ruleId,ruleId:view.ruleId,policyDigest:view.policyDigest,memberIds:view.members.map(m=>m.lossId),contentDigest:view.contentDigest,revision:ruleTimeSnapshot.revision,changeCount:ruleCount,actor:'human',time:'synthetic',decision:'approved',note:'Deterministic declaration only',openIds});
   }
  }
  write(root,'review/review-targets.json',report);

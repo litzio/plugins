@@ -58,7 +58,8 @@ export function ruleMaterials({provenance:p,snapshot,baseline,doc,report,catalog
   const view={ruleId,version:'1.0.0',title,method,policyDigest:H({ruleId,version:'1.0.0',title,method}),members,representatives,generationId:p.generationId,documentRevision:snapshot.revision};
   rules.push({...view,contentDigest:H(view)});
  }
- return {rules,items:verifications.map(v=>rules.flatMap(r=>r.members).find(m=>m.lossId===v.lossId)??v)};
+ const membersById=new Map(rules.flatMap(r=>r.members).map(m=>[m.lossId,m]));
+ return {rules,items:verifications.map(v=>membersById.get(v.lossId)??v)};
 }
 export function approvedRules(ledger,current,at) {
  const receipts=new Map((ledger.ruleOpens??[]).map(o=>[o.openId,o]));

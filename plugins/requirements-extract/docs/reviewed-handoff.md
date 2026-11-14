@@ -43,3 +43,12 @@ v1.2 교정 이력이 있는 출처의 후보 키에는 현재 본문도 포함�
 저장한 제안·상위 문서를 sourceCli.read로 읽을 때도 등록된 v1.2 provenance 묶음을 공식 inspect로 다시 읽는다. 현재 trace/인용/digest가 저장된 것과 다르면 stale-source-evidence 오류로 차단한다. 인계가 완료에서 미완료로 바뀐 뒤 옛 제안·상위 문서의 reviewed 문자열만으로 내보낼 수 없다. 모델 전용 exportReqif는 호출자가 이미 읽은 snapshot을 검증하는 함수이며 파일 재검증을 수행하는 공개 작업·sourceCli.read와 구분한다.
 
 변경한 커밋과 원본 소비자의 비교 및 실제 실행 결과는 [실행 기록](reviewed-validation.md)에 있다.
+
+
+## v1.3 독립 reader
+
+v1.3은 이전 판정 함수와 분리된 reader로 review-v13/review-rules-v13 계약을 재계산한다. scope inventory, 내용에 결합된 실제 검사·사람 확인, method v3의 봉인된 쪽 대조 범위·미조사 쪽 사람 confirmed, 현재 표현 규칙 검증, 승인 당시 교정 prefix의 대표·모든 비교 영수증, C0~C9와 발급 배열의 정확한 일치를 모두 요구한다. 교정의 입력 digest도 해당 쓰기 직전 국소 자료에서 다시 계산한다. 현재 원장·발급 파일 문자열을 성공 근거로 대신하지 않는다. v1.2 판정과 golden은 유지한다.
+
+출처의 pageComparisons/machineOnlyPages/ruleApprovals/ruleOpenReceipts/ruleVerifications/expressionReviews는 입력 해시·사람 우선 보고·저장 문서·ReqIF SourceReferences에 남는다. 규칙 승인으로 병합 표의 출처 확인을 인정하는 것은 [설계 12절](design.md)의 가정이며 요구사항 확정은 별도다. 기계 전용 쪽은 글자 대조만 통과한 것이며 제목·읽는 순서·의미 확인으로 표시하지 않는다.
+
+[실제 Host 실행과 한계](v13-first-use.md)를 따른다. 새 화면·기능·성능 작업은 포함하지 않는다. 초기 v1.3 완료 묶음은 최종 쪽 증거가 없어 거부하며 다시 완료 발급해야 한다. 미완료 자료는 근거가 유효하면 초안으로 계속 읽는다.

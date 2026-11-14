@@ -13,9 +13,9 @@ export function completionProofV13({ledger:l,report,evidence,provenance:p,baseli
  const decisions=l.humanDecisions??[],confirmations=l.lossConfirmations??[],opens=l.ruleOpens??[],ruleDecisions=l.ruleDecisions??[];
  need([decisions,confirmations,opens,ruleDecisions].every(Array.isArray),'review-decisions','v1.3 판단 배열 필요');
  const args={report,evidence,doc,coverage};
- const context=(state,prefix)=>{
+ const context=(state,prefix,groupIds,includePages=true)=>{
   const provenance=project(baselineProvenance,state,'1.3.0');
-  const bindings=evidenceBindings({...args,provenance,snapshot:state,changes:prefix});
+  const bindings=evidenceBindings({...args,provenance,snapshot:state,changes:prefix,groupIds,includePages});
   return {provenance,bindings,catalog:lossCatalog(losses,provenance,state)};
  };
  const current=context(snapshot,changes),initial=context(baseline,[]);
@@ -26,7 +26,7 @@ export function completionProofV13({ledger:l,report,evidence,provenance:p,baseli
  const wanted=new Set(ruleDecisions.map(d=>d.changeCount)),replay=structuredClone(baseline),nodes=new Map(replay.nodes.map(n=>[JSON.stringify(n.path),n]));
  for(let count=0;count<=changes.length;count++){
   if(count===changes.length)break;
-  const c=changes[count],old=context(replay,changes.slice(0,count));
+  const c=changes[count],old=context(replay,changes.slice(0,count),wanted.has(count)?undefined:new Set([c.groupId]),false);
   need(c.contentDigest===old.bindings[c.groupId],'history-material-digest','교정 전 자료 digest가 이력의 입력 영수증과 다릅니다');
   if(wanted.has(count))historical.set(count,materials(replay,old));
   const n=nodes.get(JSON.stringify(c.target.kind==='cell'?[...c.target.path,c.target.row,c.target.column]:c.target.path)),field=c.target.kind==='equation'?'latex':'text';

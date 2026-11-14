@@ -75,3 +75,12 @@ reader는 승인 당시 changeCount까지 검증된 교정 사슬을 재투영�
 C7은 유효 meaning-preserved 개별 확인 또는 현재 검증에 성공한 규칙 승인으로 충족한다. 현재 개별 meaning-changed/deferred가 있으면 규칙 승인으로 덮지 않는다. C5의 meaning-loss/merged-table-review는 관련 모든 손실이 규칙 승인으로 덮인 경우만 그 표현 위험을 해소하며 formula/heading/판단불가/명시적 사람 deferred를 면제하지 않는다. C0~C3/C6/C8/C9는 여전히 모두 필요하다.
 
 완료는 pageComparisons/ruleOpens/ruleDecisions/ruleReviews와 expressionReviews[].ruleConfirmation을 추가로 봉인한다. ruleReviews.rules는 규칙 자료+현재 유효 decision(없으면 null), items는 각 검증 항목+ruleConfirmation(없으면 null)이다. 개별 confirmation은 규칙만으로 확인됐으면 null이다. reader는 원장 원본 배열과 완료 배열의 정확한 일치, 현재 재계산된 모든 파생 기록의 일치, C0~C9를 함께 요구한다. 성공의 증거가 없으면 false다.
+
+
+## 독립 소비에 필요한 파생 항목의 닫힌 값
+
+검증 결과의 reason은 다음 우선순위로 정한다. 규칙이 없거나 source item이 없으면 `unverifiable/rule-not-established`, 원본 표·출력 path·겹침 없는 좌표망을 구성하지 못하면 `unverifiable/table-source-unavailable`, 복합 머리인데 headerRows<=1이면 `failed/compound-header-missing`다. 이 세 경우 checkedCells=0, complexity=0, contentDigest=H(loss catalog 항목 전체)다. 그 밖에는 위 checks 배열이 비어 있지 않고 모든 expectedText=actualText 및 richPreserved=true일 때 `verified/rule-matches-current-cells`, 아니면 `failed/rule-output-mismatch`다. 마지막으로 비교 쪽이 없는 verified 항목만 `unverifiable/source-comparison-unavailable`로 내리며 나머지 필드는 유지한다. 없는 currentCellNode는 checks 배열의 JSON 직렬화에서 null이다. 규칙 순서는 위 정의 표의 순서, 규칙 없는 항목도 ruleReviews.items에는 catalog 순서로 남긴다.
+
+ruleConfirmation은 `{ruleId,decisionId,actor:"human",time,revision,contentDigest,policyDigest,meaning:"rule-approved-representation"}`다. time/revision/contentDigest/policyDigest는 승인 결정의 값을 그대로 쓰고 현재 항목의 재검증 digest로 덮지 않는다. 현재 항목의 digest는 별도 ruleReviews.items[].contentDigest다. expressionReviews는 catalog의 expression 순서이며 confirmation과 ruleConfirmation을 모두 가지되 해당하지 않는 값은 null이다.
+
+소비자는 v1.3을 독립 검증하고 `docling-to-litzio/1.3.0` trace에 해당 source의 pageComparisons, machineOnlyPages(번호 배열), ruleApprovals(관련 승인 결정), ruleOpenReceipts(그 승인 openIds의 영수증), ruleVerifications(현재 항목 검증), expressionReviews의 두 확인 경로를 보존한다. inputDigest는 재계산한 완료 증거 전체를 포함한다. 요구사항 문서의 출처 JSON과 ReqIF SourceReferences는 이 값을 그대로 보존한다. 기계 전용 쪽을 사람 확인이라고 부르지 않는다. 기존 v1.0~v1.2 소비 경로는 그대로다.

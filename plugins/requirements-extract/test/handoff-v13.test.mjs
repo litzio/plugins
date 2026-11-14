@@ -13,6 +13,9 @@ for(const options of [{},{history:true},{rules:true},{rules:true,history:true},{
  assert.equal(b.review.receiptCurrent,true);assert.equal(b.review.pageComparisons.length,2);
  const src=resolveSource(b,{sourceKey:'synthetic',elementRef:options.rules?'#/tables/0':'#/texts/0',selector:options.rules?'cell:1:0':'full'}).source;
  assert.ok(reviewedTrace(src.trace));
+ const first=report(prepare([{key:'synthetic',bundle:b}],profile)).reviewFirst;
+ if(options.rules)assert.ok(first.some(row=>row.code==='source-rule-approved'&&row.ruleApprovals.length));
+ if(options.machine&&!options.humanPage){assert.ok(first.some(row=>row.code==='source-machine-only'));assert.ok(first.filter(row=>row.code==='source-reviewed').every(row=>!row.message.includes('사람으로 기록된 확인')));}
  if(options.rules){assert.equal(src.trace.expressionReviews[0].confirmation,null);assert.equal(src.trace.ruleApprovals.length,1);assert.equal(src.trace.ruleOpenReceipts.length,1);assert.equal(src.trace.expressionReviews[0].ruleConfirmation.meaning,'rule-approved-representation');}
  if(options.machine&&!options.humanPage){assert.deepEqual(src.trace.machineOnlyPages,[1]);assert.ok(src.trace.diagnostics.some(d=>d.code==='source-machine-only'));}
  const sets=sample(),r=sets[0].requirements[0];r.sources=[src];sets[0].registry[0].nativeDigest='sha256:'+src.trace.documentRevision;r.confirmedDigest=digest(r);
@@ -56,3 +59,16 @@ test('v1.3 ledger-only revocation invalidates proposal fingerprint and saved exp
  const next=refresh(job,[{key:'synthetic',bundle:load(root)}],profile);assert.notEqual(next.inputDigest,job.inputDigest);assert.deepEqual(next.responses,{});assert.ok(report(next).reviewFirst.some(p=>p.code==='source-review-required'));assert.equal(verifyReviewedSources(set,options)[0].code,'stale-source-evidence');
 });
 import {join} from 'node:path';
+
+test('approved policy survives a later unrelated correction and changed representative context',()=>{
+ const root=fixtureV13({history:true,rules:true,rulesBefore:true}),b=load(root,{requireReviewed:true}),rule=b.review.ruleReviews.rules[0];
+ assert.equal(rule.decision.changeCount,0);assert.notEqual(rule.decision.revision,b.snapshot.revision);assert.notEqual(rule.decision.contentDigest,rule.contentDigest);assert.ok(b.review.ruleReviews.items.every(i=>i.ruleConfirmation));
+});
+test('a changed member failing machine verification falls back to individual confirmation',()=>{
+ const root=fixtureV13({history:true,rules:true,rulesBefore:true,human:'cell'}),marker=read(root,'complete.json'),ledger=read(root,'correction-ledger.json');marker.reviewState='unreviewed';marker.files=marker.files.filter(f=>f.relativePath!=='human-review.json');ledger.completion=null;write(root,'complete.json',marker);write(root,'correction-ledger.json',ledger);const b=load(root);
+ assert.equal(b.review.ruleReviews.rules[0].decision.decision,'approved');assert.equal(b.review.ruleReviews.items[0].status,'failed');assert.equal(b.review.ruleReviews.items[0].ruleConfirmation,null);assert.equal(b.review.counts.expressionUnconfirmed,1);assert.throws(()=>load(root,{requireReviewed:true}));
+});
+test('an explicit current negative expression decision overrides rule approval',()=>{
+ const root=fixtureV13({rules:true}),l=read(root,'correction-ledger.json'),other=fixtureV13(),c=read(other,'correction-ledger.json').lossConfirmations[0];
+ c.decision='meaning-changed';l.lossConfirmations=[c];write(root,'correction-ledger.json',l);const b=load(root);assert.ok(b.review.expressionReviews[0].ruleConfirmation);assert.equal(b.review.expressionReviews[0].confirmation.decision,'meaning-changed');assert.equal(b.review.counts.expressionUnconfirmed,1);assert.throws(()=>load(root,{requireReviewed:true}));
+});
