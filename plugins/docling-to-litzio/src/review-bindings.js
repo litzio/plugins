@@ -33,7 +33,7 @@ export function materialContentDigest(material, memo = new WeakMap()) {
 
 // Construct once per operation from the validated read set. Never cache between
 // calls. Hash blocks/items/pages once, then combine their ordered hashes.
-export function reviewBindings(report, handoff, evidence) {
+export function createPageBindingProjection(report, handoff, evidence) {
   const blocks = new Map(), sources = new Map(), pageSources = new Map();
   for (const node of handoff.snapshot.nodes) {
     const key = node.path[0];
@@ -57,24 +57,33 @@ export function reviewBindings(report, handoff, evidence) {
     checks.get(check.sourceId).push(check);
   }
   const checkHashes = new Map([...checks].map(([k, v]) => [k, reviewDigest(v)]));
-  const bind = (ids, pageNos, extra) => {
-    ids = [...new Set(ids)].sort();
+  return (pageNo) => {
+    const ids = [...(pageSources.get(pageNo) ?? [])].sort();
     const paths = [...new Set(ids.flatMap((id) => sources.get(id)?.paths ?? []))].sort((a,b) => a-b);
-    return reviewDigest({
+    return {
       generationId: handoff.provenance.generationId,
       sourceHash: handoff.provenance.source.pdf.sha256,
       sources: ids.map((id) => [id, sources.get(id)?.item, checkHashes.get(id) ?? null]),
-      blocks: paths.map((p) => [p, blockHashes.get(p) ?? null]),
-      pages: [...new Set(pageNos)].sort((a,b) => a-b).map((p) => [p, pages.get(p) ?? null]),
-      extra,
-    });
+      blocks: paths.map((path) => [path, blockHashes.get(path) ?? null]),
+      pages: [[pageNo, pages.get(pageNo) ?? null]],
+      extra: null,
+    };
   };
+}
+export const PAGE_BINDING_FIELDS = Object.freeze(["generationId","sourceHash","sources","blocks","pages","extra"]);
+export function pageBindingDigest(projection) {
+  if (JSON.stringify(Object.keys(projection).sort()) !== JSON.stringify([...PAGE_BINDING_FIELDS].sort()))
+    throw Object.assign(new Error("unbound-page-material-field: page evidence fields and binding inventory must match"),{code:"unbound-page-material-field"});
+  return reviewDigest(projection);
+}
+export function reviewBindings(report, handoff, evidence) {
+  const pageProjection = createPageBindingProjection(report,handoff,evidence);
   const result = new Map();
   const material = createMaterialReader(report,handoff,evidence), memo = new WeakMap();
   for (const group of report.groups)
     result.set(group.id,materialContentDigest(material(group.id),memo));
   for (const page of evidence.pages)
-    result.set("page:" + page.pageNo, bind(pageSources.get(page.pageNo) ?? [], [page.pageNo], null));
+    result.set("page:" + page.pageNo, pageBindingDigest(pageProjection(page.pageNo)));
   return result;
 }
 

@@ -21,6 +21,9 @@ test("public material and binding inventory are exhaustive and exclude unrelated
   const c=context(), material=createMaterialReader(c.report,c.handoff,c.evidence)("g");
   assert.deepEqual(Object.keys(material).sort(),Object.keys(MATERIAL_FIELDS).sort());
   assert.equal(material.history.length,1);
+  c.handoff.history.changes[1].after="another unrelated edit";
+  c.handoff.snapshot.revision="different global revision";
+  assert.equal(materialContentDigest(createMaterialReader(c.report,c.handoff,c.evidence)("g")),materialContentDigest(material));
   assert.throws(()=>materialContentDigest({...material,newPublicField:[]} ),/unbound-material-field/);
   const missing=structuredClone(material); delete missing.neighbors;
   assert.throws(()=>materialContentDigest(missing),/unbound-material-field/);
@@ -50,7 +53,11 @@ async function setup(options) {
   const root=join(await mkdtemp(join(tmpdir(),"material-binding-")),"generation");
   await syntheticGeneration(root,options); await createReview(root,join(root,"review"));
   const fake=await fakeCli(root), service=createCorrections(root,(command,args)=>command === "check" ? {ok:true} : fake(command,args));
-  return {root,service,...await readReview(root,join(root,"review"))};
+  const context=await readReview(root,join(root,"review"));
+  const actualMaterial=await service.material(context.report.groups[0].id);
+  assert.deepEqual(Object.keys(actualMaterial).sort(),Object.keys(MATERIAL_FIELDS).sort());
+  assert.equal(actualMaterial.contentDigest,materialContentDigest(actualMaterial));
+  return {root,service,...context};
 }
 async function approveAll(service,report) {
   let state=await service.progress();

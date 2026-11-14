@@ -8,6 +8,7 @@ import { syntheticGeneration, fakeCli } from "./correction-fixture.js";
 import { createReview, readReview } from "../src/review.js";
 import { createCorrections } from "../src/corrections.js";
 import { loadHandoff } from "../src/provenance.js";
+import { createPageBindingProjection, PAGE_BINDING_FIELDS, pageBindingDigest } from "../src/review-bindings.js";
 
 let prepared;
 async function baseline() {
@@ -49,6 +50,46 @@ async function payload(x,method,seen) {
     ...(method === "correct" ? {target:{kind:"cell",path:[1],row:0,column:0},before:"0.12 s",after:"0.13 s",evidence:{kind:"human-source-region",refs:[],scope:seen.findings[0].regions.map((region)=>({pageNo:region.pageNo,bbox:region.bbox}))}} : {})};
 }
 const invoke=(service,method,input)=>service[["correct","uncertain"].includes(method) ? "submit" : method](input);
+test("page evidence inventory binds every field and accepts an explicit resubmission after identical restoration",async()=> {
+  const x=await copy(),seen=await x.service.material(x.original),scopeId="page:"+seen.group.pageNos[0];
+  const progress=await x.service.progress(),digest=progress.scopeDigests[scopeId];
+  const context=await readReview(x.root,join(x.root,"review"));
+  const projection=createPageBindingProjection(context.report,context.handoff,context.evidence)(seen.group.pageNos[0]);
+  assert.deepEqual(Object.keys(projection).sort(),[...PAGE_BINDING_FIELDS].sort());
+  assert.equal(pageBindingDigest(projection),digest);
+  assert.throws(()=>pageBindingDigest({...projection,unboundField:[]}),/unbound-page-material-field/);
+  for (const field of PAGE_BINDING_FIELDS) {
+    const changed=structuredClone(projection);
+    changed[field]=Array.isArray(changed[field]) ? [...changed[field],"changed"] : "changed";
+    assert.notEqual(pageBindingDigest(changed),digest,field);
+    delete changed[field];
+    assert.throws(()=>pageBindingDigest(changed),/unbound-page-material-field/,field);
+  }
+  const input={scopeId,revision:seen.documentRevision,contentDigest:digest,state:"차이없음",note:"Previously inspected identical page evidence"};
+  await x.service.checkpoint(input);
+  const documentBefore=await readFile(join(x.root,"document.md"));
+  await correct(x.service,x.neighbor,[2],"888","0.12 s","page-B");
+  let current=await x.service.progress();
+  assert.notEqual(current.scopeDigests[scopeId],digest);
+  assert.equal(current.scopes.find((scope)=>scope.id===scopeId).checkpoint,null);
+  await assert.rejects(x.service.checkpoint({...input,revision:current.revision}),/stale-material/);
+  const undoSeen=await x.service.material(x.neighbor);
+  await x.service.undo({undoOf:"page-B",changeId:"page-undo-B",actor:"human",reason:"Restore the inspected page content",contentDigest:undoSeen.contentDigest});
+  assert.deepEqual(await readFile(join(x.root,"document.md")),documentBefore);
+  current=await x.service.progress();
+  assert.equal(current.revision,input.revision);
+  assert.equal(current.scopeDigests[scopeId],digest);
+  assert.equal(current.scopes.find((scope)=>scope.id===scopeId).state,"미검사");
+  assert.equal(current.scopes.find((scope)=>scope.id===scopeId).checkpoint,null);
+  assert.notEqual((await x.service.material(x.original)).contentDigest,seen.contentDigest,"group evidence includes the added local history");
+  // No observation nonce or session-order check: this is a NEW true assertion
+  // about the same page content, not automatic resurrection of the old record.
+  await x.service.checkpoint(input);
+  current=await x.service.progress();
+  assert.equal(current.scopes.find((scope)=>scope.id===scopeId).state,"차이없음");
+  assert.equal(current.scopes.find((scope)=>scope.id===scopeId).checkpoint.contentDigest,digest);
+  assert.equal(current.reviewComplete,false);
+});
 for (const method of ["checkpoint","humanDecision","lossDecision","uncertain","correct"]) {
   test(`${method} requires a supplied material digest`,async()=> {
     const x=await copy(),seen=await x.service.material(x.original),input=await payload(x,method,seen);
