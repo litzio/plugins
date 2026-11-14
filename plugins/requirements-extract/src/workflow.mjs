@@ -24,7 +24,7 @@ export function checkProfile(p) {
 export function fingerprints(inputs, profile) {
   checkProfile(profile);
   if (!inputs.length || new Set(inputs.map(i => i.key)).size !== inputs.length || inputs.some(i => !/^[a-zA-Z0-9_-]+$/.test(i.key))) reject('inputs', '고유한 입력 키와 하나 이상의 문서가 필요합니다');
-  return { policyDigest: sha256(canonical({profile,protectionVersion})), inputDigest: sha256(canonical(inputs.map(i => ({ key: i.key, complete: i.bundle.complete, provenance: i.bundle.provenance, snapshot: i.bundle.snapshot,...(i.bundle.complete.schemaVersion==='1.2.0'?{review:i.bundle.review,groupingVersion:1}:{}) })).sort((a,b) => a.key.localeCompare(b.key)))) };
+  return { policyDigest: sha256(canonical({profile,protectionVersion})), inputDigest: sha256(canonical(inputs.map(i => ({ key: i.key, complete: i.bundle.complete, provenance: i.bundle.provenance, snapshot: i.bundle.snapshot,...(['1.2.0','1.3.0'].includes(i.bundle.complete.schemaVersion)?{review:i.bundle.review,groupingVersion:1}:{}) })).sort((a,b) => a.key.localeCompare(b.key)))) };
 }
 function tickets(job) {
   return Object.fromEntries(job.corpus.sections.map(s => [s.key, randomUUID()]));
@@ -218,7 +218,7 @@ export function report(job) {
   const problems=(job.corpus.comparisons??[]).map(h=>({code:h.kind,...h})), accepted=[],reviewFirst=[];
   for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace?.correctionNotice) reviewFirst.push({code:'source-corrected',needsHumanReview:true,sourceKey,source, message:source.trace.correctionNotice,corrections:source.trace.corrections});
   const reviewedGroups=new Map(),expressionGroups=new Map();
-  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(source.trace?.contract==='docling-to-litzio/1.2.0') {
+  for(const [sourceKey,source] of Object.entries(job.corpus.sources)) if(['docling-to-litzio/1.2.0','docling-to-litzio/1.3.0'].includes(source.trace?.contract)) {
     const t=source.trace;
     if(t.humanCorrectionNotice)reviewFirst.push({code:'source-human-correction',needsHumanReview:true,sourceKey,message:t.humanCorrectionNotice,actorLimitation:t.actorLimitation,corrections:t.corrections});
     if(t.mergedTableConfirmation){const key=canonical({generation:t.generationId,expressions:t.expressionReviews}),row=expressionGroups.get(key)??{code:'source-expression-confirmed',needsHumanReview:true,sourceKeys:[],message:t.mergedTableConfirmation,actorLimitation:t.actorLimitation,expressionReviews:t.expressionReviews};row.sourceKeys.push(sourceKey);expressionGroups.set(key,row);}

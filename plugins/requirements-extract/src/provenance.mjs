@@ -7,6 +7,7 @@ import { correctedSnapshot } from './corrections.mjs';
 import { verifyNotes, noteSourceText } from './note-projection.mjs';
 import { checkProjectionConsistency } from './projection-consistency.mjs';
 import {completionProof,actorLimitation} from './human-review.mjs';
+import {completionProofV13} from './human-review-v13.mjs';
 import {validateReviewMeaning} from './review-integrity.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -14,7 +15,7 @@ const equal = (a, b) => canonical(a) === canonical(b);
 const parse = bytes => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
 function fail(code, message, location = []) { throw Object.assign(new Error(message), { diagnostics: [{ file: 'complete.json', location, code, severity: 'error', message }] }); }
 const check = (condition, code, message) => { if (!condition) fail(code, message); };
-const schemas = Object.fromEntries(['complete','complete-v12', 'provenance', 'losses', 'correction-history','correction-history-v12','human-review', 'review-targets', 'review-complete', 'pdf-evidence'].map(name => [name, new Ajv({ strict: true, allowUnionTypes: true }).compile(JSON.parse(readFileSync(new URL('../schema/handoff-' + name + '.schema.json', import.meta.url))))]));
+const schemas = Object.fromEntries(['complete','complete-v12','complete-v13','human-review-v13','correction-history-v13','page-coverage','page-coverage-complete', 'provenance', 'losses', 'correction-history','correction-history-v12','human-review', 'review-targets', 'review-complete', 'pdf-evidence'].map(name => [name, new Ajv({ strict: true, allowUnionTypes: true }).compile(JSON.parse(readFileSync(new URL('../schema/handoff-' + name + '.schema.json', import.meta.url))))]));
 function schema(name, value) { check(schemas[name](value), 'handoff-schema', name + ': ' + JSON.stringify(schemas[name].errors)); }
 // The public CLI added content while preserving existing text fields. Accept
 // only that documented additive field in old checkpoints, using the fresh
@@ -67,10 +68,10 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
   root = resolve(root); check(lstatSync(root).isDirectory() && !lstatSync(root).isSymbolicLink() && realpathSync(root).toLowerCase() === root.toLowerCase(), 'unsafe-path', '일반 인계 디렉터리만 읽습니다');
   const markerPath = bundleFile(root, 'complete.json'), markerBytes = readFileSync(markerPath);
   const complete = parse(markerBytes);
-  check(['1.0.0', '1.1.0','1.2.0'].includes(complete.schemaVersion), 'handoff-schema', '지원하지 않는 인계 버전');
-  const v12=complete.schemaVersion==='1.2.0';
-  if(v12)schema('complete-v12',complete);else schema('complete', { ...complete, schemaVersion: '1.0.0' });
-  const corrected = complete.schemaVersion === '1.1.0'||(v12&&complete.files.some(f=>f.relativePath==='correction-history.json'));
+  check(['1.0.0', '1.1.0','1.2.0','1.3.0'].includes(complete.schemaVersion), 'handoff-schema', '지원하지 않는 인계 버전');
+  const v13=complete.schemaVersion==='1.3.0',v12=complete.schemaVersion==='1.2.0',reviewContract=v12||v13;
+  if(reviewContract)schema(v13?'complete-v13':'complete-v12',complete);else schema('complete', { ...complete, schemaVersion: '1.0.0' });
+  const corrected = complete.schemaVersion === '1.1.0'||(reviewContract&&complete.files.some(f=>f.relativePath==='correction-history.json'));
   const files = new Map();
   for (const file of complete.files) {
     check(!files.has(file.relativePath), 'duplicate-file', '완료 표지의 중복 경로');
@@ -185,12 +186,12 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
   }
   for (const n of snapshot.nodes.filter(n => n.type === 'figure' && n.imageUrl)) check(p.assets.some(a => a.relativePath === n.imageUrl.replace(/^\.\//, '')), 'asset-inventory', 'snapshot 그림이 자산 목록에서 빠졌습니다');
   let history, current, review, gapTargets, ledgerPath, ledgerBytes;
-  if (corrected||v12) {
+  if (corrected||reviewContract) {
     const report = json('review/review-targets.json'), evidence = json('review/pdf-evidence.json');
     schema('review-targets', report); schema('pdf-evidence', evidence);
     ledgerPath = bundleFile(root, 'correction-ledger.json'); ledgerBytes = readFileSync(ledgerPath);
     const ledger=parse(ledgerBytes);
-    if(corrected){history = json('correction-history.json');schema(v12?'correction-history-v12':'correction-history', history);current = correctedSnapshot({history, report, evidence, ledger, baseline:snapshot, provenance:p, complete, files, actual, check});}
+    if(corrected){history = json('correction-history.json');schema(v13?'correction-history-v13':v12?'correction-history-v12':'correction-history', history);current = correctedSnapshot({history, report, evidence, ledger, baseline:snapshot, provenance:p, complete, files, actual, check});}
     else {
       current=actual;
       check(report.generationId===p.generationId&&report.baselineRevision===snapshot.revision&&report.documentRevision===snapshot.revision&&report.bindingState==='current'&&report.pdfSha256===p.source.pdf.sha256&&evidence.pdfSha256===p.source.pdf.sha256,'review-binding','생성 검수 결합 불일치');
@@ -200,25 +201,34 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
     const reviewPath=bundleFile(root,'review/review-complete.json'), reviewBytes=readFileSync(reviewPath), reviewMarker=parse(reviewBytes);schema('review-complete',reviewMarker);
     check(reviewMarker.generationId===p.generationId&&reviewMarker.documentRevision===baselineRevision&&reviewMarker.reportSha256===hash(files.get('review/review-targets.json'))&&reviewMarker.evidenceSha256===hash(files.get('review/pdf-evidence.json')),'review-marker-binding','검수 완료 표지의 생성 결합이 다릅니다');
     check(readFileSync(reviewPath).equals(reviewBytes),'review-marker-changed','검수 표지가 읽는 동안 바뀌었습니다');
-    if(v12){
+    if(reviewContract){
       gapTargets=report.findings.filter(f=>f.kind==='source-cell-unavailable').map(f=>({findingId:f.id,sourceIds:f.sourceIds,targets:f.targets}));
       check(equal(evidence.pages.map(v=>[v.pageNo,v.width,v.height]),p.pages.map(v=>[v.pageNo,v.width,v.height])),'review-page-inventory','PDF 증거와 원문 물리 쪽 inventory가 다릅니다');
       check(!ledger.pending,'history-ledger','pending 교정은 소비할 수 없습니다');
       let completion;
       if(files.has('human-review.json')) {
-        const issued=json('human-review.json');schema('human-review',issued);
+        const issued=json('human-review.json');schema(v13?'human-review-v13':'human-review',issued);
         check(issued.generationId===p.generationId&&[baselineRevision,...(history?.changes??[]).map(c=>c.afterRevision)].includes(issued.documentRevision),'human-review-binding','완료 발급이 같은 generation의 알려진 revision에 속하지 않습니다');
         if(complete.reviewState==='reviewed')completion=issued;
       }
       if(complete.reviewState==='reviewed')check(completion?.documentRevision===complete.documentRevision,'human-review-binding','현재 완료 발급 파일/revision 불일치');
-      const projected=project(p,current,'1.2.0');
-      review=completionProof({ledger,report,evidence,provenance:projected,snapshot:current,history,losses:losses.items,completion,need:check});
+      const projected=project(p,current,complete.schemaVersion);
+      if(v13){
+        check(files.has('review/review-complete.json'),'review-seal','v1.3 생성 검수 표지는 complete 파일 집합에 봉인되어야 합니다');
+        check(files.get('review/review-complete.json').equals(reviewBytes),'review-seal','봉인한 검수 표지와 현재 bytes가 다릅니다');
+        const coverage=json('review/page-coverage.json'),seal=json('review/page-coverage-complete.json');
+        schema('page-coverage',coverage);schema('page-coverage-complete',seal);
+        check(seal.generationId===p.generationId&&seal.baselineRevision===baselineRevision&&seal.pdfSha256===p.source.pdf.sha256&&coverage.pdfSha256===seal.pdfSha256&&seal.evidenceSha256===hash(files.get('review/pdf-evidence.json'))&&seal.coverageSha256===hash(files.get('review/page-coverage.json')),'coverage-binding','쪽 대조 증거 봉인 불일치');
+        check(equal(coverage.pages.map(v=>[v.pageNo,v.textLayer]),evidence.pages.map(v=>[v.pageNo,v.status==='available'?'available':'unavailable'])),'coverage-pages','쪽 대조 범위·글자 층 inventory 불일치');
+        for(const page of coverage.pages)check(equal(page.notCompared,[...(page.textLayer!=='available'?['missing-text-layer']:[]),...(page.operatorScan!=='complete'?['operator-scan-unavailable']:[]),...(page.rasterObjects?['raster-content']:[]),...(page.vectorPaints?['vector-painted-content']:[])]),'coverage-flags','쪽 미대조 기록이 관측 상태와 다릅니다');
+        review=completionProofV13({ledger,report,evidence,provenance:projected,baselineProvenance:p,baseline:snapshot,snapshot:current,history,doc,coverage,losses:losses.items,completion,project,need:check});
+      }else review=completionProof({ledger,report,evidence,provenance:projected,snapshot:current,history,losses:losses.items,completion,need:check});
     }
   }
   if(ledgerPath)check(readFileSync(ledgerPath).equals(ledgerBytes), 'ledger-changed', '읽는 동안 교정 원장이 바뀌었습니다');
   check(readFileSync(markerPath).equals(markerBytes), 'marker-changed', '읽는 동안 완료 표지가 바뀌었습니다');
-  check(!requireReviewed||review?.reviewComplete===true, 'source-review-required', v12?'현재 유효한 검수 완료 증거가 없습니다':'v1 생성물은 unreviewed이므로 확정 출처로 채택할 수 없습니다');
-  if(v12)return {provenance:project(p,current,'1.2.0'),baseline:p,snapshot:current,...(history?{history}:{}),complete,review,gapTargets,reviewState:review.reviewComplete?'reviewed':'unreviewed',eligibleConfirmed:review.reviewComplete};
+  check(!requireReviewed||review?.reviewComplete===true, 'source-review-required', reviewContract?'현재 유효한 검수 완료 증거가 없습니다':'v1 생성물은 unreviewed이므로 확정 출처로 채택할 수 없습니다');
+  if(reviewContract)return {provenance:project(p,current,complete.schemaVersion),baseline:p,snapshot:current,...(history?{history}:{}),complete,review,gapTargets,reviewState:review.reviewComplete?'reviewed':'unreviewed',eligibleConfirmed:review.reviewComplete};
   if (!corrected) return { provenance: p, snapshot, complete, reviewState: 'unreviewed', eligibleConfirmed: false };
   const projected = project(p,current,'1.1.0');
   return { provenance: projected, baseline:p, snapshot:current, history, complete, reviewState:'unreviewed', eligibleConfirmed:false };
@@ -226,7 +236,7 @@ function readHandoff(root, { inspect, requireReviewed = false } = {}) {
 function project(p,current,version) {
   const projected = structuredClone(p); projected.schemaVersion = version; projected.document.revision = current.revision;
   for (const block of projected.document.blocks) block.text = selected(current, {path:block.path,selector:{kind:'block'}});
-  for (const item of projected.items) for (const t of [...item.targets, ...item.cells.flatMap(c => c.targets)]) { t.documentRevision = current.revision; t.text = selected(current, t); }
+  for (const item of projected.items) for (const t of [...item.targets, ...item.cells.flatMap(c => c.targets),...(version==='1.3.0'?item.losses.flatMap(l=>l.targets??[]):[])]) { t.documentRevision = current.revision; t.text = selected(current, t); }
   return projected;
 }
 export function loadProvenance(root, options) {
@@ -239,7 +249,7 @@ export function loadProvenance(root, options) {
 // export validates an already-read snapshot, not the live filesystem.
 export function verifyReviewedSources(set,{scope,inspect}) {
   const diagnostics=[],cache=new Map();
-  for(const requirement of set.requirements)for(const source of requirement.sources??[])if(source.trace?.contract==='docling-to-litzio/1.2.0') {
+  for(const requirement of set.requirements)for(const source of requirement.sources??[])if(['docling-to-litzio/1.2.0','docling-to-litzio/1.3.0'].includes(source.trace?.contract)) {
     try {
       const registration=set.registry.find(r=>r.sourceKey===source.sourceKey);
       check(registration&&basename(registration.mapFile)==='provenance.json','source-map','검증 가능한 출처 등록이 필요합니다');
@@ -262,7 +272,7 @@ export function resolveSource(bundle, { sourceKey = 'source', elementRef, select
   if (selector.startsWith('cell:')) {
     const [, row, column] = selector.split(':').map((s, i) => i ? Number(s) : s);
     cell = item.cells.find(c => row >= c.sourceCell.start_row_offset_idx && row < c.sourceCell.end_row_offset_idx && column >= c.sourceCell.start_col_offset_idx && column < c.sourceCell.end_col_offset_idx);
-    if(!cell&&bundle.complete.schemaVersion==='1.2.0') {
+    if(!cell&&['1.2.0','1.3.0'].includes(bundle.complete.schemaVersion)) {
       const finding=bundle.gapTargets.find(f=>f.sourceIds.includes(item.sourceId)&&f.targets.some(t=>item.targets.some(v=>equal(v.path,t.path))&&t.selector.kind==='cell'&&t.selector.row===row&&t.selector.column===column));
       const original=finding?.targets.find(t=>t.selector.kind==='cell'&&t.selector.row===row&&t.selector.column===column);
       const changes=bundle.history?.changes.filter(c=>c.target.kind==='cell'&&equal(c.target.path,original?.path)&&c.target.row===row&&c.target.column===column)??[];
@@ -271,7 +281,7 @@ export function resolveSource(bundle, { sourceKey = 'source', elementRef, select
         quote='';targets=[{...structuredClone(original),documentRevision:p.document.revision,text:selected(bundle.snapshot,original)}];
       }
     }
-    check(cell||gap, 'missing-cell', bundle.complete.schemaVersion==='1.2.0'?'원본 cell selector 또는 검증된 gap 교정이 없습니다':'원본 cell selector가 없습니다');
+    check(cell||gap, 'missing-cell', ['1.2.0','1.3.0'].includes(bundle.complete.schemaVersion)?'원본 cell selector 또는 검증된 gap 교정이 없습니다':'원본 cell selector가 없습니다');
     if(cell){quote = cell.sourceCell.text; sourceId = cell.sourceId; targets = cell.targets.filter(t => t.role === 'content');}
   } else if (selector.startsWith('text:')) {
     const [, start, end] = selector.split(':').map(Number), chars = Array.from(quote ?? '');
@@ -297,19 +307,31 @@ export function resolveSource(bundle, { sourceKey = 'source', elementRef, select
     if(changes.length) trace.correctionState=effective.size?'currently-corrected':'restored-to-conversion-value';
     if(effective.size) { trace.correctionNotice='원본 변환값과 다르게 교정됨(근거 있음)'; diagnostics.push({code:'source-corrected',severity:'warning',message:trace.correctionNotice,file:p.document.relativePath,location:targets[0]?.path??[]}); }
   }
-  if(bundle.complete.schemaVersion==='1.2.0') {
-    trace.contract='docling-to-litzio/1.2.0';trace.reviewState=bundle.reviewState;
+  if(['1.2.0','1.3.0'].includes(bundle.complete.schemaVersion)) {
+    trace.contract='docling-to-litzio/'+bundle.complete.schemaVersion;trace.reviewState=bundle.reviewState;
     trace.eligibleConfirmed=bundle.eligibleConfirmed&&trace.bindingState==='current';
     trace.reviewState=trace.eligibleConfirmed?'reviewed':'unreviewed';
-    const {expressionReviews,completion,humanDecisions,lossConfirmations,groupSources,...proof}=bundle.review;
+    const {expressionReviews,completion,humanDecisions,lossConfirmations,groupSources,pageComparisons,ruleReviews,ruleOpens,ruleDecisions,...proof}=bundle.review;
     trace.review={...proof,completionRevision:completion?.documentRevision??null,completionDigest:completion?sha256(canonical(completion)):null};
+    if(bundle.complete.schemaVersion==='1.3.0'){
+      trace.pageComparisons=structuredClone(bundle.review.pageComparisons.filter(page=>item.regions.some(r=>r.pageNo===page.pageNo)));
+      trace.machineOnlyPages=trace.pageComparisons.filter(page=>page.status==='machine-passed').map(page=>page.pageNo);
+      const ids=new Set(bundle.review.expressionReviews.filter(v=>v.sourceId===item.sourceId).map(v=>v.ruleConfirmation?.decisionId).filter(Boolean));
+      trace.ruleApprovals=structuredClone(bundle.review.ruleDecisions.filter(d=>ids.has(d.decisionId)));
+      trace.ruleOpenReceipts=structuredClone(bundle.review.ruleOpens.filter(o=>trace.ruleApprovals.some(d=>d.openIds.includes(o.openId))));
+      trace.ruleVerifications=structuredClone(bundle.review.ruleReviews.items.filter(v=>v.sourceId===item.sourceId));
+      trace.reviewMethod='content-bound-machine-and-human-v13';
+      trace.limitations=['machine-only pages compare protected tokens and unmapped PDF text only; heading hierarchy, reading order and meaning are not checked','rule approval is based on opened representatives and current machine verification','actor is an unauthenticated declaration','rotation/printedLabel unavailable',...(cell?['no per-cell page attribution']:[])];
+      if(trace.machineOnlyPages.length)diagnostics.push({code:'source-machine-only',severity:'warning',message:'기계 대조만 거친 쪽: '+trace.machineOnlyPages.join(', ')+' — 제목 계층·읽는 순서·의미는 검사하지 않음',file:p.document.relativePath,location:targets[0]?.path??[]});
+      if(trace.ruleApprovals.length)diagnostics.push({code:'source-rule-approved',severity:'warning',message:'대표 사례를 본 사람의 규칙 승인과 현재 기계 검증으로 확인된 표현',file:p.document.relativePath,location:targets[0]?.path??[]});
+    }
     trace.actorLimitation=actorLimitation;
     trace.humanDecisions=structuredClone(humanDecisions.filter(d=>groupSources[d.groupId]?.includes(item.sourceId)));
     trace.expressionReviews=structuredClone(expressionReviews.filter(v=>v.sourceId===item.sourceId&&v.targets.some(t=>targets.some(target=>equal(target.path,t.path)))));
-    trace.limitations=['actor is an unauthenticated declaration','expression confirmation is not call-site ownership or business approval','rotation/printedLabel unavailable',...(cell?['no per-cell page attribution']:[])];
+    if(bundle.complete.schemaVersion==='1.2.0')trace.limitations=['actor is an unauthenticated declaration','expression confirmation is not call-site ownership or business approval','rotation/printedLabel unavailable',...(cell?['no per-cell page attribution']:[])];
     const human=trace.corrections?.filter(c=>c.validation.evidenceRecheck==='human-source-region'&&!c.undoOf)??[];
     if(human.length){trace.humanCorrectionNotice='원문 영역 근거의 사람으로 기록된 교정 이력(기계 토큰 검증 아님)';diagnostics.push({code:'source-human-correction',severity:'warning',message:trace.humanCorrectionNotice,file:p.document.relativePath,location:targets[0]?.path??[]});}
-    const validExpressions=trace.expressionReviews.length>0&&trace.expressionReviews.every(v=>v.confirmation?.decision==='meaning-preserved');
+    const validExpressions=trace.expressionReviews.length>0&&trace.expressionReviews.every(v=>(v.confirmation?.decision==='meaning-preserved'||v.ruleConfirmation&&!v.confirmation));
     if((cell||gap)&&table?.reviewRequired&&!validExpressions){trace.eligibleConfirmed=false;trace.reviewState='unreviewed';}
     if((cell||gap)&&table?.reviewRequired&&validExpressions){trace.mergedTableConfirmation='병합 표의 표현을 사람이 확인함 — 사람으로 기록된 확인(비인증 선언), 요구사항 확정은 별도';diagnostics.push({code:'source-expression-confirmed',severity:'warning',message:trace.mergedTableConfirmation,file:p.document.relativePath,location:targets[0]?.path??[]});}
     for(let i=diagnostics.length-1;i>=0;i--)if((diagnostics[i].code==='source-review-required'&&trace.eligibleConfirmed)||(diagnostics[i].code==='merged-table-review'&&validExpressions)||(diagnostics[i].code==='source-loss'&&bundle.review.reviewComplete))diagnostics.splice(i,1);
