@@ -64,6 +64,12 @@ export async function readPdf(bytes, { coverage = false } = {}) {
   const pages = [], coveragePages = [];
   try {
     const pdf = await task.promise;
+    // isPureXfa depends on enabling XFA rendering. Inspect presence instead;
+    // this metadata flag is populated even when XFA rendering stays disabled.
+    let noXfa=false;
+    if (coverage) try {
+      noXfa=(await pdf.getMetadata()).info?.IsXFAPresent === false;
+    } catch { /* Unknown document form metadata is unassessed. */ }
     let outline;
     try {
       const stack = [...((await pdf.getOutline()) ?? [])];
@@ -127,10 +133,11 @@ export async function readPdf(bytes, { coverage = false } = {}) {
         try {
           const operators=await page.getOperatorList();
           ({rasterObjects,vectorPaints}=operatorCoverage(operators,OPS));
+          if (!noXfa) throw new Error("unassessed-xfa");
           assertInspectablePaints(operators,OPS,(id)=>page.commonObjs.get(id));
           // Appearance streams may be separate from the display operator list.
           // Even a hidden/print-only or appearance-less annotation stays human.
-          if (pdf.isPureXfa || (await page.getAnnotations({intent:"any"})).length) throw new Error("unassessed-annotation");
+          if ((await page.getAnnotations({intent:"any"})).length) throw new Error("unassessed-annotation");
         } catch { operatorScan="unavailable"; }
         coveragePages.push({pageNo,textLayer:items.length ? "available" : "unavailable",operatorScan,rasterObjects,vectorPaints,
           notCompared:[...(!items.length ? ["missing-text-layer"] : []),...(operatorScan !== "complete" ? ["operator-scan-unavailable"] : []),...(rasterObjects ? ["raster-content"] : []),...(vectorPaints ? ["vector-painted-content"] : [])]});
@@ -162,7 +169,7 @@ export async function readPdf(bytes, { coverage = false } = {}) {
         "text item ascent/descent + proportional character offsets; approximate; unrotated TOPLEFT PDF pt",
       pages,
     };
-    return coverage ? {evidence,pageCoverage:{schemaVersion:"1.3.0",pdfSha256:hash(bytes),reader:{name:"pdfjs-dist",version},method:"pdfjs-6.5.438-text-and-optimized-paint-v2",pages:coveragePages,
+    return coverage ? {evidence,pageCoverage:{schemaVersion:"1.3.0",pdfSha256:hash(bytes),reader:{name:"pdfjs-dist",version},method:"pdfjs-6.5.438-text-and-optimized-paint-v3",pages:coveragePages,
       semanticLimits:["heading-hierarchy","reading-order","meaning"],regionPrecision:"whole-page"}} : evidence;
   } finally {
     await task.destroy();

@@ -1,6 +1,6 @@
 # 내용에 결합된 검수 v1.3
 
-이 문서는 v1.3.0에만 적용한다. v1.0~v1.2의 의미와 reader 검증은 바꾸지 않는다. 이미 발급된 v1.2 완료는 기존 규칙으로 읽는다. `reviewVersion`이 `1.3.0`이 아닌 진행 원장에 대한 새 검수 쓰기(교정·undo·사람 결정·표현 확인·checkpoint·완료·중단·재개·조정)는 `legacy-review-read-only` 오류다. 고정 변환 결과에서 새 문서를 생성해 다시 시작한다. 이관과 이전 형식 쓰기는 없다.
+이 문서는 v1.3.0에만 적용한다. **이 PR 이전의 v1.3 완료 묶음은 읽지 않는다. 다시 검수 완료해야 한다.** v1.0~v1.2의 의미와 reader 검증은 바꾸지 않는다. 이미 발급된 v1.2 완료는 기존 규칙으로 읽는다. `reviewVersion`이 `1.3.0`이 아닌 진행 원장에 대한 새 검수 쓰기(교정·undo·사람 결정·표현 확인·checkpoint·완료·중단·재개·조정)는 `legacy-review-read-only` 오류다. 고정 변환 결과에서 새 문서를 생성해 다시 시작한다. 이관과 이전 형식 쓰기는 없다.
 
 새 생성 및 교정·완료의 `complete.json.schemaVersion`은 `1.3.0`이다. 생성 증거, 교정 이력의 기존 schema와 투영·receipt·원장 대조 규칙은 그대로다. 교정 없는 v1.3도 허용한다. `reviewState`는 완료 전 `unreviewed`, 명시적 발급 후 `reviewed`다. `human-review.json`의 v1.3 정본은 [schema](../../plugins/docling-to-litzio/schema/human-review-v13.schema.json)다. v1.2의 기록에 아래 필수 digest를 더하고, PR 2의 쪽·규칙 증거 필드를 닫힌 schema로 추가한다. 아래 기록의 필수 `contentDigest`(소문자 SHA-256 hex 64자)를 추가한다.
 
@@ -122,4 +122,4 @@ review-progress는 원본 이력 외에 처리 코드가 현재 digest로 판정
 
 ### 기계 전용 대조의 그리기 조사 경계
 
-기계 전용 인정은 **조사할 수 있었던 그리기 명령에 한한다. 조사하지 못한 구조가 있으면 사람 쪽**이다. 쪽 최상위 명령에 paint가 없다는 이유만으로 조사 완료라고 하지 않는다. 사용한 글꼴의 Type3 여부를 확인하지 못하거나 Type3이면 글자 프로그램 내부를 분석하지 않고 operatorScan=unavailable로 남긴다. Form XObject, 패턴, 투명도 그룹·soft mask, 주석 appearance(화면에서 숨겨진 인쇄 전용 포함), pure XFA도 같은 경로다. 인식하지 못한 path paint나 조사 예외도 unavailable이며 notCompared의 operator-scan-unavailable은 requires-human을 강제한다. 알려진 최상위 paint 개수는 관측된 수일 뿐이며 unavailable일 때 0은 내부 그리기가 없다는 증거가 아니다. 정확한 신호와 method 버전은 [추가 계약](review-rules-v13.md)을 따른다.
+기계 전용 인정은 **조사할 수 있었던 그리기 명령에 한한다. 조사하지 못한 구조가 있으면 사람 쪽**이다. 쪽 최상위 명령에 paint가 없다는 이유만으로 조사 완료라고 하지 않는다. 사용한 글꼴의 Type3 여부를 확인하지 못하거나 Type3이면 글자 프로그램 내부를 분석하지 않고 operatorScan=unavailable로 남긴다. Form XObject, 패턴, 투명도 그룹·soft mask, 주석 appearance(화면에서 숨겨진 인쇄 전용 포함), 문서의 XFA 존재도 같은 경로다. XFA 렌더링을 켰을 때만 작동하는 isPureXfa를 근거로 쓰지 않고 getMetadata().info.IsXFAPresent가 명시적으로 false인 문서만 XFA 없음으로 인정한다. 인식하지 못한 path paint나 조사 예외도 unavailable이며 notCompared의 operator-scan-unavailable은 requires-human을 강제한다. 알려진 최상위 paint 개수는 관측된 수일 뿐이며 unavailable일 때 0은 내부 그리기가 없다는 증거가 아니다. 정확한 신호와 method 버전은 [추가 계약](review-rules-v13.md)을 따른다.

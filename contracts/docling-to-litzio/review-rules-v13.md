@@ -6,7 +6,7 @@
 
 `review/page-coverage.json`과 `review/page-coverage-complete.json`의 닫힌 JSON 모양은 각각 같은 이름의 schema 파일이 정본이다. 생성 검수 때 PDF operator와 글자 층을 조사하고 두 파일과 기존 review 3파일 모두를 complete.json 파일 집합으로 봉인한다. 새 완료는 쪽 증거가 필요하다. 한 호출의 검증된 bytes로만 판정한다.
 
-`method`는 `pdfjs-6.5.438-text-and-optimized-paint-v2`이다. 이 표지가 없는 개발 중 증거는 최종 대조 증거로 수락하지 않는다. 쪽마다 textLayer=available/unavailable, operatorScan=complete/unavailable, rasterObjects/vectorPaints의 정수 개수, notCompared를 기록한다. notCompared는 순서대로 missing-text-layer, operator-scan-unavailable, raster-content, vector-painted-content 중 해당 값을 넣는다. raster는 PDF.js OPS 이름이 `^paint.*Image`에 맞는 호출 수다. vector는 stroke/closeStroke/fill/eoFill/fillStroke/eoFillStroke/closeFillStroke/closeEOFillStroke/shadingFill/rawFillPath 호출 수다. PDF.js 6이 최적화한 constructPath의 argsArray[index][0]에 담긴 같은 paint opcode도 센다. endPath는 칠하지 않는 경로이므로 세지 않고, 모르는 constructPath paint는 operatorScan=unavailable로 남긴다. 개수가 0이 아니면 해당 내용을 글자 대조가 검증했다는 주장을 하지 않는다. 영역 위치를 추정하지 않고 whole-page로 남긴다. semanticLimits는 항상 `["heading-hierarchy","reading-order","meaning"]`다.
+`method`는 `pdfjs-6.5.438-text-and-optimized-paint-v3`이다. 이 표지가 없는 개발 중 증거는 최종 대조 증거로 수락하지 않는다. 쪽마다 textLayer=available/unavailable, operatorScan=complete/unavailable, rasterObjects/vectorPaints의 정수 개수, notCompared를 기록한다. notCompared는 순서대로 missing-text-layer, operator-scan-unavailable, raster-content, vector-painted-content 중 해당 값을 넣는다. raster는 PDF.js OPS 이름이 `^paint.*Image`에 맞는 호출 수다. vector는 stroke/closeStroke/fill/eoFill/fillStroke/eoFillStroke/closeFillStroke/closeEOFillStroke/shadingFill/rawFillPath 호출 수다. PDF.js 6이 최적화한 constructPath의 argsArray[index][0]에 담긴 같은 paint opcode도 센다. endPath는 칠하지 않는 경로이므로 세지 않고, 모르는 constructPath paint는 operatorScan=unavailable로 남긴다. 개수가 0이 아니면 해당 내용을 글자 대조가 검증했다는 주장을 하지 않는다. 영역 위치를 추정하지 않고 whole-page로 남긴다. semanticLimits는 항상 `["heading-hierarchy","reading-order","meaning"]`다.
 
 기계 전용 인정은 조사할 수 있었던 명령에 한한다. 다음 구조가 있거나 그 조사가 실패하면 operatorScan=unavailable로 기록해 사람이 볼 쪽으로 남긴다. 내부를 재귀 분석해 면제하지 않는다.
 
@@ -17,10 +17,10 @@
 | 패턴 | setFillColorN/setStrokeColorN | pattern 내부 명령을 조사하지 않으므로 unavailable |
 | soft mask | setGState의 SMask 항목 | 내부 명령을 조사하지 않으므로 unavailable |
 | 주석 appearance | beginAnnotation/endAnnotation 또는 getAnnotations(intent=any)의 한 건 이상 | 숨김·인쇄 전용·appearance 없는 주석도 unavailable |
-| pure XFA | 문서의 isPureXfa=true | PDF 쪽 명령 밖의 표현을 조사하지 않으므로 unavailable |
+| XFA 존재 또는 확인 불가 | 문서 getMetadata().info.IsXFAPresent가 명시적 false가 아님(호출 실패 포함) | 렌더링을 켜지 않아도 채워지는 존재 정보로 판정. XFA 렌더링·내부 분석 없이 문서의 모든 쪽을 unavailable |
 | 미해석 paint 구조 | paintXObject/beginInlineImage/beginImageData/endInlineImage, 모르는 constructPath paint, 조사 예외 | unavailable |
 
-rasterObjects/vectorPaints는 조사한 쪽 명령에서 관측한 수다. unavailable일 때 0은 조사하지 못한 내부 paint가 없다는 뜻이 아니다. v2 method만 수락하므로 앞서 Type3를 놓쳤던 개발용 v1 증거는 완료 근거가 되지 않는다.
+rasterObjects/vectorPaints는 조사한 쪽 명령에서 관측한 수다. unavailable일 때 0은 조사하지 못한 내부 paint가 없다는 뜻이 아니다. v3 method만 수락하므로 Type3/XFA를 놓쳤던 개발용 v1/v2 증거는 완료 근거가 되지 않는다.
 
 봉인의 generationId/baselineRevision/PDF SHA-256은 생성 증거와 같아야 한다. evidenceSha256/coverageSha256은 각 파일의 실제 bytes SHA-256이다. 쪽 개수·순서·번호와 textLayer는 봉인된 PDF evidence와 같아야 한다. notCompared는 위 상태·개수에서 다시 계산한다. 한 파일만의 변경·누락은 실패다.
 

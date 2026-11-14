@@ -41,7 +41,7 @@
 
 ## 실제 Host·화면과 검사 범위
 
-- 일반 전체 검사(최종 Type3 보완 포함): **230건, 222 통과·8 조건부 생략·0 실패**.
+- 일반 전체 검사(최종 XFA 보완 포함): **238건, 230 통과·8 조건부 생략·0 실패**.
 - 소스 빌드 CLI 전체 실행: 223건 중 215 통과·5 corpus 조건부 생략·3 기대값 실패. 새 vector 정책으로 해당 쪽 사람 확인도 바뀌므로 ‘묶음 외 모든 확인 보존’이라는 세 검사 기대를 ‘바뀐 묶음·해당 쪽 무효, 독립 쪽 보존’으로 고쳤다. 같은 세 사건 재실행은 **3/3 통과**. 처리 코드를 이 실패 때문에 바꾸지는 않았다.
 - 초기 별도 공식 생성·공개 wrapper·쓰기 경계 검사 22건 통과. 전체 검사는 생성/reader/교정/undo/중단·재개/대표 승인·철회와 P1 회귀를 포함한다. 외부 corpus 조건 검사는 생략했으며 실제 AI는 부르지 않았다.
 
@@ -60,7 +60,7 @@
 
 ## 최종 리뷰 보완 — Type3와 쪽 명령 밖 paint
 
-최종 리뷰에서 Type3 glyph program의 constructPath(fill)이 쪽 최상위 목록 밖에 있어 기계 전용 완료가 가능한 P1을 확인했다. 가장 단순한 보수적 경로로, 사용한 글꼴이 Type3이거나 메타데이터를 확인할 수 없으면 operatorScan=unavailable로 남긴다. glyph program 내부는 분석하지 않는다. 공개 method는 optimized-paint-v2로 갱신하고 v1 개발 증거를 거부한다.
+최종 리뷰에서 Type3 glyph program의 constructPath(fill)이 쪽 최상위 목록 밖에 있어 기계 전용 완료가 가능한 P1을 확인했다. 가장 단순한 보수적 경로로, 사용한 글꼴이 Type3이거나 메타데이터를 확인할 수 없으면 operatorScan=unavailable로 남긴다. glyph program 내부는 분석하지 않는다. 최종 method는 뒤의 XFA 보완을 포함한 optimized-paint-v3이며 이전 개발 증거는 거부한다.
 
 | 점검한 같은 종류 | 현재 처리와 재현 |
 | --- | --- |
@@ -69,6 +69,17 @@
 | 패턴 | setFillColorN/setStrokeColorN 신호는 내부를 조사하지 않고 사람 쪽. 합성 tiling pattern 확인 |
 | 주석 appearance | display 목록에 없는 인쇄 전용까지 getAnnotations(intent=any)로 확인해 사람 쪽. 합성 인쇄 전용 appearance 확인 |
 | 투명도 그룹 / soft mask | group/SMask 신호가 있으면 사람 쪽. 합성 soft-mask 확인 |
-| pure XFA·미해석 paint·미해결 글꼴 | 조사 불가 경로. pure XFA 실제 표본 검사는 하지 않았으며, 글꼴 메타데이터 미확인/미해결은 결정적 검사 |
+| 미해석 paint·미해결 글꼴 메타데이터 | 예외는 조사 불가 경로. 미확인/미해결 API 메타데이터는 단위 검사이며 실제 PDF 표본으로 재현했다고 주장하지 않음 |
 
 Type3 재현은 후보 그룹 0개인 1쪽에서 machine-passed가 아닌 requires-human, gate.ready=false, finalize 거부, requireReviewed 거부를 확인한다. 본 자료 digest의 사람 confirmed를 새로 제출한 뒤에만 완료 발급과 reader가 통과한다. 글꼴이 일반 Type1인 대조군은 조사 완료를 유지한다. 이 검사는 리치오 없는 결정적 처리·reader 검사이며 실제 사람 품질 승인·AI·Host 재시험이 아니다. LSR의 쪽 대조 플래그는 수정 뒤에도 같아 기계 전용 2·12·13 / 사람 4~11은 바뀌지 않았다. 새 회귀 7건을 포함한 전체 재실행은 **230건 중 222 통과·8 조건부 생략·0 실패**다. 이번 보완에서 실제 CLI·Host·AI·130쪽 측정은 추가 실행하지 않았다.
+
+
+## XFA 재리뷰 보완
+
+이전 isPureXfa guard는 XFA 렌더링을 켜지 않은 상태에서 false여서 작동하지 않았다. getMetadata().info.IsXFAPresent를 사용해 XFA 존재를 확인하며, 명시적 false일 때만 XFA 없음으로 인정한다. 확인 실패도 문서의 모든 쪽을 operatorScan=unavailable로 보낸다. XFA 렌더링이나 프로그램 분석은 하지 않는다. method는 v3만 수락한다.
+
+[보존한 합성 XFA PDF](../test/xfa-paint.pdf)는 기본 페이지에 A, AcroForm의 XFA stream에 Different XFA content를 담는다. 렌더링을 끈 실제 PDF.js에서 isPureXfa=false지만 IsXFAPresent=true임을 직접 확인하는 회귀를 넣었다. stream/packet-array 두 표현 모두 실제 PDF에서 unavailable로 내려온다. 후보 0개인 XFA 쪽도 완료 발급과 requireReviewed가 거부되고, 본 쪽 digest의 새 사람 confirmed 뒤에만 통과한다. 미완료 생성물의 기존 읽기도 이 과정에서 유지됨을 확인한다.
+
+다른 visual 구조도 실제 PDF 회귀로 점검했다: Type3(setFont 및 graphics-state Font), Form, 투명도 그룹, fill/stroke 패턴, 인쇄 전용 appearance와 appearance 없는 주석, soft mask. 각 PDF는 텍스트 A가 남은 채 unavailable이 되는 것을 검사한다. 일반 Type1 대조군은 complete를 유지한다. 오류/미해결 메타데이터의 방어 분기는 별도 단위 검사이며 실제 PDF로 유발했다고 적지 않는다. 관련 15건 통과. 실제 Host·AI·130쪽 측정은 추가하지 않았다.
+
+소유자 결정에 따라 **이 PR 이전의 v1.3 완료 묶음은 읽지 않는다. 다시 검수 완료해야 한다.** 계약과 첫 사용 안내에 같은 경계를 명시했고 호환 쓰기·이관은 추가하지 않았다. v1.2 및 미완료 생성물의 읽기 경로를 바꾸지 않는다. 전체 재실행은 **238건 중 230 통과·8 조건부 생략·0 실패**다. 이번 변경분은 CLI·Host·AI·130쪽 측정을 추가 실행하지 않았다.

@@ -11,8 +11,8 @@ import { buildProvenance,publishHandoff,loadHandoff } from "../src/provenance.js
 import { createReview } from "../src/review.js";
 import { createCorrections } from "../src/corrections.js";
 
-for (const kind of ["type3","form","pattern","annotation","soft-mask"]) test(`${kind} paint outside the flat page program stays unassessed`,async()=> {
-  const pdf=kind === "type3" ? await readFile(new URL("./type3-paint.pdf",import.meta.url)) : pdfPaintSample(kind);
+for (const kind of ["type3","type3-gstate","form","transparency-group","pattern","stroke-pattern","annotation","annotation-no-appearance","soft-mask","xfa","xfa-packets"]) test(`${kind} paint outside the flat page program stays unassessed`,async()=> {
+  const pdf=["type3","xfa"].includes(kind) ? await readFile(new URL(`./${kind}-paint.pdf`,import.meta.url)) : pdfPaintSample(kind);
   const result=await extractPdf(pdf,{coverage:true}),page=result.pageCoverage.pages[0];
   assert.equal(result.evidence.pages[0].items[0].text,"A");
   assert.equal(page.operatorScan,"unavailable");
@@ -47,6 +47,7 @@ async function generation(root,pdf) {
   for (const [name,bytes] of [["document.md",native],["source/source.pdf",pdf],["source/document.json",raw],["source/conversion-record.json",JSON.stringify(record)],
     ["snapshot.json",JSON.stringify(snapshot)],["receipt.json",JSON.stringify(receipt)]]) await writeFile(join(root,name),bytes);
   await publishHandoff(root,buildProvenance(plan,items,snapshot,receipt,doc));
+  assert.equal((await loadHandoff(root)).reviewComplete,false,"unreviewed generation without a review receipt stays readable");
   await createReview(root,join(root,"review"));
   return createCorrections(root,async(command)=> {
     if (command === "inspect") return structuredClone(snapshot);
@@ -54,12 +55,13 @@ async function generation(root,pdf) {
     throw new Error("unexpected-test-command");
   });
 }
-test("a candidate-free Type3 page cannot finalize or satisfy the reader until a human confirms it",async()=> {
+for (const kind of ["type3","xfa"]) test(`a candidate-free ${kind} page cannot finalize or satisfy the reader until a human confirms it`,async()=> {
   const plain=await extractPdf(pdfPaintSample("plain"),{coverage:true});
   assert.equal(plain.pageCoverage.pages[0].operatorScan,"complete");
   assert.deepEqual(plain.pageCoverage.pages[0].notCompared,[]);
-  const pdf=await readFile(new URL("./type3-paint.pdf",import.meta.url));
-  assert.deepEqual(pdf,pdfPaintSample("type3"),"the retained reproducer has a single Type3 rectangular glyph program");
+  const pdf=await readFile(new URL(`./${kind}-paint.pdf`,import.meta.url));
+  assert.deepEqual(pdf,pdfPaintSample(kind),"the retained reproducer matches its source");
+  if (kind === "xfa") assert(pdf.includes(Buffer.from("Different XFA content")));
   const root=join(await mkdtemp(join(tmpdir(),"type3-review-")),"generation"),service=await generation(root,pdf);
   let progress=await service.progress();
   assert.equal(progress.scopes.length,1,"there are no problem groups, only a page scope");
@@ -73,4 +75,16 @@ test("a candidate-free Type3 page cannot finalize or satisfy the reader until a 
   progress=await service.progress();assert.equal(progress.gate.ready,true);
   await service.finalize({revision:progress.revision});
   assert.equal((await loadHandoff(root,{requireReviewed:true})).reviewComplete,true);
+});
+
+
+test("XFA presence is visible in metadata even while isPureXfa is false",async()=> {
+  const {getDocument,GlobalWorkerOptions}=await import("../vendor/pdfjs/build/pdf.mjs");
+  GlobalWorkerOptions.workerSrc=new URL("../vendor/pdfjs/build/pdf.worker.mjs",import.meta.url).href;
+  const task=getDocument({data:new Uint8Array(pdfPaintSample("xfa")),enableXfa:false,isEvalSupported:false,verbosity:0});
+  try {
+    const pdf=await task.promise;
+    assert.equal(pdf.isPureXfa,false,"the rendering-dependent property cannot detect this XFA");
+    assert.equal((await pdf.getMetadata()).info.IsXFAPresent,true,"the presence flag still detects the AcroForm XFA stream");
+  } finally {await task.destroy();}
 });

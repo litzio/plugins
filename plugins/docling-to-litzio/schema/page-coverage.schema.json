@@ -87,7 +87,7 @@
       "const": "whole-page"
     },
     "method": {
-      "const": "pdfjs-6.5.438-text-and-optimized-paint-v2"
+      "const": "pdfjs-6.5.438-text-and-optimized-paint-v3"
     }
   },
   "required": [
