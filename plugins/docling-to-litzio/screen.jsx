@@ -696,11 +696,10 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
               {readState?.state !== "ready" && (
                 <ui.Notice>{readState?.state ?? "loading"}</ui.Notice>
               )}
-              {(review?.humanDecisions ?? [])
+              {(review?.currentHumanDecisions ?? [])
                 .filter(
                   (d) =>
-                    d.groupId === comparison.material.group.id &&
-                    d.revision === comparison.revision,
+                    d.groupId === comparison.material.group.id,
                 )
                 .slice(-1)
                 .map((d, i) => (
@@ -745,13 +744,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                     l.sourceId === comparison.targets[targetIndex]?.sourceId,
                 )
                 .map((loss) => {
-                  const record = (review?.lossConfirmations ?? [])
-                    .filter(
-                      (d) =>
-                        d.lossId === loss.lossId &&
-                        d.revision === comparison.revision,
-                    )
-                    .at(-1);
+                  const record = review?.expressionReviews?.find((item) => item.lossId === loss.lossId)?.confirmation;
                   return (
                     <div key={loss.lossId} data-loss-id={loss.lossId}>
                       <p>

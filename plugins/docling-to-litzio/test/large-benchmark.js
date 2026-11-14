@@ -37,6 +37,7 @@ const { createReview, readReview } = await mod("review");
 const { loadHandoff } = await mod("provenance");
 const { createCorrections } = await mod("corrections");
 const { lossCatalog, completionGate } = await mod("human-review");
+const { reviewBindings } = await mod("review-bindings");
 const read = async (p) => JSON.parse(await fs.readFile(p));
 const save = (p, v) => fs.writeFile(p, JSON.stringify(v, null, 2) + "\n");
 const sizes = sizesArg.split(",");
@@ -180,6 +181,12 @@ for (const size of sizes) {
         comparison: "source-and-current-side-by-side",
       });
     }
+    if (process.env.PERF_REVIEW_VERSION === "1.3.0") {
+      s.reviewVersion = "1.3.0";
+      const bindings = reviewBindings(report,h,evidence);
+      for (const scope of s.scopes) scope.checkpoint.contentDigest = bindings.get(scope.id);
+      for (const record of [...s.humanDecisions,...s.lossConfirmations]) record.contentDigest = bindings.get(record.groupId);
+    }
     const gate = completionGate(
       s,
       report,
@@ -270,7 +277,7 @@ for (const size of sizes) {
                 ? service
                     .finalize({ revision: h.snapshot.revision })
                     .catch((e) => {
-                      if (size === "mixed" && e.message === "review-incomplete")
+                      if (size === "mixed" && e.code === "review-incomplete")
                         return { reviewComplete: false, blocked: true };
                       throw e;
                     })

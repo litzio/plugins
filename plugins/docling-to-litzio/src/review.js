@@ -272,8 +272,11 @@ export async function readReview(
   output,
   { read = createReadSet() } = {},
 ) {
-  const loaded = await loadHandoff(input, { read }),
-    handoff = loaded.baseline ?? loaded,
+  const loaded = await loadHandoff(input, { read });
+  return readReviewFiles(input, output, loaded, read);
+}
+export async function readReviewFiles(input, output, loaded, read) {
+  const handoff = loaded.baseline ?? loaded,
     raw = await read(output, "review-complete.json"),
     m = JSON.parse(raw);
   validateSchema(m, schemas["review-complete"]);

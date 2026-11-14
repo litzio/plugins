@@ -203,7 +203,7 @@ test(
     const r = await service.submit(input);
     assert.equal(r.status, "applied");
     const h = await loadHandoff(out);
-    assert.equal(h.marker.schemaVersion, "1.1.0");
+    assert.equal(h.marker.schemaVersion, "1.3.0");
     assert.equal(h.history.changes.length, 1);
     await assert.rejects(
       createReview(out, join(out, "another-review")),

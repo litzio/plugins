@@ -1,3 +1,4 @@
+import { diagnostic } from "./src/diagnostics.js";
 import { createJobs, safeError } from "./src/plugin-jobs.js";
 export function activate(context) {
   const jobs = createJobs(context.settings, { cli: context.cli });
@@ -5,7 +6,9 @@ export function activate(context) {
     try {
       return await fn(input);
     } catch (error) {
-      throw new Error(safeError(error));
+      const code = safeError(error);
+      const field = code === "schema-invalid" ? /^schema-invalid (\$(?:\.[A-Za-z][A-Za-z0-9]*|\[\d+\])*)/.exec(error.message)?.[1] : null;
+      throw Object.assign(new Error(diagnostic(code) + (field ? ` Field: ${field}.` : "")), { code });
     }
   };
   return {

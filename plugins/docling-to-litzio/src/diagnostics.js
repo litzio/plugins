@@ -1,0 +1,24 @@
+// Static remediation only: never echo input, paths, document text or raw errors.
+const guidance = {
+  "legacy-review-read-only": "이 검수 기록은 이전 형식입니다. 기존 완료 묶음은 읽기만 가능합니다. 고정 변환 결과에서 preflight/start로 문서를 새로 생성해 검수를 다시 시작하세요. jobs에서 새 jobId를 얻으세요.",
+  "group-not-found": "groupId must be a group ID, not a page number or page:N. Get valid IDs from groups({jobId}); use the returned groups[].id.",
+  "invalid-job-id": "jobId must be a job UUID. Get jobs[].jobId from jobs({}) or the ID returned by start.",
+  "job-not-ready": "The job is not ready. Read job({jobId}) and wait for ready before review operations.",
+  "change-not-found": "undoOf/changeId must identify a recorded correction. Read review-progress({jobId}).changes and use its changeId.",
+  "invalid-checkpoint": "scopeId must be an ID from review-progress({jobId}).scopes[].id; state must be one of 미검사, 검사중, 차이없음, 교정후재검사, 판단불가, 실패.",
+  "inspection-note-required": "note must describe the targets, evidence and checks actually inspected. Obtain scopeId and current revision from review-progress.",
+  "pending-reconcile": "A write is unresolved. Run correction-reconcile({jobId}) then review-progress. Do not resend a correction based only on its visible value.",
+  "review-stopped": "Review is stopped. Read review-progress and use review-resume({jobId}) only when continuing the requested review.",
+  "review-incomplete": "Completion conditions are unmet. Read review-progress({jobId}).gate, scopes and humanQueue; resolve the reported blockers before review-finalize.",
+  "human-evidence-required": "Human source-region evidence requires actor=human. Assistants must use PDF token evidence from material or submit decision=uncertain.",
+};
+export function diagnostic(code) {
+  if (guidance[code]) return `${code}: ${guidance[code]}`;
+  if (/^stale-|conflict$/.test(code))
+    return `${code}: The displayed document or value changed. Read review-progress and material again; use the returned documentRevision and current target value before resubmitting.`;
+  if (/^(schema-invalid|invalid-submission|invalid-cell-content)$/.test(code))
+    return `${code}: Input does not match the operation schema. Use the installed operation inputSchema; get generationId, documentRevision, group.id, target path/selector and current value from material({jobId,groupId}). For uncertain omit target/before/after/evidence.`;
+  if (/^(evidence|scope|target|before|protected|visual|empty|rich|loss)-/.test(code))
+    return `${code}: Correction or comparison evidence is invalid. Read material again; use its current target path/selector/value, check.pdfTokenIds and actual pdf token bounding boxes. If evidence cannot establish the value, submit uncertain; human expression decisions require compare.`;
+  return `${code}: Check the installed operation inputSchema and current job({jobId}) or review-progress({jobId}). Obtain job IDs from jobs, group IDs from groups, and correction inputs from material; do not guess identifiers or retry unresolved writes.`;
+}

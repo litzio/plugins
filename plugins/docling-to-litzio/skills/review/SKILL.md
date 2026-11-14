@@ -27,4 +27,7 @@ material.json은 `{"jobId":"...","groupId":"..."}`이다. 같은 형식으로 `g
 
 4. 제출 후 `material`과 `review-progress`를 다시 읽어 후 값/revision/history.validation을 확인한다. applied는 단일 편집·token 재대조일 뿐 의미 정확성 보증이 아니다. uncertain/pending을 성공이라고 쓰지 않는다. 응답 유실 시 같은 쓰기를 다시 보내지 말고 progress/reconcile로 관측한다.
 5. 검사한 묶음만 `review-checkpoint`로 기록한다: `{"jobId":"...","scopeId":"group-id","revision":"현재 revision","state":"차이없음","note":"실제 읽은 대상/쪽/검사 종류와 결과"}`. 교정 뒤 확인했으면 state=`교정후재검사`, 판단 불가는 `판단불가`, 실패는 `실패`다. 앞 묶음을 고친 뒤 이전 checkpoint가 미검사로 돌아가면 방문 사실을 완료로 복구하지 않는다. 후보 0건·방문한 쪽을 전수 일치라고 하지 않는다. 정상 값은 고치지 않고 차이없음만 기록한다.
-6. 다음 묶음으로 간다. 중단 요청/예산 부족이면 `review-stop`(jobId)을 쓰고 남은 범위를 보고한다. 마지막에는 처리/교정/판단 불가/미검사 범위와 막힌 지점을 짧게 보고한다. 최종 검수 완료/reviewed를 발급하지 않는다.
+6. 다음 묶음으로 간다. 평범한 턴 종료나 예산 부족으로 이번 응답을 끝낼 때는 아무 작업도 부르지 않는다. 끝낸 검사는 이미 기록돼 있다. `review-stop`은 사용자가 그만하라고 했거나 진행 중인 쓰기를 정리해야 할 때만 쓴다. stop/resume은 완료 발급을 지우지만 v1.3에서 내용과 근거가 같은 끝낸 검사·사람 확인은 유지한다. 검사 중이던 범위는 다시 검사한다. 남은 범위를 보고한다. 마지막에는 처리/교정/판단 불가/미검사 범위와 막힌 지점을 짧게 보고한다. 최종 검수 완료/reviewed를 발급하지 않는다.
+
+
+입력 오류는 코드 뒤의 다음 행동 안내를 따른다. 묶음 ID는 `groups.groups[].id`, checkpoint 범위는 `review-progress.scopes[].id`에서 얻는다. `page:N`은 묶음 ID가 아니므로 material/group/교정의 groupId에 넣지 않는다. 스키마 거부는 설치된 operation inputSchema와 대조한다. 근거 좌표는 material의 실제 PDF token bbox로 다시 계산한다. 오류 뒤 현재 값을 추측해 재전송하지 않는다.

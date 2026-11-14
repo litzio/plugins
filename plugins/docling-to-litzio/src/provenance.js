@@ -1,10 +1,11 @@
+import { reviewBindings } from "./review-bindings.js";
 import { snapshotLookup } from "./lookup.js";
 import {
   completionGate,
   lossCatalog,
   expressionReviews,
 } from "./human-review.js";
-import { validateReview } from "./review.js";
+import { validateReview, readReviewFiles } from "./review.js";
 import {
   validateHistory,
   validateCorrectionLedger,
@@ -515,9 +516,9 @@ export async function loadHandoff(
     "marker-changed",
   );
   let reviewed = false;
-  if (marker.schemaVersion === "1.2.0" && marker.reviewState === "reviewed") {
+  if (["1.2.0", "1.3.0"].includes(marker.schemaVersion) && marker.reviewState === "reviewed") {
     const completion = JSON.parse(files.get("human-review.json"));
-    validateSchema(completion, schemas["human-review"]);
+    validateSchema(completion, schemas[marker.schemaVersion === "1.3.0" ? "human-review-v13" : "human-review"]);
     need(
       marker.files.some((f) => f.relativePath === "human-review.json"),
       "completion-file-required",
@@ -546,7 +547,8 @@ export async function loadHandoff(
       "completion-evidence-binding",
     );
     need(
-      completion.schemaVersion === "1.2.0" &&
+      completion.schemaVersion === marker.schemaVersion &&
+        (marker.schemaVersion !== "1.3.0" || ledger?.reviewVersion === "1.3.0") &&
         completion.generationId === marker.generationId &&
         completion.documentRevision === marker.documentRevision,
       "completion-binding",
@@ -564,6 +566,7 @@ export async function loadHandoff(
           ledger,
           lossCatalog(result.losses.items, result),
           marker.documentRevision,
+          marker.schemaVersion === "1.3.0" ? reviewBindings(report, result, evidence) : undefined,
         ),
         completion.expressionReviews,
       ) &&
@@ -598,12 +601,13 @@ async function validateFileSet(
   marker,
   files = new Map(),
   read = createReadSet(),
+  observeDocument = false,
 ) {
   validateSchema(marker, schemas.complete);
   for (const f of marker.files) {
     need(!files.has(f.relativePath), "duplicate-file");
     const bytes = await read(root, f.relativePath);
-    need(hash(bytes) === f.sha256, "file-digest");
+    need((observeDocument && f.relativePath === "document.md") || hash(bytes) === f.sha256, "file-digest");
     files.set(f.relativePath, bytes);
   }
   const json = (name) => {
@@ -611,14 +615,14 @@ async function validateFileSet(
     return JSON.parse(files.get(name));
   };
   need(
-    marker.schemaVersion === "1.2.0"
+    ["1.2.0", "1.3.0"].includes(marker.schemaVersion)
       ? ["reviewed", "unreviewed"].includes(marker.reviewState)
       : marker.reviewState === "unreviewed",
     "review-state",
   );
   const history =
     marker.schemaVersion === "1.1.0" ||
-    (marker.schemaVersion === "1.2.0" && files.has("correction-history.json"))
+    (["1.2.0", "1.3.0"].includes(marker.schemaVersion) && files.has("correction-history.json"))
       ? json("correction-history.json")
       : null;
   const p = json("provenance.json"),
@@ -640,7 +644,7 @@ async function validateFileSet(
   const mustFile = (path, digest) => {
     need(files.has(path) && hash(files.get(path)) === digest, "bound-file");
   };
-  mustFile(
+  if (!observeDocument) mustFile(
     p.document.relativePath,
     history ? marker.documentRevision : p.document.revision,
   );
@@ -700,7 +704,7 @@ async function validateFileSet(
   if (!history) return baseline;
   validateSchema(history, schemas["correction-history"]);
   need(
-    history.schemaVersion !== "1.2.0" || marker.schemaVersion === "1.2.0",
+    history.schemaVersion !== "1.2.0" || ["1.2.0", "1.3.0"].includes(marker.schemaVersion),
     "history-version",
   );
   const validatedReview = validateReviewBytes(files, baseline);
@@ -753,6 +757,22 @@ async function validateFileSet(
     baseline,
     validatedReview,
   };
+}
+
+// Observation ONLY, never an accepted handoff. Validate every sidecar and the
+// recorded correction projection, then compare the inspected external bytes.
+// An unexplained document edit still blocks loadHandoff and completion.
+export async function observeChangedReview(root, state, snapshot, read) {
+  need(state.reviewVersion === "1.3.0" && !state.pending, "pending-reconcile");
+  const markerBytes = await read(root, "complete.json");
+  const marker = JSON.parse(markerBytes), files = new Map();
+  const previous = await validateFileSet(root, marker, files, read, true);
+  if (previous.history) validateCorrectionLedger(previous.history, state);
+  const verified = await readReviewFiles(root, join(root, "review"), previous, read);
+  need(snapshot.revision === hash(files.get("document.md")), "inspection-revision");
+  need(equal(await readRelative(root, "complete.json"), markerBytes), "marker-changed");
+  need(equal(await readRelative(root, "correction-ledger.json"), await read(root, "correction-ledger.json")), "ledger-changed");
+  return { ...verified, handoff: { ...previous, snapshot } };
 }
 // A receipt for exact bytes inside ONE load/readReview invocation, never across operations.
 function validateReviewBytes(files, baseline, previous) {
@@ -816,7 +836,7 @@ export async function publishHandoff(root, p) {
     })),
   );
   const marker = {
-    schemaVersion: "1.0.0",
+    schemaVersion: "1.3.0",
     generationId: p.generationId,
     status: "generated",
     reviewState: "unreviewed",

@@ -294,9 +294,6 @@ for (const [name, event] of Object.entries(events))
     assert.equal(state.completion, null);
     if (
       [
-        "stop",
-        "resume",
-        "stopResume",
         "correction",
         "undo",
         "documentRevision",
@@ -441,7 +438,7 @@ test("failed official check refuses a fresh completion receipt", async () => {
   );
   await assert.rejects(loadHandoff(x.root, { requireReviewed: true }));
 });
-test("stop/resume needs fresh review evidence and explicit reissuance", async () => {
+test("stop/resume preserves review evidence but needs explicit reissuance", async () => {
   const x = await copy(),
     old = (await x.service.progress()).completion;
   await x.service.stop();
@@ -469,4 +466,36 @@ test("stop/resume and fresh checkpoints cannot silently clear an ordinary explic
     /review-incomplete/,
   );
   await assert.rejects(loadHandoff(x.root, { requireReviewed: true }));
+});
+
+test("correction -> completion -> undo -> correction -> stop -> resume -> explicit completion", async () => {
+  const x = await copy(), before = await x.service.progress();
+  const independent = before.scopes.find((scope)=>scope.id === "page:1");
+  await events.undo(x);
+  let state = await x.service.progress();
+  assert.deepEqual(state.scopes.find((scope)=>scope.id === independent.id),independent);
+  assert.equal(state.reviewComplete,false);
+  assert(state.lossConfirmations.every((record)=>record.invalidatedAt));
+  const material = await x.service.material(x.groupId);
+  const reply = await x.service.submit({
+    changeId:randomUUID(),generationId:state.generationId,revision:state.revision,
+    groupId:x.groupId,actor:"human",decision:"correct",
+    target:{kind:"cell",path:[1],row:0,column:0},before:"999",after:"0.12 s",
+    reason:"Deterministic re-correction after undo",
+    evidence:{kind:"human-source-region",refs:[],scope:material.findings[0].regions.map((r)=>({pageNo:r.pageNo,bbox:r.bbox}))},
+  });
+  assert.equal(reply.status,"applied");
+  state = await x.service.progress();
+  assert.equal(state.revision,before.revision);
+  assert.deepEqual(state.scopes.find((scope)=>scope.id === independent.id),independent);
+  assert(state.lossConfirmations.every((record)=>record.invalidatedAt));
+  await approve(x.service);
+  const inspected = await x.service.progress();
+  await x.service.stop(); await x.service.resume();
+  state = await x.service.progress();
+  assert.deepEqual(state.scopes,inspected.scopes);
+  assert.equal(state.reviewComplete,false);
+  assert.equal(state.gate.ready,true);
+  await x.service.finalize({revision:state.revision});
+  assert.equal((await loadHandoff(x.root,{requireReviewed:true})).reviewComplete,true);
 });

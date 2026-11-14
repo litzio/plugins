@@ -390,7 +390,7 @@ test("human region evidence alone permits empty cell inline math, records proven
   );
   assert.equal((await service.submit(input)).status, "applied");
   let h = await loadHandoff(root);
-  assert.equal(h.marker.schemaVersion, "1.2.0");
+  assert.equal(h.marker.schemaVersion, "1.3.0");
   assert.equal(
     h.history.changes[0].validation.evidenceRecheck,
     "human-source-region",

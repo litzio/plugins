@@ -1,9 +1,10 @@
+import { diagnostic } from "./diagnostics.js";
 import { inlineText } from "./rich-content.js";
 import { protectedTokens } from "./tokens.js";
 import { isDeepStrictEqual as equal } from "node:util";
 import { createHash } from "node:crypto";
 export const need = (v, code) => {
-  if (!v) throw new Error(code);
+  if (!v) throw Object.assign(new Error(diagnostic(code)), { code });
 };
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
 export function targetNode(snapshot, target) {
