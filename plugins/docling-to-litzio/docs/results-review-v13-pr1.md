@@ -4,7 +4,7 @@
 
 ## 독립 리뷰 차단 사항 수정
 
-초기 구현은 material.neighbors를 검사 근거로 내주면서 digest에는 넣지 않았다. 인접 표를 교정해도 그 표를 읽은 이전 묶음의 확인이 유지될 수 있는 거짓 완료 결함이었다. material과 결합을 같은 투영 함수로 만들고 모든 제공 필드를 [계약의 필드 대조표](../../../contracts/docling-to-litzio/review-v13.md)에 분류했다. 새 필드가 결합 목록에 없거나 기존 필드가 빠지면 기계 검사가 실패한다. global documentRevision은 결정 1에 따라 내용 hash에서 제외하되 제출·inspect·원장·이력에서 검증한다. 나머지 12개 자료 필드는 전부 결합한다. 표 머리·셀·캡션·미주 참조·inline 내용도 해당 node/raw/mapping의 전체 속성으로 포함된다.
+초기 구현은 material.neighbors를 검사 근거로 내주면서 digest에는 넣지 않았다. 인접 표를 교정해도 그 표를 읽은 이전 묶음의 확인이 유지될 수 있는 거짓 완료 결함이었다. material과 결합을 같은 투영 함수로 만들고 모든 제공 필드를 [계약의 필드 대조표](../../../contracts/docling-to-litzio/review-v13.md)에 분류했다. 새 필드가 결합 목록에 없거나 기존 필드가 빠지면 기계 검사가 실패한다. global documentRevision은 결정 1에 따라 내용 hash에서 제외하되 제출·inspect·원장·이력에서 검증한다. metadata(contentDigest/documentRevision)를 제외한 12개 자료 필드는 전부 결합한다. 표 머리·셀·캡션·미주 참조·inline 내용도 해당 node/raw/mapping의 전체 속성으로 포함된다.
 
 material.history는 소유자 결정에 따라 이 자료의 대상·이웃·원본 조각과 연결된 교정만 제공하고 그 전체를 결합한다. 문서 전체의 적용된 교정은 별도의 참고 목록이다. 이웃 자체의 범위는 줄이지 않았다.
 
@@ -24,6 +24,16 @@ uncertain 제출은 실제 검사 note와 함께 contentDigest를 기록한다. 
 | stop/resume | 진행 중 checkpoint만 null, 끝낸 검사·확인 유지. 완료 receipt는 무효 |
 
 아래 166건 검사·첫 측정 표는 초기 제출의 기록이다. 차단 사항을 수정한 뒤의 검사·계수는 별도 갱신한다.
+
+## 제출자가 본 자료의 digest 검사
+
+재검토에서 발견한 “조회 뒤 다른 교정·되돌리기로 문서 bytes/revision만 돌아온 상태”도 막았다. material/compare 응답의 contentDigest를 checkpoint·uncertain·사람 결정·표현 확인의 필수 입력으로 받고, 잠금 안에서 현재 자료 digest와 revision을 모두 대조한다. 기록에는 비교를 통과한 입력 값을 그대로 남긴다. 누락은 거부하며 현재 digest를 자동으로 찍어 확인을 승격하지 않는다. 화면과 스킬도 조회에서 받은 값을 그대로 제출한다.
+
+correct/undo도 같은 조건을 적용했다. 지원하는 값 교정은 PDF 값 근거와 before/if-revision을 검증하지만, 이웃 표 머리·주석 맥락이 바뀌면 같은 값의 해석도 달라질 수 있다. 예외 경로를 늘리지 않고 똑같이 다시 조회하도록 했다. 교정 이력 v1.3은 그 선행 조건의 digest를 기록하며 원장과 대조한다. 기존 v1.2 reader는 기존 형식을 유지한다.
+
+조회→이웃 교정, 교정 A→조회 R→다른 교정 B→undo B→동일 bytes/revision R·국소 history 1→3건의 두 사건을 제출 5종(checkpoint/human/loss/uncertain/correct)마다 검사한다. 옛 revision뿐 아니라 revision만 최신으로 고친 입력도 옛 digest이면 거부하고 원장 bytes가 바뀌지 않는 것을 확인한다. digest 누락 5종도 거부한다. 새 조회의 digest로 제출한 양성 경로에서는 그 입력 값이 기록되는 것을 확인한다. 경계 경쟁 검사는 자료 조회를 먼저 마친 뒤 변형을 주입해, 제출 중 fresh document digest 재확인을 계속 시험한다.
+
+기존 결정적 검사들은 새 필수 입력을 얻는 클라이언트 조회를 명시적으로 수행하도록 갱신했다. 생산 코드에는 digest 자동 채움이 없고, 별도 stale 회귀는 조회 시 받은 digest를 고정해 사용한다. PDF 쪽은 호출 내 pageNo 색인으로 고르며 묶음마다 전체 쪽을 순회하지 않는다.
 
 ## 바뀐 동작과 계약
 

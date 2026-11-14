@@ -1,3 +1,4 @@
+import { observed } from "./observed-submission.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, cp, readFile, writeFile } from "node:fs/promises";
@@ -33,7 +34,7 @@ async function baseline() {
       ),
       groupId = report.groups.find((g) => g.findingIds.includes(f.id)).id;
     const state = await service.progress();
-    await service.submit({
+    await observed(service, "submit", {
       changeId: "visual",
       generationId: state.generationId,
       revision: state.revision,
@@ -62,7 +63,7 @@ async function baseline() {
 async function approve(service) {
   let state = await service.progress();
   for (const scope of state.scopes)
-    await service.checkpoint({
+    await observed(service, "checkpoint", {
       scopeId: scope.id,
       revision: state.revision,
       state: "차이없음",
@@ -70,7 +71,7 @@ async function approve(service) {
     });
   state = await service.progress();
   for (const group of state.humanQueue)
-    await service.humanDecision({
+    await observed(service, "humanDecision", {
       groupId: group.id,
       revision: state.revision,
       decision: "confirmed",
@@ -84,7 +85,7 @@ async function approve(service) {
       state.humanQueue.find((g) => g.findingIds)?.id ??
         state.scopes.find((s) => !s.id.startsWith("page:")).id,
     );
-    await service.lossDecision({
+    await observed(service, "lossDecision", {
       lossId: loss.lossId,
       groupId: m.group.id,
       revision: state.revision,
@@ -129,7 +130,7 @@ const events = {
   correction: async (x) => {
     const s = await x.service.progress(),
       m = await x.service.material(x.groupId);
-    await x.service.submit({
+    await observed(x.service, "submit", {
       changeId: randomUUID(),
       generationId: s.generationId,
       revision: s.revision,
@@ -153,7 +154,7 @@ const events = {
   undo: async (x) => {
     assert.equal(
       (
-        await x.service.undo({
+        await observed(x.service, "undo", {
           undoOf: "visual",
           changeId: randomUUID(),
           actor: "human",
@@ -164,14 +165,14 @@ const events = {
     );
   },
   humanConfirmed: async (x) =>
-    x.service.humanDecision({
+    observed(x.service, "humanDecision", {
       groupId: x.groupId,
       revision: x.h.snapshot.revision,
       decision: "confirmed",
       note: "New confirmation requires a new completion receipt",
     }),
   humanDeferredRequired: async (x) =>
-    x.service.humanDecision({
+    observed(x.service, "humanDecision", {
       groupId: x.groupId,
       revision: x.h.snapshot.revision,
       decision: "deferred",
@@ -182,7 +183,7 @@ const events = {
       id = x.report.groups.find(
         (g) => !s.humanQueue.some((h) => h.id === g.id),
       ).id;
-    await x.service.humanDecision({
+    await observed(x.service, "humanDecision", {
       groupId: id,
       revision: s.revision,
       decision: "deferred",
@@ -193,7 +194,7 @@ const events = {
     const s = await x.service.progress(),
       loss = s.losses[0],
       m = await x.service.material(x.groupId);
-    await x.service.lossDecision({
+    await observed(x.service, "lossDecision", {
       lossId: loss.lossId,
       groupId: x.groupId,
       revision: s.revision,
@@ -207,7 +208,7 @@ const events = {
     const s = await x.service.progress(),
       loss = s.losses[0],
       m = await x.service.material(x.groupId);
-    await x.service.lossDecision({
+    await observed(x.service, "lossDecision", {
       lossId: loss.lossId,
       groupId: x.groupId,
       revision: s.revision,
@@ -221,7 +222,7 @@ const events = {
     const state = await x.service.progress(),
       loss = state.losses[0],
       m = await x.service.material(x.groupId);
-    await x.service.lossDecision({
+    await observed(x.service, "lossDecision", {
       lossId: loss.lossId,
       groupId: x.groupId,
       revision: state.revision,
@@ -238,28 +239,28 @@ const events = {
     await x.service.resume();
   },
   groupReopen: async (x) =>
-    x.service.checkpoint({
+    observed(x.service, "checkpoint", {
       scopeId: x.groupId,
       revision: x.h.snapshot.revision,
       state: "미검사",
       note: "Reopen group",
     }),
   pageReopen: async (x) =>
-    x.service.checkpoint({
+    observed(x.service, "checkpoint", {
       scopeId: "page:1",
       revision: x.h.snapshot.revision,
       state: "검사중",
       note: "Reopen page",
     }),
   checkpointUpdate: async (x) =>
-    x.service.checkpoint({
+    observed(x.service, "checkpoint", {
       scopeId: x.groupId,
       revision: x.h.snapshot.revision,
       state: "차이없음",
       note: "New checkpoint",
     }),
   uncertain: async (x) =>
-    x.service.submit({
+    observed(x.service, "submit", {
       changeId: randomUUID(),
       generationId: x.h.provenance.generationId,
       revision: x.h.snapshot.revision,
@@ -477,7 +478,7 @@ test("correction -> completion -> undo -> correction -> stop -> resume -> explic
   assert.equal(state.reviewComplete,false);
   assert(state.lossConfirmations.every((record)=>record.invalidatedAt));
   const material = await x.service.material(x.groupId);
-  const reply = await x.service.submit({
+  const reply = await observed(x.service, "submit", {
     changeId:randomUUID(),generationId:state.generationId,revision:state.revision,
     groupId:x.groupId,actor:"human",decision:"correct",
     target:{kind:"cell",path:[1],row:0,column:0},before:"999",after:"0.12 s",

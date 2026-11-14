@@ -2,6 +2,7 @@
 // Exhaustive public material inventory. A new output field must be classified
 // here or materialContentDigest rejects it rather than silently excluding it.
 export const MATERIAL_FIELDS = Object.freeze({
+  contentDigest: "binding-receipt-metadata",
   generationId: "scalar",
   documentRevision: "current-revision-metadata",
   baselineRevision: "scalar",
@@ -28,6 +29,7 @@ export function createMaterialReader(report,handoff,evidence,snapshot=handoff.sn
   const groups=new Map(report.groups.map((group)=>[group.id,group]));
   const findings=new Map(report.findings.map((finding,index)=>[finding.id,{finding,index}]));
   const checks=new Map(), blocks=new Map(), changes=new Map();
+  const pages=new Map(evidence.pages.map((page,index)=>[page.pageNo,{value:page,index}]));
   for (const [index,check] of report.checks.entries()) {
     if (!checks.has(check.sourceId)) checks.set(check.sourceId,[]);
     checks.get(check.sourceId).push({value:check,index});
@@ -55,6 +57,7 @@ export function createMaterialReader(report,handoff,evidence,snapshot=handoff.sn
     for (const index of [...indices,...neighborIndices])
       for (const target of [...sources[index].targets,...sources[index].cells.flatMap((cell)=>cell.targets)]) historyPaths.add(target.path[0]);
     return {
+      contentDigest:null,
       generationId:handoff.provenance.generationId,
       documentRevision:snapshot.revision,
       baselineRevision:report.baselineRevision,
@@ -65,7 +68,7 @@ export function createMaterialReader(report,handoff,evidence,snapshot=handoff.sn
       checks:ordered([...ids].flatMap((id)=>checks.get(id) ?? [])),
       current:ordered([...paths].flatMap((path)=>blocks.get(path) ?? [])),
       neighbors:ordered([...neighborPaths].flatMap((path)=>blocks.get(path) ?? [])),
-      pdf:evidence.pages.filter((page)=>group.pageNos.includes(page.pageNo)),
+      pdf:ordered(group.pageNos.map((pageNo)=>pages.get(pageNo))),
       history:ordered([...historyPaths].flatMap((path)=>changes.get(path) ?? [])),
     };
   };

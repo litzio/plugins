@@ -1,3 +1,4 @@
+import { observed } from "./observed-submission.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp } from "node:fs/promises";
@@ -29,7 +30,7 @@ for (const field of Object.keys(MATERIAL_FIELDS)) test(`material field mutation:
   if (MATERIAL_FIELDS[field] === "array") changed[field].push({bindingProbe:"changed"});
   else if (MATERIAL_FIELDS[field] === "object") changed[field].bindingProbe="changed";
   else changed[field]="changed";
-  if (field === "documentRevision") assert.equal(materialContentDigest(changed),materialContentDigest(material));
+  if (MATERIAL_FIELDS[field].endsWith("-metadata")) assert.equal(materialContentDigest(changed),materialContentDigest(material));
   else {
     const before=materialContentDigest(material), after=materialContentDigest(changed);
     assert.notEqual(after,before);
@@ -53,22 +54,22 @@ async function setup(options) {
 }
 async function approveAll(service,report) {
   let state=await service.progress();
-  for (const scope of state.scopes) await service.checkpoint({scopeId:scope.id,revision:state.revision,state:"차이없음",note:"Deterministic inspection"});
+  for (const scope of state.scopes) await observed(service, "checkpoint", {scopeId:scope.id,revision:state.revision,state:"차이없음",note:"Deterministic inspection"});
   state=await service.progress();
-  for (const group of state.humanQueue) await service.humanDecision({groupId:group.id,revision:state.revision,decision:"confirmed",note:"Deterministic decision"});
+  for (const group of state.humanQueue) await observed(service, "humanDecision", {groupId:group.id,revision:state.revision,decision:"confirmed",note:"Deterministic decision"});
   for (const loss of state.losses) {
     const group=report.groups.find((g)=>g.findingIds.some((id)=>report.findings.find((f)=>f.id===id).sourceIds.includes(loss.sourceId)));
-    await service.lossDecision({lossId:loss.lossId,groupId:group.id,revision:state.revision,targetPath:loss.targets[0].path,pageNo:group.pageNos[0],decision:"meaning-preserved",note:"Deterministic expression decision"});
+    await observed(service, "lossDecision", {lossId:loss.lossId,groupId:group.id,revision:state.revision,targetPath:loss.targets[0].path,pageNo:group.pageNos[0],decision:"meaning-preserved",note:"Deterministic expression decision"});
   }
 }
 test("uncertain -> human confirmed uses its bound checkpoint and permits completion",async()=> {
   const x=await setup({text:"0.12 s",header:true});
   await approveAll(x.service,x.report);
   const state=await x.service.progress(), groupId=x.report.groups[0].id;
-  await x.service.submit({changeId:"uncertain",generationId:state.generationId,revision:state.revision,groupId,actor:"assistant",decision:"uncertain",reason:"Actual scope inspected, human judgment needed"});
+  await observed(x.service, "submit", {changeId:"uncertain",generationId:state.generationId,revision:state.revision,groupId,actor:"assistant",decision:"uncertain",reason:"Actual scope inspected, human judgment needed"});
   const uncertain=await x.service.progress();
   assert.match(uncertain.scopes.find((scope)=>scope.id===groupId).checkpoint.contentDigest,/^[a-f0-9]{64}$/);
-  await x.service.humanDecision({groupId,revision:state.revision,decision:"confirmed",note:"Human resolved the recorded uncertainty"});
+  await observed(x.service, "humanDecision", {groupId,revision:state.revision,decision:"confirmed",note:"Human resolved the recorded uncertainty"});
   assert.equal((await x.service.progress()).gate.ready,true);
   await x.service.finalize({revision:state.revision});
   assert.equal((await loadHandoff(x.root,{requireReviewed:true})).reviewComplete,true);
@@ -77,11 +78,11 @@ test("every explicit checkpoint state and both human decisions record the same c
   const x=await setup({text:"0.12 s",header:true}), state=await x.service.progress(), groupId=x.report.groups[0].id;
   const expected=reviewBindings(x.report,x.handoff,x.evidence).get(groupId);
   for (const value of ["미검사","검사중","차이없음","교정후재검사","판단불가","실패"]) {
-    const checkpoint=await x.service.checkpoint({scopeId:groupId,revision:state.revision,state:value,note:"Explicit state and observed evidence"});
+    const checkpoint=await observed(x.service, "checkpoint", {scopeId:groupId,revision:state.revision,state:value,note:"Explicit state and observed evidence"});
     assert.equal(checkpoint.checkpoint.contentDigest,expected,value);
   }
   for (const decision of ["confirmed","deferred"]) {
-    await x.service.humanDecision({groupId,revision:state.revision,decision,note:"Explicit human state"});
+    await observed(x.service, "humanDecision", {groupId,revision:state.revision,decision,note:"Explicit human state"});
     assert.equal((await x.service.progress()).humanDecisions.at(-1).contentDigest,expected,decision);
   }
 });
@@ -95,7 +96,7 @@ test("correcting an adjacent table invalidates inspections and human confirmatio
   await approveAll(x.service,x.report);
   const before=await x.service.progress(), material=await x.service.material(neighbor.id);
   assert((await x.service.material(original.id)).neighbors.some((node)=>JSON.stringify(node.path)==="[2,0,0]"));
-  await x.service.submit({changeId:"neighbor-edit",generationId:before.generationId,revision:before.revision,groupId:neighbor.id,actor:"human",decision:"correct",target:{kind:"cell",path:[2],row:0,column:0},before:"888",after:"0.12 s",reason:"Deterministic adjacent correction",evidence:{kind:"human-source-region",refs:[],scope:material.findings[0].regions.map((region)=>({pageNo:region.pageNo,bbox:region.bbox}))}});
+  await observed(x.service, "submit", {changeId:"neighbor-edit",generationId:before.generationId,revision:before.revision,groupId:neighbor.id,actor:"human",decision:"correct",target:{kind:"cell",path:[2],row:0,column:0},before:"888",after:"0.12 s",reason:"Deterministic adjacent correction",evidence:{kind:"human-source-region",refs:[],scope:material.findings[0].regions.map((region)=>({pageNo:region.pageNo,bbox:region.bbox}))}});
   const after=await x.service.progress();
   assert.equal(after.scopes.find((scope)=>scope.id===original.id).checkpoint,null);
   assert(after.humanDecisions.filter((record)=>record.groupId===original.id).every((record)=>record.invalidatedAt));

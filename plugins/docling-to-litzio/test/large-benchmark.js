@@ -212,6 +212,7 @@ for (const size of sizes) {
   }
   const h = await loadHandoff(seed),
     report = await read(join(seed, "review/review-targets.json"));
+  const seenBindings = reviewBindings(report,h,h.validatedReview.evidence);
   const item = h.provenance.items.find(
     (i) =>
       i.cells.some((c) => c.targets.length && c.sourceCell.text) &&
@@ -265,12 +266,13 @@ for (const size of sizes) {
         operation === "humanDecision"
           ? service.humanDecision({
               groupId: group.id,
+              contentDigest: seenBindings.get(group.id),
               revision: h.snapshot.revision,
               decision: "confirmed",
               note,
             })
           : operation === "lossDecision"
-            ? service.lossDecision({ ...loss, note })
+            ? service.lossDecision({ ...loss, note, contentDigest:seenBindings.get(loss.groupId) })
             : operation === "progress"
               ? service.progress()
               : operation === "finalize"
@@ -288,6 +290,7 @@ for (const size of sizes) {
                       generationId: h.provenance.generationId,
                       revision: h.snapshot.revision,
                       groupId: group.id,
+                      contentDigest: seenBindings.get(group.id),
                       actor: "human",
                       decision: "correct",
                       reason: note,

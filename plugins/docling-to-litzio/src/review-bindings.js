@@ -25,7 +25,7 @@ export function materialContentDigest(material, memo = new WeakMap()) {
   };
   const bound={};
   for (const [key,policy] of Object.entries(MATERIAL_FIELDS)) {
-    if (policy === "current-revision-metadata") continue;
+    if (policy.endsWith("-metadata")) continue;
     bound[key]=policy === "array" ? material[key].map(hash) : policy === "object" ? hash(material[key]) : material[key];
   }
   return reviewDigest(bound);

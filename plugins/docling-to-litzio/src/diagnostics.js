@@ -1,5 +1,7 @@
 // Static remediation only: never echo input, paths, document text or raw errors.
 const guidance = {
+  "material-digest-required": "contentDigest is required. Copy it from the material/compare response you actually inspected; for a page checkpoint use review-progress.scopeDigests[scopeId]. Do not compute or guess it.",
+  "stale-material": "The review material changed, even if document bytes returned to the same revision. Read material/compare again, inspect the new context and submit its contentDigest with its revision.",
   "legacy-review-read-only": "이 검수 기록은 이전 형식입니다. 기존 완료 묶음은 읽기만 가능합니다. 고정 변환 결과에서 preflight/start로 문서를 새로 생성해 검수를 다시 시작하세요. jobs에서 새 jobId를 얻으세요.",
   "group-not-found": "groupId must be a group ID, not a page number or page:N. Get valid IDs from groups({jobId}); use the returned groups[].id.",
   "invalid-job-id": "jobId must be a job UUID. Get jobs[].jobId from jobs({}) or the ID returned by start.",

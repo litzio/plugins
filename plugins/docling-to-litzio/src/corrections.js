@@ -195,7 +195,14 @@ export function createCorrections(root, cli) {
     const snapshot = inspectedSnapshot ?? (await inspect(read));
     need(equal(snapshot, h.snapshot), "stale-document");
 
-    return createMaterialReader(report,h,evidence,snapshot)(groupId);
+    const result = createMaterialReader(report,h,evidence,snapshot)(groupId);
+    result.contentDigest = materialContentDigest(result);
+    return result;
+  };
+
+  const assertMaterial = (input, expected) => {
+    need(typeof input.contentDigest === "string" && /^[a-f0-9]{64}$/.test(input.contentDigest), "material-digest-required");
+    need(input.contentDigest === expected, "stale-material");
   };
 
   const publish = async (s, inspectedSnapshot) => {
@@ -232,11 +239,7 @@ export function createCorrections(root, cli) {
     const changes = [...s.changes, change];
 
     const history = {
-      schemaVersion: changes.some(
-        (c) => c.evidence.kind === "human-source-region",
-      )
-        ? "1.2.0"
-        : "1.1.0",
+      schemaVersion: "1.3.0",
       generationId: s.generationId,
       baselineRevision: s.baselineMarker.documentRevision,
       changes,
@@ -326,6 +329,7 @@ export function createCorrections(root, cli) {
             input.note.trim(),
           "human-note-required",
         );
+        assertMaterial(input, bindings.get(input.groupId));
         const prior = (s.humanDecisions ?? [])
           .filter(
             (d) =>
@@ -343,7 +347,7 @@ export function createCorrections(root, cli) {
         s.humanDecisions ??= [];
         s.humanDecisions.push({
           groupId: input.groupId,
-          ...(bindings ? { contentDigest: bindings.get(input.groupId) } : {}),
+          contentDigest: input.contentDigest,
           decision: input.decision,
           note: input.note,
           revision: s.revision,
@@ -381,6 +385,7 @@ export function createCorrections(root, cli) {
           "loss-note-required",
         );
         const m = await material(input.groupId, context, snap);
+        assertMaterial(input, m.contentDigest);
         need(
           m.findings.some((f) => f.sourceIds.includes(loss.sourceId)) &&
             loss.targets.some(
@@ -399,7 +404,7 @@ export function createCorrections(root, cli) {
         );
         s.lossConfirmations ??= [];
         s.lossConfirmations.push({
-          ...(s.reviewVersion === "1.3.0" ? { contentDigest: reviewBindings(context.report, h, context.evidence).get(input.groupId) } : {}),
+          contentDigest: input.contentDigest,
           lossId: loss.lossId,
           sourceId: loss.sourceId,
           reasonCode: loss.reasonCode,
@@ -528,6 +533,7 @@ export function createCorrections(root, cli) {
         const bindings = s.reviewVersion === "1.3.0" ? reviewBindings(report,h,evidence) : undefined;
         return {
           ...s,
+          scopeDigests: Object.fromEntries(bindings ?? []),
           currentHumanDecisions: (s.humanDecisions ?? []).filter((record) => currentReview(record,record.groupId,s,s.revision,bindings)),
           expressionReviews: expressionReviews(s,lossCatalog(h.losses.items,h),s.revision,bindings),
           currentRevision: snap.revision,
@@ -583,7 +589,9 @@ export function createCorrections(root, cli) {
           "invalid-actor-reason",
         );
 
+        assertMaterial(input, m.contentDigest);
         const row = {
+          contentDigest: input.contentDigest,
           changeId: input.changeId,
           requestHash,
           status: "uncertain",
@@ -608,7 +616,7 @@ export function createCorrections(root, cli) {
             {
               state: "판단불가",
               checkpoint: {
-                contentDigest: materialContentDigest(m),
+                contentDigest: input.contentDigest,
                 revision: s.revision,
                 time: new Date().toISOString(),
                 changeId: input.changeId,
@@ -800,6 +808,7 @@ export function createCorrections(root, cli) {
         const now = new Date().toISOString();
 
         s.pending = {
+          contentDigest: input.contentDigest,
           changeId: input.changeId,
           groupId: input.groupId,
           actor: input.actor,
@@ -976,11 +985,12 @@ export function createCorrections(root, cli) {
                 .map((g) => g.id)
             : [input.scopeId];
         }
+        const context = await readReview(root, join(root, "review"));
+        assertMaterial(input, reviewBindings(context.report, context.handoff, context.evidence).get(t.id));
         invalidateReview(s, { groups });
         t.state = input.state;
-        const context = s.reviewVersion === "1.3.0" ? await readReview(root, join(root, "review")) : null;
         t.checkpoint = {
-          ...(context ? { contentDigest: reviewBindings(context.report, context.handoff, context.evidence).get(t.id) } : {}),
+          contentDigest: input.contentDigest,
           revision: s.revision,
           time: new Date().toISOString(),
           note: input.note,

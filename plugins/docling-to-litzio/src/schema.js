@@ -10,6 +10,7 @@ export const schemas = Object.fromEntries(
       "pdf-evidence",
       "correction-submission",
       "correction-history",
+      "correction-history-v13",
       "human-review",
       "human-review-v13",
     ].map(async (name) => [

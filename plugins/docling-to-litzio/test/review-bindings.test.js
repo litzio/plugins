@@ -1,3 +1,4 @@
+import { observed } from "./observed-submission.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile, rename } from "node:fs/promises";
@@ -72,7 +73,7 @@ test("external editing preserves independent scope evidence while blocking the h
   await createReview(root,join(root,"review"));
   const fake = await fakeCli(root), service = createCorrections(root,fake);
   const s = await service.progress();
-  await service.checkpoint({scopeId:"page:1",revision:s.revision,state:"차이없음",note:"Independent page inspection"});
+  await observed(service, "checkpoint", {scopeId:"page:1",revision:s.revision,state:"차이없음",note:"Independent page inspection"});
   const before = (await service.progress()).scopes.find((s)=>s.id==="page:1");
   const operations = join(root,"external-edit.json");
   await writeFile(operations,JSON.stringify([{command:"update-table-cell",path:"1,0,0",text:"external"}]));
@@ -90,16 +91,16 @@ test("v1.3 stop/resume cannot resurrect completion; unchanged inspections permit
   const fake = await fakeCli(root), service = createCorrections(root,(cmd,args)=> cmd === "check" ? {ok:true} : fake(cmd,args));
   let s = await service.progress();
   await assert.rejects(service.material("page:2"),(error)=>error.code === "group-not-found" && error.message.includes("groups({jobId})"));
-  await assert.rejects(service.checkpoint({scopeId:"missing",revision:s.revision,state:"차이없음",note:"invalid scope"}),(error)=>error.code === "invalid-checkpoint" && error.message.includes("scopes[].id"));
-  await assert.rejects(service.submit({after:123}),(error)=>error.code === "schema-invalid" && error.message.includes("material"));
-  for (const scope of s.scopes) await service.checkpoint({scopeId:scope.id,revision:s.revision,state:"차이없음",note:"Deterministic scope inspection"});
+  await assert.rejects(observed(service, "checkpoint", {scopeId:"missing",revision:s.revision,state:"차이없음",note:"invalid scope"}),(error)=>error.code === "invalid-checkpoint" && error.message.includes("scopes[].id"));
+  await assert.rejects(observed(service, "submit", {after:123}),(error)=>error.code === "schema-invalid" && error.message.includes("material"));
+  for (const scope of s.scopes) await observed(service, "checkpoint", {scopeId:scope.id,revision:s.revision,state:"차이없음",note:"Deterministic scope inspection"});
   s = await service.progress();
-  for (const group of s.humanQueue) await service.humanDecision({groupId:group.id,revision:s.revision,decision:"confirmed",note:"Deterministic human decision"});
+  for (const group of s.humanQueue) await observed(service, "humanDecision", {groupId:group.id,revision:s.revision,decision:"confirmed",note:"Deterministic human decision"});
   s = await service.progress();
   const {report} = await readReview(root,join(root,"review"));
   for (const loss of s.losses) {
     const group = report.groups.find((g)=>g.findingIds.some((id)=>report.findings.find((f)=>f.id===id).sourceIds.includes(loss.sourceId)));
-    await service.lossDecision({lossId:loss.lossId,groupId:group.id,revision:s.revision,targetPath:loss.targets[0].path,pageNo:group.pageNos[0],decision:"meaning-preserved",note:"Deterministic expression decision"});
+    await observed(service, "lossDecision", {lossId:loss.lossId,groupId:group.id,revision:s.revision,targetPath:loss.targets[0].path,pageNo:group.pageNos[0],decision:"meaning-preserved",note:"Deterministic expression decision"});
   }
   assert.equal((await service.progress()).gate.ready,true);
   await service.finalize({revision:s.revision});

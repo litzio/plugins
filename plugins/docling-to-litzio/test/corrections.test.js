@@ -1,3 +1,4 @@
+import { observed } from "./observed-submission.js";
 import { repoPath } from "./paths.js";
 import { syntheticGeneration, fakeCli } from "./correction-fixture.js";
 import test from "node:test";
@@ -200,7 +201,7 @@ test(
   async () => {
     const { service, input, out, calls } = await setup();
     const baselineBytes = await readFile(join(out, "provenance.json"));
-    const r = await service.submit(input);
+    const r = await observed(service, "submit", input);
     assert.equal(r.status, "applied");
     const h = await loadHandoff(out);
     assert.equal(h.marker.schemaVersion, "1.3.0");
@@ -214,13 +215,13 @@ test(
       baselineBytes,
     );
     await readReview(out, join(out, "review"));
-    assert.equal((await service.submit(input)).status, "applied");
+    assert.equal((await observed(service, "submit", input)).status, "applied");
     assert.equal(calls(), 1);
     await assert.rejects(
-      service.submit({ ...input, after: "0.13 s" }),
+      observed(service, "submit", { ...input, after: "0.13 s" }),
       /duplicate-conflict/,
     );
-    const undo = await service.undo({
+    const undo = await observed(service, "undo", {
       changeId: randomUUID(),
       undoOf: input.changeId,
       actor: "human",
@@ -236,26 +237,26 @@ test(
   async () => {
     const { service, input, calls } = await setup();
     await assert.rejects(
-      service.submit({ ...input, before: "998" }),
+      observed(service, "submit", { ...input, before: "998" }),
       /before-conflict/,
     );
     await assert.rejects(
-      service.submit({ ...input, generationId: "other" }),
+      observed(service, "submit", { ...input, generationId: "other" }),
       /stale-submission/,
     );
     await assert.rejects(
-      service.submit({ ...input, before: "" }),
+      observed(service, "submit", { ...input, before: "" }),
       /invalid-edit/,
     );
     await assert.rejects(
-      service.submit({
+      observed(service, "submit", {
         ...input,
         evidence: { ...input.evidence, refs: ["unknown"] },
       }),
       /unknown-evidence/,
     );
     await assert.rejects(
-      service.submit({ ...input, after: "removed" }),
+      observed(service, "submit", { ...input, after: "removed" }),
       /protected-token-mismatch/,
     );
     assert.equal(calls(), 0);
@@ -267,13 +268,13 @@ for (const mode of ["failure", "lost", "partial"])
     {},
     async () => {
       const { service, input, out, calls, real } = await setup(mode);
-      assert.equal((await service.submit(input)).status, "pending-reconcile");
+      assert.equal((await observed(service, "submit", input)).status, "pending-reconcile");
       assert.equal(
         (await createCorrections(out, cli || real).reconcile()).status,
         "pending-reconcile",
       );
       await assert.rejects(loadHandoff(out), /pending-reconcile/);
-      assert.equal((await service.submit(input)).status, "pending-reconcile");
+      assert.equal((await observed(service, "submit", input)).status, "pending-reconcile");
       assert.equal(calls(), 1);
       assert.equal((await service.progress()).reviewComplete, false);
     },
@@ -284,9 +285,9 @@ test(
   async () => {
     const { service, input, out, real } = await setup();
     await service.stop();
-    await assert.rejects(service.submit(input), /review-stopped/);
+    await assert.rejects(observed(service, "submit", input), /review-stopped/);
     await service.resume();
-    await service.checkpoint({
+    await observed(service, "checkpoint", {
       scopeId: input.groupId,
       revision: input.revision,
       state: "검사중",
@@ -296,7 +297,7 @@ test(
       (await service.progress()).scopes.find((t) => t.id === "page:13").state,
       "미검사",
     );
-    assert.equal((await service.submit(input)).status, "applied");
+    assert.equal((await observed(service, "submit", input)).status, "applied");
     const h = await loadHandoff(out),
       ops = join(out, "manual.json");
     await writeFile(
@@ -310,7 +311,7 @@ test(
       h.snapshot.revision,
     ]);
     await assert.rejects(
-      service.undo({ undoOf: input.changeId }),
+      service.undo({ undoOf: input.changeId, contentDigest: input.contentDigest }),
       /undo-stale/,
     );
     await assert.rejects(loadHandoff(out));
@@ -323,7 +324,7 @@ test(
   {},
   async () => {
     const { service, input, out, calls, real } = await setup("publish-failure");
-    assert.equal((await service.submit(input)).status, "pending-reconcile");
+    assert.equal((await observed(service, "submit", input)).status, "pending-reconcile");
     await rmdir(join(out, "complete.json"));
     await rename(join(out, "saved-complete.json"), join(out, "complete.json"));
     assert.equal(
@@ -343,7 +344,7 @@ test("resealed history still refuses gaps, invented values and false validation"
     (h) => (h.changes[0].validation.protectedTokens = false),
   ]) {
     const { service, input, out } = await setup();
-    await service.submit(input);
+    await observed(service, "submit", input);
     const history = JSON.parse(
       await readFile(join(out, "correction-history.json")),
     );
@@ -397,7 +398,7 @@ function alignChange(change, snapshot, after) {
 test("document alone is stale; document and history aligned without ledger are refused", async () => {
   const fixture = await setup();
   const { service, input, out } = fixture;
-  assert.equal((await service.submit(input)).status, "applied");
+  assert.equal((await observed(service, "submit", input)).status, "applied");
   const snapshot = await manualEdit(fixture, "0.12 s amended");
   await assert.rejects(loadHandoff(out), /file-digest/);
   await assert.rejects(service.material(input.groupId), /file-digest/);
@@ -411,7 +412,7 @@ test("document alone is stale; document and history aligned without ledger are r
 test("history-only inserted revision and ledger-only value or missing submission are refused", async () => {
   for (const mode of ["insert-history", "ledger-value", "missing-submission"]) {
     const { service, input, out } = await setup();
-    await service.submit(input);
+    await observed(service, "submit", input);
     const history = JSON.parse(
       await readFile(join(out, "correction-history.json")),
     );
@@ -442,7 +443,7 @@ test("history-only inserted revision and ledger-only value or missing submission
 test("handoff independently rechecks protected tokens even when history and ledger agree", async () => {
   const fixture = await setup(),
     { service, input, out } = fixture;
-  await service.submit(input);
+  await observed(service, "submit", input);
   const snapshot = await manualEdit(fixture, "0.11 s");
   const history = JSON.parse(
     await readFile(join(out, "correction-history.json")),

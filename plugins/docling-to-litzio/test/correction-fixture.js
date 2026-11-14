@@ -138,7 +138,7 @@ export async function syntheticGeneration(
     await writeFile(join(out, name), bytes);
   await publishHandoff(out, p);
 }
-export async function fakeCli(out, initialSnapshot) {
+export async function fakeCli(out, initialSnapshot, { stableContent = false } = {}) {
   let snapshot = initialSnapshot
     ? structuredClone(initialSnapshot)
     : JSON.parse(await readFile(join(out, "snapshot.json")));
@@ -156,8 +156,7 @@ export async function fakeCli(out, initialSnapshot) {
     const before = snapshot.nodes.find(
       (n) => JSON.stringify(n.path) === JSON.stringify(p),
     ).text;
-    const bytes = JSON.stringify(ops),
-      revision = hash(bytes);
+    let bytes = JSON.stringify(ops), revision = hash(bytes);
     snapshot = projectEdit(
       snapshot,
       target,
@@ -168,6 +167,11 @@ export async function fakeCli(out, initialSnapshot) {
       snapshot.nodes.find((n) => JSON.stringify(n.path) === JSON.stringify(p))
         .content,
     );
+    if (stableContent) {
+      bytes = JSON.stringify(snapshot.nodes);
+      revision = hash(bytes);
+      snapshot.revision = revision;
+    }
     await writeFile(join(out, "document.md"), bytes);
     return { ok: true, command: "apply-batch", applied: 1, revision };
   };
