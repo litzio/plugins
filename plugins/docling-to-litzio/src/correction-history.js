@@ -1,9 +1,10 @@
+import { diagnostic } from "./diagnostics.js";
 import { inlineText } from "./rich-content.js";
 import { protectedTokens } from "./tokens.js";
 import { isDeepStrictEqual as equal } from "node:util";
 import { createHash } from "node:crypto";
 export const need = (v, code) => {
-  if (!v) throw new Error(code);
+  if (!v) throw Object.assign(new Error(diagnostic(code)), { code });
 };
 export const digest = (v) => createHash("sha256").update(v).digest("hex");
 export function targetNode(snapshot, target) {
@@ -96,7 +97,7 @@ export function validateHistory(
   generationId,
 ) {
   need(
-    ["1.1.0", "1.2.0"].includes(history.schemaVersion) &&
+    ["1.1.0", "1.2.0", "1.3.0"].includes(history.schemaVersion) &&
       history.generationId === generationId &&
       history.baselineRevision === baseline.revision &&
       history.changes.length > 0,
@@ -176,7 +177,7 @@ export function verifyCorrectionEvidence(
     const items = provenance.items.filter((i) => sourceIds.has(i.sourceId));
     if (c.evidence.kind === "human-source-region") {
       need(
-        history.schemaVersion === "1.2.0" &&
+        ["1.2.0", "1.3.0"].includes(history.schemaVersion) &&
           c.actor === "human" &&
           c.validation.protectedTokens === false &&
           c.validation.evidenceRecheck === "human-source-region",
@@ -322,6 +323,8 @@ export function validateCorrectionLedger(history, ledger, reconciling = false) {
       "history-ledger-submission",
     );
     const row = submissions[0];
+    if (history.schemaVersion === "1.3.0")
+      need(row.contentDigest === c.contentDigest && /^[a-f0-9]{64}$/.test(c.contentDigest), "history-ledger-material");
     const pending = reconciling && ledger.pending?.changeId === c.changeId;
     need(
       pending

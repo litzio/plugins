@@ -10,7 +10,9 @@ export const schemas = Object.fromEntries(
       "pdf-evidence",
       "correction-submission",
       "correction-history",
+      "correction-history-v13",
       "human-review",
+      "human-review-v13",
     ].map(async (name) => [
       name,
       JSON.parse(
@@ -26,7 +28,7 @@ export const schemas = Object.fromEntries(
 // Reject unknown keywords, rather than silently claiming general JSON Schema support.
 export function validateSchema(value, schema, root = schema, path = "$") {
   const error = () => {
-    throw new Error(`schema-invalid ${path}`);
+    throw Object.assign(new Error(`schema-invalid ${path}: input must match the declared type, required fields and allowed values; obtain current correction fields from material and identifiers from groups/review-progress.`), { code: "schema-invalid" });
   };
   const keywords = [
     "$schema",

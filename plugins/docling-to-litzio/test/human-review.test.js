@@ -1,3 +1,4 @@
+import { observed } from "./observed-submission.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile, cp } from "node:fs/promises";
@@ -68,7 +69,7 @@ test("completion needs every current scope and human decision; seals v1.2 and re
         ]
       : [];
   });
-  await service.submit({
+  await observed(service, "submit", {
     changeId: "restore",
     groupId: group.id,
     generationId: m.generationId,
@@ -87,7 +88,7 @@ test("completion needs every current scope and human decision; seals v1.2 and re
     /review-incomplete/,
   );
   for (const scope of state.scopes)
-    await service.checkpoint({
+    await observed(service, "checkpoint", {
       scopeId: scope.id,
       revision: state.revision,
       state: "차이없음",
@@ -95,7 +96,7 @@ test("completion needs every current scope and human decision; seals v1.2 and re
     });
   state = await service.progress();
   for (const group of state.humanQueue)
-    await service.humanDecision({
+    await observed(service, "humanDecision", {
       groupId: group.id,
       revision: state.revision,
       decision: "confirmed",
@@ -109,7 +110,7 @@ test("completion needs every current scope and human decision; seals v1.2 and re
     true,
   );
   assert.equal((await service.progress()).reviewComplete, true);
-  await service.checkpoint({
+  await observed(service, "checkpoint", {
     scopeId: state.scopes[0].id,
     revision: state.revision,
     state: "미검사",
@@ -289,31 +290,31 @@ test("public loss decision binds one known loss to current comparison and preser
     note: "Synthetic comparison attestation",
   };
   await assert.rejects(
-    service.lossDecision({ ...input, revision: "old" }),
+    observed(service, "lossDecision", { ...input, revision: "old" }),
     /stale-loss-decision/,
   );
   await assert.rejects(
-    service.lossDecision({ ...input, lossId: "missing" }),
+    observed(service, "lossDecision", { ...input, lossId: "missing" }),
     /loss-not-expression/,
   );
   await assert.rejects(
-    service.lossDecision({ ...input, targetPath: [999] }),
+    observed(service, "lossDecision", { ...input, targetPath: [999] }),
     /loss-outside-comparison/,
   );
   await assert.rejects(
-    service.lossDecision({ ...input, pageNo: 999 }),
+    observed(service, "lossDecision", { ...input, pageNo: 999 }),
     /loss-page-not-compared/,
   );
-  await service.lossDecision(input);
+  await observed(service, "lossDecision", input);
   s = await service.progress();
   assert.equal(s.gate.expressionUnconfirmed, 0);
   assert.equal(
     s.lossConfirmations[0].meaning,
     "expression-semantic-preservation",
   );
-  await service.lossDecision({ ...input, decision: "deferred" });
+  await observed(service, "lossDecision", { ...input, decision: "deferred" });
   assert.equal((await service.progress()).gate.expressionUnconfirmed, 1);
-  await service.lossDecision({ ...input, decision: "meaning-changed" });
+  await observed(service, "lossDecision", { ...input, decision: "meaning-changed" });
   assert.equal((await service.progress()).gate.expressionUnconfirmed, 1);
 });
 
@@ -365,21 +366,21 @@ test("human region evidence alone permits empty cell inline math, records proven
     },
   };
   await assert.rejects(
-    service.submit({ ...input, evidence: undefined }),
+    observed(service, "submit", { ...input, evidence: undefined }),
     /schema-invalid|invalid-edit|content-requires-human-evidence/,
   );
   const { afterContent: _content, evidence: _evidence, ...noEvidence } = input;
   await assert.rejects(
-    service.submit({ ...noEvidence, actor: "assistant" }),
+    observed(service, "submit", { ...noEvidence, actor: "assistant" }),
     /invalid-edit/,
   );
-  await assert.rejects(service.submit(noEvidence), /invalid-edit/);
+  await assert.rejects(observed(service, "submit", noEvidence), /invalid-edit/);
   await assert.rejects(
-    service.submit({ ...input, actor: "assistant" }),
+    observed(service, "submit", { ...input, actor: "assistant" }),
     /human-evidence-required/,
   );
   await assert.rejects(
-    service.submit({
+    observed(service, "submit", {
       ...input,
       evidence: {
         ...input.evidence,
@@ -388,9 +389,9 @@ test("human region evidence alone permits empty cell inline math, records proven
     }),
     /invalid-inspection-scope|visual-scope/,
   );
-  assert.equal((await service.submit(input)).status, "applied");
+  assert.equal((await observed(service, "submit", input)).status, "applied");
   let h = await loadHandoff(root);
-  assert.equal(h.marker.schemaVersion, "1.2.0");
+  assert.equal(h.marker.schemaVersion, "1.3.0");
   assert.equal(
     h.history.changes[0].validation.evidenceRecheck,
     "human-source-region",
@@ -402,7 +403,7 @@ test("human region evidence alone permits empty cell inline math, records proven
   );
   assert.equal(
     (
-      await service.undo({
+      await observed(service, "undo", {
         undoOf: input.changeId,
         changeId: "visual-undo",
         actor: "human",

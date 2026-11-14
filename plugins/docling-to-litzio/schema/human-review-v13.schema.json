@@ -1,0 +1,439 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.3.0"
+    },
+    "generationId": {
+      "type": "string"
+    },
+    "documentRevision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "time": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "enum": [
+              "\ubbf8\uac80\uc0ac",
+              "\uac80\uc0ac\uc911",
+              "\ucc28\uc774\uc5c6\uc74c",
+              "\uad50\uc815\ud6c4\uc7ac\uac80\uc0ac",
+              "\ud310\ub2e8\ubd88\uac00",
+              "\uc2e4\ud328"
+            ]
+          },
+          "checkpoint": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "revision": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "time": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "rulesVersion": {
+                    "const": "1.0.0"
+                  },
+                  "changeId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "contentDigest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "revision",
+                  "time",
+                  "rulesVersion",
+                  "contentDigest"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "checkpoint"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "humanDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "decision": {
+            "enum": [
+              "confirmed",
+              "deferred"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor": {
+            "const": "human"
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "groupId",
+          "revision",
+          "decision",
+          "note",
+          "actor",
+          "time",
+          "contentDigest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "properties": {
+        "ready": {
+          "const": true
+        },
+        "uncovered": {
+          "const": 0
+        },
+        "human": {
+          "const": 0
+        },
+        "blocking": {
+          "const": 0
+        },
+        "failures": {
+          "const": 0
+        },
+        "tokenDifferences": {
+          "const": 0
+        },
+        "expressionUnconfirmed": {
+          "const": 0
+        }
+      },
+      "required": [
+        "ready",
+        "uncovered",
+        "human",
+        "blocking",
+        "failures",
+        "tokenDifferences",
+        "expressionUnconfirmed"
+      ],
+      "additionalProperties": false
+    },
+    "lossConfirmations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lossId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "groupId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          },
+          "time": {
+            "type": "string",
+            "minLength": 1
+          },
+          "targetPath": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "minItems": 1,
+            "maxItems": 1
+          },
+          "pageNo": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "changeCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "actor": {
+            "const": "human"
+          },
+          "meaning": {
+            "const": "expression-semantic-preservation"
+          },
+          "comparison": {
+            "const": "source-and-current-side-by-side"
+          },
+          "decision": {
+            "enum": [
+              "meaning-preserved",
+              "meaning-changed",
+              "deferred"
+            ]
+          },
+          "invalidatedAt": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "lossId",
+          "sourceId",
+          "reasonCode",
+          "groupId",
+          "revision",
+          "note",
+          "time",
+          "targetPath",
+          "pageNo",
+          "changeCount",
+          "actor",
+          "meaning",
+          "comparison",
+          "decision",
+          "contentDigest"
+        ]
+      }
+    },
+    "expressionReviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lossId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "basis": {
+            "enum": [
+              "Note body retained as an unlinked annotation paragraph",
+              "Note body retained as a numbered endnote",
+              "Declared native representation limit; source values retained"
+            ]
+          },
+          "classification": {
+            "const": "expression"
+          },
+          "originalValue": {},
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object"
+            }
+          },
+          "confirmation": {
+            "type": "object",
+            "properties": {
+              "lossId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sourceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reasonCode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "groupId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "revision": {
+                "type": "string",
+                "minLength": 1
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1
+              },
+              "time": {
+                "type": "string",
+                "minLength": 1
+              },
+              "targetPath": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "minItems": 1,
+                "maxItems": 1
+              },
+              "pageNo": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "changeCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "actor": {
+                "const": "human"
+              },
+              "meaning": {
+                "const": "expression-semantic-preservation"
+              },
+              "comparison": {
+                "const": "source-and-current-side-by-side"
+              },
+              "decision": {
+                "enum": [
+                  "meaning-preserved",
+                  "meaning-changed",
+                  "deferred"
+                ]
+              },
+              "invalidatedAt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "contentDigest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "lossId",
+              "sourceId",
+              "reasonCode",
+              "groupId",
+              "revision",
+              "note",
+              "time",
+              "targetPath",
+              "pageNo",
+              "changeCount",
+              "actor",
+              "meaning",
+              "comparison",
+              "decision",
+              "contentDigest"
+            ]
+          },
+          "representation": {
+            "enum": [
+              "unlinked-annotation",
+              "numbered-endnote",
+              "native-expression"
+            ]
+          },
+          "sourceDefect": {
+            "enum": [
+              "duplicate-local-note-marker",
+              "none"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "lossId",
+          "sourceId",
+          "reasonCode",
+          "basis",
+          "classification",
+          "originalValue",
+          "targets",
+          "confirmation",
+          "representation",
+          "sourceDefect"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "documentRevision",
+    "time",
+    "scopes",
+    "humanDecisions",
+    "conditions",
+    "lossConfirmations",
+    "expressionReviews"
+  ],
+  "additionalProperties": false
+}

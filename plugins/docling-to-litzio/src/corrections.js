@@ -1,3 +1,5 @@
+import { createMaterialReader } from "./review-material.js";
+import { reviewBindings, materialContentDigest, currentReview, invalidateChangedReviews, interruptReview } from "./review-bindings.js";
 import {
   completionGate,
   humanQueue,
@@ -14,7 +16,7 @@ import { randomUUID } from "node:crypto";
 
 import { spawnSync } from "node:child_process";
 
-import { loadHandoff, readRelative, createReadSet } from "./provenance.js";
+import { loadHandoff, readRelative, createReadSet, observeChangedReview } from "./provenance.js";
 
 import { readReview } from "./review.js";
 
@@ -61,6 +63,8 @@ export function officialCli(cli, root) {
           LITZIO_DATA_DIR: join(root, "correction-host-data"),
           LITZIO_ASSISTANT_CWD: join(root, "assistant"),
           LITZIO_ASSISTANT_SETTINGS_FILE: join(root, "assistant/settings.json"),
+          LITZIO_DAEMON_DIR: join(root, "daemon"),
+          LITZIO_PLUGINS_SETTINGS_FILE: join(root, "plugins-settings.json"),
         },
       },
     );
@@ -121,9 +125,11 @@ export function createCorrections(root, cli) {
       evidence,
     } = await readReview(root, join(root, "review"));
 
+    need(h.marker.schemaVersion === "1.3.0", "legacy-review-read-only");
     need(!h.history, "correction-ledger-required");
     const state = {
       version: 1,
+      reviewVersion: "1.3.0",
       generationId: h.provenance.generationId,
       sourceHash: h.provenance.source.pdf.sha256,
       revision: h.snapshot.revision,
@@ -148,6 +154,12 @@ export function createCorrections(root, cli) {
     };
 
     await save(file, state);
+    return state;
+  };
+
+  const writableLedger = async () => {
+    const state = await ledger();
+    need(state.reviewVersion === "1.3.0", "legacy-review-read-only");
     return state;
   };
 
@@ -183,59 +195,14 @@ export function createCorrections(root, cli) {
     const snapshot = inspectedSnapshot ?? (await inspect(read));
     need(equal(snapshot, h.snapshot), "stale-document");
 
-    const findings = report.findings.filter((f) =>
-      group.findingIds.includes(f.id),
-    );
+    const result = createMaterialReader(report,h,evidence,snapshot)(groupId);
+    result.contentDigest = materialContentDigest(result);
+    return result;
+  };
 
-    const ids = new Set(findings.flatMap((f) => f.sourceIds));
-
-    const items = h.provenance.items.filter((i) => ids.has(i.sourceId));
-
-    const doc = (h.baseline ?? h).sourceDocument;
-
-    const fragments = items.map((i) => ({
-      sourceId: i.sourceId,
-      selfRef: i.selfRef,
-      raw: i.selfRef
-        .slice(2)
-        .split("/")
-        .reduce((o, k) => o[k], doc),
-      mapping: i,
-    }));
-
-    const paths = new Set(
-      findings.flatMap((f) => f.targets.map((t) => t.path[0])),
-    );
-
-    return {
-      generationId: h.provenance.generationId,
-      documentRevision: snapshot.revision,
-      baselineRevision: report.baselineRevision,
-      sourceHash: h.provenance.source.pdf.sha256,
-      group,
-      findings,
-      fragments,
-      sourceNeighbors: h.provenance.items
-        .filter(
-          (i, index, all) =>
-            ids.has(all[index - 1]?.sourceId) ||
-            ids.has(all[index + 1]?.sourceId),
-        )
-        .map((i) => ({
-          selfRef: i.selfRef,
-          raw: i.selfRef
-            .slice(2)
-            .split("/")
-            .reduce((o, k) => o[k], doc),
-        })),
-      checks: report.checks.filter((c) => ids.has(c.sourceId)),
-      current: snapshot.nodes.filter((n) => paths.has(n.path[0])),
-      neighbors: snapshot.nodes.filter((n) =>
-        [...paths].some((p) => Math.abs(p - n.path[0]) === 1),
-      ),
-      pdf: evidence.pages.filter((p) => group.pageNos.includes(p.pageNo)),
-      history: h.history?.changes ?? [],
-    };
+  const assertMaterial = (input, expected) => {
+    need(typeof input.contentDigest === "string" && /^[a-f0-9]{64}$/.test(input.contentDigest), "material-digest-required");
+    need(input.contentDigest === expected, "stale-material");
   };
 
   const publish = async (s, inspectedSnapshot) => {
@@ -272,11 +239,7 @@ export function createCorrections(root, cli) {
     const changes = [...s.changes, change];
 
     const history = {
-      schemaVersion: changes.some(
-        (c) => c.evidence.kind === "human-source-region",
-      )
-        ? "1.2.0"
-        : "1.1.0",
+      schemaVersion: "1.3.0",
       generationId: s.generationId,
       baselineRevision: s.baselineMarker.documentRevision,
       changes,
@@ -287,11 +250,7 @@ export function createCorrections(root, cli) {
 
     const marker = {
       ...s.baselineMarker,
-      schemaVersion: changes.some(
-        (c) => c.evidence.kind === "human-source-region",
-      )
-        ? "1.2.0"
-        : "1.1.0",
+      schemaVersion: "1.3.0",
       documentRevision: snapshot.revision,
       files: s.baselineMarker.files.map((f) =>
         f.relativePath === "document.md"
@@ -315,25 +274,19 @@ export function createCorrections(root, cli) {
 
     await save(join(root, "complete.json"), marker);
 
-    await loadHandoff(root, { reconciling: true }); // Publication is never success until every consumer-side invariant passes.
+    const publishedHandoff = await loadHandoff(root, { reconciling: true }); // Publication is never success until every consumer-side invariant passes.
 
     s.changes = changes;
     s.revision = snapshot.revision;
     s.pending = null;
-    invalidateReview(s, { groups: null, resetScopes: true });
-
-    for (const scope of s.scopes) {
-      scope.state = scope.id === change.groupId ? "교정후재검사" : "미검사";
-      scope.checkpoint =
-        scope.id === change.groupId
-          ? {
-              revision: s.revision,
-              time: new Date().toISOString(),
-              changeId: change.changeId,
-              rulesVersion: "1.0.0",
-            }
-          : null;
+    if (s.reviewVersion === "1.3.0") {
+      const h = publishedHandoff;
+      const context = { handoff: h, ...h.validatedReview };
+      invalidateChangedReviews(s, reviewBindings(context.report, context.handoff, context.evidence));
     }
+    const changedScope = s.scopes.find((scope) => scope.id === change.groupId);
+    changedScope.state = "교정후재검사";
+    changedScope.checkpoint = null;
 
     Object.assign(
       s.submissions.find((x) => x.changeId === change.changeId),
@@ -355,7 +308,7 @@ export function createCorrections(root, cli) {
     material,
     humanDecision: (input) =>
       locked(async () => {
-        const s = await ledger(),
+        const s = await writableLedger(),
           snap = await inspect();
         need(
           !s.pending &&
@@ -364,7 +317,8 @@ export function createCorrections(root, cli) {
             snap.revision === s.revision,
           "stale-human-decision",
         );
-        const { report } = await readReview(root, join(root, "review"));
+        const { report, handoff, evidence } = await readReview(root, join(root, "review"));
+        const bindings = s.reviewVersion === "1.3.0" ? reviewBindings(report, handoff, evidence) : null;
         need(
           report.groups.some((g) => g.id === input.groupId),
           "group-not-found",
@@ -375,12 +329,12 @@ export function createCorrections(root, cli) {
             input.note.trim(),
           "human-note-required",
         );
+        assertMaterial(input, bindings.get(input.groupId));
         const prior = (s.humanDecisions ?? [])
           .filter(
             (d) =>
               d.groupId === input.groupId &&
-              d.revision === s.revision &&
-              !d.invalidatedAt,
+              currentReview(d, d.groupId, s, s.revision, bindings),
           )
           .at(-1);
         invalidateReview(s, {
@@ -393,6 +347,7 @@ export function createCorrections(root, cli) {
         s.humanDecisions ??= [];
         s.humanDecisions.push({
           groupId: input.groupId,
+          contentDigest: input.contentDigest,
           decision: input.decision,
           note: input.note,
           revision: s.revision,
@@ -406,7 +361,7 @@ export function createCorrections(root, cli) {
       }),
     lossDecision: (input) =>
       locked(async () => {
-        const s = await ledger(),
+        const s = await writableLedger(),
           snap = await inspect();
         const context = await readReview(root, join(root, "review"));
         const { handoff: h } = context;
@@ -430,6 +385,7 @@ export function createCorrections(root, cli) {
           "loss-note-required",
         );
         const m = await material(input.groupId, context, snap);
+        assertMaterial(input, m.contentDigest);
         need(
           m.findings.some((f) => f.sourceIds.includes(loss.sourceId)) &&
             loss.targets.some(
@@ -448,6 +404,7 @@ export function createCorrections(root, cli) {
         );
         s.lossConfirmations ??= [];
         s.lossConfirmations.push({
+          contentDigest: input.contentDigest,
           lossId: loss.lossId,
           sourceId: loss.sourceId,
           reasonCode: loss.reasonCode,
@@ -470,7 +427,7 @@ export function createCorrections(root, cli) {
       }),
     finalize: (input) =>
       locked(async () => {
-        const s = await ledger(),
+        const s = await writableLedger(),
           snap = await inspect();
         const context = await readReview(root, join(root, "review"));
         const { handoff: h, report, evidence } = context;
@@ -486,7 +443,7 @@ export function createCorrections(root, cli) {
         need(gate.ready, "review-incomplete");
         need((await call("check", [])).ok === true, "document-check-failed");
         const completion = {
-          schemaVersion: "1.2.0",
+          schemaVersion: s.reviewVersion ?? "1.2.0",
           generationId: s.generationId,
           documentRevision: s.revision,
           time: new Date().toISOString(),
@@ -498,13 +455,14 @@ export function createCorrections(root, cli) {
             s,
             lossCatalog(h.losses.items, h),
             s.revision,
+            s.reviewVersion === "1.3.0" ? reviewBindings(report, h, evidence) : undefined,
           ),
         };
         await assertWriteRevision(s.revision);
         await save(join(root, "human-review.json"), completion);
         const marker = {
           ...h.marker,
-          schemaVersion: "1.2.0",
+          schemaVersion: s.reviewVersion ?? "1.2.0",
           reviewState: "reviewed",
           files: h.marker.files.filter(
             (f) => f.relativePath !== "human-review.json",
@@ -539,8 +497,12 @@ export function createCorrections(root, cli) {
         const s = await ledger(read);
         const snap = await inspect(read);
         if (snap.revision !== s.revision) {
-          invalidateReview(s, { groups: null, resetScopes: true });
-          await save(file, s);
+          if (s.pending) invalidateReview(s);
+          else if (s.reviewVersion === "1.3.0") {
+            const context = await observeChangedReview(root, s, snap, read);
+            invalidateChangedReviews(s, reviewBindings(context.report, context.handoff, context.evidence));
+          }
+          if (s.reviewVersion === "1.3.0") await save(file, s);
         }
         if (s.pending || snap.revision !== s.revision)
           return {
@@ -568,11 +530,15 @@ export function createCorrections(root, cli) {
           h,
           evidence,
         );
+        const bindings = s.reviewVersion === "1.3.0" ? reviewBindings(report,h,evidence) : undefined;
         return {
           ...s,
+          scopeDigests: Object.fromEntries(bindings ?? []),
+          currentHumanDecisions: (s.humanDecisions ?? []).filter((record) => currentReview(record,record.groupId,s,s.revision,bindings)),
+          expressionReviews: expressionReviews(s,lossCatalog(h.losses.items,h),s.revision,bindings),
           currentRevision: snap.revision,
           reviewComplete: h.reviewComplete,
-          humanQueue: humanQueue(s, report),
+          humanQueue: humanQueue(s, report, s.reviewVersion === "1.3.0" ? reviewBindings(report, h, evidence) : undefined),
           losses: lossCatalog(h.losses.items, h),
           gate,
         };
@@ -588,7 +554,7 @@ export function createCorrections(root, cli) {
           "invalid-submission",
         );
 
-        const s = await ledger(),
+        const s = await writableLedger(),
           requestHash = digest(JSON.stringify(input));
 
         const prior = s.submissions.find((x) => x.changeId === input.changeId);
@@ -623,7 +589,9 @@ export function createCorrections(root, cli) {
           "invalid-actor-reason",
         );
 
+        assertMaterial(input, m.contentDigest);
         const row = {
+          contentDigest: input.contentDigest,
           changeId: input.changeId,
           requestHash,
           status: "uncertain",
@@ -648,6 +616,7 @@ export function createCorrections(root, cli) {
             {
               state: "판단불가",
               checkpoint: {
+                contentDigest: input.contentDigest,
                 revision: s.revision,
                 time: new Date().toISOString(),
                 changeId: input.changeId,
@@ -839,6 +808,7 @@ export function createCorrections(root, cli) {
         const now = new Date().toISOString();
 
         s.pending = {
+          contentDigest: input.contentDigest,
           changeId: input.changeId,
           groupId: input.groupId,
           actor: input.actor,
@@ -876,8 +846,8 @@ export function createCorrections(root, cli) {
         };
 
         s.submissions.push({ ...row, status: "pending-reconcile" });
-        invalidateReview(s, { groups: null, resetScopes: true });
-        s.scopes.find((t) => t.id === input.groupId).state = "검사중";
+        invalidateReview(s);
+        Object.assign(s.scopes.find((t) => t.id === input.groupId), { state: "검사중", checkpoint: null });
         await assertWriteRevision(s.revision);
         await save(file, s);
 
@@ -949,7 +919,7 @@ export function createCorrections(root, cli) {
 
           await publish(s, actual);
         } catch {
-          s.scopes.find((t) => t.id === input.groupId).state = "실패";
+          Object.assign(s.scopes.find((t) => t.id === input.groupId), { state: "실패", checkpoint: null });
           await save(file, s);
         }
 
@@ -958,7 +928,7 @@ export function createCorrections(root, cli) {
 
     reconcile: () =>
       locked(async () => {
-        const s = await ledger();
+        const s = await writableLedger();
         if (!s.pending) return { status: "idle" };
         try {
           await publish(s);
@@ -974,7 +944,7 @@ export function createCorrections(root, cli) {
 
     checkpoint: (input) =>
       locked(async () => {
-        const s = await ledger(),
+        const s = await writableLedger(),
           snap = await inspect();
         need(
           !s.pending &&
@@ -1015,22 +985,26 @@ export function createCorrections(root, cli) {
                 .map((g) => g.id)
             : [input.scopeId];
         }
+        const context = await readReview(root, join(root, "review"));
+        assertMaterial(input, reviewBindings(context.report, context.handoff, context.evidence).get(t.id));
         invalidateReview(s, { groups });
         t.state = input.state;
         t.checkpoint = {
+          contentDigest: input.contentDigest,
           revision: s.revision,
           time: new Date().toISOString(),
           note: input.note,
           rulesVersion: "1.0.0",
         };
+        await assertWriteRevision(s.revision);
         await save(file, s);
         return t;
       }),
 
     stop: () =>
       locked(async () => {
-        const s = await ledger();
-        invalidateReview(s, { groups: null, resetScopes: true });
+        const s = await writableLedger();
+        interruptReview(s);
         s.stopped = true;
         await save(file, s);
         return { stopped: true };
@@ -1038,10 +1012,10 @@ export function createCorrections(root, cli) {
 
     resume: () =>
       locked(async () => {
-        const s = await ledger();
+        const s = await writableLedger();
         need(!s.pending, "pending-reconcile");
         need((await inspect()).revision === s.revision, "stale-document");
-        invalidateReview(s, { groups: null, resetScopes: true });
+        interruptReview(s);
         s.stopped = false;
         await save(file, s);
         return { stopped: false };
@@ -1050,6 +1024,7 @@ export function createCorrections(root, cli) {
     async undo(input) {
       const s = await json(file),
         c = s.changes.find((c) => c.changeId === input.undoOf);
+      need(s.reviewVersion === "1.3.0", "legacy-review-read-only");
       need(c, "change-not-found");
 
       need(

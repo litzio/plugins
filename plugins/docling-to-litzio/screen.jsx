@@ -188,6 +188,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
         jobId: job.jobId,
         groupId: comparison.material.group.id,
         revision: comparison.revision,
+        contentDigest: comparison.material.contentDigest,
         decision,
         note,
       });
@@ -208,6 +209,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
         lossId: loss.lossId,
         groupId: comparison.material.group.id,
         revision: comparison.revision,
+        contentDigest: comparison.material.contentDigest,
         targetPath: [target.path[0]],
         pageNo,
         decision,
@@ -234,6 +236,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
         actor: "human",
         reason: "화면에서 선택한 교정 되돌리기",
         evidence: change.evidence,
+        contentDigest: comparison?.material?.contentDigest,
       });
       await loadReview(job.jobId);
       if (reply.status === "pending-reconcile")
@@ -696,11 +699,10 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
               {readState?.state !== "ready" && (
                 <ui.Notice>{readState?.state ?? "loading"}</ui.Notice>
               )}
-              {(review?.humanDecisions ?? [])
+              {(review?.currentHumanDecisions ?? [])
                 .filter(
                   (d) =>
-                    d.groupId === comparison.material.group.id &&
-                    d.revision === comparison.revision,
+                    d.groupId === comparison.material.group.id,
                 )
                 .slice(-1)
                 .map((d, i) => (
@@ -745,13 +747,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                     l.sourceId === comparison.targets[targetIndex]?.sourceId,
                 )
                 .map((loss) => {
-                  const record = (review?.lossConfirmations ?? [])
-                    .filter(
-                      (d) =>
-                        d.lossId === loss.lossId &&
-                        d.revision === comparison.revision,
-                    )
-                    .at(-1);
+                  const record = review?.expressionReviews?.find((item) => item.lossId === loss.lossId)?.confirmation;
                   return (
                     <div key={loss.lossId} data-loss-id={loss.lossId}>
                       <p>
@@ -942,6 +938,7 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                         actor: "human",
                         generationId: comparison.material.generationId,
                         revision: comparison.revision,
+                        contentDigest: comparison.material.contentDigest,
                         groupId: comparison.material.group.id,
                         decision: "correct",
                         target,
@@ -1077,6 +1074,8 @@ export default function Screen({ React, ui, invoke, openDocument, pickPath }) {
                   variant="outline"
                   disabled={
                     busy ||
+                    comparison?.material?.group?.id !== c.groupId ||
+                    readState?.state !== "ready" ||
                     !!review.pending ||
                     review.currentRevision !== c.afterRevision ||
                     review.changes.some((r) => r.undoOf === c.changeId)

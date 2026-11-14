@@ -1,3 +1,4 @@
+import { reviewBindings, currentReview } from "./review-bindings.js";
 import { firstBy, tokenLookup } from "./lookup.js";
 import { createSourceReader } from "./rich-content.js";
 import { createHash } from "node:crypto";
@@ -8,7 +9,7 @@ const requiredKinds = new Set([
   "heading-basis-low",
   "meaning-loss",
 ]);
-export function humanQueue(s, report) {
+export function humanQueue(s, report, bindings) {
   return report.groups
     .filter(
       (g) =>
@@ -28,8 +29,7 @@ export function humanQueue(s, report) {
           .filter(
             (d) =>
               d.groupId === g.id &&
-              d.revision === s.revision &&
-              !d.invalidatedAt,
+              currentReview(d, d.groupId, s, s.revision, bindings),
           )
           .at(-1) ?? null,
     }));
@@ -104,7 +104,7 @@ export function lossCatalog(losses, handoff) {
       };
     });
 }
-export function expressionReviews(s, catalog, revision) {
+export function expressionReviews(s, catalog, revision, bindings) {
   return catalog
     .filter((l) => l.classification === "expression")
     .map((l) => ({
@@ -114,18 +114,19 @@ export function expressionReviews(s, catalog, revision) {
           .filter(
             (d) =>
               d.lossId === l.lossId &&
-              d.revision === revision &&
-              d.changeCount === (s.changes ?? []).length &&
-              !d.invalidatedAt,
+              currentReview(d, d.groupId, s, revision, bindings) &&
+              (s.reviewVersion === "1.3.0" || d.changeCount === (s.changes ?? []).length),
           )
           .at(-1) ?? null,
     }));
 }
 export function completionGate(s, report, losses, revision, handoff, evidence) {
+  const bindings = s.reviewVersion === "1.3.0" && handoff && evidence
+    ? reviewBindings(report, handoff, evidence) : undefined;
   const confirmed = (id) =>
     (s.humanDecisions ?? [])
       .filter(
-        (d) => d.groupId === id && d.revision === revision && !d.invalidatedAt,
+        (d) => d.groupId === id && currentReview(d, id, s, revision, bindings),
       )
       .at(-1)?.decision === "confirmed";
   const expected = [
@@ -140,7 +141,7 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
       !s.scopes.some(
         (t) =>
           t.id === id &&
-          t.checkpoint?.revision === revision &&
+          currentReview(t.checkpoint, id, s, revision, bindings) &&
           typeof t.checkpoint.note === "string" &&
           t.checkpoint.note.trim() &&
           (t.state === "차이없음" ||
@@ -150,9 +151,9 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
   );
   const decisions = new Map();
   for (const d of s.humanDecisions ?? [])
-    if (d.revision === revision) decisions.set(d.groupId, d);
+    if (s.reviewVersion === "1.3.0" || d.revision === revision) decisions.set(d.groupId, d);
   const human = new Set(
-    humanQueue(s, report)
+    humanQueue(s, report, bindings)
       .filter((g) => !confirmed(g.id))
       .map((g) => g.id),
   );
@@ -161,7 +162,7 @@ export function completionGate(s, report, losses, revision, handoff, evidence) {
   const blocking = catalog.filter(
     (l) => l.classification === "repair-required",
   );
-  const expressionUnconfirmed = expressionReviews(s, catalog, revision).filter(
+  const expressionUnconfirmed = expressionReviews(s, catalog, revision, bindings).filter(
     (l) => l.confirmation?.decision !== "meaning-preserved",
   ).length;
   const reader = handoff

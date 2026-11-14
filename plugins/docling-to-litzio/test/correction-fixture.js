@@ -8,7 +8,7 @@ import { buildProvenance, publishHandoff } from "../src/provenance.js";
 import { projectEdit } from "../src/correction-history.js";
 export async function syntheticGeneration(
   out,
-  { header = false, text = "999" } = {},
+  { header = false, text = "999", neighborText } = {},
 ) {
   const pdf = await readFile(
       repoPath("fixtures/lsr-1.1/LSR-1.1-standards.pdf"),
@@ -66,6 +66,13 @@ export async function syntheticGeneration(
       ]),
     ),
   };
+  if (neighborText !== undefined) {
+    const neighbor = structuredClone(doc.tables[0]);
+    neighbor.self_ref = "#/tables/1";
+    neighbor.data.table_cells[0].text = neighborText;
+    doc.tables.push(neighbor);
+    doc.body.children.push({$ref:neighbor.self_ref});
+  }
   const raw = JSON.stringify(doc),
     record = {
       source: { sha256: hash(pdf), bytes: pdf.length },
@@ -97,15 +104,10 @@ export async function syntheticGeneration(
   const snapshot = {
     ok: true,
     revision,
-    nodes: [
-      { type: "table", path: [1] },
-      {
-        type: "cell",
-        path: [1, 0, 0],
-        text,
-        content: text ? [{ kind: "text", text }] : [],
-      },
-    ],
+    nodes: doc.tables.flatMap((table,index) => {
+      const value=table.data.table_cells[0].text;
+      return [{type:"table",path:[index+1]}, {type:"cell",path:[index+1,0,0],text:value,content:value ? [{kind:"text",text:value}] : []}];
+    }),
   };
   const items = plan.items.map((i) => ({
     ...i,
@@ -117,7 +119,7 @@ export async function syntheticGeneration(
     cells: i.cells?.map((c) => ({
       ...c,
       targets: c.selectors.map((selector) => ({
-        ...receipt.inputs[0].targets[0],
+        ...receipt.inputs.find((row)=>row.key === i.links[0].key).targets[0],
         selector,
       })),
     })),
@@ -136,7 +138,7 @@ export async function syntheticGeneration(
     await writeFile(join(out, name), bytes);
   await publishHandoff(out, p);
 }
-export async function fakeCli(out, initialSnapshot) {
+export async function fakeCli(out, initialSnapshot, { stableContent = false } = {}) {
   let snapshot = initialSnapshot
     ? structuredClone(initialSnapshot)
     : JSON.parse(await readFile(join(out, "snapshot.json")));
@@ -154,8 +156,7 @@ export async function fakeCli(out, initialSnapshot) {
     const before = snapshot.nodes.find(
       (n) => JSON.stringify(n.path) === JSON.stringify(p),
     ).text;
-    const bytes = JSON.stringify(ops),
-      revision = hash(bytes);
+    let bytes = JSON.stringify(ops), revision = hash(bytes);
     snapshot = projectEdit(
       snapshot,
       target,
@@ -166,6 +167,11 @@ export async function fakeCli(out, initialSnapshot) {
       snapshot.nodes.find((n) => JSON.stringify(n.path) === JSON.stringify(p))
         .content,
     );
+    if (stableContent) {
+      bytes = JSON.stringify(snapshot.nodes);
+      revision = hash(bytes);
+      snapshot.revision = revision;
+    }
     await writeFile(join(out, "document.md"), bytes);
     return { ok: true, command: "apply-batch", applied: 1, revision };
   };

@@ -37,6 +37,7 @@ const { createReview, readReview } = await mod("review");
 const { loadHandoff } = await mod("provenance");
 const { createCorrections } = await mod("corrections");
 const { lossCatalog, completionGate } = await mod("human-review");
+const { reviewBindings } = await mod("review-bindings");
 const read = async (p) => JSON.parse(await fs.readFile(p));
 const save = (p, v) => fs.writeFile(p, JSON.stringify(v, null, 2) + "\n");
 const sizes = sizesArg.split(",");
@@ -180,6 +181,12 @@ for (const size of sizes) {
         comparison: "source-and-current-side-by-side",
       });
     }
+    if (process.env.PERF_REVIEW_VERSION === "1.3.0") {
+      s.reviewVersion = "1.3.0";
+      const bindings = reviewBindings(report,h,evidence);
+      for (const scope of s.scopes) scope.checkpoint.contentDigest = bindings.get(scope.id);
+      for (const record of [...s.humanDecisions,...s.lossConfirmations]) record.contentDigest = bindings.get(record.groupId);
+    }
     const gate = completionGate(
       s,
       report,
@@ -205,6 +212,7 @@ for (const size of sizes) {
   }
   const h = await loadHandoff(seed),
     report = await read(join(seed, "review/review-targets.json"));
+  const seenBindings = reviewBindings(report,h,h.validatedReview.evidence);
   const item = h.provenance.items.find(
     (i) =>
       i.cells.some((c) => c.targets.length && c.sourceCell.text) &&
@@ -258,19 +266,20 @@ for (const size of sizes) {
         operation === "humanDecision"
           ? service.humanDecision({
               groupId: group.id,
+              contentDigest: seenBindings.get(group.id),
               revision: h.snapshot.revision,
               decision: "confirmed",
               note,
             })
           : operation === "lossDecision"
-            ? service.lossDecision({ ...loss, note })
+            ? service.lossDecision({ ...loss, note, contentDigest:seenBindings.get(loss.groupId) })
             : operation === "progress"
               ? service.progress()
               : operation === "finalize"
                 ? service
                     .finalize({ revision: h.snapshot.revision })
                     .catch((e) => {
-                      if (size === "mixed" && e.message === "review-incomplete")
+                      if (size === "mixed" && e.code === "review-incomplete")
                         return { reviewComplete: false, blocked: true };
                       throw e;
                     })
@@ -281,6 +290,7 @@ for (const size of sizes) {
                       generationId: h.provenance.generationId,
                       revision: h.snapshot.revision,
                       groupId: group.id,
+                      contentDigest: seenBindings.get(group.id),
                       actor: "human",
                       decision: "correct",
                       reason: note,

@@ -1,0 +1,15 @@
+{
+  "method": "One independent content mutation and related history entry per distinct nonempty editable current target; no correction is executed or accepted as document review",
+  "pages": 13,
+  "groups": 15,
+  "targets": 154,
+  "averageAffectedGroups": 2.6233766233766236,
+  "minAffectedGroups": 1,
+  "maxAffectedGroups": 4,
+  "histogram": {
+    "1": 12,
+    "2": 41,
+    "3": 94,
+    "4": 7
+  }
+}

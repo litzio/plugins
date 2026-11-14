@@ -1,3 +1,4 @@
+import { diagnostic } from "./diagnostics.js";
 import { snapshotLookup } from "./lookup.js";
 import { createCorrections } from "./corrections.js";
 import {
@@ -17,7 +18,7 @@ import { loadHandoff } from "./provenance.js";
 import { readReview } from "./review.js";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const need = (value, code) => {
-  if (!value) throw new Error(code);
+  if (!value) throw Object.assign(new Error(diagnostic(code)), { code });
 };
 export function safeError(error) {
   if (error?.code === "ENOENT") return "file-not-found";
