@@ -702,9 +702,10 @@ async function validateFileSet(
     sourceRecord: record,
   };
   if (!history) return baseline;
-  validateSchema(history, schemas["correction-history"]);
+  validateSchema(history, schemas[history.schemaVersion === "1.3.0" ? "correction-history-v13" : "correction-history"]);
   need(
-    history.schemaVersion !== "1.2.0" || ["1.2.0", "1.3.0"].includes(marker.schemaVersion),
+    (history.schemaVersion !== "1.2.0" || ["1.2.0", "1.3.0"].includes(marker.schemaVersion)) &&
+      (history.schemaVersion !== "1.3.0" || marker.schemaVersion === "1.3.0"),
     "history-version",
   );
   const validatedReview = validateReviewBytes(files, baseline);

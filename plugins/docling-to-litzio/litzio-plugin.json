@@ -730,6 +730,10 @@
             "items": {
               "type": "object"
             }
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -740,7 +744,8 @@
           "groupId",
           "actor",
           "reason",
-          "decision"
+          "decision",
+          "contentDigest"
         ],
         "additionalProperties": false
       },
@@ -822,6 +827,10 @@
               "scope"
             ],
             "additionalProperties": false
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -830,7 +839,8 @@
           "undoOf",
           "actor",
           "reason",
-          "evidence"
+          "evidence",
+          "contentDigest"
         ],
         "additionalProperties": false
       },
@@ -918,6 +928,10 @@
           "note": {
             "type": "string",
             "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -925,7 +939,8 @@
           "scopeId",
           "revision",
           "state",
-          "note"
+          "note",
+          "contentDigest"
         ],
         "additionalProperties": false
       },
@@ -1034,6 +1049,10 @@
           "note": {
             "type": "string",
             "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -1041,7 +1060,8 @@
           "groupId",
           "revision",
           "decision",
-          "note"
+          "note",
+          "contentDigest"
         ],
         "additionalProperties": false
       },
@@ -1141,6 +1161,10 @@
           "note": {
             "type": "string",
             "minLength": 1
+          },
+          "contentDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -1151,7 +1175,8 @@
           "targetPath",
           "pageNo",
           "decision",
-          "note"
+          "note",
+          "contentDigest"
         ],
         "additionalProperties": false
       },

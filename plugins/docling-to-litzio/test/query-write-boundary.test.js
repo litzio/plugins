@@ -1,3 +1,4 @@
+import { observed } from "./observed-submission.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -36,14 +37,14 @@ async function baseline() {
     let s = await service.progress();
     const report = await json(join(root, "review/review-targets.json"));
     for (const scope of s.scopes)
-      await service.checkpoint({
+      await observed(service, "checkpoint", {
         scopeId: scope.id,
         revision: s.revision,
         state: "차이없음",
         note,
       });
     for (const group of s.humanQueue)
-      await service.humanDecision({
+      await observed(service, "humanDecision", {
         groupId: group.id,
         revision: s.revision,
         decision: "confirmed",
@@ -56,7 +57,7 @@ async function baseline() {
       const group = report.groups.find((g) =>
         g.findingIds.includes(finding.id),
       );
-      await service.lossDecision({
+      await observed(service, "lossDecision", {
         lossId: loss.lossId,
         groupId: group.id,
         revision: s.revision,
@@ -143,6 +144,7 @@ for (const operation of [
     const markerBefore = await originalRead(join(x.root, "complete.json"));
     const report = await json(join(x.root, "review/review-targets.json"));
     const groupId = report.groups[0].id;
+    const seenMaterial = await x.service.material(groupId);
     const loss = x.h.ledger.lossConfirmations[0];
     let reviewReads = 0,
       armed = false,
@@ -170,6 +172,7 @@ for (const operation of [
     };
     const submit = {
       changeId: "late-edit",
+      contentDigest: seenMaterial.contentDigest,
       generationId: x.h.provenance.generationId,
       revision,
       groupId,
@@ -192,17 +195,18 @@ for (const operation of [
       await assert.rejects(
         () =>
           operation === "humanDecision"
-            ? x.service.humanDecision({
+            ? observed(x.service, "humanDecision", {
                 groupId,
                 revision,
+                contentDigest: seenMaterial.contentDigest,
                 decision: "confirmed",
                 note,
               })
             : operation === "lossDecision"
-              ? x.service.lossDecision({ ...loss, note })
+              ? observed(x.service, "lossDecision", { ...loss, note })
               : operation === "finalize"
                 ? x.service.finalize({ revision })
-                : x.service.submit(submit),
+                : observed(x.service, "submit", submit),
         /stale-write-revision/,
       );
     } finally {
@@ -292,6 +296,7 @@ test("reusing correction readback still checks fresh document bytes before publi
   const x = await copy();
   const markerBefore = await originalRead(join(x.root, "complete.json"));
   const report = await json(join(x.root, "review/review-targets.json"));
+  const seenMaterial = await x.service.material(report.groups[0].id);
   let documentReads = 0,
     injected = false;
   afterRead = async (file) => {
@@ -305,8 +310,9 @@ test("reusing correction readback still checks fresh document bytes before publi
   };
   let row;
   try {
-    row = await x.service.submit({
+    row = await observed(x.service, "submit", {
       changeId: "late-publish",
+      contentDigest: seenMaterial.contentDigest,
       generationId: x.h.provenance.generationId,
       revision: x.h.snapshot.revision,
       groupId: report.groups[0].id,
