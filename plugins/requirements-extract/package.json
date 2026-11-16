@@ -1,1 +1,0 @@
-{"name":"requirements-extract-processing","private":true,"type":"module","scripts":{"test":"node --test test/*.test.mjs"},"dependencies":{"ajv":"8.20.0","xmlbuilder2":"4.0.3"},"devDependencies":{"esbuild":"0.28.2","react":"19.3.0","react-test-renderer":"19.3.0"}}
