@@ -7,7 +7,7 @@ const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,''), chars=s=>s.replace(/\s/g
 // Python round uses ties to even; row ordering must retain that behavior.
 const round=x=>Math.abs(x%1)===.5?2*Math.round(x/2):Math.round(x);
 const box=(page,b)=>({page,x0:Math.min(b[0],b[2]),top:Math.min(b[1],b[3]),x1:Math.max(b[0],b[2]),bottom:Math.max(b[1],b[3])});
-function addBox(b,l){const a=b.boxes.find(x=>x.page===l.page);if(a){a.x0=Math.min(a.x0,l.x0);a.top=Math.min(a.top,l.y0);a.x1=Math.max(a.x1,l.x1);a.bottom=Math.max(a.bottom,l.y1);}else b.boxes.push(box(l.page,l.bbox));}
+function addBox(b,l){l={...l,x0:l.bbox[0],y0:l.bbox[1],x1:l.bbox[2],y1:l.bbox[3]};const a=b.boxes.find(x=>x.page===l.page);if(a){a.x0=Math.min(a.x0,l.x0);a.top=Math.min(a.top,l.y0);a.x1=Math.max(a.x1,l.x1);a.bottom=Math.max(a.bottom,l.y1);}else b.boxes.push(box(l.page,l.bbox));}
 function line(raw,page){const spans=raw.spans.filter(s=>s.text.trim()),main=spans.reduce((a,s)=>!a||s.text.length>a.text.length?s:a,null),main_size=main?round(main.size*10)/10:0;return {page,bbox:raw.bbox,x0:raw.bbox[0],y0:raw.bbox[1],x1:raw.bbox[2],y1:raw.bbox[3],spans,plain:raw.spans.map(s=>s.text).join('').trim(),size:Math.max(0,...spans.map(s=>s.size)),main_size,bold:spans.length>0&&spans.filter(s=>s.size>=7).every(s=>s.flags&16),first_size:spans[0]?.size||0,kind:null,text(){return spans.map(s=>(s.flags&1)&&s.size<main_size&&s.text.trim()?s.text.trim().split(/[,\s]+/).map(x=>'[^'+x+']').join(''):s.text).join('').replace(/\s+/g,' ').trim();}};}
 const inside=(l,r)=>{const x=(l.x0+l.x1)/2,y=(l.y0+l.y1)/2;return r[0]-2<=x&&x<=r[2]+2&&r[1]-2<=y&&y<=r[3]+2;};
 export function convert({pages,toc}){
@@ -71,4 +71,5 @@ export function footnoteContent(text, stats) {
  if(at<text.length)content.push({kind:'text',text:text.slice(at)});
  return content;
 }
+
 
