@@ -1,0 +1,360 @@
+{
+  "license": "CC0-1.0",
+  "source": "LSR-1.1 authoring oracle, archive tag",
+  "elements": [
+    {
+      "id": "std-scope-p",
+      "page": 2,
+      "role": "paragraph",
+      "text": "The archive shall retain the submitted record, its source location and the sequence in which the reviewer encountered it. Each reconstruction shall retain links to the same immutable input. A successful conversion reports execution status; it does not certify that every value, relationship or note has been recovered."
+    },
+    {
+      "id": "std-boundary-p",
+      "page": 2,
+      "role": "paragraph",
+      "text": "A capture boundary encloses a page region and its explicit relationships. The boundary may include a caption, a body paragraph and a group of cells. A line drawn through a region is not, by itself, evidence that two values belong to different records."
+    },
+    {
+      "id": "std-attribution-p",
+      "page": 2,
+      "role": "paragraph",
+      "text": "The original spelling, capitalization and symbols remain part of the source evidence. If a source value appears unusual, the reviewer shall retain it and record a separate explanation. The conversion shall not replace a literal zero with a missing value or normalize a strict inequality into a non-strict one."
+    },
+    {
+      "id": "std-call-17",
+      "page": 2,
+      "role": "paragraph",
+      "text": "The trace follows the submitted item17 even when the note appears below."
+    },
+    {
+      "id": "std-note-body",
+      "page": 2,
+      "role": "paragraph",
+      "text": "NOTE 1 - The following note is explanatory body content. It remains associated with the section and is not a title, caption, running head or page footer."
+    },
+    {
+      "id": "std-bold-body",
+      "page": 2,
+      "role": "paragraph",
+      "text": "Retention remains mandatory after a successful conversion."
+    },
+    {
+      "id": "std-end-p",
+      "page": 2,
+      "role": "paragraph",
+      "text": "Record order is distinct from physical drawing order. A visual paragraph can be assembled from many PDF text runs, while a single run may contain both a numerical value and a raised callout. The corresponding roles shall be reviewed without discarding the underlying glyphs."
+    },
+    {
+      "id": "std-def-0",
+      "page": 3,
+      "role": "paragraph",
+      "text": "capture window: The bounded interval used to select incoming records."
+    },
+    {
+      "id": "std-def-1",
+      "page": 3,
+      "role": "paragraph",
+      "text": "review token: An identifier used to preserve the source-to-result relationship."
+    },
+    {
+      "id": "std-def-2",
+      "page": 3,
+      "role": "paragraph",
+      "text": "record boundary: The visual region belonging to one submitted item."
+    },
+    {
+      "id": "std-def-3",
+      "page": 3,
+      "role": "paragraph",
+      "text": "retained evidence: The original text, image and relationships used for comparison."
+    },
+    {
+      "id": "std-def-note",
+      "page": 3,
+      "role": "paragraph",
+      "text": "NOTE 2 - Definitions use bold terms followed by colons. Their typography does not create a new section in the document hierarchy."
+    },
+    {
+      "id": "std-name-0-0",
+      "page": 3,
+      "role": "list_item",
+      "text": "Alex Rowan"
+    },
+    {
+      "id": "std-name-0-1",
+      "page": 3,
+      "role": "list_item",
+      "text": "Casey Marlow"
+    },
+    {
+      "id": "std-name-0-2",
+      "page": 3,
+      "role": "list_item",
+      "text": "Devin Solace"
+    },
+    {
+      "id": "std-name-0-3",
+      "page": 3,
+      "role": "list_item",
+      "text": "Ellis Parker"
+    },
+    {
+      "id": "std-name-0-4",
+      "page": 3,
+      "role": "list_item",
+      "text": "Finley Hart"
+    },
+    {
+      "id": "std-name-0-5",
+      "page": 3,
+      "role": "list_item",
+      "text": "Harper Vale"
+    },
+    {
+      "id": "std-name-1-0",
+      "page": 3,
+      "role": "list_item",
+      "text": "Indigo Reed"
+    },
+    {
+      "id": "std-name-1-1",
+      "page": 3,
+      "role": "list_item",
+      "text": "Jordan Wren"
+    },
+    {
+      "id": "std-name-1-2",
+      "page": 3,
+      "role": "list_item",
+      "text": "Kendall Fox"
+    },
+    {
+      "id": "std-name-1-3",
+      "page": 3,
+      "role": "list_item",
+      "text": "Logan Birch"
+    },
+    {
+      "id": "std-name-1-4",
+      "page": 3,
+      "role": "list_item",
+      "text": "Morgan Lake"
+    },
+    {
+      "id": "std-name-1-5",
+      "page": 3,
+      "role": "list_item",
+      "text": "Noel Ash"
+    },
+    {
+      "id": "std-name-2-0",
+      "page": 3,
+      "role": "list_item",
+      "text": "Oakley Frost"
+    },
+    {
+      "id": "std-name-2-1",
+      "page": 3,
+      "role": "list_item",
+      "text": "Parker Dawn"
+    },
+    {
+      "id": "std-name-2-2",
+      "page": 3,
+      "role": "list_item",
+      "text": "Quinn Brook"
+    },
+    {
+      "id": "std-name-2-3",
+      "page": 3,
+      "role": "list_item",
+      "text": "Reese Field"
+    },
+    {
+      "id": "std-name-2-4",
+      "page": 3,
+      "role": "list_item",
+      "text": "Sage North"
+    },
+    {
+      "id": "std-name-2-5",
+      "page": 3,
+      "role": "list_item",
+      "text": "Taylor Moss"
+    },
+    {
+      "id": "std-participants-tail",
+      "page": 3,
+      "role": "paragraph",
+      "text": "The three columns are a roster of independent fictional participants. There are no row-wise pairs between columns and no data header."
+    },
+    {
+      "id": "std-matrix-intro",
+      "page": 4,
+      "role": "paragraph",
+      "text": "Table 1 records quantities at two observation scales. Units and relation signs belong to each value. The table notes and the page note below use different marker spaces."
+    },
+    {
+      "id": "std-after-matrix",
+      "page": 4,
+      "role": "paragraph",
+      "text": "The observation matrix is retained with its notes."
+    },
+    {
+      "id": "std-typo-note",
+      "page": 5,
+      "role": "paragraph",
+      "text": "The source intentionally spells the status as \"protcol pending\". A corrected spelling would be a separate editorial operation."
+    },
+    {
+      "id": "std-math-note",
+      "page": 5,
+      "role": "paragraph",
+      "text": "Fractions and min operators are embedded within cells. Their presence does not turn the table into a stand-alone display equation."
+    },
+    {
+      "id": "std-band-p",
+      "page": 6,
+      "role": "paragraph",
+      "text": "A record within the retained band remains associated with its source. A boundary value is assigned according to the direction and strictness of the printed relation sign. The endpoint 1.16 occurs in adjacent conditions but belongs to one specified band."
+    },
+    {
+      "id": "std-cross-note-call",
+      "page": 6,
+      "role": "paragraph",
+      "text": "The next physical page defines note 121 and continues Table 3."
+    },
+    {
+      "id": "std-paragraph-a",
+      "page": 6,
+      "role": "paragraph",
+      "text": "When a record is divided across physical pages, its reference remains attached to the same logical item. The continuation begins with the remaining words of the"
+    },
+    {
+      "id": "std-paragraph-b",
+      "page": 7,
+      "role": "paragraph",
+      "text": "same sentence and does not create a new section merely because a running head intervenes."
+    },
+    {
+      "id": "std-post-band",
+      "page": 7,
+      "role": "paragraph",
+      "text": "The continued table does not introduce a second independent Table 3."
+    },
+    {
+      "id": "std-near-footer",
+      "page": 7,
+      "role": "paragraph",
+      "text": "The archive retains both table fragments and the cross-page note."
+    },
+    {
+      "id": "std-equations-intro",
+      "page": 8,
+      "role": "paragraph",
+      "text": "The two expressions below are invented review metrics. Each right-aligned parenthesized number identifies one expression. Neither expression supplies an electrical engineering requirement."
+    },
+    {
+      "id": "std-symbol-defs",
+      "page": 8,
+      "role": "paragraph",
+      "text": "In these fictional expressions, J is a review index and R is a normalized residual. The terms rms, base and the integer zero are distinct subscripts; they are not footnote markers."
+    },
+    {
+      "id": "std-preserve-typo",
+      "page": 8,
+      "role": "paragraph",
+      "text": "The literal label \"calbration\" is preserved exactly as submitted."
+    },
+    {
+      "id": "std-annex-intro",
+      "page": 9,
+      "role": "paragraph",
+      "text": "Figure K.1 is an invented review decision path. Internal words and edge labels are figure content. Recovering an image is distinct from recovering its graph connections."
+    },
+    {
+      "id": "std-annex-tail",
+      "page": 9,
+      "role": "paragraph",
+      "text": "The internal threshold labels must not become body paragraphs in the reading sequence. Image preservation alone does not prove that the labels or edges were recognized."
+    },
+    {
+      "id": "std-chart-intro",
+      "page": 10,
+      "role": "paragraph",
+      "text": "Figure K.2 depicts a fictional archive fill ratio. The plotted curve, axis signs, units and inequality callouts belong to the same figure."
+    },
+    {
+      "id": "std-chart-note",
+      "page": 10,
+      "role": "paragraph",
+      "text": "NOTE 3 - This explanatory note belongs to the figure discussion. It is not the figure caption and is not a running footer."
+    },
+    {
+      "id": "std-closing",
+      "page": 10,
+      "role": "paragraph",
+      "text": "The final retained record includes the original source, the extraction, the unresolved differences and the reviewer decision. Repeated words do not authorize deletion of a body paragraph."
+    },
+    {
+      "id": "std-cube-explanation",
+      "page": 11,
+      "role": "paragraph",
+      "text": "The root index is 3. The radical covers the full sum, and the exponent on each indexed term is also 3."
+    },
+    {
+      "id": "std-note-scope-tail",
+      "page": 11,
+      "role": "paragraph",
+      "text": "Identical marker letters do not establish that two notes are the same note."
+    },
+    {
+      "id": "std-record-revision",
+      "page": 12,
+      "role": "paragraph",
+      "text": "Revision 04 / Laboratory record MA-27"
+    },
+    {
+      "id": "std-record-sponsor",
+      "page": 12,
+      "role": "paragraph",
+      "text": "Sponsor\nMeasurement Archive Interchange Working Group"
+    },
+    {
+      "id": "std-record-approval",
+      "page": 12,
+      "role": "paragraph",
+      "text": "Approved 10 November 2026"
+    },
+    {
+      "id": "std-record-authority",
+      "page": 12,
+      "role": "paragraph",
+      "text": "MAIS Review Council"
+    },
+    {
+      "id": "std-record-abstract",
+      "page": 13,
+      "role": "paragraph",
+      "text": "Abstract: This fictional record describes how a laboratory archive retains submitted evidence, establishes source identity and records unresolved extraction differences. The review covers text roles, numerical symbols, mathematical expressions and the relationships between a submitted item and its source region."
+    },
+    {
+      "id": "std-record-keywords",
+      "page": 13,
+      "role": "paragraph",
+      "text": "Keywords: archive, source identity, traceability, table, review, evidence."
+    },
+    {
+      "id": "std-record-intro",
+      "page": 13,
+      "role": "paragraph",
+      "text": "The cover identifies the issuing council. This abstract describes the record contents. Their physical adjacency does not establish that they form a single paragraph."
+    },
+    {
+      "id": "std-record-retain",
+      "page": 13,
+      "role": "paragraph",
+      "text": "A true paragraph continuation is provided earlier in this fixture. Both cases use a physical page boundary and repeated page furniture, but their paragraph identities differ."
+    }
+  ]
+}

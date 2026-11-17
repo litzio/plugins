@@ -167,3 +167,108 @@ test("public sample: captions, one graph crop with axes, and paired endnotes", a
     ),
   );
 });
+
+test("public oracle: paragraph boundary score and ragged layout", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { compare } = await import("../compare-paragraphs.mjs");
+  const oracle = JSON.parse(
+    await readFile(
+      new URL("./fixtures/paragraphs.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const score = compare(result, oracle, 2);
+  assert.equal(score.total, 46);
+  assert.equal(score.matched, 33);
+  assert.equal(result.stats.paragraphs.layout.justified, false);
+  assert.ok(
+    !result.blocks.some((b) =>
+      ["paragraph-start", "paragraph-end"].includes(b.warning?.code),
+    ),
+  );
+});
+
+const sampleLine = (text, x, y, end = 500) => ({
+  bbox: [x, y - 8, end, y + 2],
+  spans: [{ text, size: 10, flags: 0 }],
+  metrics: [{ text, x0: x, x1: end, base: y, size: 10 }],
+});
+const samplePage = (raw) => ({
+  width: 600,
+  height: 800,
+  raw,
+  tables: [],
+  figures: [],
+  nchars: raw.reduce(
+    (n, l) =>
+      n +
+      l.spans
+        .map((s) => s.text)
+        .join("")
+        .replace(/\s/g, "").length,
+    0,
+  ),
+});
+test("body baselines ignore a subscript's displaced bounding box", () => {
+  const lines = [
+    sampleLine("This is a full opening line of a paragraph", 60, 130),
+    sampleLine("and another full body line containing subscript", 60, 142),
+    sampleLine("and its final short line.", 60, 154, 270),
+    sampleLine("A separate paragraph begins here.", 60, 178, 350),
+  ];
+  const original = convert({ pages: [samplePage(lines)], toc: [] });
+  const displaced = structuredClone(lines);
+  displaced[1].bbox[1] -= 6;
+  displaced[1].bbox[3] += 9;
+  displaced[1].spans.push({ text: "q", size: 6, flags: 0 });
+  displaced[1].metrics.push({
+    text: "q",
+    x0: 300,
+    x1: 304,
+    base: 148,
+    size: 6,
+  });
+  const modified = convert({ pages: [samplePage(displaced)], toc: [] });
+  assert.deepEqual(
+    modified.blocks.map((b) => b.boxes.length),
+    original.blocks.map((b) => b.boxes.length),
+  );
+  assert.equal(modified.blocks.length, 2);
+  assert.ok(modified.blocks[0].text.includes("subscriptq and its final"));
+});
+test("detached symbol, hanging continuation and nested ordered lists keep their sources", async () => {
+  const { authoring } = await import("../authoring.mjs");
+  const lines = [
+    sampleLine("The following conditions apply:", 60, 130, 300),
+    sampleLine("•", 70, 154, 75),
+    sampleLine("First item with enough text to establish a body line", 95, 154),
+    sampleLine("continuation of the same list item.", 95, 166, 300),
+    sampleLine("a) Child item", 110, 190, 350),
+    sampleLine("b) Second child", 110, 214, 360),
+    sampleLine("• Another top level item", 70, 238, 360),
+  ];
+  const r = convert({ pages: [samplePage(lines)], toc: [] });
+  const lists = r.blocks.filter((b) => b.kind === "list");
+  assert.equal(lists.length, 4);
+  assert.ok(lists[0].text.includes("continuation"));
+  assert.deepEqual(
+    lists.map((b) => b.level),
+    [1, 2, 2, 1],
+  );
+  const plan = authoring(r);
+  const top = plan.authoring.inputs[0].blocks.find((b) => b.kind === "list");
+  assert.equal(top.items.length, 2);
+  assert.equal(top.items[0].list.style, "lower-alpha");
+  assert.equal(top.items[0].list.delimiter, ")");
+  assert.equal(top.items[0].list.kind, undefined);
+  assert.equal(plan.units.find((u) => u.kind === "list").sources.length, 4);
+  const fallback = structuredClone(r);
+  fallback.blocks.find((b) => b.kind === "list").marker = "(a)";
+  fallback.blocks.find((b) => b.kind === "list").text =
+    "(a) Preserved source marker";
+  assert.ok(
+    JSON.stringify(authoring(fallback).authoring).includes(
+      "(a) Preserved source marker",
+    ),
+  );
+});
