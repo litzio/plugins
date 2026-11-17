@@ -57,6 +57,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   );
   const warnings = mapping?.blocks.filter((b) => b.warning) || [],
     warningIndex = warnings.findIndex((b) => b.id === selected?.id);
+  const frontPages = new Set((mapping?.excluded || result?.excluded || []).filter(e=>e.kind==="front").map(e=>e.page));
+  const frontEnd = Math.max(-1,...frontPages)+1;
+  const frontExplanation = "첫 번호 제목 이전의 쪽(표지, 목차 등)은 문서에 넣지 않습니다.";
   const positions = useMemo(() => {
     let top = 0;
     return (mapping?.pages || result?.pages || []).map((p) => {
@@ -244,7 +247,13 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   );
   return (
     <ui.ScreenLayout
-      description={file ? file.name + (pdf ? " · " + pdf.numPages + "쪽" : "") : void 0}
+      description={file ? <span tabIndex={frontEnd ? 0 : undefined}
+        onMouseEnter={()=>frontEnd && setTip({text:frontExplanation,page:-1})}
+        onMouseLeave={()=>setTip(null)} onFocus={()=>frontEnd && setTip({text:frontExplanation,page:-1})}
+        onBlur={()=>setTip(null)} aria-describedby={tip?.page===-1 ? "pdf-front-explanation" : undefined}>
+        {file.name + (pdf ? " · " + pdf.numPages + "쪽" : "") + (frontEnd ? " · " + (frontEnd===1 ? "1쪽" : "1–"+frontEnd+"쪽") + " 제외" : "")}
+        {tip?.page===-1 && <span id="pdf-front-explanation" role="tooltip" className="type-helper" style={{display:"block"}}>{tip.text}</span>}
+      </span> : void 0}
       status={<ui.Status tone={error ? "error" : busy ? "progress" : mapping ? "ok" : "neutral"} label={status} />}
       actions={
         <>
@@ -332,6 +341,17 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                     {Math.abs(i + 1 - pageNo) <= 2 && (
                       <>
                         <Page index={i} scale={pos.scale} />
+                        {frontPages.has(i) && <div tabIndex={0}
+                          aria-label="변환에서 제외 · 본문 시작 전"
+                          aria-describedby={tip?.page===i ? "pdf-front-page-"+i : undefined}
+                          onMouseEnter={()=>setTip({text:frontExplanation,page:i,top:32})}
+                          onMouseLeave={()=>setTip(null)}
+                          onFocus={()=>setTip({text:frontExplanation,page:i,top:32})}
+                          onBlur={()=>setTip(null)}
+                          className="type-helper"
+                          style={{position:"absolute",top:0,left:0,right:0,padding:"var(--space-2)",background:"var(--id-color-surface-muted)",color:"var(--id-color-text-muted)",border:"1px solid var(--id-color-border)"}}>
+                          변환에서 제외 · 본문 시작 전
+                        </div>}
                         {(mapping?.blocks || result?.blocks || []).flatMap((b) =>
                           b.boxes
                             .filter((x) => x.page === i)
@@ -405,6 +425,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                           ))}
                         {tip?.page === i && (
                           <div
+                            id={"pdf-front-page-"+i}
                             role="tooltip"
                             className="type-helper"
                             style={{
