@@ -78,16 +78,13 @@ const inside = (l, r) => {
 };
 // Page numbers at this boundary are one-based, like the page picker.
 function suggestExcludedPages({ pages }) {
-  const start = pages.findIndex((p) => p.raw.some((r) => {
-    const l = line(r, 0);
-    return l.bold && /^1\.?\s+\S/.test(l.plain);
-  }));
+  const { all } = classifyLines(pages);
+  const start = all.findIndex((ls) =>
+    ls.some((l) => l.kind === "heading" && /^1\.?\s/.test(l.text())),
+  );
   return Array.from({ length: Math.max(0, start) }, (_, i) => i + 1);
 }
-function convert({ pages, toc }, excludedPages = []) {
-  if (!Array.isArray(excludedPages) || excludedPages.some((p) => !Number.isInteger(p) || p < 1 || p > pages.length))
-    throw new Error("제외할 쪽 번호가 올바르지 않습니다.");
-  const omitted = new Set(excludedPages);
+function classifyLines(pages) {
   pages = pages.map((p) => ({ ...p }));
   const all = pages.map((p, i) =>
     p.raw
@@ -239,6 +236,18 @@ function convert({ pages, toc }, excludedPages = []) {
     }
     for (const l of ls) l.kind ??= "body";
   });
+  return { pages, all, body };
+}
+function convert({ pages, toc }, excludedPages = []) {
+  if (
+    !Array.isArray(excludedPages) ||
+    excludedPages.some((p) => !Number.isInteger(p) || p < 1 || p > pages.length)
+  )
+    throw new Error("제외할 쪽 번호가 올바르지 않습니다.");
+  const omitted = new Set(excludedPages);
+  const classified = classifyLines(pages);
+  pages = classified.pages;
+  const { all, body } = classified;
   const start = 0;
   all.forEach((ls, i) => {
     if (omitted.has(i + 1)) for (const l of ls) l.kind = "front";
@@ -401,7 +410,8 @@ function convert({ pages, toc }, excludedPages = []) {
     ])
       for (const r of rs)
         if (
-          !omitted.has(p + 1) && !blocks.some(
+          !omitted.has(p + 1) &&
+          !blocks.some(
             (b) =>
               b.page === p &&
               b.kind === kind &&
