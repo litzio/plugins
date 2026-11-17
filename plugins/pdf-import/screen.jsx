@@ -1,6 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
+import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
@@ -110,7 +111,7 @@ function Screen({
     [warningFilter, setWarningFilter] = useState("all");
   const anchor = useRef(null),
     scrollTimer = useRef(null),
-    suppressScroll = useRef(false);
+    scrollOwner = useRef(null), sourceAuto = useRef(null);
   useEffect(() => () => clearTimeout(scrollTimer.current), []);
   const pane = useRef(null),
     metrics = useRef({});
@@ -142,6 +143,7 @@ function Screen({
   async function correct(action, extra = {}) {
     if (editing.current) return;
     const before=mapping, oldSelection=selection, oldSelected=selected;
+    clearTimeout(scrollTimer.current);
     editing.current=true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
     let started=performance.now();
     try {
@@ -211,6 +213,7 @@ function Screen({
     if(pickerSession.current) pickerSession.current.active=false;
     const session={active:true,touched:new Set()};
     pickerSession.current=session;
+    scrollOwner.current=null; sourceAuto.current=null;
     replacementApproved.current=false;
     setPickerHelp(false);
     setPageTitles([]);
@@ -468,35 +471,47 @@ function Screen({
       .then(found=>setRecent(found.rows)).catch(()=>setError("저장된 문서 목록을 읽지 못했습니다."));
   }
 
-  function sourceScroll() {
-    const scrollAt = performance.now();
+  const locations = useMemo(()=>sourceLocations(mapping?.blocks || [], positions),[mapping,positions]);
+  function ownScroll(side, event) {
+    if(event?.type==='keydown' && (!['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key) || event.ctrlKey || event.altKey || event.metaKey))return;
+    scrollOwner.current=side;
+    sourceAuto.current=null;
     clearTimeout(scrollTimer.current);
-    if (suppressScroll.current) {
-      suppressScroll.current = false;
-      return;
-    }
-    if (!follow || stale || !mapping || picking || busy) return;
-    scrollTimer.current = setTimeout(() => {
-      const y = pane.current.scrollTop + pane.current.clientHeight / 3;
-      const candidates = mapping.blocks.flatMap((b) =>
-        b.boxes.map((x) => ({
-          b,
-          top: positions[x.page].top + x.top * positions[x.page].scale,
-          bottom: positions[x.page].top + x.bottom * positions[x.page].scale,
-        })),
-      );
-      const hit =
-        candidates.find((x) => x.top <= y && x.bottom >= y) ||
-        candidates.filter((x) => x.top >= y).sort((a, b) => a.top - b.top)[0];
-      if (hit) {
-        setFollowed(hit.b);
-        setTarget((old) => (old?.id === hit.b.id ? old : hit.b));
-        performance.measure("pdf-import-follow", {
-          start: scrollAt,
-          detail: { id: hit.b.id },
-        });
+  }
+  function moveSource(b) {
+    if(!pane.current || !b.boxes.length)return;
+    pane.current.scrollTop=Math.max(0,sourceScrollTop(b,positions,pane.current.clientHeight));
+    // Remember the clamped position, including no-op moves. Only fresh input clears it.
+    sourceAuto.current=pane.current.scrollTop;
+  }
+  function sourceScroll() {
+    const scrollAt=performance.now();
+    clearTimeout(scrollTimer.current);
+    if(scrollOwner.current!=='source' || sourceAuto.current!==null || !follow || stale || !mapping || picking || busy)return;
+    scrollTimer.current=setTimeout(()=>{
+      if(scrollOwner.current!=='source')return;
+      const b=blockAtSource(locations,pane.current.scrollTop+pane.current.clientHeight/3);
+      if(b){
+        setFollowed(b);
+        setTarget(old=>old?.id===b.id && old.highlight===false?old:{...b,highlight:false});
+        performance.measure('pdf-import-follow',{start:scrollAt,detail:{id:b.id,direction:'source'}});
       }
-    }, 150);
+    },150);
+  }
+  function documentVisible(report) {
+    if(scrollOwner.current!=='document' || !follow || stale || busy || editing.current || !mapping || report.revision!==mapping.revision)return;
+    const b=sourceForPath(mapping.blocks,report.path,true);
+    if(!b)return;
+    clearTimeout(scrollTimer.current);
+    setFollowed(b);
+    // Clear a previous click highlight without navigating back into the user's scroll.
+    setTarget(null);
+    moveSource(b);
+  }
+  function documentClick(report) {
+    if(stale || busy || editing.current || !mapping || report.revision!==mapping.revision)return;
+    const b=sourceForPath(mapping.blocks,report.path);
+    if(b){scrollOwner.current='document';select(b,true);}
   }
   async function select(b, scroll = false, shift = false) {
     if (stale || busy) return;
@@ -504,7 +519,7 @@ function Screen({
       const t = performance.now();
       clearTimeout(scrollTimer.current);
       setFollowed(null);
-      setTarget(b);
+      setTarget({...b,highlight:true});
       setSelected(b);
       setSplitting(false);
       if (shift && selectionAnchor.current) {
@@ -516,13 +531,7 @@ function Screen({
         start: t,
         targetAt: performance.now(),
       };
-      if (scroll) {
-        suppressScroll.current = true;
-        pane.current.scrollTop = positions[b.boxes[0].page].top;
-        requestAnimationFrame(() => {
-          suppressScroll.current = false;
-        });
-      }
+      if (scroll) moveSource(b);
     } catch (e) {
       setError("문서 대응을 확인하지 못했습니다.");
     }
@@ -770,7 +779,7 @@ function Screen({
               aria-describedby={
                 tip?.page === -2 ? "pdf-follow-help" : undefined
               }
-              title="원본을 스크롤하면 문서가 따라옵니다. 문서를 스크롤해도 원본은 움직이지 않습니다."
+              title="한쪽을 스크롤하면 다른 쪽이 따라옵니다."
               tabIndex={0}
             >
               <input
@@ -798,8 +807,7 @@ function Screen({
                     zIndex: 1,
                   }}
                 >
-                  원본을 스크롤하면 문서가 따라옵니다. 문서를 스크롤해도 원본은
-                  움직이지 않습니다.
+                  한쪽을 스크롤하면 다른 쪽이 따라옵니다.
                 </span>
               )}
             </label>
@@ -853,6 +861,11 @@ function Screen({
               </div>
               <div
                 data-pdf-pane
+                tabIndex={0}
+                aria-label="원본 PDF"
+                onWheelCapture={e=>ownScroll('source',e)}
+                onPointerDownCapture={e=>ownScroll('source',e)}
+                onKeyDownCapture={e=>ownScroll('source',e)}
                 ref={pane}
                 style={{
                   height: 760,
@@ -1024,7 +1037,10 @@ function Screen({
                 ))}
               </div>
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div data-document-pane style={{ minWidth: 0 }}
+              onWheelCapture={e=>ownScroll('document',e)}
+              onPointerDownCapture={e=>ownScroll('document',e)}
+              onKeyDownCapture={e=>ownScroll('document',e)}>
               <div className="type-item-name">변환된 문서</div>
               {mapping && (
                 <ui.DocumentView
@@ -1032,11 +1048,13 @@ function Screen({
                   path={file.document}
                   target={
                     target && !stale
-                      ? { revision: mapping.revision, path: target.path }
+                      ? { revision: mapping.revision, path: target.path, highlight:target.highlight!==false }
                       : void 0
                   }
                   height={760}
                   onStateChange={viewState}
+                  onVisibleBlockChange={documentVisible}
+                  onBlockClick={documentClick}
                 />
               )}
             </div>
