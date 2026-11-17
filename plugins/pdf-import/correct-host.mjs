@@ -1,31 +1,15 @@
-import { readFile, writeFile, rename, mkdtemp, rm } from 'node:fs/promises';
-import os from 'node:os';
+import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { assertMapping, editableMapping, previewCorrection, restoreMapping, splitOffset, snapshotNodes, references } from './corrections.mjs';
-const exec = promisify(execFile);
+import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
+import { inspectDocument, applyCorrections } from './document-io.mjs';
 const topNodes = snapshotNodes;
 const insert = (n, at) => n.type === 'paragraph'
   ? {command:'insert-block',at,content:n.content}
   : n.type === 'heading' ? {command:'insert-heading',at,level:n.level,content:n.content}
   : n.type === 'list' ? {command:'insert-list',at,list:{ordered:n.ordered,...(n.ordered?{start:n.start,style:n.style,delimiter:n.delimiter}:{}),items:n.items}} : null;
-export function correctionHandler(cli) {
+export function correctionHandler() {
   const histories = new Map(), locks = new Set();
-  const run = async args => {
-    if (!cli) throw Error('이 Host에는 공식 문서 고치기 기능이 없습니다.');
-    const r = await exec(cli.bin,[...cli.args,...args],{windowsHide:true,maxBuffer:16*1024*1024});
-    return r.stdout ? JSON.parse(r.stdout) : null;
-  };
-  const inspect = doc => run(['inspect',doc,'--format','json']);
-  const batch = async (doc, operations, revision) => {
-    const dir = await mkdtemp(path.join(os.tmpdir(),'pdf-import-edit-'));
-    try {
-      const input = path.join(dir,'operations.json');
-      await writeFile(input,JSON.stringify(operations));
-      return await run(['apply-batch',doc,'--operations',input,'--if-revision',revision,'--format','json']);
-    } finally { await rm(dir,{recursive:true,force:true}); }
-  };
   const persist = async (side, m) => {
     const tmp = side + '.pending';
     try {await writeFile(tmp,JSON.stringify(m));await rename(tmp,side);}
@@ -40,10 +24,10 @@ export function correctionHandler(cli) {
       const side = doc.replace(/\.md$/,'.pdf-source.json');
       const before = JSON.parse(await readFile(side,'utf8'));
       if (!editableMapping(before)) throw Error('다시 변환해야 고칠 수 있습니다');
-      const current = {revision:before.revision,nodes:before.snapshotNodes || []};
-      if (revision !== before.revision)
+      const readStarted=performance.now(), current=inspectDocument(doc);
+      timings.readMs=performance.now()-readStarted;
+      if (revision !== before.revision || current.revision !== before.revision)
         return {stale:true,message:'문서가 바뀌어 대응을 표시할 수 없음'};
-      if (!before.snapshotNodes) throw Error('저장된 문서를 다시 열어 주세요.');
       if(action!=='undo') assertMapping(before,current);
       const key = doc + ':' + historyId, stack = histories.get(key) || [];
       let next, ops, inverse, targetId, irreversible = false;
@@ -67,7 +51,7 @@ export function correctionHandler(cli) {
             throw Error('이웃한 문단을 둘 이상 골라야 합니다.');
           const content = nodes.flatMap((n,i)=>i ? [{kind:'text',text:' '},...n.content] : n.content);
           // Core merge concatenates without a separator. Reinsert the exact inline
-          // content with separators in the same atomic batch; references stay alive.
+          // content with separators before the single SDK write; references stay alive.
           ops = nodes.slice(1).map(()=>({command:'merge-paragraph',path:String(at+1)}));
           ops.push({command:'remove-block',at},{command:'insert-block',at,content});
           inverse = nodes.slice(0,-1).map((n,i)=>({command:'split-paragraph',path:String(at+i),
@@ -98,22 +82,26 @@ export function correctionHandler(cli) {
       }
       let receipt;
       try {
-        const started = performance.now(); receipt = await batch(doc,ops,before.revision);
+        const started = performance.now();
+        const document=applyCorrections(current.document,ops);
+        timings.coreMs=performance.now()-started;
+        const writing=performance.now();
+        receipt=writeDocument(doc,document,before.revision);
+        timings.writeMs=performance.now()-writing;
         timings.operationMs = performance.now()-started;
       } catch (e) {
-        if (/revision/i.test(e.stderr || ''))
+        if (e instanceof FileChangedError)
           return {stale:true,message:'문서가 바뀌어 대응을 표시할 수 없음'};
         throw Error('문서를 고치지 못했습니다. 원본과 저장 상태를 확인해 주세요.');
       }
-      // apply-batch returns the committed revision; no extra CLI on this path.
-      if(!/^[0-9a-f]{64}$/.test(receipt?.revision || '')) {
-        const checked=performance.now(), actual=await inspect(doc);
-        assertMapping(next,actual); receipt={revision:actual.revision};
-        timings.inspectMs=performance.now()-checked;
-      }
+      const checked=performance.now(), actual=inspectDocument(doc);
       next.revision = receipt.revision;
-      next.verificationPending = true;
-      next.stale = false;
+      let invalid=actual.revision !== receipt.revision;
+      try { assertMapping(next,actual); } catch { invalid=true; }
+      next.snapshotNodes=snapshotNodes(actual);
+      next.verificationPending=false;
+      timings.inspectMs=performance.now()-checked;
+      next.stale = invalid;
       try { await persist(side,next); }
       catch { return {stale:true,message:'문서는 고쳤지만 대응 자료를 기록하지 못했습니다. 문서를 다시 열어 주세요.'}; }
       if (undo) {stack.pop(); if(stack.length) stack.at(-1).revision = receipt.revision;}
@@ -121,28 +109,9 @@ export function correctionHandler(cli) {
       else stack.push({before,forward:ops,inverse,revision:receipt.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id});
       histories.set(key,stack);
       timings.totalMs = performance.now()-t;
-      return {mapping:next,targetId,undoCount:stack.length,timings};
+      return {mapping:next,targetId,undoCount:stack.length,timings,
+        message:invalid?'저장 뒤 대응이 문서와 달라 대응 표시를 멈췄습니다. 되돌리기는 사용할 수 있습니다.':''};
     } finally {locks.delete(doc);}
-  };
-  correct.verify = async ({document:doc,revision}) => {
-    const side = doc.replace(/\.md$/,'.pdf-source.json');
-    const started = performance.now(), actual = await inspect(doc);
-    const mapping = JSON.parse(await readFile(side,'utf8'));
-    if(mapping.revision !== revision) return {superseded:true,revision};
-    let stale = actual.revision !== revision;
-    try { assertMapping(mapping,actual); } catch { stale=true; }
-    mapping.stale=stale; mapping.verificationPending=false;
-    if(!stale) mapping.snapshotNodes=snapshotNodes(actual);
-    if(locks.has(doc)) return {superseded:true,revision};
-    locks.add(doc);
-    try {
-      const latest=JSON.parse(await readFile(side,'utf8'));
-      if(latest.revision !== revision) return {superseded:true,revision};
-      await persist(side,mapping);
-    } finally {locks.delete(doc);}
-    return {revision,stale,nodes:stale?undefined:mapping.snapshotNodes,
-      inspectMs:performance.now()-started,
-      message:stale?'저장 뒤 대응이 문서와 달라 대응 표시를 멈췄습니다. 되돌리기는 사용할 수 있습니다.':''};
   };
   return correct;
 }

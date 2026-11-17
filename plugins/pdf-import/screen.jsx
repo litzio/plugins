@@ -1,7 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import { authoring } from "./authoring.mjs";
-import { previewCorrection, references } from "./corrections.mjs";
+import { references } from "./corrections.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
   new Blob([workerSource], { type: "text/javascript" }),
 );
@@ -64,8 +64,6 @@ function Screen({
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
     [actionHelp, setActionHelp] = useState(null);
-  const undoPreviews = useRef([]);
-  const [settledRevision,setSettledRevision] = useState(null);
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
   useEffect(() => {
     let gone = false;
@@ -139,7 +137,7 @@ function Screen({
     if (editing.current) return;
     const before=mapping, oldSelection=selection, oldSelected=selected;
     editing.current=true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
-    let started=performance.now(), leftMs;
+    let started=performance.now();
     try {
       const input={document:file.document,revision:before.revision,ids:selection,action,
         historyId:historyId.current,time:new Date().toISOString(),...extra};
@@ -150,43 +148,19 @@ function Screen({
         }
         input.confirmed=true;started=performance.now();
       }
-      const preview=previewCorrection(before,input,undoPreviews.current.at(-1));
-      clearTimeout(scrollTimer.current); setFollowed(null); setMapping(preview);
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        leftMs=performance.now()-started;
-        performance.measure('pdf-import-correction-left',{start:started,detail:{action,leftMs}});
-      }));
       const r=await invoke('correct',input);
       if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
-      if(action==='undo') undoPreviews.current.pop();
-      else if(irreversible) undoPreviews.current=[];
-      else undoPreviews.current.push(before);
-      setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(false);
+      setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
+      clearTimeout(scrollTimer.current); setFollowed(null);
       const b=r.mapping.blocks.find(b=>b.id===r.targetId);
       setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b||null);
-      metrics.current.correction={started,timings:{...r.timings,leftMs},action};
-      setStatus('고침 완료');
+      metrics.current.correction={started,timings:r.timings,action};
+      setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':'고침 완료');
     } catch(e) {
       setMapping(before);setSelection(oldSelection);setSelected(oldSelected);
       setError(e.message);setStatus('고치기 실패');
     } finally {editing.current=false;setBusy(false);}
   }
-  useEffect(()=>{
-    if(!mapping?.verificationPending || !file || settledRevision!==mapping.revision) return;
-    let cancelled=false;
-    const revision=mapping.revision, document=file.document;
-    const frame=requestAnimationFrame(()=>{
-      invoke('verify',{document,revision}).then(r=>{
-        if(cancelled || r.superseded) return;
-        performance.measure('pdf-import-verification',{start:performance.now()-r.inspectMs,
-          detail:{inspectMs:r.inspectMs,stale:r.stale}});
-        if(r.stale) {setStale(true);setError(r.message);setStatus('문서가 바뀜');}
-        setMapping(m=>m?.revision===revision?{...m,stale:r.stale,verificationPending:false,
-          ...(r.nodes?{snapshotNodes:r.nodes}:{})}:m);
-      }).catch(e=>{if(!cancelled){setStale(true);setError(e.message);setStatus('문서가 바뀜');}});
-    });
-    return ()=>{cancelled=true;cancelAnimationFrame(frame);};
-  },[mapping?.verificationPending,mapping?.revision,file?.document,settledRevision]);
   useEffect(() => {
     const cancel = e => {if(e.key==='Escape') {setSplitting(false);setSelection([]);setSelected(null);}};
     window.addEventListener('keydown',cancel); return ()=>window.removeEventListener('keydown',cancel);
@@ -228,7 +202,6 @@ function Screen({
     }
   }
   async function load(path, cachedOnly = false) {
-    undoPreviews.current=[];
     setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
     clearTimeout(scrollTimer.current);
     anchor.current = null;
@@ -534,8 +507,6 @@ function Screen({
   );
   const viewState = React.useCallback(
     (s) => {
-      if(['ready','stale-target','target-not-found','error'].includes(s.state))
-        setSettledRevision(mapping?.revision);
       if(s.state === 'ready' && metrics.current.correction) {
         performance.measure('pdf-import-correction',{start:metrics.current.correction.started,
           detail:{...metrics.current.correction.timings,action:metrics.current.correction.action,

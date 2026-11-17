@@ -2,41 +2,23 @@ import { PluginPublicError } from "@litzio/plugin-sdk";
 import { readFile, writeFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { inspectDocument } from "./document-io.mjs";
 import { extract } from "./extract.mjs";
 import { convert, suggestExcludedPages } from "./rules.mjs";
 import { listConverted } from "./recent.mjs";
 import { correctionHandler } from "./correct-host.mjs";
 import { snapshotNodes, assertMapping } from "./corrections.mjs";
-const exec = promisify(execFile),
-  sha = (b) => createHash("sha256").update(b).digest("hex");
-export function activate(context) {
-  const correct = correctionHandler(context.cli);
-  const inspect = async (p) => {
-    if (!context.cli)
-      throw new PluginPublicError(
-        "pdf_import_failed",
-        "이 Host에는 공식 문서 조회 기능이 없습니다.",
-      );
-    const r = await exec(
-      context.cli.bin,
-      [...context.cli.args, "inspect", p, "--format", "json"],
-      { windowsHide: true, maxBuffer: 16 * 1024 * 1024 },
-    );
-    return JSON.parse(r.stdout);
-  };
+const sha = (b) => createHash("sha256").update(b).digest("hex");
+export function activate() {
+  const correct = correctionHandler();
+  const inspect = inspectDocument;
   const sessions = /* @__PURE__ */ new Map();
   return {
     status: () => ({
-      available: !!context.cli,
-      message: context.cli ? "준비됨" : "공식 CLI 없음",
+      available: true,
+      message: "준비됨",
     }),
     operations: {
-      verify: async (input) => {
-        try { return await correct.verify(input); }
-        catch { throw new PluginPublicError("pdf_import_failed", "저장 뒤 문서 대응을 확인하지 못했습니다. 문서를 다시 열어 주세요."); }
-      },
       correct: async (input) => {
         try { return await correct(input); }
         catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
