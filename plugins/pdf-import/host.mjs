@@ -1,9 +1,9 @@
 import { PluginPublicError } from "@litzio/plugin-sdk";
-import { readFile, writeFile, rename, stat, readdir } from "node:fs/promises";
+import { readFile, writeFile, rename, stat, readdir, unlink } from "node:fs/promises";
 import path from "node:path";
-import { recordImages, finishReplacement } from "./output-files.mjs";
+import { backupOutput, documentWithoutMapping, recordImages, finishReplacement } from "./output-files.mjs";
 import { outputPaths } from "./output-paths.mjs";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { inspectDocument } from "./document-io.mjs";
 import { extract } from "./extract.mjs";
 import { createExtractionCache } from "./extraction-cache.mjs";
@@ -84,6 +84,7 @@ export function activate() {
           outputFolder,
           document: doc,
           cached,
+          missingMapping: !cached && await documentWithoutMapping({doc, side}),
           documentStatus,
         };
       },
@@ -127,14 +128,7 @@ export function activate() {
             "pdf_import_failed",
             "PDF를 다시 골라 주세요.",
           );
-        const suffix = ".previous-" + Date.now();
-        s.previous = {doc:s.doc.replace(/\.md$/, suffix + ".md"), side:s.side + suffix, data:JSON.parse(await readFile(s.side,"utf8"))};
-        await rename(s.doc, s.doc.replace(/\.md$/, suffix + ".md"));
-        try {
-          await rename(s.side, s.side + suffix);
-        } catch (e) {
-          if (e.code !== "ENOENT") throw e;
-        }
+        s.previous = await backupOutput(s);
         return { ok: true };
       },
       mapping: async ({ id, units, revision, images = [] }) => {
@@ -197,10 +191,19 @@ export function activate() {
           excludedPages: s.result.excludedPages,
           stats: s.result.stats,
         };
-        await writeFile(s.side, JSON.stringify(data));
-        await finishReplacement(s, data);
         const info = await stat(s.doc);
-        return { ...data, documentStatus:current.status, documentBytes: info.size };
+        const pending = s.side + ".pending-" + randomUUID();
+        try {
+          await writeFile(pending, JSON.stringify(data), {flag:"wx"});
+          await rename(pending, s.side);
+        } catch (e) {
+          await unlink(pending).catch(() => {});
+          throw e;
+        }
+        let cleanupError;
+        try { await finishReplacement(s, data); }
+        catch { cleanupError = "이전 변환 결과를 정리하지 못했습니다."; }
+        return { ...data, documentStatus:current.status, documentBytes: info.size, cleanupError };
       },
     },
     dispose() {

@@ -103,6 +103,7 @@ function Screen({
     [selected, setSelected] = useState(null),
     [stale, setStale] = useState(false),
     [cached, setCached] = useState(false),
+    [missingMapping, setMissingMapping] = useState(false),
     [pageNo, setPageNo] = useState(1),
     [width, setWidth] = useState(600),
     [tip, setTip] = useState(null);
@@ -119,7 +120,7 @@ function Screen({
     const pair=comparisonPair.current;if(!pair)return;
     const wheel=e=>{if(!e.ctrlKey||!e.deltaY||!(pane.current?.contains(e.target)||documentPreview.current?.contains(e.target)))return;e.preventDefault();scaleChange.current?.(steppedScale(scaleValue.current,e.deltaY));};
     pair.addEventListener('wheel',wheel,{capture:true,passive:false});return ()=>pair.removeEventListener('wheel',wheel,true);
-  },[pdf,picking]);
+  },[pdf,picking,missingMapping]);
   const anchor = useRef(null),
     scrollTimer = useRef(null),
     scrollOwner = useRef(null), sourceAuto = useRef(null);
@@ -134,7 +135,7 @@ function Screen({
     );
     ro.observe(pane.current);
     return () => ro.disconnect();
-  }, [pdf, picking]);
+  }, [pdf, picking, missingMapping]);
   useEffect(
     () => () => {
       pdf?.loadingTask.destroy();
@@ -258,6 +259,9 @@ function Screen({
     setSelected(null);
     setStale(false);
     setCached(false);
+    setMissingMapping(false);
+    setFile(null);
+    setPdf(null);
     setStatus("PDF 읽는 중");
     metrics.current = { start: performance.now() };
     const loadingMetrics=metrics.current;
@@ -265,7 +269,7 @@ function Screen({
       const f = await invoke("load", { path, cachedOnly });
       metrics.current.loadMs=performance.now()-metrics.current.start;
       const suggestStarted=performance.now();
-      const suggestionPromise=f.cached?null:invoke("suggest",{id:f.id}).then(
+      const suggestionPromise=f.cached||f.missingMapping?null:invoke("suggest",{id:f.id}).then(
         value=>({value,ms:performance.now()-suggestStarted}),error=>({error}));
       const pdfStarted=performance.now();
       try {
@@ -323,6 +327,10 @@ function Screen({
           "변환 완료 · 확인할 곳 " +
             f.cached.blocks.filter((b) => b.warning).length,
         );
+      } else if (f.missingMapping) {
+        setPdf(doc);
+        setMissingMapping(true);
+        setStatus("저장된 문서에 원본 연결이 없습니다.");
       } else {
         setPdf(doc);
         setPicking(true);
@@ -342,20 +350,14 @@ function Screen({
         });
       }
     } catch (e) {
-      setError(
-        e.code === "pdf_import_failed" ||
-          e.code === "block_mismatch" ||
-          e.code === "document_changed"
-          ? e.message
-          : "PDF 변환에 실패했습니다. PDF와 저장 위치를 확인해 주세요.",
-      );
-      setStatus("실패");
+      setError(e.message || "PDF 파일과 저장 위치를 확인해 주세요.");
+      setStatus("PDF를 읽지 못했습니다.");
     } finally {
       setBusy(false);
     }
   }
-  async function run(f, doc) {
-    setStatus("구조 분석 중");
+  async function run(f, doc, stage) {
+    stage("구조 분석 중", "PDF 구조를 분석하지 못했습니다.");
     let at = performance.now();
     const r = await invoke("convert", {
       id: f.id,
@@ -369,7 +371,7 @@ function Screen({
       objects = r.blocks.filter((b) => ["table", "figure"].includes(b.kind) && !b.table);
     at = performance.now();
     for (let i = 0; i < objects.length; i++) {
-      setStatus("그림 만드는 중 " + (i + 1) + " / " + objects.length);
+      stage("그림 만드는 중 " + (i + 1) + " / " + objects.length, "그림을 만들지 못했습니다.");
       const b = objects[i],
         box = b.boxes[0],
         p = await doc.getPage(box.page + 1),
@@ -393,8 +395,8 @@ function Screen({
       (n, i) => n + Math.floor((i.base64.length * 3) / 4),
       0,
     );
+    stage("문서 저장 중", "문서를 저장하지 못했습니다.");
     const plan = authoring(r);
-    setStatus("문서 저장 중");
     at = performance.now();
     const saved = await saveDocument({
       name: f.name.replace(/\.pdf$/i, ".md"),
@@ -403,6 +405,8 @@ function Screen({
       images,
     });
     metrics.current.saveMs = performance.now() - at;
+    setMissingMapping(true);
+    stage("원본 연결 만드는 중", "문서는 저장됐지만 원본 연결을 만들지 못했습니다.");
     at = performance.now();
     const m = await invoke("mapping", {
       id: f.id,
@@ -422,6 +426,8 @@ function Screen({
     setMapping(m);
     setDocumentStatus(m.documentStatus);
     setCached(true);
+    setMissingMapping(false);
+    if (m.cleanupError) setError(m.cleanupError);
     setStatus(
       "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
     );
@@ -429,6 +435,7 @@ function Screen({
   async function rewrite() {
     if(!await confirm({title:"다시 변환",message:"새로 변환한 문서는 초안이 됩니다. 새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",confirmLabel:"뺄 쪽 고르기"})) return;
     replacementApproved.current=true;
+    setError("");
     setUndoCount(0);historyId.current=crypto.randomUUID();
     setSelection([]);setSplitting(false);
     clearTimeout(scrollTimer.current);
@@ -444,9 +451,15 @@ function Screen({
   async function convertSelected() {
     if(pickerSession.current) pickerSession.current.active=false;
     setPickerHelp(false);
+    const replacing = cached || missingMapping;
+    let failure = "이전 문서를 옮기지 못했습니다.";
+    function stage(label, failureLabel) {
+      failure = failureLabel;
+      setStatus(label);
+    }
     try {
       if (
-        cached && !replacementApproved.current &&
+        replacing && !replacementApproved.current &&
         !(await confirm({
           title: "다시 변환",
           message:
@@ -458,13 +471,18 @@ function Screen({
       setBusy(true);
       setError("");
       metrics.current = { start: performance.now() };
-      if (cached) await invoke("backup", { id: file.id });
+      if (replacing) {
+        stage("이전 문서 옮기는 중", failure);
+        await invoke("backup", { id: file.id });
+        setCached(false);
+        setMissingMapping(false);
+      }
       setPicking(false);
       setStale(false);
-      await run(file, pdf);
+      await run(file, pdf, stage);
     } catch (e) {
       setError(e.message || "변환에 실패했습니다.");
-      setStatus("실패");
+      setStatus(failure);
     } finally {
       setBusy(false);
     }
@@ -483,6 +501,7 @@ function Screen({
     clearTimeout(scrollTimer.current);
     setPicking(false);setPdf(null);setFile(null);setMapping(null);setResult(null);
     setCached(false);setExcludedPages(new Set());setError("");setSelection([]);setStale(false);
+    setMissingMapping(false);
     setStatus("PDF를 골라 주세요.");
     let folders=[];
     try {const saved=JSON.parse(localStorage.getItem(recentKey)||"[]");if(Array.isArray(saved))folders=saved;} catch {}
@@ -647,7 +666,7 @@ function Screen({
           onMouseEnter={()=>setPickerHelp(true)} onMouseLeave={()=>setPickerHelp(false)}
           onFocus={()=>setPickerHelp(true)} onBlur={()=>setPickerHelp(false)}
           aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex',gap:'var(--space-2)',alignItems:'center'}}>
-          <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":mapping?"ok":"neutral"} label={status}/>
+          <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":missingMapping&&!picking?"warning":mapping?"ok":"neutral"} label={status}/>
           {mapping&&!picking&&statusLabel(documentStatus)&&<ui.Status tone={documentStatus==='approved'?'ok':'neutral'} label={statusLabel(documentStatus)}/>}
           {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
         </span>
@@ -673,7 +692,7 @@ function Screen({
               </ui.Button>
             </>
           )}
-          {cached && !picking && (
+          {(cached || missingMapping) && !picking && (
             <ui.Button variant="destructive" disabled={busy} onClick={rewrite}>
               다시 변환
             </ui.Button>
@@ -681,8 +700,9 @@ function Screen({
           {mapping && !picking && toolButton({id:'document-status',label:statusAction(documentStatus).label,
             disabled:busy||stale,disabledReason:stale?'문서가 바뀌어 대응을 표시할 수 없음':'문서를 고치는 중입니다.',
             help:warnings.length?'확인할 곳 '+warnings.length+'개가 남아 있습니다':null,run:changeDocumentStatus})}
-          {mapping && (
+          {(mapping || missingMapping) && !picking && (
             <ui.Button
+              disabled={busy}
               onClick={async () => {
                 try {
                   const r = await openDocument({ path: file.document });
@@ -767,7 +787,7 @@ function Screen({
         </>
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy} onError={setError}/> }
-      {pdf && !picking && (
+      {pdf && !picking && !missingMapping && (
         <>
           <div className="pdf-import-narrow">
             <ui.Notice>넓은 창에서 보기</ui.Notice>
