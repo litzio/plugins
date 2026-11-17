@@ -32,18 +32,19 @@ test("recent folders scan PDF output folders, ignore flat files and report origi
     await writeFile(path.join(root,"old.pdf-source.json"),JSON.stringify(side));
     await writeFile(path.join(root,"old.md"),"old");
     const missing = path.join(root, "gone");
-    const found = await listConverted([root, missing]);
+    const found = await listConverted([root, missing],async()=>({status:"draft"}));
     assert.deepEqual(found.folders, [root]);
     assert.equal(found.rows.length, 1);
     assert.equal(found.rows[0].state, "");
+    assert.equal(found.rows[0].reviewStatus, "초안");
     assert.equal(found.rows[0].warnings, 1);
     assert.match(found.rows[0].modified,/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
     await writeFile(path.join(root, "sample.pdf"), "changed");
-    assert.equal((await listConverted([root])).rows[0].state, "원본이 바뀜");
+    assert.equal((await listConverted([root],async()=>({status:"approved"}))).rows[0].state, "원본이 바뀜");
     await rm(path.join(root, "sample.pdf"));
-    assert.equal((await listConverted([root])).rows[0].state, "원본 없음");
+    assert.equal((await listConverted([root],async()=>({status:"approved"}))).rows[0].state, "원본 없음");
     await rm(path.join(output, "sample.md"));
-    assert.equal((await listConverted([root])).rows.length, 0);
+    assert.equal((await listConverted([root],async()=>({status:"approved"}))).rows.length, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

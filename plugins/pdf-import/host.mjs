@@ -48,11 +48,12 @@ export function activate() {
           {doc, side, folder: outputFolder} = outputPaths(p);
         const id = sha(Buffer.from(p));
         sessions.set(id, { p, digest, doc, side });
-        let cached = null;
+        let cached = null, documentStatus;
         try {
           const s = JSON.parse(await readFile(side, "utf8"));
           if (s.pdf.sha256 === digest) {
             const current = await inspect(doc);
+            documentStatus = current.status;
             cached = { ...s, stale: current.revision !== s.revision };
             if (!cached.stale) {
               try { assertMapping(s,current); } catch { cached.stale=true; }
@@ -83,6 +84,7 @@ export function activate() {
           outputFolder,
           document: doc,
           cached,
+          documentStatus,
         };
       },
       suggest: async ({ id }) => {
@@ -196,7 +198,7 @@ export function activate() {
         await writeFile(s.side, JSON.stringify(data));
         await finishReplacement(s, data);
         const info = await stat(s.doc);
-        return { ...data, documentBytes: info.size };
+        return { ...data, documentStatus:current.status, documentBytes: info.size };
       },
     },
     dispose() {

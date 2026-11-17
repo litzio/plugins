@@ -1,3 +1,4 @@
+import { statusLabel, statusAction } from './document-status.mjs';
 import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
@@ -62,7 +63,7 @@ function Screen({
   confirm,
 }) {
   const { useState, useRef, useEffect, useMemo, useLayoutEffect } = React;
-  const [browseScale,setBrowseScale]=useState(()=>{try{const value=Number(localStorage.getItem('pdf-import-browse-scale'));return browseScales.includes(value)?value:1;}catch{return 1;}});
+  const [browseScale,setBrowseScale]=useState(()=>{try{const value=Number(localStorage.getItem('pdf-import-browse-scale'));return browseScales.includes(value)?value:0.75;}catch{return 0.75;}});
   const scaleValue=useRef(browseScale),scaleChange=useRef(null),scaleAnchor=useRef(null);
   const linkController=useRef(null),documentLayout=useRef(null),comparisonPair=useRef(null),documentPreview=useRef(null);
   const [pageLast,setPageLast]=useState(1);
@@ -91,6 +92,7 @@ function Screen({
       gone = true;
     };
   }, []);
+  const [documentStatus,setDocumentStatus]=useState(undefined);
   const [status, setStatus] = useState("PDF를 골라 주세요."),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -161,8 +163,17 @@ function Screen({
     return <span key={a.id} tabIndex={a.disabled?0:undefined} style={{position:'relative'}}
       onMouseEnter={()=>setActionHelp(a.id)} onMouseLeave={()=>setActionHelp(null)} onFocus={()=>setActionHelp(a.id)} onBlur={()=>setActionHelp(null)}>
       <ui.Button disabled={a.disabled} onClick={a.run}>{a.label}</ui.Button>
-      {a.disabled&&actionHelp===a.id&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{a.disabledReason}</span>}
+      {(a.disabled||a.help)&&actionHelp===a.id&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{a.disabled?a.disabledReason:a.help}</span>}
     </span>;
+  }
+  async function changeDocumentStatus() {
+    if(editing.current||busy||stale)return;
+    editing.current=true;setBusy(true);setError('');setStatus('검토 상태 바꾸는 중');
+    try {
+      const r=await invoke('correct',{document:file.document,revision:mapping.revision,action:'status',status:statusAction(documentStatus).value,historyId:historyId.current});
+      if(r.stale){setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
+      setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 확인할 곳 '+r.mapping.blocks.filter(b=>b.warning).length);
+    } catch(e){setError(e.message);setStatus('검토 상태 변경 실패');} finally{editing.current=false;setBusy(false);}
   }
   async function correct(action, extra = {}, blocks = chosen, focusSource = false) {
     if (editing.current) return;
@@ -296,6 +307,7 @@ function Screen({
       setPageTitles(titles);
 
       metrics.current.readMs = performance.now() - metrics.current.start;
+      setDocumentStatus(f.documentStatus);
       if (f.cached) {
         setExcludedPages(
           new Set(
@@ -387,7 +399,7 @@ function Screen({
     const saved = await saveDocument({
       name: f.name.replace(/\.pdf$/i, ".md"),
       folder: f.outputFolder,
-      authoring: plan.authoring,
+      authoring: {...plan.authoring,status:"draft"},
       images,
     });
     metrics.current.saveMs = performance.now() - at;
@@ -408,13 +420,14 @@ function Screen({
       detail: { ...metrics.current },
     });
     setMapping(m);
+    setDocumentStatus(m.documentStatus);
     setCached(true);
     setStatus(
       "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
     );
   }
   async function rewrite() {
-    if(!await confirm({title:"다시 변환",message:"새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",confirmLabel:"뺄 쪽 고르기"})) return;
+    if(!await confirm({title:"다시 변환",message:"새로 변환한 문서는 초안이 됩니다. 새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",confirmLabel:"뺄 쪽 고르기"})) return;
     replacementApproved.current=true;
     setUndoCount(0);historyId.current=crypto.randomUUID();
     setSelection([]);setSplitting(false);
@@ -437,7 +450,7 @@ function Screen({
         !(await confirm({
           title: "다시 변환",
           message:
-            "새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",
+            "새로 변환한 문서는 초안이 됩니다. 새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",
           confirmLabel: "변환",
         }))
       )
@@ -633,8 +646,9 @@ function Screen({
         <span className="pdf-picker-status" tabIndex={picking?0:undefined}
           onMouseEnter={()=>setPickerHelp(true)} onMouseLeave={()=>setPickerHelp(false)}
           onFocus={()=>setPickerHelp(true)} onBlur={()=>setPickerHelp(false)}
-          aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex'}}>
+          aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex',gap:'var(--space-2)',alignItems:'center'}}>
           <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":mapping?"ok":"neutral"} label={status}/>
+          {mapping&&!picking&&statusLabel(documentStatus)&&<ui.Status tone={documentStatus==='approved'?'ok':'neutral'} label={statusLabel(documentStatus)}/>}
           {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
         </span>
       }
@@ -664,6 +678,9 @@ function Screen({
               다시 변환
             </ui.Button>
           )}
+          {mapping && !picking && toolButton({id:'document-status',label:statusAction(documentStatus).label,
+            disabled:busy||stale,disabledReason:stale?'문서가 바뀌어 대응을 표시할 수 없음':'문서를 고치는 중입니다.',
+            help:warnings.length?'확인할 곳 '+warnings.length+'개가 남아 있습니다':null,run:changeDocumentStatus})}
           {mapping && (
             <ui.Button
               onClick={async () => {
@@ -725,13 +742,14 @@ function Screen({
                   : ""),
               modified: r.modified,
             }))}
-            columns={["name", "pages", "warnings", "modified", "state"]}
+            columns={["name", "pages", "warnings", "reviewStatus", "modified", "state"]}
             labels={{
               name: "문서 이름",
               pages: "쪽 수",
               warnings: "확인할 곳 수",
               modified: "변환한 때",
-              state: "상태",
+              reviewStatus: "검토 상태",
+              state: "원본 상태",
             }}
             fields={{ pages: { type: "number" }, warnings: { type: "number" } }}
             rowKey="id"

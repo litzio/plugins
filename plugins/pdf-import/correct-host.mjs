@@ -1,3 +1,4 @@
+import { updateDocumentStatus } from '@litzio/plugin-sdk';
 import { koreanTime } from "./time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +17,7 @@ export function correctionHandler() {
     try {await writeFile(tmp,JSON.stringify(m));await rename(tmp,side);}
     finally {await rm(tmp,{force:true});}
   };
-  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,confirmed=false}) {
+  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,status,confirmed=false}) {
     const time = koreanTime();
     if (!doc || path.extname(doc) !== '.md') throw Error('저장된 문서를 찾지 못했습니다.');
     if (locks.has(doc)) throw Error('이 문서를 고치는 중입니다.');
@@ -31,6 +32,20 @@ export function correctionHandler() {
         return {stale:true,message:'문서가 바뀌어 대응을 표시할 수 없음'};
       if(action!=='undo') assertMapping(before,current);
       const key = doc + ':' + historyId, stack = histories.get(key) || [];
+      if (action === 'status') {
+        assertMapping(before,current);
+        const receipt = writeDocument(doc,updateDocumentStatus(current.document,status),current.revision);
+        const actual = inspectDocument(doc);
+        if(actual.revision !== receipt.revision) return {stale:true,message:'문서가 바뀌어 대응을 표시할 수 없음'};
+        assertMapping(before,actual);
+        const next = {...before,revision:receipt.revision};
+        await persist(side,next);
+        for(const [historyKey,history] of histories) {
+          if(historyKey.startsWith(doc+':') && history.at(-1)?.revision===current.revision)
+            history.at(-1).revision=receipt.revision;
+        }
+        return {mapping:next,status:actual.status,undoCount:stack.length};
+      }
       let next, ops, inverse, targetId, irreversible = false;
       const undo = action === 'undo', prior = stack.at(-1);
       if (undo) {

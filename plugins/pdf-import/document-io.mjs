@@ -5,7 +5,7 @@ import { readDocument } from '@litzio/plugin-sdk/node';
 export const documentNodes = document => machineNodes(getEditableDocument(document));
 export function inspectDocument(file) {
   const snapshot = readDocument(file);
-  return {...snapshot, nodes:documentNodes(snapshot.document)};
+  return {...snapshot, status:getEditableDocument(snapshot.document).status, nodes:documentNodes(snapshot.document)};
 }
 // These descriptors are private correction history, not a second document model.
 export function applyCorrections(document, operations) {
