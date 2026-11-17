@@ -170,7 +170,8 @@ async function extract(pdfPath) {
         });
         raw.push({
           bbox: [seg[0].x0, Math.min(...seg.map((w) => w.top)), seg[seg.length - 1].x1, Math.max(...seg.map((w) => w.bottom))],
-          spans
+          spans,
+          metrics: seg.map(({text, x0, x1, base, size}) => ({text, x0, x1, base, size}))
         });
       }
     }

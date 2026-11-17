@@ -2,9 +2,8 @@ const HEAD = /^(\d+(?:\.\d+)*)\.?\s+(\S.*)$/,
   ANNEX = /^([A-Z](?:\.\d+)+)\s+(\S.*)$/,
   TOP = /^Annex\s+([A-Z])\b\s*(.*)$/;
 const CAP = /^(Table|Figure)\s+([A-Z]\.\d+|\d+)\s*[—–.:-]/;
-const BULLET = /^[—–•\-]\s*/;
-const LIST = /^(?:[a-z]\)|\d+\)|[—–•\-]|NOTE\b)/,
-  END = /[.:;?!)\]”"]$|\[\^\w+\]$/;
+const BULLET = /^[—–•\-]\s*/;
+const END = /[.:;?!)\]”"]$|\[\^\w+\]$/;
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, ""),
   chars = (s) => s.replace(/\s/g, "").length;
 const round = (x) =>
@@ -35,6 +34,7 @@ function line(raw, page) {
     main_size = main ? round(main.size * 10) / 10 : 0;
   return {
     page,
+    metrics: raw.metrics,
     bbox: raw.bbox,
     x0: raw.bbox[0],
     y0: raw.bbox[1],
@@ -223,7 +223,8 @@ function convert({ pages, toc }) {
         (HEAD.test(t) || ANNEX.test(t) || TOP.test(t))
       )
         l.kind = "heading";
-      else if (l.size > body + 0.5) l.kind = "heading_unnumbered";
+      else if (l.size > body + 0.5 && !BULLET.test(t))
+        l.kind = "heading_unnumbered";
       prev = l;
     }
     for (const l of ls) l.kind ??= "body";
@@ -234,6 +235,113 @@ function convert({ pages, toc }) {
   if (start < 0) start = 0;
   for (let i = 0; i < start; i++)
     for (const l of all[i]) if (l.kind !== "margin") l.kind = "front";
+  // Only paragraph assembly uses body-sized baselines; classification stays intact.
+  const bodyLines = all
+    .flat()
+    .filter((l) => l.kind === "body" && Math.abs(l.main_size - body) < 0.6);
+  for (const l of all.flat()) {
+    const ms = l.metrics?.filter((w) => Math.abs(w.size - body) < 0.6);
+    l.base = ms?.length
+      ? ms.reduce((n, w) => n + w.base * w.text.length, 0) /
+        ms.reduce((n, w) => n + w.text.length, 0)
+      : l.y0 + body * 0.8;
+  }
+  const quantile = (xs, q) =>
+    [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) * q)] || 0;
+  const right = all.map((ls) =>
+    quantile(
+      ls
+        .filter(
+          (l) =>
+            l.kind === "body" &&
+            Math.abs(l.main_size - body) < 0.6 &&
+            l.x1 - l.x0 > body * 15,
+        )
+        .map((l) => l.x1),
+      0.9,
+    ),
+  );
+  const full = (l) =>
+    right[l.page] - l.x1 <= body * 1.25 && l.x1 - l.x0 > body * 15;
+  const fullRatio = bodyLines.filter(full).length / (bodyLines.length || 1);
+  const justified = fullRatio >= 0.45;
+  const steps = all.flatMap((ls) =>
+    ls
+      .slice(1)
+      .flatMap((l, i) =>
+        l.kind === "body" &&
+        ls[i].kind === "body" &&
+        l.base - ls[i].base > body * 0.7 &&
+        l.base - ls[i].base < body * 1.8
+          ? [l.base - ls[i].base]
+          : [],
+      ),
+  );
+  const step = quantile(steps, 0.5) || body * 1.2;
+  const marker = (l) => {
+    const m = l.plain.match(
+      /^([—–•-]|(?:[a-z]|[ivxlcdm]+|\d+)\)|\((?:[a-z]|[ivxlcdm]+|\d+)\))(?=\s|$)\s*/i,
+    );
+    if (!m) return null;
+    const w =
+      l.metrics?.[0]?.text.trim() === m[1]
+        ? l.metrics.find(
+            (w) =>
+              w.x0 > l.x0 + body * 0.5 &&
+              w.text.trim() &&
+              w.text.trim() !== m[1],
+          )
+        : null;
+    return {
+      marker: m[1],
+      contentX: w?.x0 ?? l.x0 + body * (m[1].length * 0.5 + 0.7),
+      ordered: !BULLET.test(m[1]),
+    };
+  };
+  const assembly = all.map((ls) => {
+    const out = [];
+    for (const l of ls) {
+      const a = out.at(-1);
+      if (
+        a?.kind === "body" &&
+        l.kind === "body" &&
+        marker(a) &&
+        a.plain === marker(a).marker &&
+        Math.abs(a.base - l.base) < body * 0.4 &&
+        l.x0 > a.x1
+      ) {
+        const joined = {
+          ...l,
+          plain: a.plain + " " + l.plain,
+          x0: a.x0,
+          bbox: [a.x0, Math.min(a.y0, l.y0), l.x1, Math.max(a.y1, l.y1)],
+          text: () => a.text() + " " + l.text(),
+        };
+        joined.list = { ...marker(a), contentX: l.x0 };
+        out[out.length - 1] = joined;
+      } else if (
+        a?.kind === "body" &&
+        l.kind === "body" &&
+        Math.abs(a.base - l.base) < body * 0.25 &&
+        l.x0 > a.x1 &&
+        !marker(l)
+      ) {
+        out[out.length - 1] = {
+          ...a,
+          plain: a.plain + " " + l.plain,
+          x1: l.x1,
+          bbox: [a.x0, Math.min(a.y0, l.y0), l.x1, Math.max(a.y1, l.y1)],
+          metrics: [...(a.metrics || []), ...(l.metrics || [])],
+          text: () => a.text() + " " + l.text(),
+        };
+      } else out.push(l);
+    }
+    return out;
+  });
+  const lastLines = new WeakMap();
+  const boundary = (b, reason) => {
+    b.warning = { code: "paragraph-boundary", reason };
+  };
   const blocks = [],
     excluded = [];
   let joins = 0;
@@ -256,7 +364,7 @@ function convert({ pages, toc }) {
       obj = null;
     let noteShape = null,
       noteNumber = -1;
-    for (const l of all[p]) {
+    for (const l of assembly[p]) {
       if (["margin", "front"].includes(l.kind)) continue;
       const t = l.text();
       if (["table", "figure"].includes(l.kind)) {
@@ -321,41 +429,99 @@ function convert({ pages, toc }) {
         prev = l;
         continue;
       }
+      let mark = l.list || marker(l);
+      // A closing parenthesis in a wrapped sentence is not a hanging list marker.
+      if (
+        mark &&
+        prev?.kind === "body" &&
+        full(prev) &&
+        l.base - prev.base < step * 1.45 &&
+        Math.abs(l.x0 - prev.x0) < body * 0.7
+      )
+        mark = null;
+      const next = assembly[p][assembly[p].indexOf(l) + 1];
+      if (
+        mark &&
+        next?.kind === "body" &&
+        !marker(next) &&
+        next.base - l.base < step * 1.45 &&
+        next.x0 > l.x0 + body * 0.7 &&
+        next.x0 < l.x0 + body * 4
+      )
+        mark = { ...mark, contentX: next.x0 };
+      const active = blocks.at(-1);
+      const largeGap = prev && l.base - prev.base > step * 1.45;
+      const indent =
+        prev &&
+        Math.abs(l.x0 - (active?.kind === "list" ? active.contentX : prev.x0)) >
+          body * 0.7;
       const same =
         prev?.kind === "body" &&
-        l.y0 - prev.y1 < prev.size * 0.75 &&
-        Math.abs(l.main_size - prev.main_size) < 0.6 &&
-        !LIST.test(t);
+        !mark &&
+        !/^NOTE(?:\s|[—–-])/.test(t) &&
+        ((!largeGap &&
+          !indent &&
+          (active?.kind === "list" ||
+            !justified ||
+            full(prev) ||
+            /-$/.test(prev.plain))) ||
+          (l.y0 < prev.y1 && Math.abs(l.main_size - prev.main_size) < 0.6));
       if (prev?.kind === "caption" && l.bold && l.y0 - prev.y1 < 6) {
-        blocks.at(-1).text += " " + t;
-        addBox(blocks.at(-1), l);
+        active.text += " " + t;
+        addBox(active, l);
         continue;
       }
       if (same) {
-        const b = blocks.at(-1);
-        b.text += (b.text.endsWith("-") ? "" : " ") + t;
-        addBox(b, l);
+        active.text += (active.text.endsWith("-") ? "" : " ") + t;
+        addBox(active, l);
+        lastLines.set(active, l);
       } else {
         let joined = false;
-        if (first && !LIST.test(t)) {
-          const b = blocks.findLast((b2) =>
-            ["para", "heading", "caption", "table", "figure"].includes(b2.kind),
+        if (first && !mark) {
+          const b = blocks.findLast((b) =>
+            ["para", "list", "heading", "caption", "table", "figure"].includes(
+              b.kind,
+            ),
           );
-          if (
-            b?.kind === "para" &&
-            b.page === p - 1 &&
-            !END.test(b.text) &&
-            /^[a-z(]/.test(t)
-          ) {
-            b.text += (b.text.endsWith("-") ? "" : " ") + t;
-            addBox(b, l);
-            blocks.splice(blocks.indexOf(b), 1);
-            blocks.push(b);
-            joined = true;
-            joins++;
+          const tail = b && lastLines.get(b);
+          if (b?.kind === "para" && tail?.page === p - 1) {
+            const linguistic = !END.test(b.text) && /^[a-z(]/.test(t);
+            const geometric =
+              justified && full(tail) && Math.abs(l.x0 - tail.x0) < body * 0.7;
+            if (geometric || (!justified && linguistic)) {
+              b.text += (b.text.endsWith("-") ? "" : " ") + t;
+              addBox(b, l);
+              blocks.splice(blocks.indexOf(b), 1);
+              blocks.push(b);
+              lastLines.set(b, l);
+              joined = true;
+              joins++;
+              if (geometric && !linguistic)
+                boundary(
+                  b,
+                  "쪽 끝의 가득 찬 줄과 다음 쪽의 문장 시작 신호가 어긋남",
+                );
+            } else if (linguistic)
+              boundary(b, "짧은 줄로 끝났지만 다음 쪽이 문장 중간처럼 시작함");
           }
         }
-        if (!joined) push("para", t, l);
+        if (!joined) {
+          const b = push(mark ? "list" : "para", t, l);
+          if (mark) Object.assign(b, mark, { level: 1 });
+          lastLines.set(b, l);
+          if (prev?.kind === "body" && !mark && active?.kind === "para") {
+            if (justified && full(prev) && (largeGap || indent))
+              boundary(active, "가득 찬 줄인데 뒤 간격이나 들여쓰기가 바뀜");
+            else if (
+              justified &&
+              !full(prev) &&
+              !END.test(active.text) &&
+              /^[a-z]/.test(t) &&
+              !/^[^.]{2,90}:/.test(t)
+            )
+              boundary(b, "짧은 줄로 끝났지만 다음 줄이 문장 중간처럼 시작함");
+          }
+        }
       }
       first = false;
       prev = l;
@@ -414,10 +580,28 @@ function convert({ pages, toc }) {
   const merged = mergeRegions(blocks);
   blocks.splice(0, blocks.length, ...merged);
   blocks.forEach((b, i) => (b.id = "b" + i));
+  let listIndents = [];
+  for (const b of blocks) {
+    if (b.kind !== "list") {
+      if (b.kind !== "footnote") listIndents = [];
+      continue;
+    }
+    const x = b.boxes[0].x0;
+    while (listIndents.length && x < listIndents.at(-1) - body * 0.7)
+      listIndents.pop();
+    if (!listIndents.length || x > listIndents.at(-1) + body * 0.7)
+      listIndents.push(x);
+    b.level = listIndents.length;
+  }
   const stats = measure(pages, toc, all, blocks, start, body, joins);
+  stats.paragraphs.layout = {
+    full_line_ratio: fullRatio,
+    justified,
+    baseline_step: step,
+    right_edges: right,
+  };
   suspects(blocks, stats);
-  for (const b of blocks)
-    if (b.kind === "para") b.kind = BULLET.test(b.text) ? "list" : "paragraph";
+  for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
   return {
     pages: pages.map((p) => ({ width: p.width, height: p.height })),
     blocks,
@@ -450,16 +634,6 @@ function measure(pages, toc, all, blocks, start, body, joins) {
   for (const ls of all)
     for (const l of ls)
       buckets[l.kind] = (buckets[l.kind] || 0) + chars(l.plain);
-  const refs = /* @__PURE__ */ new Map(),
-    defs = /* @__PURE__ */ new Map();
-  for (const b of blocks) {
-    if (b.kind === "footnote") {
-      const n = b.text.match(/^\[\^(\d+)\]/)?.[1];
-      if (n) defs.set(n, (defs.get(n) || 0) + 1);
-    } else if (["para", "heading", "caption"].includes(b.kind))
-      for (const m of b.text.matchAll(/\[\^(\d+)\]/g))
-        refs.set(m[1], (refs.get(m[1]) || 0) + 1);
-  }
   return {
     pages: pages.length,
     body_start_page: start + 1,
@@ -490,12 +664,7 @@ function measure(pages, toc, all, blocks, start, body, joins) {
         (b) => b.kind === "caption" && b.text.startsWith("Figure"),
       ).length,
     },
-    footnotes: {
-      definitions: [...defs.values()].reduce((a, b) => a + b, 0),
-      refs: [...refs.values()].reduce((a, b) => a + b, 0),
-      refs_without_definition: [...refs.keys()].filter((n) => !defs.has(n)),
-      definitions_without_ref: [...defs.keys()].filter((n) => !refs.has(n)),
-    },
+    footnotes: footnotePairs(blocks),
   };
 }
 function suspects(blocks, stats) {
@@ -539,34 +708,66 @@ function suspects(blocks, stats) {
       }
     }
   }
-  const seq = blocks.filter((b) => b.kind !== "footnote");
-  seq.forEach((b, i) => {
-    if (b.kind === "para") {
-      if (
-        !END.test(b.text) &&
-        !LIST.test(b.text) &&
-        !(seq[i + 1]?.kind === "para" && LIST.test(seq[i + 1].text))
-      )
-        warn(b, "paragraph-end", "끝맺음 없이 끝나는 문단");
-      if (
-        /^[a-z]{2,}/.test(b.text) &&
-        !LIST.test(b.text) &&
-        !/^[^.]{2,90}:/.test(b.text)
-      )
-        warn(b, "paragraph-start", "소문자로 시작하는 문단");
-    }
-  });
-  for (const b of blocks) {
-    const missing = stats.footnotes.refs_without_definition.filter((n) =>
-      b.text.includes("[^" + n + "]"),
-    );
-    const unused = stats.footnotes.definitions_without_ref.filter(
-      (n) => b.kind === "footnote" && b.text.startsWith("[^" + n + "]"),
-    );
-    if (missing.length || unused.length)
-      warn(b, "footnote-pair", "각주 짝 불일치");
-  }
+  reconcileFootnotes({ blocks, stats });
 }
+function footnotePairs(blocks) {
+  const refs = /* @__PURE__ */ new Map(),
+    defs = /* @__PURE__ */ new Map();
+  for (const b of blocks) {
+    if (b.kind === "footnote") {
+      const n = b.text.match(/^\[\^(\d+)\]/)?.[1];
+      if (n) defs.set(n, (defs.get(n) || 0) + 1);
+    } else if (
+      [
+        "para",
+        "paragraph",
+        "list",
+        "heading",
+        "heading_unnumbered",
+        "caption",
+      ].includes(b.kind)
+    )
+      for (const m of b.text.matchAll(/\[\^(\d+)\]/g))
+        refs.set(m[1], (refs.get(m[1]) || 0) + 1);
+  }
+  return {
+    definitions: [...defs.values()].reduce((a, b) => a + b, 0),
+    refs: [...refs.values()].reduce((a, b) => a + b, 0),
+    refs_without_definition: [...refs.keys()].filter((n) => !defs.has(n)),
+    definitions_without_ref: [...defs.keys()].filter((n) => !refs.has(n)),
+  };
+}
+// Run after assembly/exclusion; authoring repeats this on its actual block list.
+function reconcileFootnotes(result) {
+  const { blocks, stats } = result;
+  stats.footnotes = footnotePairs(blocks);
+  for (const b of blocks) {
+    const reason = "각주 짝 불일치";
+    if (b.warning?.code === "footnote-pair") delete b.warning;
+    else if (b.warning)
+      b.warning.reason = b.warning.reason
+        .split(" · ")
+        .filter((x) => x !== reason)
+        .join(" · ");
+    const missing =
+      b.kind !== "footnote" &&
+      !["table", "figure"].includes(b.kind) &&
+      stats.footnotes.refs_without_definition.some((n) =>
+        b.text.includes("[^" + n + "]"),
+      );
+    const unused =
+      b.kind === "footnote" &&
+      stats.footnotes.definitions_without_ref.some((n) =>
+        b.text.startsWith("[^" + n + "]:"),
+      );
+    if (missing || unused) {
+      if (b.warning) b.warning.reason += " · " + reason;
+      else b.warning = { code: "footnote-pair", reason };
+    }
+  }
+  return result;
+}
+
 function footnoteContent(text, stats) {
   const missing = new Set(stats.footnotes.refs_without_definition);
   const content = [];
@@ -584,7 +785,7 @@ function footnoteContent(text, stats) {
   if (at < text.length) content.push({ kind: "text", text: text.slice(at) });
   return content;
 }
-export { BULLET, convert, footnoteContent, mergeRegions };
+export { BULLET, convert, footnoteContent, mergeRegions, reconcileFootnotes };
 
 function coalesceOverlaps(blocks) {
   const out = [];
