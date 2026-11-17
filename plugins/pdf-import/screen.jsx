@@ -1,5 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
+import PagePicker from "./page-picker.jsx";
+import { togglePageRange, readPageTitles } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { previewCorrection, references } from "./corrections.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
@@ -98,6 +100,8 @@ function Screen({
     [pageNo, setPageNo] = useState(1),
     [width, setWidth] = useState(600),
     [tip, setTip] = useState(null);
+  const [pageTitles, setPageTitles] = useState([]);
+  const replacementApproved = useRef(false);
   const [picking, setPicking] = useState(false),
     [excludedPages, setExcludedPages] = useState(new Set()),
     [follow, setFollow] = useState(true),
@@ -118,7 +122,7 @@ function Screen({
     );
     ro.observe(pane.current);
     return () => ro.disconnect();
-  }, [pdf]);
+  }, [pdf, picking]);
   useEffect(
     () => () => {
       pdf?.loadingTask.destroy();
@@ -228,6 +232,8 @@ function Screen({
     }
   }
   async function load(path, cachedOnly = false) {
+    replacementApproved.current=false;
+    setPageTitles([]);
     undoPreviews.current=[];
     setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
     clearTimeout(scrollTimer.current);
@@ -250,6 +256,11 @@ function Screen({
     metrics.current = { start: performance.now() };
     try {
       const f = await invoke("load", { path, cachedOnly });
+      metrics.current.loadMs=performance.now()-metrics.current.start;
+      const suggestStarted=performance.now();
+      const suggestionPromise=f.cached?null:invoke("suggest",{id:f.id}).then(
+        value=>({value,ms:performance.now()-suggestStarted}),error=>({error}));
+      const pdfStarted=performance.now();
       try {
         const folders = JSON.parse(localStorage.getItem(recentKey) || "[]");
         localStorage.setItem(
@@ -281,7 +292,12 @@ function Screen({
           return { width: v.width, height: v.height };
         }),
       );
-      setPdf(doc);
+      metrics.current.pdfMs=performance.now()-pdfStarted;
+      const titlesStarted=performance.now();
+      const titles = await readPageTitles(doc);
+      metrics.current.bookmarksMs=performance.now()-titlesStarted;
+      setPageTitles(titles);
+
       metrics.current.readMs = performance.now() - metrics.current.start;
       if (f.cached) {
         setExcludedPages(
@@ -298,20 +314,26 @@ function Screen({
               ),
           ),
         );
-        setMapping(f.cached);
+        setPdf(doc);
+        if(cachedOnly) setMapping(f.cached);
+        else {setPicking(true);setStatus("뺄 쪽을 고른 뒤 변환하세요.");}
         setStale(f.cached.stale);
         setCached(true);
-        setStatus(
+        if(cachedOnly) setStatus(
           "변환 완료 · 확인할 곳 " +
             f.cached.blocks.filter((b) => b.warning).length,
         );
       } else {
-        const suggestion = await invoke("suggest", { id: f.id });
-        setExcludedPages(new Set(suggestion.excludedPages));
+        setStatus("뺄 쪽 제안 확인 중");
+        const suggested=await suggestionPromise;
+        if(suggested.error) {await loadingTask.destroy();throw suggested.error;}
+        metrics.current.suggestMs=suggested.ms;
+        setExcludedPages(new Set(suggested.value.excludedPages));
+        setPdf(doc);
         setPicking(true);
-        setStatus("제외할 쪽을 고른 뒤 변환하세요.");
+        setStatus("뺄 쪽을 고른 뒤 변환하세요.");
         performance.measure("pdf-import-page-picker", {
-          start: metrics.current.start,
+          start: metrics.current.start, detail:{...metrics.current},
         });
       }
     } catch (e) {
@@ -396,7 +418,10 @@ function Screen({
       "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
     );
   }
-  function rewrite() {
+  async function rewrite() {
+    if(!await confirm({title:"다시 변환",message:"기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",confirmLabel:"뺄 쪽 고르기"})) return;
+    replacementApproved.current=true;
+    setSelection([]);setSplitting(false);
     clearTimeout(scrollTimer.current);
     anchor.current = null;
     setPicking(true);
@@ -405,12 +430,12 @@ function Screen({
     setSelected(null);
     setTarget(null);
     setFollowed(null);
-    setStatus("제외할 쪽을 고른 뒤 변환하세요.");
+    setStatus("뺄 쪽을 고른 뒤 변환하세요.");
   }
   async function convertSelected() {
     try {
       if (
-        cached &&
+        cached && !replacementApproved.current &&
         !(await confirm({
           title: "다시 변환",
           message:
@@ -435,16 +460,20 @@ function Screen({
   }
   function togglePage(page, shift) {
     if (busy || !picking) return;
-    const next = new Set(excludedPages),
-      exclude = !next.has(page);
-    const from = shift && anchor.current !== null ? anchor.current : page;
-    for (let i = Math.min(from, page); i <= Math.max(from, page); i++) {
-      if (exclude) next.add(i);
-      else next.delete(i);
-    }
+    setExcludedPages(togglePageRange(excludedPages, anchor.current, page, shift));
     anchor.current = page;
-    setExcludedPages(next);
   }
+  function cancelPicking() {
+    clearTimeout(scrollTimer.current);
+    setPicking(false);setPdf(null);setFile(null);setMapping(null);setResult(null);
+    setCached(false);setExcludedPages(new Set());setError("");setSelection([]);setStale(false);
+    setStatus("PDF를 골라 주세요.");
+    let folders=[];
+    try {const saved=JSON.parse(localStorage.getItem(recentKey)||"[]");if(Array.isArray(saved))folders=saved;} catch {}
+    invoke("recent",{folders})
+      .then(found=>setRecent(found.rows)).catch(()=>setError("저장된 문서 목록을 읽지 못했습니다."));
+  }
+
   function sourceScroll() {
     const scrollAt = performance.now();
     clearTimeout(scrollTimer.current);
@@ -568,8 +597,9 @@ function Screen({
       description={
         file
           ? file.name +
-            (pdf ? " · " + pdf.numPages + "쪽" : "") +
-            (excludedPages.size ? " · " + exclusionSummary(excludedPages) : "")
+            (pdf && !picking ? " · " + pdf.numPages + "쪽" : "") +
+            (picking && pdf ? " · " + pdf.numPages + "쪽 중 " + excludedPages.size + "쪽 제외" : "") +
+            (excludedPages.size ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
           : undefined
       }
       status={
@@ -582,15 +612,16 @@ function Screen({
       }
       actions={
         <>
-          <ui.Button
+          {!picking && <ui.Button
             variant={file ? "outline" : "default"}
             disabled={busy}
             onClick={choose}
           >
             PDF 고르기
-          </ui.Button>
+          </ui.Button>}
           {picking && (
             <>
+              <ui.Button disabled={busy} onClick={cancelPicking}>취소</ui.Button>
               <ui.Button
                 variant="default"
                 disabled={busy}
@@ -598,9 +629,6 @@ function Screen({
               >
                 변환
               </ui.Button>
-              <span>
-                {pdf?.numPages}쪽 중 {excludedPages.size}쪽 제외
-              </span>
             </>
           )}
           {cached && !picking && (
@@ -727,7 +755,8 @@ function Screen({
           />
         </>
       )}
-      {pdf && (
+      {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy} onError={setError}/> }
+      {pdf && !picking && (
         <>
           <div className="pdf-import-narrow">
             <ui.Notice>넓은 창에서 보기</ui.Notice>
@@ -868,44 +897,10 @@ function Screen({
                         }}
                       >
                         <div
-                          role={picking ? "button" : undefined}
-                          tabIndex={picking ? 0 : undefined}
-                          aria-label={
-                            picking ? i + 1 + "쪽 제외 선택" : undefined
-                          }
-                          aria-pressed={picking ? frontPages.has(i) : undefined}
-                          onClick={(e) => togglePage(i + 1, e.shiftKey)}
-                          onKeyDown={(e) => {
-                            if (picking && ["Enter", " "].includes(e.key)) {
-                              e.preventDefault();
-                              togglePage(i + 1, e.shiftKey);
-                            }
-                          }}
                           style={{ opacity: frontPages.has(i) ? 0.4 : 1 }}
                         >
                           <Page index={i} scale={pos.scale} />
                         </div>
-                        {picking && (
-                          <label
-                            style={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              padding: "var(--space-2)",
-                              background: "var(--id-color-surface)",
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              aria-label={i + 1 + "쪽 제외"}
-                              checked={frontPages.has(i)}
-                              disabled={busy}
-                              onClick={(e) => togglePage(i + 1, e.shiftKey)}
-                              onChange={() => {}}
-                            />{" "}
-                            제외
-                          </label>
-                        )}
                         {frontPages.has(i) && (
                           <svg
                             aria-label="제외"
@@ -1037,7 +1032,6 @@ function Screen({
             </div>
             <div style={{ minWidth: 0 }}>
               <div className="type-item-name">변환된 문서</div>
-              {picking && <p>제외할 쪽을 고른 뒤 변환하세요.</p>}
               {mapping && (
                 <ui.DocumentView
                   reloadKey={reloadKey}
