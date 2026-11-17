@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { koreanTime } from "./time.mjs";
 import { createHash } from "node:crypto";
 export async function listConverted(input) {
   const rows = [],
@@ -15,13 +16,8 @@ export async function listConverted(input) {
     }
     folders.push(folder);
     for (const entry of entries) {
-      if (
-        !entry.isFile() ||
-        !entry.name.endsWith(".pdf-source.json") ||
-        entry.name.includes(".previous-")
-      )
-        continue;
-      const side = path.join(folder, entry.name);
+      if (!entry.isDirectory()) continue;
+      const side = path.join(folder, entry.name, entry.name + ".pdf-source.json");
       try {
         const data = JSON.parse(await readFile(side, "utf8")),
           info = await stat(side);
@@ -53,7 +49,7 @@ export async function listConverted(input) {
           folder: path.basename(folder),
           pages: data.pages.length,
           warnings: data.blocks.filter((b) => b.warning).length,
-          modified: info.mtime.toISOString(),
+          modified: koreanTime(info.mtime),
           state,
         });
       } catch (e) {

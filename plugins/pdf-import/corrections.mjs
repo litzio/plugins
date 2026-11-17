@@ -1,3 +1,4 @@
+import { koreanTime } from "./time.mjs";
 // Source mapping transformations are independent of the Host and document engine.
 export function boxesFor(lines) {
   const boxes = [];
@@ -10,7 +11,6 @@ export function boxesFor(lines) {
   }
   return boxes;
 }
-export const editableMapping = m => m?.lineVersion === 1;
 export const snapshotNodes = s => s.nodes.filter(n => n.path.length === 1 && n.type !== 'caption');
 export function references(value) {
   if (!value || typeof value !== 'object') return [];
@@ -35,7 +35,7 @@ function splitContent(content, offset) {
 // Predict only operations this screen supports. The official revision guard is
 // authoritative for the write; the handler verifies this projection before returning.
 export function previewCorrection(mapping, input, undoBefore) {
-  const {action,ids=[],line,kind,level,time = new Date().toISOString()} = input;
+  const {action,ids=[],line,kind,level,time = koreanTime()} = input;
   if (action === 'undo') {
     if (!undoBefore) throw Error('되돌릴 동작이 없습니다.');
     return restoreMapping(undoBefore,mapping,undoBefore.blocks.find(b=>ids.includes(b.id))?.id,time);

@@ -1,6 +1,8 @@
 import { PluginPublicError } from "@litzio/plugin-sdk";
-import { readFile, writeFile, rename, stat } from "node:fs/promises";
+import { readFile, writeFile, rename, stat, readdir } from "node:fs/promises";
 import path from "node:path";
+import { recordImages, finishReplacement } from "./output-files.mjs";
+import { outputPaths } from "./output-paths.mjs";
 import { createHash } from "node:crypto";
 import { inspectDocument } from "./document-io.mjs";
 import { extract } from "./extract.mjs";
@@ -43,11 +45,7 @@ export function activate() {
           );
         const bytes = await readFile(p),
           digest = sha(bytes),
-          doc = path.join(
-            path.dirname(p),
-            path.basename(p, path.extname(p)) + ".md",
-          ),
-          side = doc.replace(/\.md$/, ".pdf-source.json");
+          {doc, side, folder: outputFolder} = outputPaths(p);
         const id = sha(Buffer.from(p));
         sessions.set(id, { p, digest, doc, side });
         let cached = null;
@@ -56,7 +54,7 @@ export function activate() {
           if (s.pdf.sha256 === digest) {
             const current = await inspect(doc);
             cached = { ...s, stale: current.revision !== s.revision };
-            if (!cached.stale && s.lineVersion === 1) {
+            if (!cached.stale) {
               try { assertMapping(s,current); } catch { cached.stale=true; }
               if (!cached.stale) {
                 cached.snapshotNodes=snapshotNodes(current);
@@ -82,6 +80,7 @@ export function activate() {
           base64: bytes.toString("base64"),
           name: path.basename(p),
           folder: path.dirname(p),
+          outputFolder,
           document: doc,
           cached,
         };
@@ -109,6 +108,7 @@ export function activate() {
           extracted = performance.now(),
           result = convert(raw, excludedPages);
         s.result = result;
+        s.assetsBefore = new Set(await readdir(path.join(path.dirname(s.doc), "assets")).catch(e => { if(e.code === "ENOENT") return []; throw e; }));
         return {
           ...result,
           timings: {
@@ -126,6 +126,7 @@ export function activate() {
             "PDF를 다시 골라 주세요.",
           );
         const suffix = ".previous-" + Date.now();
+        s.previous = {doc:s.doc.replace(/\.md$/, suffix + ".md"), side:s.side + suffix, data:JSON.parse(await readFile(s.side,"utf8"))};
         await rename(s.doc, s.doc.replace(/\.md$/, suffix + ".md"));
         try {
           await rename(s.side, s.side + suffix);
@@ -134,7 +135,7 @@ export function activate() {
         }
         return { ok: true };
       },
-      mapping: async ({ id, units, revision }) => {
+      mapping: async ({ id, units, revision, images = [] }) => {
         const s = sessions.get(id);
         if (!s?.result)
           throw new PluginPublicError(
@@ -182,7 +183,7 @@ export function activate() {
           }
         });
         const data = {
-          lineVersion: 1,
+          ownedImages: await recordImages(s, images),
           snapshotNodes: snapshotNodes(current),
           pdf: { name: path.basename(s.p), sha256: s.digest },
           revision: current.revision,
@@ -193,6 +194,7 @@ export function activate() {
           stats: s.result.stats,
         };
         await writeFile(s.side, JSON.stringify(data));
+        await finishReplacement(s, data);
         const info = await stat(s.doc);
         return { ...data, documentBytes: info.size };
       },

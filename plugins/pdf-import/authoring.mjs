@@ -1,6 +1,8 @@
+import { imageKeys } from "./output.mjs";
 import { footnoteContent, BULLET, reconcileFootnotes } from "./rules.mjs";
 function authoring(result) {
   reconcileFootnotes(result);
+  const keys = imageKeys(result.blocks);
   const { blocks, stats } = result,
     consumed = /* @__PURE__ */ new Set(),
     units = [];
@@ -129,7 +131,7 @@ function authoring(result) {
       const cap = captionFor.get(b.id);
       block = {
         kind: "figure",
-        imageAsset: b.id,
+        imageAsset: keys.get(b.id),
         imageAlt: b.kind === "table" ? "표 영역" : "그림 영역",
         caption: cap ? footnoteContent(cap.text, stats) : "",
       };
