@@ -33,7 +33,7 @@ function splitContent(content, offset) {
   return [left,right];
 }
 // Predict only operations this screen supports. The official revision guard is
-// authoritative for the write; a deferred inspect verifies this projection.
+// authoritative for the write; the handler verifies this projection before returning.
 export function previewCorrection(mapping, input, undoBefore) {
   const {action,ids=[],line,kind,level,time = new Date().toISOString()} = input;
   if (action === 'undo') {
