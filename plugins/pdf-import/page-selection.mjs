@@ -10,10 +10,12 @@ export function togglePageRange(excluded, anchor, page, shift) {
 }
 
 export function firstPageTitles(bookmarks, count) {
-  const titles = Array(count).fill("");
+  const titles = Array(count).fill(""), seen = new Set();
   for (const { page, title } of bookmarks) {
-    if (Number.isInteger(page) && page >= 1 && page <= count && !titles[page - 1])
+    if (Number.isInteger(page) && page >= 1 && page <= count && !seen.has(page)) {
       titles[page - 1] = title;
+      seen.add(page);
+    }
   }
   return titles;
 }

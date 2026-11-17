@@ -22,6 +22,7 @@ test('public PDF bookmark destinations supply only the first title on each page'
     assert.match(titles[1],/^1\. Exchange and record scope/);
     assert.equal(titles[0],'');
     assert.equal(firstPageTitles([{page:2,title:titles[1]},{page:2,title:'1.1 Capture boundary'},{page:14,title:'outside'}],13)[1],titles[1]);
+    assert.equal(firstPageTitles([{page:2,title:''},{page:2,title:'Later bookmark'}],13)[1],'');
     assert.deepEqual(await readPageTitles({numPages:13,getOutline:async()=>null}),Array(13).fill(''));
   } finally {await loading.destroy();}
 });

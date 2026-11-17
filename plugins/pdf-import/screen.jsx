@@ -394,6 +394,7 @@ function Screen({
   async function rewrite() {
     if(!await confirm({title:"다시 변환",message:"기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",confirmLabel:"뺄 쪽 고르기"})) return;
     replacementApproved.current=true;
+    setUndoCount(0);historyId.current=crypto.randomUUID();
     setSelection([]);setSplitting(false);
     clearTimeout(scrollTimer.current);
     anchor.current = null;
@@ -682,12 +683,12 @@ function Screen({
 }
 `}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
-      {stale && (
+      {!picking && stale && (
         <ui.Notice tone="warning">
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
       )}
-      {stale && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
+      {!picking && stale && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
       {mapping && mapping.lineVersion !== 1 && <ui.Notice>다시 변환해야 고칠 수 있습니다</ui.Notice>}
       {!file && recent.length > 0 && (
         <>
