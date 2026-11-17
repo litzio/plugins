@@ -1,0 +1,1 @@
+{"id":"local.pdf-import","name":"PDF 가져오기","description":"PDF 원본과 변환된 문서를 나란히 확인합니다.","icon":"FileText","entry":"host.mjs","screen":"screen.jsx"}
