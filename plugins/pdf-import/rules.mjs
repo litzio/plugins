@@ -18,7 +18,7 @@ function addBox(b, l) {
 function line(raw, page) {
   const spans = raw.spans.filter((s) => s.text.trim()), main = spans.reduce((a, s) => !a || s.text.length > a.text.length ? s : a, null), main_size = main ? round(main.size * 10) / 10 : 0;
   return { page, bbox: raw.bbox, x0: raw.bbox[0], y0: raw.bbox[1], x1: raw.bbox[2], y1: raw.bbox[3], spans, plain: raw.spans.map((s) => s.text).join("").trim(), size: Math.max(0, ...spans.map((s) => s.size)), main_size, bold: spans.length > 0 && spans.filter((s) => s.size >= 7).every((s) => s.flags & 16), first_size: spans[0]?.size || 0, kind: null, text() {
-    return spans.map((s) => s.flags & 1 && s.size < main_size && s.text.trim() ? s.text.trim().split(/[,\s]+/).map((x) => "[^" + x + "]").join("") : s.text).join("").replace(/\s+/g, " ").trim();
+    return spans.map((s) => s.flags & 1 && s.size < main_size && s.text.trim() ? s.text.match(/^\s*/)[0] + s.text.trim().split(/[,\s]+/).map((x) => "[^" + x + "]").join("") + s.text.match(/\s*$/)[0] : s.text).join("").replace(/\s+/g, " ").trim();
   } };
 }
 const inside = (l, r) => {
@@ -178,6 +178,8 @@ function convert({ pages, toc }) {
     if (at < 0) blocks.push(b);
     else blocks.splice(at, 0, b);
   }
+  const merged = mergeRegions(blocks);
+  blocks.splice(0, blocks.length, ...merged);
   blocks.forEach((b, i) => b.id = "b" + i);
   const stats = measure(pages, toc, all, blocks, start, body, joins);
   suspects(blocks, stats);
@@ -260,5 +262,54 @@ function footnoteContent(text, stats) {
 export {
   BULLET,
   convert,
-  footnoteContent
+  footnoteContent,
+  mergeRegions
 };
+
+function mergeRegions(blocks) {
+  // Text enclosed by an object belongs to the crop, rather than separating its fragments.
+  const enclosed = new Set();
+  for (const b of blocks) {
+    if (b.kind !== "para") continue;
+    const owner = blocks.find(o =>
+      ["table", "figure"].includes(o.kind) && o.page === b.page &&
+      b.boxes.every(x => o.boxes.some(r =>
+        r.page === x.page && r.x0 <= (x.x0 + x.x1) / 2 && r.x1 >= (x.x0 + x.x1) / 2 &&
+        r.top <= (x.top + x.bottom) / 2 && r.bottom >= (x.top + x.bottom) / 2)));
+    if (owner) {
+      owner.text += " " + b.text;
+      for (const x of b.boxes) addBox(owner, {page:x.page,bbox:[x.x0,x.top,x.x1,x.bottom]});
+      enclosed.add(b);
+    }
+  }
+  blocks = blocks.filter(b => !enclosed.has(b));
+  const isObject = b => b && ["table", "figure"].includes(b.kind);
+  const merged = [];
+  for (let i = 0; i < blocks.length;) {
+    const first = blocks[i];
+    if (!isObject(first)) {
+      merged.push(first);
+      i++;
+      continue;
+    }
+    const run = [first];
+    let end = i + 1;
+    while (isObject(blocks[end]) && blocks[end].page === first.page) {
+      run.push(blocks[end++]);
+    }
+    const area = b => (b.boxes[0].x1 - b.boxes[0].x0) * (b.boxes[0].bottom - b.boxes[0].top);
+    const largest = run.reduce((a, b) => area(b) > area(a) ? b : a);
+    const prior = blocks[i - 1];
+    const next = blocks[end];
+    const beforeCaption = prior?.page === first.page && prior.kind === "caption" && /^Table\b/.test(prior.text);
+    const afterCaption = next?.page === first.page && next.kind === "caption" && /^Figure\b/.test(next.text);
+    const kind = beforeCaption ? "table" : afterCaption ? "figure" : largest.kind;
+    const combined = { ...first, kind, text: run.map(b => b.text).filter(Boolean).join(" "), boxes: [] };
+    for (const b of run) for (const x of b.boxes) {
+      addBox(combined, { page: x.page, bbox: [x.x0, x.top, x.x1, x.bottom] });
+    }
+    merged.push(combined);
+    i = end;
+  }
+  return merged;
+}

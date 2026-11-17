@@ -71,12 +71,8 @@ export function activate(context) {
       await writeFile(s.side, JSON.stringify(data));
       const info = await stat(s.doc);
       return { ...data, documentBytes: info.size };
-    },
-    revision: async ({ id }) => {
-      const s = sessions.get(id);
-      if (!s) throw new PluginPublicError("pdf_import_failed", "PDF를 다시 골라 주세요.");
-      return { revision: (await inspect(s.doc)).revision };
     }
+
   }, dispose() {
     sessions.clear();
   } };

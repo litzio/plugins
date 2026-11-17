@@ -6,14 +6,16 @@ async function extract(pdfPath) {
   const pdfjs = await import(pathToFileURL(path.join(pdfjsDir, "legacy/build/pdf.mjs")).href);
   const { getDocument, OPS } = pdfjs;
   const data = new Uint8Array(await readFile(pdfPath));
-  const doc = await getDocument({
+  const loadingTask = getDocument({
     data,
     standardFontDataUrl: pdfjsDir.replaceAll("\\", "/") + "/standard_fonts/",
     cMapUrl: pdfjsDir.replaceAll("\\", "/") + "/cmaps/",
     cMapPacked: true,
     verbosity: 0,
+    fontExtraProperties: true,
     enableScripting: false
-  }).promise;
+  });
+  const doc = await loadingTask.promise;
   const mul = (m, n) => [
     m[0] * n[0] + m[2] * n[1],
     m[1] * n[0] + m[3] * n[1],
@@ -183,7 +185,7 @@ async function extract(pdfPath) {
     }
   };
   walk(await doc.getOutline(), 1);
-  await doc.destroy();
+  await loadingTask.destroy();
   return { pages, toc };
 }
 export {

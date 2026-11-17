@@ -1,8 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { extract } from "../extract.mjs";
-import { convert, footnoteContent } from "../rules.mjs";
-const result = convert(await extract(new URL("./fixtures/LSR-1.1-standards.pdf", import.meta.url)));
+import { convert, footnoteContent, mergeRegions } from "../rules.mjs";
+const raw = await extract(new URL("./fixtures/LSR-1.1-standards.pdf", import.meta.url));
+const result = convert(raw);
 test("public sample: headings, conservation, margins, and cross-page paragraph", () => {
   assert.equal(result.stats.headings.detected, 15);
   assert.equal(result.stats.headings.matched, 15);
@@ -34,4 +35,36 @@ test("public sample: unmatched superscript is retained as literal marker with wa
   const content = footnoteContent(b.text, result.stats);
   assert.ok(content.some((c) => c.kind === "text" && c.text === "[" + n + "]"));
   assert.ok(!content.some((c) => c.kind === "footnote" && c.label === n));
+});
+
+test("public sample: adjacent regions unite but captions separate tables", () => {
+  const rectangles = raw.pages[7].figures.slice(0, 2);
+  assert.equal(rectangles.length, 2);
+  const objects = rectangles.map((r, i) => ({
+    id: "fragment" + i, kind: i ? "figure" : "table", text: "", page: 7,
+    boxes: [{page:7, x0:r[0], top:r[1], x1:r[2], bottom:r[3]}]
+  }));
+  const combined = mergeRegions(objects);
+  assert.equal(combined.length, 1);
+  assert.deepEqual(combined[0].boxes[0], {
+    page:7, x0:Math.min(...rectangles.map(r=>r[0])), top:Math.min(...rectangles.map(r=>r[1])),
+    x1:Math.max(...rectangles.map(r=>r[2])), bottom:Math.max(...rectangles.map(r=>r[3]))
+  });
+  const cap = (text) => ({kind:"caption",text,page:7,boxes:[]});
+  const separated = mergeRegions([cap("Table 1 — Public sample"), objects[0],
+    cap("Table 2 — Public sample"), objects[1]]);
+  assert.equal(separated.filter(b=>b.kind==="table").length, 2);
+  assert.equal(separated.length, 4);
+});
+test("public sample: whitespace around superscript stays exactly as extracted", () => {
+  const b = result.blocks.find(b => b.text.includes("[^17]"));
+  assert.match(b.text, /item\[\^17\] even/);
+  const modified = structuredClone(raw);
+  const spans = modified.pages.flatMap(p=>p.raw).map(l=>l.spans)
+    .find(ss=>ss.some(s=>(s.flags&1)&&s.text.trim()==="17"));
+  const at = spans.findIndex(s=>(s.flags&1)&&s.text.trim()==="17");
+  spans[at].text = spans[at].text.trimEnd();
+  spans[at+1].text = spans[at+1].text.trimStart();
+  const noGap = convert(modified).blocks.find(b=>b.text.includes("[^17]"));
+  assert.match(noGap.text, /item\[\^17\]even/);
 });

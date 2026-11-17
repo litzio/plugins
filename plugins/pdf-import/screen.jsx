@@ -15,7 +15,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     return () => ro.disconnect();
   }, [pdf]);
   useEffect(() => () => {
-    pdf?.destroy();
+    pdf?.loadingTask.destroy();
   }, [pdf]);
   const warnings = mapping?.blocks.filter((b) => b.warning) || [], warningIndex = warnings.findIndex((b) => b.id === selected?.id);
   const positions = useMemo(() => {
@@ -48,7 +48,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       const f = await invoke("load", { path });
       setFile(f);
       const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
-      const doc = await pdfjs.getDocument({ data: bytes, verbosity: 0, enableScripting: false }).promise;
+      const loadingTask = pdfjs.getDocument({ data: bytes, verbosity: 0, enableScripting: false });
+      const doc = await loadingTask.promise;
+      doc.loadingTask = loadingTask;
       setPdf(doc);
       metrics.current.readMs = performance.now() - metrics.current.start;
       if (f.cached) {
@@ -125,12 +127,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   async function select(b, scroll = false) {
     if (stale) return;
     try {
-      const t = performance.now(), r = await invoke("revision", { id: file.id });
-      if (r.revision !== mapping.revision) {
-        setStale(true);
-        setSelected(null);
-        return;
-      }
+      const t = performance.now();
       setSelected(b);
       metrics.current.lastSelection = { id: b.id, start: t, targetAt: performance.now() };
       if (scroll) pane.current.scrollTop = positions[b.boxes[0].page].top;
@@ -166,7 +163,10 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       performance.measure("pdf-import-ready", { start: metrics.current.savedAt, detail: metrics.current.readyMs });
     }
     if (s.revision && mapping && s.revision !== mapping.revision) setStale(true);
-    if (s.state === "stale-target") setStale(true);
+    if (s.state === "stale-target") {
+      setStale(true);
+      setSelected(null);
+    }
     if (s.state === "error") setError("변환된 문서를 표시하지 못했습니다.");
   }, [mapping]);
   return <ui.ScreenLayout description={file ? file.name + (pdf ? " · " + pdf.numPages + "쪽" : "") : void 0} status={<ui.Status tone={error ? "error" : busy ? "progress" : mapping ? "ok" : "neutral"} label={status} />} actions={<><ui.Button variant={mapping ? "outline" : "default"} disabled={busy} onClick={choose}>PDF 고르기</ui.Button>{cached && <ui.Button variant="destructive" disabled={busy} onClick={rewrite}>다시 변환</ui.Button>}{warnings.length > 0 && <><ui.Button disabled={busy || stale || warningIndex === 0} onClick={() => select(warnings[Math.max(0, warningIndex - 1)], true)}>이전</ui.Button><span>{warningIndex < 0 ? "0" : warningIndex + 1} / {warnings.length}</span><ui.Button disabled={busy || stale || warningIndex === warnings.length - 1} onClick={() => select(warnings[warningIndex + 1], true)}>다음</ui.Button></>}{mapping && <ui.Button onClick={async () => {
