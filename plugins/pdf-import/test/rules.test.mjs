@@ -272,3 +272,79 @@ test("detached symbol, hanging continuation and nested ordered lists keep their 
     ),
   );
 });
+
+test("post-assembly footnote pairing uses only remaining blocks of every authored kind", async () => {
+  const { authoring, validateFootnoteInput } = await import("../authoring.mjs");
+  const call = result.blocks.find(
+    (b) => b.text.includes("[^17]") && b.kind !== "footnote",
+  );
+  for (const kind of [
+    "paragraph",
+    "list",
+    "heading",
+    "heading_unnumbered",
+    "caption",
+  ]) {
+    const filtered = structuredClone(result);
+    filtered.blocks = filtered.blocks.filter(
+      (b) => !(b.kind === "footnote" && b.text.startsWith("[^17]:")),
+    );
+    const b = filtered.blocks.find((b) => b.id === call.id);
+    b.kind = kind;
+    if (kind === "heading") b.level = 2;
+    const plan = authoring(filtered);
+    assert.ok(
+      filtered.stats.footnotes.refs_without_definition.includes("17"),
+      kind,
+    );
+    assert.match(b.warning.reason, /각주 짝 불일치/, kind);
+    const json = JSON.stringify(plan.authoring);
+    assert.ok(json.includes('"text":"[17]"'), kind);
+    assert.ok(!json.includes('"kind":"footnote","label":"17"'), kind);
+    validateFootnoteInput(plan.authoring);
+  }
+  const noCall = structuredClone(result);
+  noCall.blocks = noCall.blocks.filter(
+    (b) => b.kind === "footnote" || !b.text.includes("[^17]"),
+  );
+  const unused = noCall.blocks.find(
+    (b) => b.kind === "footnote" && b.text.startsWith("[^17]:"),
+  );
+  const plan = authoring(noCall);
+  assert.equal(unused.warning.code, "footnote-pair");
+  assert.equal(
+    plan.units.find((u) => u.sources.includes(unused.id)).kind,
+    "paragraph",
+  );
+  assert.ok(JSON.stringify(plan.authoring).includes("[17] A page note"));
+  const invalid = {
+    inputs: [
+      {
+        key: "first",
+        blocks: [
+          {
+            kind: "list",
+            ordered: false,
+            items: [
+              {
+                content: [],
+                list: {
+                  ordered: false,
+                  items: [{ content: [{ kind: "footnote", label: "17" }] }],
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        key: "other",
+        blocks: [{ kind: "footnote", label: "17", text: "Separate input" }],
+      },
+    ],
+  };
+  assert.throws(
+    () => validateFootnoteInput(invalid),
+    /각주 정의가 없는 작성 입력: 17/,
+  );
+});

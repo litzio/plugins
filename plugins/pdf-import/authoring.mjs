@@ -1,5 +1,6 @@
-import { footnoteContent, BULLET } from "./rules.mjs";
+import { footnoteContent, BULLET, reconcileFootnotes } from "./rules.mjs";
 function authoring(result) {
+  reconcileFootnotes(result);
   const { blocks, stats } = result,
     consumed = /* @__PURE__ */ new Set(),
     units = [];
@@ -152,9 +153,34 @@ function authoring(result) {
     (a, b) => order.indexOf(a.block.label) - order.indexOf(b.block.label),
   );
   const sorted = [...body, ...defs];
+  const input = {
+    inputs: [{ key: "pdf", blocks: sorted.map((u) => u.block) }],
+  };
+  validateFootnoteInput(input);
   return {
-    authoring: { inputs: [{ key: "pdf", blocks: sorted.map((u) => u.block) }] },
+    authoring: input,
     units: sorted.map((u) => ({ kind: u.block.kind, sources: u.sources })),
   };
 }
-export { authoring };
+// Check the completed input, including references in nested lists and captions.
+function validateFootnoteInput(authoring) {
+  for (const input of authoring.inputs) {
+    const definitions = new Set(
+      input.blocks.filter((b) => b.kind === "footnote").map((b) => b.label),
+    );
+    const missing = new Set();
+    const visit = (x) => {
+      if (!x || typeof x !== "object") return;
+      if (x.kind === "footnote" && x.label && !definitions.has(x.label))
+        missing.add(x.label);
+      for (const value of Object.values(x)) {
+        if (Array.isArray(value)) value.forEach(visit);
+        else if (value && typeof value === "object") visit(value);
+      }
+    };
+    input.blocks.filter((b) => b.kind !== "footnote").forEach(visit);
+    if (missing.size)
+      throw new Error("각주 정의가 없는 작성 입력: " + [...missing].join(", "));
+  }
+}
+export { authoring, validateFootnoteInput };

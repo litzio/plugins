@@ -634,16 +634,6 @@ function measure(pages, toc, all, blocks, start, body, joins) {
   for (const ls of all)
     for (const l of ls)
       buckets[l.kind] = (buckets[l.kind] || 0) + chars(l.plain);
-  const refs = /* @__PURE__ */ new Map(),
-    defs = /* @__PURE__ */ new Map();
-  for (const b of blocks) {
-    if (b.kind === "footnote") {
-      const n = b.text.match(/^\[\^(\d+)\]/)?.[1];
-      if (n) defs.set(n, (defs.get(n) || 0) + 1);
-    } else if (["para", "list", "heading", "caption"].includes(b.kind))
-      for (const m of b.text.matchAll(/\[\^(\d+)\]/g))
-        refs.set(m[1], (refs.get(m[1]) || 0) + 1);
-  }
   return {
     pages: pages.length,
     body_start_page: start + 1,
@@ -674,12 +664,7 @@ function measure(pages, toc, all, blocks, start, body, joins) {
         (b) => b.kind === "caption" && b.text.startsWith("Figure"),
       ).length,
     },
-    footnotes: {
-      definitions: [...defs.values()].reduce((a, b) => a + b, 0),
-      refs: [...refs.values()].reduce((a, b) => a + b, 0),
-      refs_without_definition: [...refs.keys()].filter((n) => !defs.has(n)),
-      definitions_without_ref: [...defs.keys()].filter((n) => !refs.has(n)),
-    },
+    footnotes: footnotePairs(blocks),
   };
 }
 function suspects(blocks, stats) {
@@ -723,17 +708,66 @@ function suspects(blocks, stats) {
       }
     }
   }
-  for (const b of blocks) {
-    const missing = stats.footnotes.refs_without_definition.filter((n) =>
-      b.text.includes("[^" + n + "]"),
-    );
-    const unused = stats.footnotes.definitions_without_ref.filter(
-      (n) => b.kind === "footnote" && b.text.startsWith("[^" + n + "]"),
-    );
-    if (missing.length || unused.length)
-      warn(b, "footnote-pair", "각주 짝 불일치");
-  }
+  reconcileFootnotes({ blocks, stats });
 }
+function footnotePairs(blocks) {
+  const refs = /* @__PURE__ */ new Map(),
+    defs = /* @__PURE__ */ new Map();
+  for (const b of blocks) {
+    if (b.kind === "footnote") {
+      const n = b.text.match(/^\[\^(\d+)\]/)?.[1];
+      if (n) defs.set(n, (defs.get(n) || 0) + 1);
+    } else if (
+      [
+        "para",
+        "paragraph",
+        "list",
+        "heading",
+        "heading_unnumbered",
+        "caption",
+      ].includes(b.kind)
+    )
+      for (const m of b.text.matchAll(/\[\^(\d+)\]/g))
+        refs.set(m[1], (refs.get(m[1]) || 0) + 1);
+  }
+  return {
+    definitions: [...defs.values()].reduce((a, b) => a + b, 0),
+    refs: [...refs.values()].reduce((a, b) => a + b, 0),
+    refs_without_definition: [...refs.keys()].filter((n) => !defs.has(n)),
+    definitions_without_ref: [...defs.keys()].filter((n) => !refs.has(n)),
+  };
+}
+// Run after assembly/exclusion; authoring repeats this on its actual block list.
+function reconcileFootnotes(result) {
+  const { blocks, stats } = result;
+  stats.footnotes = footnotePairs(blocks);
+  for (const b of blocks) {
+    const reason = "각주 짝 불일치";
+    if (b.warning?.code === "footnote-pair") delete b.warning;
+    else if (b.warning)
+      b.warning.reason = b.warning.reason
+        .split(" · ")
+        .filter((x) => x !== reason)
+        .join(" · ");
+    const missing =
+      b.kind !== "footnote" &&
+      !["table", "figure"].includes(b.kind) &&
+      stats.footnotes.refs_without_definition.some((n) =>
+        b.text.includes("[^" + n + "]"),
+      );
+    const unused =
+      b.kind === "footnote" &&
+      stats.footnotes.definitions_without_ref.some((n) =>
+        b.text.startsWith("[^" + n + "]:"),
+      );
+    if (missing || unused) {
+      if (b.warning) b.warning.reason += " · " + reason;
+      else b.warning = { code: "footnote-pair", reason };
+    }
+  }
+  return result;
+}
+
 function footnoteContent(text, stats) {
   const missing = new Set(stats.footnotes.refs_without_definition);
   const content = [];
@@ -751,7 +785,7 @@ function footnoteContent(text, stats) {
   if (at < text.length) content.push({ kind: "text", text: text.slice(at) });
   return content;
 }
-export { BULLET, convert, footnoteContent, mergeRegions };
+export { BULLET, convert, footnoteContent, mergeRegions, reconcileFootnotes };
 
 function coalesceOverlaps(blocks) {
   const out = [];
