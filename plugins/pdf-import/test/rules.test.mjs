@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { extract } from "../extract.mjs";
-import { convert, footnoteContent, mergeRegions } from "../rules.mjs";
+import { convert, suggestExcludedPages, footnoteContent, mergeRegions } from "../rules.mjs";
 const raw = await extract(
   new URL("./fixtures/LSR-1.1-standards.pdf", import.meta.url),
 );
@@ -166,4 +166,18 @@ test("public sample: captions, one graph crop with axes, and paired endnotes", a
       (b) => b.kind === "caption" && b.text.startsWith("Figure K.2."),
     ),
   );
+});
+
+
+test("public sample: front-page suggestion is advisory", () => {
+  assert.deepEqual(suggestExcludedPages(raw), [1]);
+  assert.ok(convert(raw, []).blocks.some((b) => b.page === 0));
+});
+test("public sample: chosen pages exclude text and objects without renumbering pages", () => {
+  const result = convert(raw, [1, 8, 13]);
+  assert.deepEqual(result.excludedPages, [1, 8, 13]);
+  assert.equal(result.pages.length, raw.pages.length);
+  assert.ok(result.blocks.length);
+  assert.ok(result.blocks.every((b) => b.boxes.every((x) => ![0,7,12].includes(x.page))));
+  assert.equal(result.stats.chars_unaccounted, 0);
 });

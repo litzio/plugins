@@ -76,7 +76,18 @@ const inside = (l, r) => {
     y = (l.y0 + l.y1) / 2;
   return r[0] - 2 <= x && x <= r[2] + 2 && r[1] - 2 <= y && y <= r[3] + 2;
 };
-function convert({ pages, toc }) {
+// Page numbers at this boundary are one-based, like the page picker.
+function suggestExcludedPages({ pages }) {
+  const start = pages.findIndex((p) => p.raw.some((r) => {
+    const l = line(r, 0);
+    return l.bold && /^1\.?\s+\S/.test(l.plain);
+  }));
+  return Array.from({ length: Math.max(0, start) }, (_, i) => i + 1);
+}
+function convert({ pages, toc }, excludedPages = []) {
+  if (!Array.isArray(excludedPages) || excludedPages.some((p) => !Number.isInteger(p) || p < 1 || p > pages.length))
+    throw new Error("제외할 쪽 번호가 올바르지 않습니다.");
+  const omitted = new Set(excludedPages);
   pages = pages.map((p) => ({ ...p }));
   const all = pages.map((p, i) =>
     p.raw
@@ -228,12 +239,10 @@ function convert({ pages, toc }) {
     }
     for (const l of ls) l.kind ??= "body";
   });
-  let start = all.findIndex((ls) =>
-    ls.some((l) => l.kind === "heading" && /^1\.?\s/.test(l.text())),
-  );
-  if (start < 0) start = 0;
-  for (let i = 0; i < start; i++)
-    for (const l of all[i]) if (l.kind !== "margin") l.kind = "front";
+  const start = 0;
+  all.forEach((ls, i) => {
+    if (omitted.has(i + 1)) for (const l of ls) l.kind = "front";
+  });
   const blocks = [],
     excluded = [];
   let joins = 0;
@@ -251,6 +260,7 @@ function convert({ pages, toc }) {
     return b;
   };
   for (let p = start; p < pages.length; p++) {
+    if (omitted.has(p + 1)) continue;
     let prev = null,
       first = true,
       obj = null;
@@ -391,7 +401,7 @@ function convert({ pages, toc }) {
     ])
       for (const r of rs)
         if (
-          !blocks.some(
+          !omitted.has(p + 1) && !blocks.some(
             (b) =>
               b.page === p &&
               b.kind === kind &&
@@ -422,6 +432,7 @@ function convert({ pages, toc }) {
     pages: pages.map((p) => ({ width: p.width, height: p.height })),
     blocks,
     excluded,
+    excludedPages: [...omitted].sort((a, b) => a - b),
     stats,
   };
 }
@@ -584,7 +595,7 @@ function footnoteContent(text, stats) {
   if (at < text.length) content.push({ kind: "text", text: text.slice(at) });
   return content;
 }
-export { BULLET, convert, footnoteContent, mergeRegions };
+export { BULLET, suggestExcludedPages, convert, footnoteContent, mergeRegions };
 
 function coalesceOverlaps(blocks) {
   const out = [];
