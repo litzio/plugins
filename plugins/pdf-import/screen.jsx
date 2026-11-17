@@ -90,7 +90,6 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
       const loadingTask = pdfjs.getDocument({ data: bytes, verbosity: 0, enableScripting: false });
       const doc = await loadingTask.promise;
-      doc.loadingTask = loadingTask;
       setPdf(doc);
       metrics.current.readMs = performance.now() - metrics.current.start;
       if (f.cached) {
