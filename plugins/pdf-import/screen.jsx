@@ -662,7 +662,26 @@ function Screen({
         </>
       }
     >
-      <style>{`.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}.pdf-import-narrow{display:none}.pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;background:transparent!important}.pdf-import-box:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}@media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}.pdf-import-narrow{display:block}}`}</style>
+      <style>{`
+.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}
+.pdf-import-narrow{display:none}
+.pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
+.pdf-import-box::before{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--block-color) 12%,transparent);pointer-events:none}
+.pdf-import-box::after{content:"";position:absolute;inset:0 auto 0 -3px;width:2px;background:var(--strip-color,var(--block-color));pointer-events:none}
+.pdf-import-box:hover::before,.pdf-import-box:focus-visible::before{background:color-mix(in srgb,var(--block-color) 18%,transparent)}
+.pdf-import-box[data-selected=true]::before{background:color-mix(in srgb,var(--block-color) 22%,transparent)}
+.pdf-import-box[data-selected=true]{outline:1px solid var(--block-color);outline-offset:4px}
+.pdf-import-box:focus-visible{outline:2px solid var(--id-color-border-focus)!important;outline-offset:6px}
+.pdf-import-line::before,.pdf-import-line::after{display:none}
+.pdf-import-line{outline:1px solid var(--id-color-accent);outline-offset:2px}
+.pdf-import-excluded{position:absolute;--excluded-face:repeating-linear-gradient(135deg,color-mix(in srgb,var(--id-color-text-muted) 22%,transparent) 0 1px,transparent 1px 6px),color-mix(in srgb,var(--id-color-text-muted) 8%,transparent);background:var(--excluded-face);mix-blend-mode:multiply}
+.pdf-import-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
+.pdf-import-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
+.pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face)}
+@media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
+.pdf-import-narrow{display:block}
+}
+`}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {stale && (
         <ui.Notice tone="warning">
@@ -797,15 +816,13 @@ function Screen({
               "margin",
             ].map((k) => (
               <span key={k} className="type-helper">
-                <span style={{ color: "var(--id-color-" + colors[k] + ")" }}>
-                  ■
-                </span>
+                <span aria-hidden="true" className={"pdf-import-key"+(k==='margin'?' pdf-import-excluded':'')} style={{"--block-color":"var(--id-color-"+colors[k]+")"}} />
                 {labels[k]}
               </span>
             ))}<span className="type-helper">고침</span>
             {canEdit && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}</>}
           </ui.Toolbar></div>
-          <div style={{minHeight:24}}>{splitting && <p role="status" style={{margin:0}}>새 문단이 시작될 줄을 고르세요.</p>}</div>
+          <div style={{minHeight:24}}>{splitting ? <p role="status" style={{margin:0}}>새 문단이 시작될 줄을 고르세요.</p> : tip?.page >= 0 && <span role="tooltip" className="type-helper">{tip.text}</span>}</div>
           <div className="pdf-import-panes">
             <div style={{ minWidth: 0 }}>
               <div className="type-item-name">
@@ -918,6 +935,7 @@ function Screen({
                             </g>
                           </svg>
                         )}
+                        <div style={{position:"absolute",inset:0,mixBlendMode:"multiply",pointerEvents:"none"}}>
                         {(mapping?.blocks || result?.blocks || []).flatMap(
                           (b) =>
                             b.boxes
@@ -926,6 +944,7 @@ function Screen({
                                 <ui.Button
                                   key={b.id + "-" + j}
                                   className="pdf-import-box"
+                                  data-selected={selection.includes(b.id)}
                                   data-source-id={b.id}
                                   aria-label={
                                     labels[b.kind] +
@@ -957,6 +976,7 @@ function Screen({
                                   onBlur={() => setTip(null)}
                                   onClick={(e) => select(b,false,e.shiftKey)}
                                   style={{
+                                    pointerEvents: "auto",
                                     left: x.x0 * pos.scale,
                                     top: x.top * pos.scale,
                                     width: Math.max(
@@ -967,98 +987,48 @@ function Screen({
                                       1,
                                       (x.bottom - x.top) * pos.scale,
                                     ),
-                                    outline:
-                                      followed?.id === b.id
-                                        ? "1px solid var(--id-color-accent)"
-                                        : undefined,
-                                    outlineOffset: 2,
-                                    border:
-                                      (selection.includes(b.id) ? "3" : "1") +
-                                      "px solid var(--id-color-" +
-                                      (b.warning ? "warning" : colors[b.kind]) +
-                                      ")",
+                                    "--block-color": "var(--id-color-" + colors[b.kind] + ")",
+                                    "--strip-color": "var(--id-color-" + (b.warning ? "warning" : followed?.id === b.id ? "accent" : colors[b.kind]) + ")",
                                   }}
                                 >
-                                  {b.edited && <span className="type-helper" style={{position:'absolute',left:0,bottom:'100%',background:'var(--id-color-surface)'}}>고침</span>}
-                                  {b.level &&
-                                    (["heading", "heading_unnumbered"].includes(
-                                      b.kind,
-                                    ) ||
-                                      (b.kind === "list" && b.level >= 2)) && (
-                                      <span
-                                        className="type-helper"
-                                        style={{
-                                          position: "absolute",
-                                          right: "100%",
-                                          paddingInline: "var(--space-1)",
-                                          top: 0,
-                                          background: "var(--id-color-surface)",
-                                        }}
-                                      >
-                                        {b.kind === "list"
-                                          ? b.level
-                                          : "H" + Math.min(6, b.level)}
-                                      </span>
-                                    )}
-                                  {b.warning && (
-                                    <span
-                                      style={{
-                                        position: "absolute",
-                                        right: 0,
-                                        top: 0,
-                                        color: "var(--id-color-warning)",
-                                        background: "var(--id-color-surface)",
-                                      }}
-                                    >
-                                      !
-                                    </span>
-                                  )}
+                                  <span className="type-helper" style={{position:'absolute',left:-x.x0*pos.scale,top:0,width:Math.max(0,x.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',gap:0,overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>
+                                    {b.level && (["heading","heading_unnumbered"].includes(b.kind) || (b.kind==='list' && b.level>=2)) && <span>{b.kind==='list'?b.level:'H'+Math.min(6,b.level)}</span>}
+                                    {b.warning && <span style={{color:'var(--id-color-warning)'}}>!</span>}
+                                    {b.edited && <span>고침</span>}
+                                  </span>
                                 </ui.Button>
                               )),
                         )}
                         {splitting && chosen.length===1 && chosen[0].lines.map((l,j)=>l.page===i && <ui.Button
-                          key={'line'+j} className="pdf-import-box" data-source-line={j} disabled={j===0 || busy}
+                          key={'line'+j} className="pdf-import-box pdf-import-line" data-source-line={j} disabled={j===0 || busy}
                           aria-label={j===0?'첫째 줄은 나눌 수 없습니다.':(j+1)+'번째 줄 앞에서 나누기'}
                           onClick={()=>correct('split',{line:j})}
-                          style={{left:l.box.x0*pos.scale,top:l.box.top*pos.scale,width:(l.box.x1-l.box.x0)*pos.scale,
-                            height:Math.max(1,(l.box.bottom-l.box.top)*pos.scale),border:'2px solid var(--id-color-accent)'}} />)}
+                          style={{pointerEvents:'auto',left:l.box.x0*pos.scale,top:l.box.top*pos.scale,width:(l.box.x1-l.box.x0)*pos.scale,
+                            height:Math.max(1,(l.box.bottom-l.box.top)*pos.scale),outline:'1px solid var(--id-color-accent)',outlineOffset:2}} />)}
                         {(mapping?.excluded || result?.excluded || [])
                           .filter((x) => x.page === i)
                           .map((e, j) => (
                             <div
                               key={"e" + j}
-                              title="제외"
+                              className="pdf-import-excluded"
+                              tabIndex={0}
+                              aria-label={e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'}
+                              onMouseEnter={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
+                              onMouseLeave={()=>setTip(null)}
+                              onFocus={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
+                              onBlur={()=>setTip(null)}
                               style={{
                                 position: "absolute",
-                                pointerEvents: "none",
+                                pointerEvents: "auto",
                                 left: e.box.x0 * pos.scale,
                                 top: e.box.top * pos.scale,
                                 width: (e.box.x1 - e.box.x0) * pos.scale,
                                 height: (e.box.bottom - e.box.top) * pos.scale,
-                                border: "1px solid var(--id-color-border)",
                               }}
-                            >{e.kind === 'removed' && <span className="type-helper" style={{background:'var(--id-color-surface)',color:'var(--id-color-text-muted)'}}>제외</span>}</div>
+                             />
                           ))}
-                        {tip?.page === i && (
-                          <div
-                            id={"pdf-front-page-" + i}
-                            role="tooltip"
-                            className="type-helper"
-                            style={{
-                              position: "absolute",
-                              left: 0,
-                              top: tip.top,
-                              maxWidth: "100%",
-                              background: "var(--id-color-surface)",
-                              color: "var(--id-color-text)",
-                              padding: "var(--space-2)",
-                              pointerEvents: "none",
-                              zIndex: 1,
-                            }}
-                          >
-                            {tip.text}
-                          </div>
-                        )}
+                        </div>
+
                       </div>
                     )}
                   </div>
