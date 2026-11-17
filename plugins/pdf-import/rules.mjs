@@ -760,6 +760,7 @@ function footnotePairs(blocks) {
     refs: [...refs.values()].reduce((a, b) => a + b, 0),
     refs_without_definition: [...refs.keys()].filter((n) => !defs.has(n)),
     definitions_without_ref: [...defs.keys()].filter((n) => !refs.has(n)),
+    duplicate_definitions: [...defs.keys()].filter((n) => defs.get(n) > 1),
   };
 }
 // Run after assembly/exclusion; authoring repeats this on its actual block list.
@@ -777,12 +778,12 @@ function reconcileFootnotes(result) {
     const missing =
       b.kind !== "footnote" &&
       !["table", "figure"].includes(b.kind) &&
-      stats.footnotes.refs_without_definition.some((n) =>
+      [...stats.footnotes.refs_without_definition,...stats.footnotes.duplicate_definitions].some((n) =>
         b.text.includes("[^" + n + "]"),
       );
     const unused =
       b.kind === "footnote" &&
-      stats.footnotes.definitions_without_ref.some((n) =>
+      [...stats.footnotes.definitions_without_ref,...stats.footnotes.duplicate_definitions].some((n) =>
         b.text.startsWith("[^" + n + "]:"),
       );
     if (missing || unused) {
@@ -794,7 +795,7 @@ function reconcileFootnotes(result) {
 }
 
 function footnoteContent(text, stats) {
-  const missing = new Set(stats.footnotes.refs_without_definition);
+  const missing = new Set([...stats.footnotes.refs_without_definition,...(stats.footnotes.duplicate_definitions||[])]);
   const content = [];
   let at = 0;
   for (const m of text.matchAll(/\[\^(\d+)\]/g)) {

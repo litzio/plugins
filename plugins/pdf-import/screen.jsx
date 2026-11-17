@@ -1,5 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
+import PagePicker from "./page-picker.jsx";
+import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
@@ -96,6 +98,10 @@ function Screen({
     [pageNo, setPageNo] = useState(1),
     [width, setWidth] = useState(600),
     [tip, setTip] = useState(null);
+  const [pageTitles, setPageTitles] = useState([]);
+  const replacementApproved = useRef(false), pickerSession = useRef(null);
+  const [pickerHelp, setPickerHelp] = useState(false);
+  useEffect(()=>()=>{if(pickerSession.current)pickerSession.current.active=false;},[]);
   const [picking, setPicking] = useState(false),
     [excludedPages, setExcludedPages] = useState(new Set()),
     [follow, setFollow] = useState(true),
@@ -116,7 +122,7 @@ function Screen({
     );
     ro.observe(pane.current);
     return () => ro.disconnect();
-  }, [pdf]);
+  }, [pdf, picking]);
   useEffect(
     () => () => {
       pdf?.loadingTask.destroy();
@@ -202,6 +208,12 @@ function Screen({
     }
   }
   async function load(path, cachedOnly = false) {
+    if(pickerSession.current) pickerSession.current.active=false;
+    const session={active:true,touched:new Set()};
+    pickerSession.current=session;
+    replacementApproved.current=false;
+    setPickerHelp(false);
+    setPageTitles([]);
     setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
     clearTimeout(scrollTimer.current);
     anchor.current = null;
@@ -221,8 +233,14 @@ function Screen({
     setCached(false);
     setStatus("PDF 읽는 중");
     metrics.current = { start: performance.now() };
+    const loadingMetrics=metrics.current;
     try {
       const f = await invoke("load", { path, cachedOnly });
+      metrics.current.loadMs=performance.now()-metrics.current.start;
+      const suggestStarted=performance.now();
+      const suggestionPromise=f.cached?null:invoke("suggest",{id:f.id}).then(
+        value=>({value,ms:performance.now()-suggestStarted}),error=>({error}));
+      const pdfStarted=performance.now();
       try {
         const folders = JSON.parse(localStorage.getItem(recentKey) || "[]");
         localStorage.setItem(
@@ -240,7 +258,8 @@ function Screen({
         setError("최근 폴더 목록을 보관하지 못했습니다.");
       }
       setFile(f);
-      const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
+      const binary=atob(f.base64), bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
       const loadingTask = pdfjs.getDocument({
         data: bytes,
         verbosity: 0,
@@ -254,7 +273,12 @@ function Screen({
           return { width: v.width, height: v.height };
         }),
       );
-      setPdf(doc);
+      metrics.current.pdfMs=performance.now()-pdfStarted;
+      const titlesStarted=performance.now();
+      const titles = await readPageTitles(doc);
+      metrics.current.bookmarksMs=performance.now()-titlesStarted;
+      setPageTitles(titles);
+
       metrics.current.readMs = performance.now() - metrics.current.start;
       if (f.cached) {
         setExcludedPages(
@@ -271,20 +295,31 @@ function Screen({
               ),
           ),
         );
-        setMapping(f.cached);
+        setPdf(doc);
+        if(cachedOnly) setMapping(f.cached);
+        else {setPicking(true);setStatus("뺄 쪽을 고른 뒤 변환하세요.");}
         setStale(f.cached.stale);
         setCached(true);
-        setStatus(
+        if(cachedOnly) setStatus(
           "변환 완료 · 확인할 곳 " +
             f.cached.blocks.filter((b) => b.warning).length,
         );
       } else {
-        const suggestion = await invoke("suggest", { id: f.id });
-        setExcludedPages(new Set(suggestion.excludedPages));
+        setPdf(doc);
         setPicking(true);
-        setStatus("제외할 쪽을 고른 뒤 변환하세요.");
-        performance.measure("pdf-import-page-picker", {
-          start: metrics.current.start,
+        setStatus("뺄 쪽 제안 확인 중");
+        performance.measure("pdf-import-page-picker", {start:loadingMetrics.start,detail:{...loadingMetrics}});
+        suggestionPromise.then(suggested=>{
+          if(!session.active || pickerSession.current!==session) return;
+          if(suggested.error) {
+            setError("뺄 쪽 제안을 확인하지 못했습니다. 지금 고른 쪽으로 변환할 수 있습니다.");
+            setStatus("뺄 쪽을 고른 뒤 변환하세요.");
+            return;
+          }
+          loadingMetrics.suggestMs=suggested.ms;
+          setExcludedPages(current=>applyPageSuggestion(current,suggested.value.excludedPages,session.touched));
+          setStatus("뺄 쪽을 고른 뒤 변환하세요.");
+          performance.measure("pdf-import-suggestion",{start:loadingMetrics.start,detail:{...loadingMetrics}});
         });
       }
     } catch (e) {
@@ -369,7 +404,11 @@ function Screen({
       "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
     );
   }
-  function rewrite() {
+  async function rewrite() {
+    if(!await confirm({title:"다시 변환",message:"기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",confirmLabel:"뺄 쪽 고르기"})) return;
+    replacementApproved.current=true;
+    setUndoCount(0);historyId.current=crypto.randomUUID();
+    setSelection([]);setSplitting(false);
     clearTimeout(scrollTimer.current);
     anchor.current = null;
     setPicking(true);
@@ -378,12 +417,14 @@ function Screen({
     setSelected(null);
     setTarget(null);
     setFollowed(null);
-    setStatus("제외할 쪽을 고른 뒤 변환하세요.");
+    setStatus("뺄 쪽을 고른 뒤 변환하세요.");
   }
   async function convertSelected() {
+    if(pickerSession.current) pickerSession.current.active=false;
+    setPickerHelp(false);
     try {
       if (
-        cached &&
+        cached && !replacementApproved.current &&
         !(await confirm({
           title: "다시 변환",
           message:
@@ -408,16 +449,25 @@ function Screen({
   }
   function togglePage(page, shift) {
     if (busy || !picking) return;
-    const next = new Set(excludedPages),
-      exclude = !next.has(page);
-    const from = shift && anchor.current !== null ? anchor.current : page;
-    for (let i = Math.min(from, page); i <= Math.max(from, page); i++) {
-      if (exclude) next.add(i);
-      else next.delete(i);
-    }
+    const from=anchor.current;
+    const first=shift && from!==null ? from : page;
+    for(let p=Math.min(first,page);p<=Math.max(first,page);p++) pickerSession.current?.touched.add(p);
+    setExcludedPages(current=>togglePageRange(current,from,page,shift));
     anchor.current = page;
-    setExcludedPages(next);
   }
+  function cancelPicking() {
+    if(pickerSession.current) pickerSession.current.active=false;
+    setPickerHelp(false);
+    clearTimeout(scrollTimer.current);
+    setPicking(false);setPdf(null);setFile(null);setMapping(null);setResult(null);
+    setCached(false);setExcludedPages(new Set());setError("");setSelection([]);setStale(false);
+    setStatus("PDF를 골라 주세요.");
+    let folders=[];
+    try {const saved=JSON.parse(localStorage.getItem(recentKey)||"[]");if(Array.isArray(saved))folders=saved;} catch {}
+    invoke("recent",{folders})
+      .then(found=>setRecent(found.rows)).catch(()=>setError("저장된 문서 목록을 읽지 못했습니다."));
+  }
+
   function sourceScroll() {
     const scrollAt = performance.now();
     clearTimeout(scrollTimer.current);
@@ -539,29 +589,32 @@ function Screen({
       description={
         file
           ? file.name +
-            (pdf ? " · " + pdf.numPages + "쪽" : "") +
-            (excludedPages.size ? " · " + exclusionSummary(excludedPages) : "")
+            (pdf && !picking ? " · " + pdf.numPages + "쪽" : "") +
+            (picking && pdf ? " · " + pdf.numPages + "쪽 중 " + excludedPages.size + "쪽 제외" : "") +
+            (excludedPages.size ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
           : undefined
       }
       status={
-        <ui.Status
-          tone={
-            error ? "error" : busy ? "progress" : mapping ? "ok" : "neutral"
-          }
-          label={status}
-        />
+        <span className="pdf-picker-status" tabIndex={picking?0:undefined}
+          onMouseEnter={()=>setPickerHelp(true)} onMouseLeave={()=>setPickerHelp(false)}
+          onFocus={()=>setPickerHelp(true)} onBlur={()=>setPickerHelp(false)}
+          aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex'}}>
+          <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":mapping?"ok":"neutral"} label={status}/>
+          {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
+        </span>
       }
       actions={
         <>
-          <ui.Button
+          {!picking && <ui.Button
             variant={file ? "outline" : "default"}
             disabled={busy}
             onClick={choose}
           >
             PDF 고르기
-          </ui.Button>
+          </ui.Button>}
           {picking && (
             <>
+              <ui.Button disabled={busy} onClick={cancelPicking}>취소</ui.Button>
               <ui.Button
                 variant="default"
                 disabled={busy}
@@ -569,9 +622,6 @@ function Screen({
               >
                 변환
               </ui.Button>
-              <span>
-                {pdf?.numPages}쪽 중 {excludedPages.size}쪽 제외
-              </span>
             </>
           )}
           {cached && !picking && (
@@ -636,6 +686,7 @@ function Screen({
       <style>{`
 .pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}
 .pdf-import-narrow{display:none}
+.pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
 .pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
 .pdf-import-box::before{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--block-color) 12%,transparent);pointer-events:none}
 .pdf-import-box::after{content:"";position:absolute;inset:0 auto 0 -3px;width:2px;background:var(--strip-color,var(--block-color));pointer-events:none}
@@ -649,17 +700,17 @@ function Screen({
 .pdf-import-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
 .pdf-import-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
 .pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
-@media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
+@media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
 .pdf-import-narrow{display:block}
 }
 `}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
-      {stale && (
+      {!picking && stale && (
         <ui.Notice tone="warning">
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
       )}
-      {stale && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
+      {!picking && stale && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
       {mapping && mapping.lineVersion !== 1 && <ui.Notice>다시 변환해야 고칠 수 있습니다</ui.Notice>}
       {!file && recent.length > 0 && (
         <>
@@ -698,7 +749,8 @@ function Screen({
           />
         </>
       )}
-      {pdf && (
+      {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy} onError={setError}/> }
+      {pdf && !picking && (
         <>
           <div className="pdf-import-narrow">
             <ui.Notice>넓은 창에서 보기</ui.Notice>
@@ -839,44 +891,10 @@ function Screen({
                         }}
                       >
                         <div
-                          role={picking ? "button" : undefined}
-                          tabIndex={picking ? 0 : undefined}
-                          aria-label={
-                            picking ? i + 1 + "쪽 제외 선택" : undefined
-                          }
-                          aria-pressed={picking ? frontPages.has(i) : undefined}
-                          onClick={(e) => togglePage(i + 1, e.shiftKey)}
-                          onKeyDown={(e) => {
-                            if (picking && ["Enter", " "].includes(e.key)) {
-                              e.preventDefault();
-                              togglePage(i + 1, e.shiftKey);
-                            }
-                          }}
                           style={{ opacity: frontPages.has(i) ? 0.4 : 1 }}
                         >
                           <Page index={i} scale={pos.scale} />
                         </div>
-                        {picking && (
-                          <label
-                            style={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              padding: "var(--space-2)",
-                              background: "var(--id-color-surface)",
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              aria-label={i + 1 + "쪽 제외"}
-                              checked={frontPages.has(i)}
-                              disabled={busy}
-                              onClick={(e) => togglePage(i + 1, e.shiftKey)}
-                              onChange={() => {}}
-                            />{" "}
-                            제외
-                          </label>
-                        )}
                         {frontPages.has(i) && (
                           <svg
                             aria-label="제외"
@@ -1008,7 +1026,6 @@ function Screen({
             </div>
             <div style={{ minWidth: 0 }}>
               <div className="type-item-name">변환된 문서</div>
-              {picking && <p>제외할 쪽을 고른 뒤 변환하세요.</p>}
               {mapping && (
                 <ui.DocumentView
                   reloadKey={reloadKey}
