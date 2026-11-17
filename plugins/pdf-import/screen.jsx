@@ -28,6 +28,26 @@ const colors = {
   margin: "border",
   front: "border",
 };
+const warningNames = {
+  "unnumbered-heading": "번호 없는 제목 후보",
+  "paragraph-boundary": "문단 경계가 불확실함",
+  "paragraph-end": "끝맺음 없는 문단",
+  "paragraph-start": "소문자로 시작하는 문단",
+  "heading-number": "제목 번호",
+  "footnote-pair": "각주 짝",
+};
+function exclusionSummary(pages) {
+  const ranges = [];
+  for (const p of [...pages].sort((a, b) => a - b)) {
+    const last = ranges.at(-1);
+    if (last && p === last[1] + 1) last[1] = p;
+    else ranges.push([p, p]);
+  }
+  return ranges.length > 5
+    ? pages.size + "쪽 제외"
+    : ranges.map(([a, b]) => (a === b ? a : a + "–" + b)).join(", ") +
+        "쪽 제외";
+}
 function Screen({
   React,
   ui,
@@ -71,6 +91,16 @@ function Screen({
     [pageNo, setPageNo] = useState(1),
     [width, setWidth] = useState(600),
     [tip, setTip] = useState(null);
+  const [picking, setPicking] = useState(false),
+    [excludedPages, setExcludedPages] = useState(new Set()),
+    [follow, setFollow] = useState(true),
+    [followed, setFollowed] = useState(null),
+    [target, setTarget] = useState(null),
+    [warningFilter, setWarningFilter] = useState("all");
+  const anchor = useRef(null),
+    scrollTimer = useRef(null),
+    suppressScroll = useRef(false);
+  useEffect(() => () => clearTimeout(scrollTimer.current), []);
   const pane = useRef(null),
     metrics = useRef({});
   useEffect(() => {
@@ -87,35 +117,39 @@ function Screen({
     },
     [pdf],
   );
-  const warnings = mapping?.blocks.filter((b) => b.warning) || [],
-    warningIndex = warnings.findIndex((b) => b.id === selected?.id);
-  const frontPages = new Set(
-    Array.from(
-      {
-        length: Math.max(
-          0,
-          (mapping?.stats || result?.stats)?.body_start_page - 1 || 0,
-        ),
-      },
-      (_, i) => i,
-    ),
+  const allWarnings = mapping?.blocks.filter((b) => b.warning) || [];
+  const warnings = allWarnings.filter(
+    (b) => warningFilter === "all" || b.warning.code === warningFilter,
   );
-  const frontEnd = Math.max(-1, ...frontPages) + 1;
-  const frontExplanation =
-    "첫 번호 제목 이전의 쪽(표지, 목차 등)은 문서에 넣지 않습니다.";
+  const warningIndex = warnings.findIndex((b) => b.id === selected?.id);
+  const warningOptions = [
+    { value: "all", label: "전체(" + allWarnings.length + ")" },
+    ...[...new Set(allWarnings.map((b) => b.warning.code))].map((code) => ({
+      value: code,
+      label:
+        (warningNames[code] ||
+          allWarnings.find((b) => b.warning.code === code).warning.reason) +
+        "(" +
+        allWarnings.filter((b) => b.warning.code === code).length +
+        ")",
+    })),
+  ];
+  const frontPages = new Set([...excludedPages].map((p) => p - 1));
   const positions = useMemo(() => {
     let top = 0;
-    return (mapping?.pages || result?.pages || []).map((p, i) => {
-      const scale = width / p.width,
-        v = {
-          top,
-          height: p.height * scale + 16 + (frontPages.has(i) ? 32 : 0),
-          scale,
-        };
-      top += v.height;
-      return v;
-    });
-  }, [mapping, result, width]);
+    return (mapping?.pages || result?.pages || pdf?.pageSizes || []).map(
+      (p, i) => {
+        const scale = width / p.width,
+          v = {
+            top,
+            height: p.height * scale + 16,
+            scale,
+          };
+        top += v.height;
+        return v;
+      },
+    );
+  }, [mapping, result, pdf, width]);
   async function choose() {
     try {
       const f = await pickPath({ kind: "pdf" });
@@ -125,7 +159,16 @@ function Screen({
     }
   }
   async function load(path, cachedOnly = false) {
+    clearTimeout(scrollTimer.current);
+    anchor.current = null;
+    setPageNo(1);
+    setTip(null);
+    setExcludedPages(new Set());
     setBusy(true);
+    setPicking(false);
+    setFollowed(null);
+    setTarget(null);
+    setWarningFilter("all");
     setError("");
     setMapping(null);
     setResult(null);
@@ -160,9 +203,30 @@ function Screen({
         enableScripting: false,
       });
       const doc = await loadingTask.promise;
+      doc.pageSizes = await Promise.all(
+        Array.from({ length: doc.numPages }, async (_, i) => {
+          const p = await doc.getPage(i + 1),
+            v = p.getViewport({ scale: 1 });
+          return { width: v.width, height: v.height };
+        }),
+      );
       setPdf(doc);
       metrics.current.readMs = performance.now() - metrics.current.start;
       if (f.cached) {
+        setExcludedPages(
+          new Set(
+            f.cached.excludedPages ||
+              Array.from(
+                {
+                  length: Math.max(
+                    0,
+                    (f.cached.stats?.body_start_page || 1) - 1,
+                  ),
+                },
+                (_, i) => i + 1,
+              ),
+          ),
+        );
         setMapping(f.cached);
         setStale(f.cached.stale);
         setCached(true);
@@ -170,7 +234,15 @@ function Screen({
           "변환 완료 · 확인할 곳 " +
             f.cached.blocks.filter((b) => b.warning).length,
         );
-      } else await run(f, doc);
+      } else {
+        const suggestion = await invoke("suggest", { id: f.id });
+        setExcludedPages(new Set(suggestion.excludedPages));
+        setPicking(true);
+        setStatus("제외할 쪽을 고른 뒤 변환하세요.");
+        performance.measure("pdf-import-page-picker", {
+          start: metrics.current.start,
+        });
+      }
     } catch (e) {
       setError(
         e.code === "pdf_import_failed" ||
@@ -187,7 +259,10 @@ function Screen({
   async function run(f, doc) {
     setStatus("구조 분석 중");
     let at = performance.now();
-    const r = await invoke("convert", { id: f.id });
+    const r = await invoke("convert", {
+      id: f.id,
+      excludedPages: [...excludedPages],
+    });
     setResult(r);
     metrics.current.analysisMs = performance.now() - at;
     metrics.current.node = r.timings;
@@ -245,50 +320,110 @@ function Screen({
       detail: { ...metrics.current },
     });
     setMapping(m);
+    setCached(true);
     setStatus(
       "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
     );
   }
-  async function rewrite() {
+  function rewrite() {
+    clearTimeout(scrollTimer.current);
+    anchor.current = null;
+    setPicking(true);
+    setMapping(null);
+    setResult(null);
+    setSelected(null);
+    setTarget(null);
+    setFollowed(null);
+    setStatus("제외할 쪽을 고른 뒤 변환하세요.");
+  }
+  async function convertSelected() {
     try {
       if (
+        cached &&
         !(await confirm({
           title: "다시 변환",
           message:
             "기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",
-          confirmLabel: "다시 변환",
+          confirmLabel: "변환",
         }))
       )
         return;
       setBusy(true);
       setError("");
-      setMapping(null);
-      setSelected(null);
-      setStale(false);
       metrics.current = { start: performance.now() };
-      await invoke("backup", { id: file.id });
+      if (cached) await invoke("backup", { id: file.id });
+      setPicking(false);
+      setStale(false);
       await run(file, pdf);
-      setCached(false);
     } catch (e) {
-      setError(
-        "다시 변환에 실패했습니다. 이전 사본과 저장 위치를 확인해 주세요.",
-      );
+      setError(e.message || "변환에 실패했습니다.");
       setStatus("실패");
     } finally {
       setBusy(false);
     }
   }
+  function togglePage(page, shift) {
+    if (busy || !picking) return;
+    const next = new Set(excludedPages),
+      exclude = !next.has(page);
+    const from = shift && anchor.current !== null ? anchor.current : page;
+    for (let i = Math.min(from, page); i <= Math.max(from, page); i++) {
+      if (exclude) next.add(i);
+      else next.delete(i);
+    }
+    anchor.current = page;
+    setExcludedPages(next);
+  }
+  function sourceScroll() {
+    const scrollAt = performance.now();
+    clearTimeout(scrollTimer.current);
+    if (suppressScroll.current) {
+      suppressScroll.current = false;
+      return;
+    }
+    if (!follow || stale || !mapping || picking) return;
+    scrollTimer.current = setTimeout(() => {
+      const y = pane.current.scrollTop + pane.current.clientHeight / 3;
+      const candidates = mapping.blocks.flatMap((b) =>
+        b.boxes.map((x) => ({
+          b,
+          top: positions[x.page].top + x.top * positions[x.page].scale,
+          bottom: positions[x.page].top + x.bottom * positions[x.page].scale,
+        })),
+      );
+      const hit =
+        candidates.find((x) => x.top <= y && x.bottom >= y) ||
+        candidates.filter((x) => x.top >= y).sort((a, b) => a.top - b.top)[0];
+      if (hit) {
+        setFollowed(hit.b);
+        setTarget((old) => (old?.id === hit.b.id ? old : hit.b));
+        performance.measure("pdf-import-follow", {
+          start: scrollAt,
+          detail: { id: hit.b.id },
+        });
+      }
+    }, 150);
+  }
   async function select(b, scroll = false) {
     if (stale) return;
     try {
       const t = performance.now();
+      clearTimeout(scrollTimer.current);
+      setFollowed(null);
+      setTarget(b);
       setSelected(b);
       metrics.current.lastSelection = {
         id: b.id,
         start: t,
         targetAt: performance.now(),
       };
-      if (scroll) pane.current.scrollTop = positions[b.boxes[0].page].top;
+      if (scroll) {
+        suppressScroll.current = true;
+        pane.current.scrollTop = positions[b.boxes[0].page].top;
+        requestAnimationFrame(() => {
+          suppressScroll.current = false;
+        });
+      }
     } catch (e) {
       setError("문서 대응을 확인하지 못했습니다.");
     }
@@ -347,42 +482,11 @@ function Screen({
   return (
     <ui.ScreenLayout
       description={
-        file ? (
-          <span
-            tabIndex={frontEnd ? 0 : undefined}
-            onMouseEnter={() =>
-              frontEnd && setTip({ text: frontExplanation, page: -1 })
-            }
-            onMouseLeave={() => setTip(null)}
-            onFocus={() =>
-              frontEnd && setTip({ text: frontExplanation, page: -1 })
-            }
-            onBlur={() => setTip(null)}
-            aria-describedby={
-              tip?.page === -1 ? "pdf-front-explanation" : undefined
-            }
-          >
-            {file.name +
-              (pdf ? " · " + pdf.numPages + "쪽" : "") +
-              (frontEnd
-                ? " · " +
-                  (frontEnd === 1 ? "1쪽" : "1–" + frontEnd + "쪽") +
-                  " 제외"
-                : "")}
-            {tip?.page === -1 && (
-              <span
-                id="pdf-front-explanation"
-                role="tooltip"
-                className="type-helper"
-                style={{ display: "block" }}
-              >
-                {tip.text}
-              </span>
-            )}
-          </span>
-        ) : (
-          void 0
-        )
+        file
+          ? file.name +
+            (pdf ? " · " + pdf.numPages + "쪽" : "") +
+            (excludedPages.size ? " · " + exclusionSummary(excludedPages) : "")
+          : undefined
       }
       status={
         <ui.Status
@@ -395,16 +499,42 @@ function Screen({
       actions={
         <>
           <ui.Button
-            variant={mapping ? "outline" : "default"}
+            variant={file ? "outline" : "default"}
             disabled={busy}
             onClick={choose}
           >
             PDF 고르기
           </ui.Button>
-          {cached && (
+          {picking && (
+            <>
+              <ui.Button
+                variant="default"
+                disabled={busy}
+                onClick={convertSelected}
+              >
+                변환
+              </ui.Button>
+              <span>
+                {pdf?.numPages}쪽 중 {excludedPages.size}쪽 제외
+              </span>
+            </>
+          )}
+          {cached && !picking && (
             <ui.Button variant="destructive" disabled={busy} onClick={rewrite}>
               다시 변환
             </ui.Button>
+          )}
+          {allWarnings.length > 0 && (
+            <ui.Select
+              label="경고 종류"
+              value={warningFilter}
+              onValueChange={(value) => {
+                setWarningFilter(value);
+                setSelected(null);
+              }}
+              options={warningOptions}
+              disabled={busy}
+            />
           )}
           {warnings.length > 0 && (
             <>
@@ -418,6 +548,9 @@ function Screen({
               </ui.Button>
               <span>
                 {warningIndex < 0 ? "0" : warningIndex + 1} / {warnings.length}
+                {warningIndex >= 0
+                  ? " · " + warnings[warningIndex].warning.reason
+                  : ""}
               </span>
               <ui.Button
                 disabled={busy || stale || warningIndex === warnings.length - 1}
@@ -495,6 +628,53 @@ function Screen({
             <ui.Notice>넓은 창에서 보기</ui.Notice>
           </div>
           <ui.Toolbar>
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--space-2)",
+                position: "relative",
+              }}
+              onMouseEnter={() => setTip({ page: -2 })}
+              onMouseLeave={() => setTip(null)}
+              onFocus={() => setTip({ page: -2 })}
+              onBlur={() => setTip(null)}
+              aria-describedby={
+                tip?.page === -2 ? "pdf-follow-help" : undefined
+              }
+              title="원본을 스크롤하면 문서가 따라옵니다. 문서를 스크롤해도 원본은 움직이지 않습니다."
+              tabIndex={0}
+            >
+              <input
+                type="checkbox"
+                checked={follow}
+                onChange={(e) => {
+                  clearTimeout(scrollTimer.current);
+                  setFollow(e.target.checked);
+                }}
+              />{" "}
+              함께 스크롤
+              {tip?.page === -2 && (
+                <span
+                  id="pdf-follow-help"
+                  role="tooltip"
+                  className="type-helper"
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    width: 300,
+                    padding: "var(--space-2)",
+                    background: "var(--id-color-surface)",
+                    border: "1px solid var(--id-color-border)",
+                    zIndex: 1,
+                  }}
+                >
+                  원본을 스크롤하면 문서가 따라옵니다. 문서를 스크롤해도 원본은
+                  움직이지 않습니다.
+                </span>
+              )}
+            </label>
             {[
               "heading",
               "paragraph",
@@ -532,6 +712,7 @@ function Screen({
                   );
                   setPageNo(Math.max(1, n + 1));
                   setTip(null);
+                  sourceScroll();
                 }}
               >
                 {positions.map((pos, i) => (
@@ -549,49 +730,79 @@ function Screen({
                       <div
                         style={{
                           position: "relative",
-                          top: frontPages.has(i) ? 32 : 0,
+                          outline: frontPages.has(i)
+                            ? "3px solid var(--id-color-danger)"
+                            : undefined,
+                          outlineOffset: -3,
                         }}
                       >
-                        <Page index={i} scale={pos.scale} />
-                        {frontPages.has(i) && (
-                          <div
-                            tabIndex={0}
-                            aria-label="변환에서 제외 · 본문 시작 전"
-                            aria-describedby={
-                              tip?.page === i
-                                ? "pdf-front-page-" + i
-                                : undefined
+                        <div
+                          role={picking ? "button" : undefined}
+                          tabIndex={picking ? 0 : undefined}
+                          aria-label={
+                            picking ? i + 1 + "쪽 제외 선택" : undefined
+                          }
+                          aria-pressed={picking ? frontPages.has(i) : undefined}
+                          onClick={(e) => togglePage(i + 1, e.shiftKey)}
+                          onKeyDown={(e) => {
+                            if (picking && ["Enter", " "].includes(e.key)) {
+                              e.preventDefault();
+                              togglePage(i + 1, e.shiftKey);
                             }
-                            onMouseEnter={() =>
-                              setTip({
-                                text: frontExplanation,
-                                page: i,
-                                top: 32,
-                              })
-                            }
-                            onMouseLeave={() => setTip(null)}
-                            onFocus={() =>
-                              setTip({
-                                text: frontExplanation,
-                                page: i,
-                                top: 32,
-                              })
-                            }
-                            onBlur={() => setTip(null)}
-                            className="type-helper"
+                          }}
+                          style={{ opacity: frontPages.has(i) ? 0.4 : 1 }}
+                        >
+                          <Page index={i} scale={pos.scale} />
+                        </div>
+                        {picking && (
+                          <label
                             style={{
                               position: "absolute",
-                              top: -32,
+                              top: 0,
                               left: 0,
-                              right: 0,
                               padding: "var(--space-2)",
-                              background: "var(--id-color-surface-muted)",
-                              color: "var(--id-color-text-muted)",
-                              border: "1px solid var(--id-color-border)",
+                              background: "var(--id-color-surface)",
                             }}
                           >
-                            변환에서 제외 · 본문 시작 전
-                          </div>
+                            <input
+                              type="checkbox"
+                              aria-label={i + 1 + "쪽 제외"}
+                              checked={frontPages.has(i)}
+                              disabled={busy}
+                              onClick={(e) => togglePage(i + 1, e.shiftKey)}
+                              onChange={() => {}}
+                            />{" "}
+                            제외
+                          </label>
+                        )}
+                        {frontPages.has(i) && (
+                          <svg
+                            aria-label="제외"
+                            viewBox="0 0 400 500"
+                            style={{
+                              position: "absolute",
+                              inset: 0,
+                              width: "100%",
+                              height: "100%",
+                              pointerEvents: "none",
+                              color: "var(--id-color-danger)",
+                              opacity: 0.55,
+                            }}
+                          >
+                            <g transform="translate(200 250) rotate(-35) scale(5)">
+                              <text
+                                x="0"
+                                y="0"
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                                fill="currentColor"
+                                style={{ color: "var(--id-color-danger)" }}
+                                className="type-screen-title"
+                              >
+                                제외
+                              </text>
+                            </g>
+                          </svg>
                         )}
                         {(mapping?.blocks || result?.blocks || []).flatMap(
                           (b) =>
@@ -642,6 +853,11 @@ function Screen({
                                       1,
                                       (x.bottom - x.top) * pos.scale,
                                     ),
+                                    outline:
+                                      followed?.id === b.id
+                                        ? "1px solid var(--id-color-accent)"
+                                        : undefined,
+                                    outlineOffset: 2,
                                     border:
                                       (selected?.id === b.id ? "3" : "1") +
                                       "px solid var(--id-color-" +
@@ -649,6 +865,25 @@ function Screen({
                                       ")",
                                   }}
                                 >
+                                  {b.level &&
+                                    (["heading", "heading_unnumbered"].includes(
+                                      b.kind,
+                                    ) ||
+                                      (b.kind === "list" && b.level >= 2)) && (
+                                      <span
+                                        className="type-helper"
+                                        style={{
+                                          position: "absolute",
+                                          left: 0,
+                                          top: 0,
+                                          background: "var(--id-color-surface)",
+                                        }}
+                                      >
+                                        {b.kind === "list"
+                                          ? b.level
+                                          : "H" + Math.min(6, b.level)}
+                                      </span>
+                                    )}
                                   {b.warning && (
                                     <span
                                       style={{
@@ -710,12 +945,13 @@ function Screen({
             </div>
             <div style={{ minWidth: 0 }}>
               <div className="type-item-name">변환된 문서</div>
+              {picking && <p>제외할 쪽을 고른 뒤 변환하세요.</p>}
               {mapping && (
                 <ui.DocumentView
                   path={file.document}
                   target={
-                    selected && !stale
-                      ? { revision: mapping.revision, path: selected.path }
+                    target && !stale
+                      ? { revision: mapping.revision, path: target.path }
                       : void 0
                   }
                   height={760}
