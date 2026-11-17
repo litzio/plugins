@@ -33,3 +33,18 @@ test('T-08 exported full width notes retain correction source lines',async()=>{
  assert.ok(b);assert.equal(b.lines[0].text,b.text);assert.deepEqual(b.lines[0].box,b.boxes[0]);
  const table=out.blocks[out.blocks.indexOf(b)-1];assert.ok(table.boxes[0].bottom<=b.boxes[0].top);
 });
+
+test('T-08 horizontal header span stays one row when the next row does not subdivide it',()=>{
+ const g={rows:4,cols:3,cells:[cell(0,1,0,2,'Group'),cell(0,1,2,3,'Value'),cell(1,2,0,2,'Body'),cell(1,2,2,3,'1'),cell(2,4,0,1,'X'),cell(2,3,1,2,'Y'),cell(2,3,2,3,'2'),cell(3,4,1,2,'Z'),cell(3,4,2,3,'3')]};
+ const f=flattenGrid(g);assert.equal(f.headerRows,1);assert.deepEqual(f.rows,[['Group','Group','Value'],['Body','Body','1'],['X','Y','2'],['X','Z','3']]);
+});
+
+test('T-10 F-05 graphic cell keeps raised words as plain text and excludes footnote calls',async()=>{
+ const {buildGrid}=await import('../table-grid.mjs');const {authoring}=await import('../authoring.mjs');const {reconcileFootnotes}=await import('../rules.mjs');
+ const lines=[0,30,60].map(pos=>({axis:'h',pos,a:0,b:100}));lines.push(...[0,100].map(pos=>({axis:'v',pos,a:0,b:60})),{axis:'h',pos:45,a:20,b:80});
+ const words=[{text:'Header',x0:5,x1:45,top:5,bottom:15,base:13,size:10},{text:'45',x0:5,x1:17,top:35,bottom:45,base:43,size:10},{text:'7',x0:17,x1:21,top:34,bottom:40,base:38,size:6,superscript:true}];
+ const grid=buildGrid([0,0,100,60],lines,words);assert.equal(grid.cells[1].graphic,true);assert.equal(grid.cells[1].text,'45 7');assert.ok(grid.cells[1].tokens.every(t=>!t.superscript));
+ const result={blocks:[{id:'t',kind:'table',page:0,text:'',boxes:[{top:0}],grid,table:flattenGrid(grid)},{id:'n',kind:'footnote',text:'[^7]: Definition',page:0}],stats:{}};
+ reconcileFootnotes(result);assert.deepEqual(result.stats.footnotes.definitions_without_ref,['7']);
+ const blocks=authoring(result).authoring.inputs[0].blocks;const table=blocks.find(b=>b.kind==='table');assert.ok(table.rows.flat(2).every(t=>t.kind==='text'));assert.equal(table.enumerated,false);
+});

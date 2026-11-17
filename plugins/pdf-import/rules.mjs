@@ -626,7 +626,7 @@ function convert({ pages, toc }, excludedPages = []) {
     const x=b.boxes[0],p=pages[b.page];
     const regions=p.tables.filter(r=>r[0]>=x.x0-2&&r[2]<=x.x1+2&&r[1]>=x.top-2&&r[3]<=x.bottom+2).sort((a,b)=>a[1]-b[1]);
     if(regions.length<2 || regions.some((r,j)=>j&&r[1]<=regions[j-1][3]))continue;
-    const grids=regions.map(r=>buildGrid(r,p.rulings||[],(p.words||[]).map((w,id)=>({...w,id}))));
+    const grids=regions.map(r=>buildGrid(r,p.rulings||[],(p.words||[]).map((w,id)=>({...w,id})),p.graphics||[]));
     const ok=grids.every(g=>!g.reason&&flattenGrid(g).rows.length<=100&&g.cols<=32);
     if(!ok){b.stackFallback=true;continue;}
     const parts=regions.map((r,j)=>({...b,boxes:[box(b.page,r)],text:grids[j].cells.map(c=>c.text).join(" "),stackSplit:true}));
@@ -638,7 +638,7 @@ function convert({ pages, toc }, excludedPages = []) {
     if(b.stackFallback){b.warning={code:"table-as-image",reason:"세로 묶음의 일부 영역을 글자로 옮길 수 없음"};continue;}
     const p=pages[b.page], x=b.boxes[0];
     const words=(p.words||[]).map((w,id)=>({...w,id}));
-    const grid=buildGrid([x.x0,x.top,x.x1,x.bottom],p.rulings||[],words);
+    const grid=buildGrid([x.x0,x.top,x.x1,x.bottom],p.rulings||[],words,p.graphics||[]);
     if(grid.reason) {b.warning={code:"table-as-image",reason:grid.reason};continue;}
     const flat=flattenGrid(grid);
     if(flat.rows.length>100 || grid.cols>32) {b.warning={code:"table-as-image",reason:"100행 또는 32열 한도를 넘음"};continue;}
@@ -651,11 +651,7 @@ function convert({ pages, toc }, excludedPages = []) {
     if(rec.sections) reasons.push(`구역 제목 ${rec.sections}행`);
     if(rec.exportedRows) reasons.push(`주석 ${rec.exportedRows}행 분리`);
     if(reasons.length) b.warning={code:"table-unmerged",reason:"병합 칸을 풀어 적음: "+reasons.join(", ")};
-    const suspicious=grid.cells.filter(c=> {
-      const l=grid.colEdges[c.c0],r=grid.colEdges[c.c1],t=grid.rowEdges[c.r0],bottom=grid.rowEdges[c.r1];
-      return (p.rulings||[]).some(s=>s.axis==='h'&&!grid.rowEdges.some(y=>Math.abs(y-s.pos)<2)&&s.pos>t+2&&s.pos<bottom-2&&s.a>l+2&&s.b<r-2)
-        || (p.graphics||[]).some(g=>(g.image||(!g.rectangle&&(g.box[2]-g.box[0])*(g.box[3]-g.box[1])<(r-l)*(bottom-t)*0.5))&&g.box[0]>l+1&&g.box[2]<r-1&&g.box[1]>t+1&&g.box[3]<bottom-1);
-    });
+    const suspicious=grid.cells.filter(c=>c.graphic);
     if(suspicious.length) b.warning={code:"table-cell-graphic",reason:"글자가 아닌 내용 의심: "+suspicious.map(c=>`${c.r0+1}행 ${c.c0+1}열`).join(", ")+(b.warning?" · "+b.warning.reason:"")};
     const notes=flat.notes.map(c=>({kind:"para",text:c.text,page:b.page,tableNote:true,boxes:[c.box?box(b.page,c.box):{page:b.page,x0:grid.colEdges[c.c0],top:grid.rowEdges[c.r0],x1:grid.colEdges[c.c1],bottom:grid.rowEdges[c.r1]}]}));
     for(const note of notes) note.lines=[{page:note.page,box:{...note.boxes[0]},text:note.text}];
@@ -801,7 +797,7 @@ function footnotePairs(blocks) {
       const n = b.text.match(/^\[\^(\d+)\]/)?.[1];
       if (n) defs.set(n, (defs.get(n) || 0) + 1);
     } else if (b.grid) {
-      for(const c of b.grid.cells) for(const t of c.tokens) if(t.superscript && /^\d+$/.test(t.text.trim())) {
+      for(const c of b.grid.cells.filter(c=>!c.graphic)) for(const t of c.tokens) if(t.superscript && /^\d+$/.test(t.text.trim())) {
         const n=t.text.trim();refs.set(n,(refs.get(n)||0)+1);
       }
     } else if (

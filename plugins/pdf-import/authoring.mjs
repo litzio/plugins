@@ -129,7 +129,7 @@ function authoring(result) {
       continue;
     } else if (b.kind === "table" && b.table) {
       const cap=captionFor.get(b.id);
-      block={kind:"table", rows:b.table.tokenRows.map(row=>row.map(cells=>cells.flatMap((c,ci)=>[
+      block={kind:"table", enumerated:false, rows:b.table.tokenRows.map(row=>row.map(cells=>cells.flatMap((c,ci)=>[
         ...(ci?[{kind:"text",text:" / "}]:[]), ...tableContent(c,stats)
       ]))),caption:cap?footnoteContent(cap.text,stats):""};
       if(cap) sources.push(cap.id);
@@ -137,6 +137,7 @@ function authoring(result) {
       const cap = captionFor.get(b.id);
       block = {
         kind: "figure",
+        enumerated: false,
         imageAsset: keys.get(b.id),
         imageAlt: b.kind === "table" ? "표 영역" : "그림 영역",
         caption: cap ? footnoteContent(cap.text, stats) : "",
@@ -200,7 +201,7 @@ function tableContent(cell,stats) {
     if(t.newLine && out.length) text=(out.at(-1).text?.endsWith('-')?'':' ')+text.trimStart();
     if(!out.length) text=text.trimStart();
     if(!text) continue;
-    if(t.superscript) {
+    if(t.superscript && !cell.graphic) {
       const label=text.trim();
       if(/^\d+$/.test(label) && !stats.footnotes.definitions_without_ref.includes(label) && !stats.footnotes.refs_without_definition.includes(label) && !stats.footnotes.duplicate_definitions.includes(label)) {
         if(/^\s/.test(text)) out.push({kind:"text",text:" "});
