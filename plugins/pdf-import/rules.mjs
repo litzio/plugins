@@ -168,6 +168,17 @@ function classifyLines(pages) {
         l.kind = "caption";
       } else if (l.bold) l.kind = "caption";
     }
+    // T-09: a bare equation number beside a crop belongs in that crop.
+    for (const l of ls) {
+      if (l.kind || !/^\(\d+\)$/.test(l.plain)) continue;
+      const sameRow = (x) => x.y0 < l.y1 && x.y1 > l.y0;
+      const region = regions.find((o) => {
+        const r = o.boxes[0];
+        return r.top < l.y1 && r.bottom > l.y0 && r.x1 < l.x0 &&
+          !ls.some((x) => x !== l && !x.kind && sameRow(x) && x.x0 >= r.x1);
+      });
+      if (region) addBox(region, { page: i, bbox: l.bbox });
+    }
     pages[i] = { ...pages[i], tables: [], figures: [] };
     for (const o of regions) {
       const r = o.boxes[0];
@@ -217,7 +228,14 @@ function classifyLines(pages) {
       )
     )
       tail.shift();
-    for (const l of tail) l.kind = "footnote";
+    let previousNote = null;
+    for (const l of tail) {
+      // F-06: a separated small-print paragraph need not be another note.
+      if (previousNote && l.y0 - previousNote.y1 > previousNote.main_size * 2 &&
+          !/^\d+\s+/.test(l.plain)) break;
+      l.kind = "footnote";
+      previousNote = l;
+    }
     let prev = null;
     for (const l of ls) {
       if (l.kind) {
