@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {boxesFor,splitOffset,transformMapping,restoreMapping,assertMapping,editableMapping,previewCorrection} from '../corrections.mjs';
+import {boxesFor,splitOffset,transformMapping,restoreMapping,assertMapping,previewCorrection} from '../corrections.mjs';
 const line = (text,top,page=0) => ({text,page,box:{page,x0:10,top,x1:100,bottom:top+10}});
 const block = (id,at,lines) => ({id,path:[at],kind:'paragraph',documentKind:'paragraph',lines,boxes:boxesFor(lines)});
-const original = {lineVersion:1,revision:'before',blocks:[block('a',1,[line('First line',10),line('next line.',22)]),block('b',2,[line('Second paragraph.',40)]),block('c',3,[line('Last paragraph.',60)])],excluded:[]};
+const original = {revision:'before',blocks:[block('a',1,[line('First line',10),line('next line.',22)]),block('b',2,[line('Second paragraph.',40)]),block('c',3,[line('Last paragraph.',60)])],excluded:[]};
 const apply = (m,action,options={}) => transformMapping(m,{action,ids:['a'],at:1,removeCount:1,newCount:1,time:'test',...options});
 test('mapping merge/split/type/removal preserve lines, rebase paths and record user edits',()=>{
   const merged = apply(original,'merge',{ids:['a','b'],removeCount:2,newCount:1});
@@ -20,7 +20,7 @@ test('mapping merge/split/type/removal preserve lines, rebase paths and record u
   assert.equal(removed.excluded[0].kind,'removed');assert.deepEqual(removed.blocks[0].path,[1]);
   assert.equal(removed.history[0].who,'user');assert.equal(original.history,undefined);
   assertMapping(heading,{nodes:[{type:'heading',path:[1]},{type:'paragraph',path:[2]},{type:'paragraph',path:[3]}]});
-  assert.throws(()=>assertMapping(removed,{nodes:[]}));assert.equal(editableMapping({}),false);
+  assert.throws(()=>assertMapping(removed,{nodes:[]}));
   for(const changed of [merged,split,heading,removed]) {
     const undone=restoreMapping(original,changed,'a','undo-time');
     assert.deepEqual(undone.blocks.map(b=>({path:b.path,lines:b.lines,kind:b.kind})),original.blocks.map(b=>({path:b.path,lines:b.lines,kind:b.kind})));

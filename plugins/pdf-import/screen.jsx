@@ -1,3 +1,4 @@
+import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
@@ -129,7 +130,7 @@ function Screen({
   const warnings = mapping?.blocks.filter(b=>b.warning) || [];
   const warningIndex = warnings.findIndex((b) => b.id === selected?.id);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
-  const canEdit = mapping?.lineVersion === 1 && !stale;
+  const canEdit = !!mapping && !stale;
   function actionItems(blocks,focusSource=false) {
     return blockActions(blocks,mapping?.blocks||[]).map(a=>({...a,icon:null,
       disabled:a.disabled||busy||stale,
@@ -159,7 +160,7 @@ function Screen({
     let started=performance.now();
     try {
       const input={document:file.document,revision:before.revision,ids:blocks.map(b=>b.id),action,
-        historyId:historyId.current,time:new Date().toISOString(),...extra};
+        historyId:historyId.current,...extra};
       const irreversible=action==='remove' && before.snapshotNodes?.some(n=>blocks.some(b=>b.path[0]===n.path[0]) && references(n).length);
       if(irreversible) {
         if(!await confirm({title:'문서에서 빼기',message:'각주 호출이 들어 있어 이 동작은 되돌릴 수 없습니다. 문서에서 뺄까요?',confirmLabel:'문서에서 빼기'})) {
@@ -286,16 +287,7 @@ function Screen({
       if (f.cached) {
         setExcludedPages(
           new Set(
-            f.cached.excludedPages ||
-              Array.from(
-                {
-                  length: Math.max(
-                    0,
-                    (f.cached.stats?.body_start_page || 1) - 1,
-                  ),
-                },
-                (_, i) => i + 1,
-              ),
+            f.cached.excludedPages,
           ),
         );
         setPdf(doc);
@@ -348,6 +340,7 @@ function Screen({
     setResult(r);
     metrics.current.analysisMs = performance.now() - at;
     metrics.current.node = r.timings;
+    const keys = imageKeys(r.blocks);
     const images = [],
       objects = r.blocks.filter((b) => ["table", "figure"].includes(b.kind));
     at = performance.now();
@@ -366,7 +359,7 @@ function Screen({
         transform: [1, 0, 0, 1, -box.x0 * 2.5, -box.top * 2.5],
       }).promise;
       const base64 = canvas.toDataURL("image/png").split(",")[1];
-      images.push({ key: b.id, mime: "image/png", base64 });
+      images.push({ key: keys.get(b.id), mime: "image/png", base64 });
       canvas.width = canvas.height = 0;
       await new Promise(requestAnimationFrame);
     }
@@ -381,7 +374,7 @@ function Screen({
     at = performance.now();
     const saved = await saveDocument({
       name: f.name.replace(/\.pdf$/i, ".md"),
-      folder: f.folder,
+      folder: f.outputFolder,
       authoring: plan.authoring,
       images,
     });
@@ -391,6 +384,7 @@ function Screen({
       id: f.id,
       units: plan.units,
       revision: saved.revision,
+      images: await Promise.all(images.map(imageReceipt)),
     });
     metrics.current.mappingMs = performance.now() - at;
     metrics.current.documentBytes = m.documentBytes;
@@ -408,7 +402,7 @@ function Screen({
     );
   }
   async function rewrite() {
-    if(!await confirm({title:"다시 변환",message:"기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",confirmLabel:"뺄 쪽 고르기"})) return;
+    if(!await confirm({title:"다시 변환",message:"새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",confirmLabel:"뺄 쪽 고르기"})) return;
     replacementApproved.current=true;
     setUndoCount(0);historyId.current=crypto.randomUUID();
     setSelection([]);setSplitting(false);
@@ -431,7 +425,7 @@ function Screen({
         !(await confirm({
           title: "다시 변환",
           message:
-            "기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",
+            "새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",
           confirmLabel: "변환",
         }))
       )
@@ -684,7 +678,6 @@ function Screen({
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
       )}
-      {mapping && mapping.lineVersion !== 1 && <ui.Notice>다시 변환해야 고칠 수 있습니다</ui.Notice>}
       {!file && recent.length > 0 && (
         <>
           <h2 className="type-section-title">변환한 문서</h2>
@@ -697,7 +690,7 @@ function Screen({
                 (recent.filter((x) => x.name === r.name).length > 1
                   ? " (" + r.folder + ")"
                   : ""),
-              modified: new Date(r.modified).toLocaleString("ko-KR"),
+              modified: r.modified,
             }))}
             columns={["name", "pages", "warnings", "modified", "state"]}
             labels={{

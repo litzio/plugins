@@ -1,6 +1,7 @@
+import { koreanTime } from "./time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { assertMapping, editableMapping, previewCorrection, restoreMapping, splitOffset, snapshotNodes, references } from './corrections.mjs';
+import { assertMapping, previewCorrection, restoreMapping, splitOffset, snapshotNodes, references } from './corrections.mjs';
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections } from './document-io.mjs';
 const topNodes = snapshotNodes;
@@ -15,7 +16,8 @@ export function correctionHandler() {
     try {await writeFile(tmp,JSON.stringify(m));await rename(tmp,side);}
     finally {await rm(tmp,{force:true});}
   };
-  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,confirmed=false,time=new Date().toISOString()}) {
+  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,confirmed=false}) {
+    const time = koreanTime();
     if (!doc || path.extname(doc) !== '.md') throw Error('저장된 문서를 찾지 못했습니다.');
     if (locks.has(doc)) throw Error('이 문서를 고치는 중입니다.');
     locks.add(doc);
@@ -23,7 +25,6 @@ export function correctionHandler() {
     try {
       const side = doc.replace(/\.md$/,'.pdf-source.json');
       const before = JSON.parse(await readFile(side,'utf8'));
-      if (!editableMapping(before)) throw Error('다시 변환해야 고칠 수 있습니다');
       const readStarted=performance.now(), current=inspectDocument(doc);
       timings.readMs=performance.now()-readStarted;
       if (revision !== before.revision || current.revision !== before.revision)
