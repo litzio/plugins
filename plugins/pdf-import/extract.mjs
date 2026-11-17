@@ -63,7 +63,11 @@ async function extract(pdfPath) {
     const ops = await page.getOperatorList();
     let ctm = [1, 0, 0, 1, 0, 0];
     const stack = [];
-    const shapes = [], images = [];
+    const shapes = [], images = [], rulings = [], graphics = [];
+    const rule = (x0, y0, x1, y1) => {
+      if (Math.abs(y1-y0) < 0.8 && Math.abs(x1-x0) > 4) rulings.push({axis:"h", pos:(y0+y1)/2, a:Math.min(x0,x1), b:Math.max(x0,x1)});
+      else if (Math.abs(x1-x0) < 0.8 && Math.abs(y1-y0) > 4) rulings.push({axis:"v", pos:(x0+x1)/2, a:Math.min(y0,y1), b:Math.max(y0,y1)});
+    };
     for (let i = 0; i < ops.fnArray.length; i++) {
       const fn = ops.fnArray[i], args = ops.argsArray[i];
       if (fn === OPS.save) stack.push(ctm);
@@ -81,6 +85,12 @@ async function extract(pdfPath) {
         const w = box[2] - box[0], h = box[3] - box[1];
         if (w * h > W * H * 0.8) continue;
         shapes.push({ box, thin: w < 1.5 || h < 1.5 });
+        const [l,t,r,bottom] = box;
+        if (h < 1.5) rule(l,(t+bottom)/2,r,(t+bottom)/2);
+        else if (w < 1.5) rule((l+r)/2,t,(l+r)/2,bottom);
+        else if ([OPS.stroke, OPS.closeStroke, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke, OPS.closeEOFillStroke].includes(paintOp)) {
+          rule(l,t,r,t); rule(r,t,r,bottom); rule(r,bottom,l,bottom); rule(l,bottom,l,t);
+        } else graphics.push({box, filled:true});
       } else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject || fn === OPS.paintImageMaskXObject) {
         const b = boxOf(ctm, 0, 0, 1, 1);
         images.push([b[0] - vx0, top(b[3]), b[2] - vx0, top(b[1])]);
@@ -160,6 +170,7 @@ async function extract(pdfPath) {
         seg.forEach((w, i) => {
           let flags = /bold/i.test(w.font) ? 16 : 0;
           if (w.size < main * 0.8 && w.base < base - 1) flags |= 1;
+          w.superscript = !!(flags & 1);
           const prev = seg[i - 1];
           const gap = prev ? w.x0 - prev.x1 : 0;
           const needSpace = prev && gap > 0.12 * main && !/\s$/.test(prev.text) && !/^\s/.test(w.text);
@@ -175,7 +186,7 @@ async function extract(pdfPath) {
         });
       }
     }
-    pages.push({ width: W, height: H, raw, tables, figures, nchars });
+    pages.push({ width: W, height: H, raw, tables, figures, nchars, words, rulings, graphics: [...graphics, ...images.map(box => ({box, image:true}))] });
     page.cleanup();
   }
   const toc = [];
