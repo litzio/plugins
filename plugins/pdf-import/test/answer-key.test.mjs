@@ -11,9 +11,10 @@ const oracle = JSON.parse(await readFile(new URL('./fixtures/standards.json', im
 test('answer key: correct counts never fall below the recorded baseline', async () => {
   const baseline = JSON.parse(await readFile(new URL('../answer-key-baseline.json', import.meta.url), 'utf8'));
   const report = score(result, oracle);
-  assert.deepEqual(Object.keys(report.summary).sort(), Object.keys(baseline).sort());
-  for (const [role, minimum] of Object.entries(baseline))
+  assert.deepEqual(Object.keys(report.summary).sort(), Object.keys(baseline.summary).sort());
+  for (const [role, minimum] of Object.entries(baseline.summary))
     assert.ok(report.summary[role].correct >= minimum, `${role}: ${report.summary[role].correct} < ${minimum}`);
+  for(const [metric,minimum] of Object.entries(baseline.tables)) assert.ok(report.tableSummary[metric]>=minimum,metric);
 });
 
 test('F-06 large gap ends the note; a wrapped continuation stays in the definition', () => {

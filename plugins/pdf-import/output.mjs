@@ -1,5 +1,5 @@
 export function imageKeys(blocks) {
-  return new Map(blocks.filter(b => ['table','figure'].includes(b.kind))
+  return new Map(blocks.filter(b => ['table','figure'].includes(b.kind) && !b.table)
     .map((b,i) => [b.id, `${b.kind}-${String(i+1).padStart(3,'0')}`]));
 }
 

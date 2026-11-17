@@ -1,15 +1,23 @@
 {
-  "page_header": 36,
-  "page_footer": 12,
-  "page_number": 12,
-  "document_title": 1,
-  "paragraph": 37,
-  "section_header": 15,
-  "toc_entry": 0,
-  "footnote": 5,
-  "list_item": 0,
-  "caption": 10,
-  "table": 0,
-  "formula": 0,
-  "picture": 0
+  "summary": {
+    "page_header": 36,
+    "page_footer": 12,
+    "page_number": 12,
+    "document_title": 1,
+    "paragraph": 37,
+    "section_header": 15,
+    "toc_entry": 0,
+    "footnote": 5,
+    "list_item": 0,
+    "caption": 10,
+    "table": 0,
+    "formula": 0,
+    "picture": 0
+  },
+  "tables": {
+    "text": 5,
+    "same_grid": 5,
+    "matched_spans": 122,
+    "matched_text": 120
+  }
 }

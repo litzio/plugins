@@ -5,6 +5,7 @@ import { extract } from './extract.mjs';
 import { convert, suggestExcludedPages } from './rules.mjs';
 import { authoring } from './authoring.mjs';
 
+export const tableNorm = (s='') => s.normalize('NFKC').replace(/\s+/g,' ').trim();
 const norm = (s = '') => s.normalize('NFKC').replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
 const image = (b) => ['table', 'figure'].includes(b.kind);
 const kinds = { paragraph: ['paragraph'], section_header: ['heading', 'heading_unnumbered'],
@@ -16,7 +17,7 @@ const nearby = (e, b) => b.boxes.some((x) => overlaps(e, x));
 const textOf = (b) => norm(b.text);
 
 export function score(result, reference) {
-  const summary = {}, elements = [], used = new Set(), matches = new Map();
+  const tables = [], tableSummary = {text:0,same_grid:0,matched_spans:0,matched_text:0,math:0,cells:0}, summary = {}, elements = [], used = new Set(), matches = new Map();
   const byId = new Map(reference.elements.map((e) => [e.id, e]));
   const continuations = reference.relations.filter((r) => r.type === 'paragraph_continues');
   for (const e of reference.elements) {
@@ -33,7 +34,25 @@ export function score(result, reference) {
     } else if (['table', 'formula', 'picture'].includes(e.role)) {
       hits = near.filter(image);
       status = hits.length ? 'as_image' : 'missing';
-      reason = '그림으로 들어감: 문자·셀·수식 의미는 확인 안 함';
+      reason = hits[0]?.warning?.reason || '그림으로 들어감: 문자·셀·수식 의미는 확인 안 함';
+      if(e.role==='table') {
+        const b=hits.find(b=>b.kind==='table'&&b.grid), g=b?.grid, ref=e.table;
+        const t={id:e.id,page:e.page,status:g?'text':status,reason:g?'':reason,cells:[]};
+        if(g) {
+          hits=[b];status='correct';reason='글자 표';tableSummary.text++;
+          t.same_grid=g.rows===ref.num_rows&&g.cols===ref.num_cols;
+          if(t.same_grid)tableSummary.same_grid++;
+          for(const c of ref.cells) {
+            const o=g.cells.find(o=>['r0','r1','c0','c1'].every(k=>o[k]===c[k]));
+            const math=c.content_kind==='math';
+            const same=!!o&&tableNorm(o.text)===tableNorm(c.text);
+            if(o)tableSummary.matched_spans++;
+            if(math)tableSummary.math++;else {tableSummary.cells++;if(same)tableSummary.matched_text++;}
+            t.cells.push({id:c.id,span:!!o,math,same:math?null:same,expected:c.text,actual:o?.text});
+          }
+        }
+        tables.push(t);
+      }
     } else {
       hits = near.filter((b) => key && textOf(b) && (textOf(b).includes(key) || key.includes(textOf(b))));
       const exact = hits.find((b) => {
@@ -71,6 +90,10 @@ export function score(result, reference) {
       } else if (r.type === 'caption_of') {
         status = units.some((u) => u.sources.includes(a[0].id) && u.sources.includes(b[0].id)) ? 'correct' : 'incorrect';
         reason = '실제 작성 계획의 캡션 연결';
+      } else if(r.type==='table_note_for') {
+        const ni=result.blocks.indexOf(a[0]),ti=result.blocks.indexOf(b[0]);
+        const peers=reference.relations.filter(x=>x.type==='table_note_for'&&x.to===r.to).flatMap(x=>(matches.get(x.from)||[]).map(b=>b.id));
+        if(b[0].grid) {status=a[0].kind==='paragraph'&&ni>ti&&result.blocks.slice(ti+1,ni).every(b=>peers.includes(b.id))?'correct':'incorrect';reason='표 바로 뒤의 연속 주석 본문';} else reason='그림 영역에서 개별 표의 주석 관계는 확인 안 함';
       } else if (r.type === 'note_reference') {
         const marker = byId.get(r.to)?.note_marker;
         if (marker && b[0].kind === 'footnote') {
@@ -82,7 +105,7 @@ export function score(result, reference) {
     return { ...r, status, reason };
   });
   const extra = result.blocks.filter((b) => !used.has(b.id)).map((b) => ({ id: b.id, page: b.page + 1, kind: b.kind, text: b.text }));
-  return { summary, elements, relations, extra };
+  return { summary, tables, tableSummary, elements, relations, extra };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
