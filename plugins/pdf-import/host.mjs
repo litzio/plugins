@@ -7,9 +7,11 @@ import { promisify } from "node:util";
 import { extract } from "./extract.mjs";
 import { convert, suggestExcludedPages } from "./rules.mjs";
 import { listConverted } from "./recent.mjs";
+import { correctionHandler } from "./correct-host.mjs";
 const exec = promisify(execFile),
   sha = (b) => createHash("sha256").update(b).digest("hex");
 export function activate(context) {
+  const correct = correctionHandler(context.cli);
   const inspect = async (p) => {
     if (!context.cli)
       throw new PluginPublicError(
@@ -30,6 +32,10 @@ export function activate(context) {
       message: context.cli ? "준비됨" : "공식 CLI 없음",
     }),
     operations: {
+      correct: async (input) => {
+        try { return await correct(input); }
+        catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
+      },
       recent: async ({ folders = [] }) => {
         try {
           return await listConverted(folders);
@@ -168,6 +174,8 @@ export function activate(context) {
               id: b.id,
               path: n.path,
               kind: b.kind,
+              documentKind: n.type,
+              lines: b.lines || [],
               ...(b.level ? { level: b.level } : {}),
               boxes: b.boxes,
               ...(b.warning ? { warning: b.warning } : {}),
@@ -175,6 +183,7 @@ export function activate(context) {
           }
         });
         const data = {
+          lineVersion: 1,
           pdf: { name: path.basename(s.p), sha256: s.digest },
           revision: current.revision,
           pages: s.result.pages,

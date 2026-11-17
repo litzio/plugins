@@ -16,6 +16,9 @@ const box = (page, b) => ({
   bottom: Math.max(b[1], b[3]),
 });
 function addBox(b, l) {
+  if (typeof l.text === "function") {
+    (b.lines ||= []).push({ page: l.page, box: box(l.page, l.bbox), text: l.text() });
+  }
   l = { ...l, x0: l.bbox[0], y0: l.bbox[1], x1: l.bbox[2], y1: l.bbox[3] };
   const a = b.boxes.find((x) => x.page === l.page);
   if (a) {
