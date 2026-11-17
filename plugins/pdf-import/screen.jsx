@@ -105,6 +105,7 @@ function Screen({
     metrics = useRef({});
   useEffect(() => {
     if (!pane.current) return;
+    pane.current.scrollTop = 0;
     const ro = new ResizeObserver((es) =>
       setWidth(Math.max(1, es[0].contentRect.width - 16)),
     );
@@ -874,7 +875,8 @@ function Screen({
                                         className="type-helper"
                                         style={{
                                           position: "absolute",
-                                          left: 0,
+                                          right: "100%",
+                                          paddingInline: "var(--space-1)",
                                           top: 0,
                                           background: "var(--id-color-surface)",
                                         }}
