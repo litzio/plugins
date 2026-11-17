@@ -89,8 +89,23 @@ async function extract(pdfPath) {
         if (h < 1.5) rule(l,(t+bottom)/2,r,(t+bottom)/2);
         else if (w < 1.5) rule((l+r)/2,t,(l+r)/2,bottom);
         else if ([OPS.stroke, OPS.closeStroke, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke, OPS.closeEOFillStroke].includes(paintOp)) {
-          rule(l,t,r,t); rule(r,t,r,bottom); rule(r,bottom,l,bottom); rule(l,bottom,l,t);
-        } else graphics.push({box, filled:true});
+          for(const path of args[1] || []) {
+            let at=0, current=null, start=null;
+            const point=()=>{const q=apply(ctm,path[at++],path[at++]);return [q[0]-vx0,top(q[1])];};
+            while(at<path.length) {
+              const op=path[at++];
+              if(op===0) current=start=point();
+              else if(op===1) {const next=point();if(current) rule(...current,...next);current=next;}
+              else if(op===2) {point();point();current=point();}
+              else if(op===3) {point();current=point();}
+              else if(op===4) {if(current&&start)rule(...current,...start);current=start;}
+              else break;
+            }
+          }
+        } else {
+          const rectangles=(args[1]||[]).every(p=>p.length===13&&p[0]===0&&p[3]===1&&p[6]===1&&p[9]===1&&p[12]===4&&((p[1]===p[4]&&p[5]===p[8]&&p[7]===p[10]&&p[11]===p[2])||(p[2]===p[5]&&p[4]===p[7]&&p[8]===p[11]&&p[10]===p[1])));
+          graphics.push({box, filled:true, rectangle:rectangles});
+        }
       } else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject || fn === OPS.paintImageMaskXObject) {
         const b = boxOf(ctm, 0, 0, 1, 1);
         images.push([b[0] - vx0, top(b[3]), b[2] - vx0, top(b[1])]);

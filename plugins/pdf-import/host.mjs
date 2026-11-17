@@ -180,6 +180,7 @@ export function activate() {
               lines: b.lines || [],
               ...(b.level ? { level: b.level } : {}),
               boxes: b.boxes,
+              ...(b.grid ? {grid:b.grid, tableRecord:b.table.record} : {}),
               ...(b.warning ? { warning: b.warning } : {}),
             });
           }

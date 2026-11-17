@@ -366,7 +366,7 @@ function Screen({
     metrics.current.node = r.timings;
     const keys = imageKeys(r.blocks);
     const images = [],
-      objects = r.blocks.filter((b) => ["table", "figure"].includes(b.kind));
+      objects = r.blocks.filter((b) => ["table", "figure"].includes(b.kind) && !b.table);
     at = performance.now();
     for (let i = 0; i < objects.length; i++) {
       setStatus("그림 만드는 중 " + (i + 1) + " / " + objects.length);
