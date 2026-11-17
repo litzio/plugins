@@ -7,9 +7,12 @@ import { promisify } from "node:util";
 import { extract } from "./extract.mjs";
 import { convert, suggestExcludedPages } from "./rules.mjs";
 import { listConverted } from "./recent.mjs";
+import { correctionHandler } from "./correct-host.mjs";
+import { snapshotNodes, assertMapping } from "./corrections.mjs";
 const exec = promisify(execFile),
   sha = (b) => createHash("sha256").update(b).digest("hex");
 export function activate(context) {
+  const correct = correctionHandler(context.cli);
   const inspect = async (p) => {
     if (!context.cli)
       throw new PluginPublicError(
@@ -30,6 +33,14 @@ export function activate(context) {
       message: context.cli ? "준비됨" : "공식 CLI 없음",
     }),
     operations: {
+      verify: async (input) => {
+        try { return await correct.verify(input); }
+        catch { throw new PluginPublicError("pdf_import_failed", "저장 뒤 문서 대응을 확인하지 못했습니다. 문서를 다시 열어 주세요."); }
+      },
+      correct: async (input) => {
+        try { return await correct(input); }
+        catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
+      },
       recent: async ({ folders = [] }) => {
         try {
           return await listConverted(folders);
@@ -61,6 +72,14 @@ export function activate(context) {
           if (s.pdf.sha256 === digest) {
             const current = await inspect(doc);
             cached = { ...s, stale: current.revision !== s.revision };
+            if (!cached.stale && s.lineVersion === 1) {
+              try { assertMapping(s,current); } catch { cached.stale=true; }
+              if (!cached.stale) {
+                cached.snapshotNodes=snapshotNodes(current);
+                cached.verificationPending=false;
+                await writeFile(side,JSON.stringify(cached));
+              }
+            }
           }
         } catch (e) {
           if (e.code !== "ENOENT")
@@ -168,6 +187,8 @@ export function activate(context) {
               id: b.id,
               path: n.path,
               kind: b.kind,
+              documentKind: n.type,
+              lines: b.lines || [],
               ...(b.level ? { level: b.level } : {}),
               boxes: b.boxes,
               ...(b.warning ? { warning: b.warning } : {}),
@@ -175,6 +196,8 @@ export function activate(context) {
           }
         });
         const data = {
+          lineVersion: 1,
+          snapshotNodes: snapshotNodes(current),
           pdf: { name: path.basename(s.p), sha256: s.digest },
           revision: current.revision,
           pages: s.result.pages,
