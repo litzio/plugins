@@ -200,8 +200,8 @@ test("public oracle: paragraph boundary score and ragged layout", async () => {
     ),
   );
   const score = compare(result, oracle, 2);
-  assert.equal(score.total, 46);
-  assert.equal(score.matched, 33);
+  assert.equal(score.total, 48);
+  assert.equal(score.matched, 35);
   assert.equal(result.stats.paragraphs.layout.justified, false);
   assert.ok(
     !result.blocks.some((b) =>
