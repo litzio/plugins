@@ -10,14 +10,17 @@
     "footnote": 5,
     "list_item": 0,
     "caption": 10,
-    "table": 0,
+    "table": 6,
     "formula": 0,
     "picture": 0
   },
   "tables": {
-    "text": 5,
-    "same_grid": 5,
-    "matched_spans": 122,
-    "matched_text": 120
+    "text": 6,
+    "same_grid": 6,
+    "matched_spans": 131,
+    "matched_text": 127
+  },
+  "formulas": {
+    "own_image": 3
   }
 }

@@ -1,3 +1,4 @@
+import { formulaRegions } from "./formula-regions.mjs";
 import { buildGrid, flattenGrid, joinText } from "./table-grid.mjs";
 const HEAD = /^(\d+(?:\.\d+)*)\.?\s+(\S.*)$/,
   ANNEX = /^([A-Z](?:\.\d+)+)\s+(\S.*)$/,
@@ -169,17 +170,7 @@ function classifyLines(pages) {
         l.kind = "caption";
       } else if (l.bold) l.kind = "caption";
     }
-    // T-09: a bare equation number beside a crop belongs in that crop.
-    for (const l of ls) {
-      if (l.kind || !/^\(\d+\)$/.test(l.plain)) continue;
-      const sameRow = (x) => x.y0 < l.y1 && x.y1 > l.y0;
-      const region = regions.find((o) => {
-        const r = o.boxes[0];
-        return r.top < l.y1 && r.bottom > l.y0 && r.x1 < l.x0 &&
-          !ls.some((x) => x !== l && !x.kind && sameRow(x) && x.x0 >= r.x1);
-      });
-      if (region) addBox(region, { page: i, bbox: l.bbox });
-    }
+    const formulas = formulaRegions(ls, regions, pages[i]);
     pages[i] = { ...pages[i], tables: [], figures: [] };
     for (const o of regions) {
       const r = o.boxes[0];
@@ -194,6 +185,7 @@ function classifyLines(pages) {
       if (l.kind) continue;
       if (pages[i].tables.some((t) => inside(l, t))) l.kind = "table";
       else if (pages[i].figures.some((f) => inside(l, f))) l.kind = "figure";
+      if (l.kind === "figure") l.formulaRegion = formulas.find(r=>inside(l,[r.x0,r.top,r.x1,r.bottom]));
     }
     for (const t of pages[i].tables) {
       let y = t[3],
@@ -396,6 +388,7 @@ function convert({ pages, toc }, excludedPages = []) {
       ...(level ? { level } : {}),
     };
     addBox(b, l);
+    if (l.formulaRegion) { b.formula = true; addBox(b,{page:l.page,bbox:[l.formulaRegion.x0,l.formulaRegion.top,l.formulaRegion.x1,l.formulaRegion.bottom]}); }
     blocks.push(b);
     return b;
   };
@@ -410,7 +403,7 @@ function convert({ pages, toc }, excludedPages = []) {
       if (["margin", "front"].includes(l.kind)) continue;
       const t = l.text();
       if (["table", "figure"].includes(l.kind)) {
-        if (obj && obj.kind === l.kind && obj.page === p) {
+        if (obj && obj.kind === l.kind && obj.page === p && !!obj.formula === !!l.formulaRegion && (!obj.formula || inside(l,[obj.boxes[0].x0,obj.boxes[0].top,obj.boxes[0].x1,obj.boxes[0].bottom]))) {
           obj.text += " " + t;
           addBox(obj, l);
         } else obj = push(l.kind, t, l);
@@ -679,6 +672,7 @@ function convert({ pages, toc }, excludedPages = []) {
     right_edges: right,
   };
   suspects(blocks, stats);
+  for (const b of blocks) if(b.formula) b.warning={code:"formula-as-image",reason:"수식을 그림으로 둠"};
   for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
   return {
     pages: pages.map((p) => ({ width: p.width, height: p.height })),
@@ -886,7 +880,7 @@ function coalesceOverlaps(blocks) {
       changed = false;
       for (let i = 0; i < out.length; i++) {
         const o = out[i];
-        if (o.page !== b.page) continue;
+        if (o.page !== b.page || o.formula || b.formula) continue;
         const a = b.boxes[0],
           c = o.boxes[0];
         const area = (x) =>
@@ -962,7 +956,7 @@ function mergeRegions(blocks) {
     }
   }
   blocks = blocks.filter((b) => !enclosed.has(b));
-  const isObject = (b) => b && ["table", "figure"].includes(b.kind);
+  const isObject = (b) => b && !b.formula && ["table", "figure"].includes(b.kind);
   const merged = [];
   for (let i = 0; i < blocks.length; ) {
     const first = blocks[i];

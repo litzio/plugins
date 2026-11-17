@@ -176,6 +176,7 @@ export function activate() {
               id: b.id,
               path: n.path,
               kind: b.kind,
+              ...(b.formula ? {formula:true} : {}),
               documentKind: n.type,
               lines: b.lines || [],
               ...(b.level ? { level: b.level } : {}),

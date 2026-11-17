@@ -17,7 +17,7 @@ const nearby = (e, b) => b.boxes.some((x) => overlaps(e, x));
 const textOf = (b) => norm(b.text);
 
 export function score(result, reference) {
-  const tables = [], tableSummary = {text:0,same_grid:0,matched_spans:0,matched_text:0,math:0,cells:0}, summary = {}, elements = [], used = new Set(), matches = new Map();
+  const formulas = [], formulaSummary = { own_image: 0, merged: 0, fragmented_text: 0, missing: 0 }, tables = [], tableSummary = {text:0,same_grid:0,matched_spans:0,matched_text:0,math:0,cells:0}, summary = {}, elements = [], used = new Set(), matches = new Map();
   const byId = new Map(reference.elements.map((e) => [e.id, e]));
   const continuations = reference.relations.filter((r) => r.type === 'paragraph_continues');
   for (const e of reference.elements) {
@@ -35,6 +35,13 @@ export function score(result, reference) {
       hits = near.filter(image);
       status = hits.length ? 'as_image' : 'missing';
       reason = hits[0]?.warning?.reason || '그림으로 들어감: 문자·셀·수식 의미는 확인 안 함';
+      if(e.role==='formula') {
+        const figures=near.filter(b=>b.kind==='figure');
+        const independent=figures.length===1 && !reference.elements.some(other=>other!==e && ['formula','table'].includes(other.role) && nearby(other,figures[0]));
+        const state=independent?'own_image':hits.length?'merged':near.some(b=>['paragraph','list','heading','heading_unnumbered'].includes(b.kind))?'fragmented_text':'missing';
+        formulaSummary[state]++;
+        formulas.push({id:e.id,page:e.page,status:state,blocks:near.map(b=>b.id)});
+      }
       if(e.role==='table') {
         const b=hits.find(b=>b.kind==='table'&&b.grid), g=b?.grid, ref=e.table;
         const t={id:e.id,page:e.page,status:g?'text':status,reason:g?'':reason,cells:[]};
@@ -105,7 +112,7 @@ export function score(result, reference) {
     return { ...r, status, reason };
   });
   const extra = result.blocks.filter((b) => !used.has(b.id)).map((b) => ({ id: b.id, page: b.page + 1, kind: b.kind, text: b.text }));
-  return { summary, tables, tableSummary, elements, relations, extra };
+  return { summary, formulas, formulaSummary, tables, tableSummary, elements, relations, extra };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -121,6 +128,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const report = score(result, JSON.parse(await readFile(oracle, 'utf8')));
   console.table(report.summary);
+  console.table(report.formulas);
+  console.table(report.formulaSummary);
   const labels = { structure_differs: '글자는 있으나 구조가 다름', missing: '없음', as_image: '그림으로 들어감' };
   for (const e of report.elements.filter((e) => labels[e.status])) console.log(`${e.id} p${e.page} ${labels[e.status]} ${e.reason}`);
   for (const r of report.relations) console.log(`${r.type} ${r.from} → ${r.to}: ${{ correct: '맞음', incorrect: '틀림', unchecked: '확인 안 함' }[r.status]} (${r.reason})`);
