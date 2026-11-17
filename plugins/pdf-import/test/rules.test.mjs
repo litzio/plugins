@@ -370,3 +370,17 @@ test("post-assembly footnote pairing uses only remaining blocks of every authore
     /각주 정의가 없는 작성 입력: 17/,
   );
 });
+
+test("F-07 repeated footnote definitions preserve both texts and ambiguous calls without duplicate labels",async()=>{
+  const {authoring}=await import('../authoring.mjs');
+  const sample=structuredClone(result),definition=sample.blocks.find(b=>b.kind==='footnote'&&b.text.startsWith('[^17]:'));
+  sample.blocks.push({...structuredClone(definition),id:'duplicate-public-note',text:'[^17]: Another public definition.'});
+  const plan=authoring(sample),output=JSON.stringify(plan.authoring);
+  assert.deepEqual(sample.stats.footnotes.duplicate_definitions,['17']);
+  for(const b of sample.blocks.filter(b=>b.text.includes('[^17]')))assert.match(b.warning.reason,/각주 짝 불일치/);
+  assert.ok(output.includes('[17] A page note'));
+  assert.ok(output.includes('[17] Another public definition.'));
+  assert.ok(output.includes('"text":"[17]"'));
+  assert.ok(!output.includes('"kind":"footnote","label":"17"'));
+  assert.equal(plan.units.length,authoring(structuredClone(result)).units.length+1);
+});

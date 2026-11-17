@@ -36,7 +36,7 @@ function authoring(result) {
       block = { kind: "heading", level: b.level, content };
     else if (b.kind === "footnote") {
       const m = b.text.match(/^\[\^(\d+)\]:\s*(.*)$/);
-      block = stats.footnotes.definitions_without_ref.includes(m[1])
+      block = (stats.footnotes.definitions_without_ref.includes(m[1]) || stats.footnotes.duplicate_definitions.includes(m[1]))
         ? { kind: "paragraph", text: "[" + m[1] + "] " + m[2] }
         : { kind: "footnote", label: m[1], text: m[2] };
     } else if (b.kind === "list") {
