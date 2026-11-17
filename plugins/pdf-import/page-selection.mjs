@@ -9,6 +9,15 @@ export function togglePageRange(excluded, anchor, page, shift) {
   return next;
 }
 
+export function applyPageSuggestion(current, suggested, touched) {
+  const next = new Set(suggested);
+  for (const page of touched) {
+    if (current.has(page)) next.add(page);
+    else next.delete(page);
+  }
+  return next;
+}
+
 export function firstPageTitles(bookmarks, count) {
   const titles = Array(count).fill(""), seen = new Set();
   for (const { page, title } of bookmarks) {

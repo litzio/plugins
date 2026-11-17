@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { togglePageRange, firstPageTitles, readPageTitles } from '../page-selection.mjs';
+import { togglePageRange, firstPageTitles, readPageTitles, applyPageSuggestion } from '../page-selection.mjs';
 
 test('page selection preserves target-directed Shift ranges and the input set', () => {
   const original=new Set([1,2]);
@@ -27,3 +27,11 @@ test('public PDF bookmark destinations supply only the first title on each page'
   } finally {await loading.destroy();}
 });
 
+
+test('late suggestions keep explicit includes, excludes, and every touched Shift-range page',()=>{
+  let selected=togglePageRange(new Set(),null,2,false);
+  selected=togglePageRange(selected,2,4,true);
+  const touched=new Set([2,3,4]);
+  selected=togglePageRange(selected,4,3,false);
+  assert.deepEqual([...applyPageSuggestion(selected,[1,3,5],touched)].sort(),[1,2,4,5]);
+});

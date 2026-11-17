@@ -1,7 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
-import { togglePageRange, readPageTitles } from "./page-selection.mjs";
+import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
@@ -99,7 +99,9 @@ function Screen({
     [width, setWidth] = useState(600),
     [tip, setTip] = useState(null);
   const [pageTitles, setPageTitles] = useState([]);
-  const replacementApproved = useRef(false);
+  const replacementApproved = useRef(false), pickerSession = useRef(null);
+  const [pickerHelp, setPickerHelp] = useState(false);
+  useEffect(()=>()=>{if(pickerSession.current)pickerSession.current.active=false;},[]);
   const [picking, setPicking] = useState(false),
     [excludedPages, setExcludedPages] = useState(new Set()),
     [follow, setFollow] = useState(true),
@@ -206,7 +208,11 @@ function Screen({
     }
   }
   async function load(path, cachedOnly = false) {
+    if(pickerSession.current) pickerSession.current.active=false;
+    const session={active:true,touched:new Set()};
+    pickerSession.current=session;
     replacementApproved.current=false;
+    setPickerHelp(false);
     setPageTitles([]);
     setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
     clearTimeout(scrollTimer.current);
@@ -227,6 +233,7 @@ function Screen({
     setCached(false);
     setStatus("PDF 읽는 중");
     metrics.current = { start: performance.now() };
+    const loadingMetrics=metrics.current;
     try {
       const f = await invoke("load", { path, cachedOnly });
       metrics.current.loadMs=performance.now()-metrics.current.start;
@@ -251,7 +258,8 @@ function Screen({
         setError("최근 폴더 목록을 보관하지 못했습니다.");
       }
       setFile(f);
-      const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
+      const binary=atob(f.base64), bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
       const loadingTask = pdfjs.getDocument({
         data: bytes,
         verbosity: 0,
@@ -297,16 +305,21 @@ function Screen({
             f.cached.blocks.filter((b) => b.warning).length,
         );
       } else {
-        setStatus("뺄 쪽 제안 확인 중");
-        const suggested=await suggestionPromise;
-        if(suggested.error) {await loadingTask.destroy();throw suggested.error;}
-        metrics.current.suggestMs=suggested.ms;
-        setExcludedPages(new Set(suggested.value.excludedPages));
         setPdf(doc);
         setPicking(true);
-        setStatus("뺄 쪽을 고른 뒤 변환하세요.");
-        performance.measure("pdf-import-page-picker", {
-          start: metrics.current.start, detail:{...metrics.current},
+        setStatus("뺄 쪽 제안 확인 중");
+        performance.measure("pdf-import-page-picker", {start:loadingMetrics.start,detail:{...loadingMetrics}});
+        suggestionPromise.then(suggested=>{
+          if(!session.active || pickerSession.current!==session) return;
+          if(suggested.error) {
+            setError("뺄 쪽 제안을 확인하지 못했습니다. 지금 고른 쪽으로 변환할 수 있습니다.");
+            setStatus("뺄 쪽을 고른 뒤 변환하세요.");
+            return;
+          }
+          loadingMetrics.suggestMs=suggested.ms;
+          setExcludedPages(current=>applyPageSuggestion(current,suggested.value.excludedPages,session.touched));
+          setStatus("뺄 쪽을 고른 뒤 변환하세요.");
+          performance.measure("pdf-import-suggestion",{start:loadingMetrics.start,detail:{...loadingMetrics}});
         });
       }
     } catch (e) {
@@ -407,6 +420,8 @@ function Screen({
     setStatus("뺄 쪽을 고른 뒤 변환하세요.");
   }
   async function convertSelected() {
+    if(pickerSession.current) pickerSession.current.active=false;
+    setPickerHelp(false);
     try {
       if (
         cached && !replacementApproved.current &&
@@ -434,10 +449,15 @@ function Screen({
   }
   function togglePage(page, shift) {
     if (busy || !picking) return;
-    setExcludedPages(togglePageRange(excludedPages, anchor.current, page, shift));
+    const from=anchor.current;
+    const first=shift && from!==null ? from : page;
+    for(let p=Math.min(first,page);p<=Math.max(first,page);p++) pickerSession.current?.touched.add(p);
+    setExcludedPages(current=>togglePageRange(current,from,page,shift));
     anchor.current = page;
   }
   function cancelPicking() {
+    if(pickerSession.current) pickerSession.current.active=false;
+    setPickerHelp(false);
     clearTimeout(scrollTimer.current);
     setPicking(false);setPdf(null);setFile(null);setMapping(null);setResult(null);
     setCached(false);setExcludedPages(new Set());setError("");setSelection([]);setStale(false);
@@ -575,12 +595,13 @@ function Screen({
           : undefined
       }
       status={
-        <ui.Status
-          tone={
-            error ? "error" : busy ? "progress" : mapping ? "ok" : "neutral"
-          }
-          label={status}
-        />
+        <span className="pdf-picker-status" tabIndex={picking?0:undefined}
+          onMouseEnter={()=>setPickerHelp(true)} onMouseLeave={()=>setPickerHelp(false)}
+          onFocus={()=>setPickerHelp(true)} onBlur={()=>setPickerHelp(false)}
+          aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex'}}>
+          <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":mapping?"ok":"neutral"} label={status}/>
+          {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
+        </span>
       }
       actions={
         <>
@@ -665,6 +686,7 @@ function Screen({
       <style>{`
 .pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}
 .pdf-import-narrow{display:none}
+.pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
 .pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
 .pdf-import-box::before{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--block-color) 12%,transparent);pointer-events:none}
 .pdf-import-box::after{content:"";position:absolute;inset:0 auto 0 -3px;width:2px;background:var(--strip-color,var(--block-color));pointer-events:none}
@@ -678,7 +700,7 @@ function Screen({
 .pdf-import-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
 .pdf-import-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
 .pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
-@media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
+@media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
 .pdf-import-narrow{display:block}
 }
 `}</style>

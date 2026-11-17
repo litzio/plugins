@@ -1,4 +1,12 @@
-const thumbnailWidth = 160;
+function ShortcutButton({React,ui,hint,children,...props}) {
+  const [visible,setVisible]=React.useState(false),id=React.useId();
+  return <span style={{position:'relative'}} onMouseEnter={()=>setVisible(true)} onMouseLeave={()=>setVisible(false)} onFocus={()=>setVisible(true)} onBlur={()=>setVisible(false)}>
+    <ui.Button {...props} title={hint} aria-describedby={visible?id:undefined}>{children}</ui.Button>
+    {visible&&<span id={id} role="tooltip" className="type-helper" style={{position:'absolute',left:0,top:'100%',whiteSpace:'nowrap',background:'var(--id-color-surface)',color:'var(--id-color-text)',padding:'var(--space-2)',border:'1px solid var(--id-color-border)',zIndex:2}}>{hint}</span>}
+  </span>;
+}
+
+const thumbnailWidth = 128;
 
 function ExcludedMark({React}) {
   return <svg aria-hidden="true" viewBox="0 0 400 500" style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none',color:'var(--id-color-danger)',opacity:0.55}}>
@@ -57,7 +65,7 @@ function LargePage({React, pdf, index, onError}) {
 }
 
 export default function PagePicker({React, ui, pdf, titles, excluded, toggle, busy, onError}) {
-  const root=React.useRef(null), scroll=React.useRef(0), origin=React.useRef(null), largeTitle=React.useRef(null);
+  const root=React.useRef(null), scroll=React.useRef(0), origin=React.useRef(null), largeControls=React.useRef(null);
   const [expanded,setExpanded]=React.useState(null), [help,setHelp]=React.useState('');
   // Only two nearby thumbnails render concurrently. Completed canvases stay mounted;
   // leaving the viewport cancels queued and in-flight work, not completed pictures.
@@ -75,19 +83,36 @@ export default function PagePicker({React, ui, pdf, titles, excluded, toggle, bu
   React.useEffect(()=>{root.current.querySelector('[data-page-toggle]')?.focus({preventScroll:true});},[]);
   function open(index){scroll.current=root.current.scrollTop;origin.current=index;setHelp('');setExpanded(index);}
   function close(){setExpanded(null);requestAnimationFrame(()=>{if(!root.current)return;root.current.scrollTop=scroll.current;root.current.querySelector('[data-page-toggle="'+(origin.current+1)+'"]')?.focus({preventScroll:true});});}
-  React.useEffect(()=>{if(expanded!==null)largeTitle.current?.focus();},[expanded]);
-  return <div data-page-picker>
+  React.useEffect(()=>{
+    if(expanded!==null && (!largeControls.current.contains(document.activeElement) || document.activeElement.disabled))
+      largeControls.current.querySelector('button:not(:disabled)')?.focus();
+  },[expanded]);
+  React.useEffect(()=>{
+    if(expanded===null)return;
+    const main=largeControls.current?.closest('main');
+    const key=e=>{
+      const active=document.activeElement;
+      if(!largeControls.current?.getClientRects().length || (active!==document.body&&main&&!main.contains(active)) || e.ctrlKey || e.altKey || e.metaKey)return;
+      if(e.key==='Escape'){e.preventDefault();close();}
+      if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
+        e.preventDefault();setExpanded(n=>n===null?null:Math.max(0,Math.min(pdf.numPages-1,n+(e.key==='ArrowLeft'?-1:1))));
+      }
+    };
+    window.addEventListener('keydown',key);return ()=>window.removeEventListener('keydown',key);
+  },[expanded,pdf.numPages]);
+  return <div data-page-picker style={{position:'relative'}}>
     <style>{`
-      .pdf-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,160px);gap:var(--space-4);align-items:start}
-      .pdf-picker-card{position:relative;width:160px}
+      .pdf-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,128px);gap:var(--space-3);align-items:start}
+      .pdf-picker-card{position:relative;width:128px}
       .pdf-picker-toggle{display:block!important;width:100%;height:auto!important;min-height:0!important;padding:0!important;white-space:normal!important;text-align:left!important;border:0!important;background:transparent!important;box-shadow:none!important}
       .pdf-picker-toggle:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:3px}
       .pdf-picker-image{position:relative;background:var(--id-color-paper);box-shadow:var(--shadow-paper)}
-      .pdf-picker-caption{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-block:var(--space-2);color:var(--id-color-text)}
+      .pdf-picker-caption{display:block;padding-block:var(--space-1);color:var(--id-color-text)}
+      .pdf-picker-bookmark{display:block;min-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .pdf-picker-zoom{position:absolute!important;right:var(--space-1);top:var(--space-1);opacity:0;pointer-events:none}
       .pdf-picker-card:hover .pdf-picker-zoom,.pdf-picker-card:focus-within .pdf-picker-zoom{opacity:1;pointer-events:auto}
     `}</style>
-    <div className="type-helper" style={{height:24,position:'relative'}}>{help ? <span role="tooltip" style={{position:'absolute',left:0,top:0,maxWidth:'100%',padding:'var(--space-1)',background:'var(--id-color-surface)',color:'var(--id-color-text)',zIndex:1,pointerEvents:'none'}}>{help}</span> : expanded===null ? '누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.' : '좌우 화살표로 쪽을 넘기고 Esc로 격자로 돌아갑니다.'}</div>
+    {help&&<div role="tooltip" className="type-helper" style={{position:'absolute',left:0,top:0,maxWidth:'100%',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',zIndex:2,pointerEvents:'none'}}>{help}</div>}
     <div ref={root} data-page-grid-scroll style={{display:expanded===null?'block':'none',height:'min(72vh,850px)',overflow:'auto',padding:'var(--space-2)'}}>
       <div className="pdf-picker-grid">
         {pdf.pageSizes.map((size,i)=><div key={i} className="pdf-picker-card">
@@ -95,12 +120,12 @@ export default function PagePicker({React, ui, pdf, titles, excluded, toggle, bu
             aria-label={(i+1)+'쪽'+(titles[i]?' · '+titles[i]:'')+' · '+(excluded.has(i+1)?'제외됨':'포함됨')}
             onClick={e=>toggle(i+1,e.shiftKey)}
             onKeyDown={e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!e.repeat)toggle(i+1,e.shiftKey);}}}
-            onMouseEnter={()=>setHelp(titles[i]||'')} onMouseLeave={()=>setHelp('')} onFocus={()=>setHelp(titles[i]||'')} onBlur={()=>setHelp('')}>
+            onMouseEnter={()=>setHelp(titles[i]||'')} onMouseLeave={()=>setHelp('')} onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))setHelp(titles[i]||'');}} onBlur={()=>setHelp('')}>
             <div className="pdf-picker-image" style={{outline:excluded.has(i+1)?'2px solid var(--id-color-danger)':undefined,outlineOffset:-2}}>
               <div style={{opacity:excluded.has(i+1)?0.4:1}}><Thumbnail React={React} pdf={pdf} index={i} root={root} enqueue={enqueue} onError={onError}/></div>
               {excluded.has(i+1)&&<ExcludedMark React={React}/>}
             </div>
-            <span className="pdf-picker-caption type-helper">{i+1}쪽{titles[i]?' · '+titles[i]:''}</span>
+            <span className="pdf-picker-caption type-helper"><span style={{display:'block'}}>{i+1}쪽</span><span className="pdf-picker-bookmark" aria-hidden={!titles[i]}>{titles[i]||' '}</span></span>
           </ui.Button>
           <ui.Button className="pdf-picker-zoom" aria-label={(i+1)+'쪽 크게 보기'} title="크게 보기" disabled={busy} onClick={()=>open(i)}
             onMouseEnter={()=>setHelp((i+1)+'쪽 크게 보기')} onMouseLeave={()=>setHelp('')}
@@ -110,16 +135,13 @@ export default function PagePicker({React, ui, pdf, titles, excluded, toggle, bu
         </div>)}
       </div>
     </div>
-    {expanded!==null&&<div data-large-view onKeyDown={e=>{
-      if(e.key==='Escape'){e.preventDefault();close();}
-      if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();setExpanded(n=>Math.max(0,Math.min(pdf.numPages-1,n+(e.key==='ArrowLeft'?-1:1))));}
-    }}>
+    {expanded!==null&&<div ref={largeControls} data-large-view>
       <ui.Toolbar>
-        <span ref={largeTitle} tabIndex={-1} className="type-item-name">{expanded+1} / {pdf.numPages}쪽{titles[expanded]?' · '+titles[expanded]:''}</span>
-        <ui.Button disabled={expanded===0} onClick={()=>setExpanded(n=>n-1)}>이전 쪽</ui.Button>
-        <ui.Button disabled={expanded===pdf.numPages-1} onClick={()=>setExpanded(n=>n+1)}>다음 쪽</ui.Button>
+        <span className="type-item-name">{expanded+1} / {pdf.numPages}쪽{titles[expanded]?' · '+titles[expanded]:''}</span>
+        <ShortcutButton React={React} ui={ui} hint="이전 쪽 · ←" disabled={expanded===0} onClick={()=>setExpanded(n=>n-1)}>이전 쪽</ShortcutButton>
+        <ShortcutButton React={React} ui={ui} hint="다음 쪽 · →" disabled={expanded===pdf.numPages-1} onClick={()=>setExpanded(n=>n+1)}>다음 쪽</ShortcutButton>
         <ui.Button disabled={busy} onClick={e=>toggle(expanded+1,e.shiftKey)}>{excluded.has(expanded+1)?'포함':'제외'}</ui.Button>
-        <ui.Button onClick={close}>닫기</ui.Button>
+        <ShortcutButton React={React} ui={ui} hint="닫기 · Esc" onClick={close}>닫기</ShortcutButton>
       </ui.Toolbar>
       <div style={{height:'min(68vh,820px)',overflow:'auto',background:'var(--id-color-canvas)',padding:'var(--space-3)'}}>
         <div style={{position:'relative',maxWidth:850,marginInline:'auto',outline:excluded.has(expanded+1)?'2px solid var(--id-color-danger)':undefined}}>

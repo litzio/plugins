@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { inspectDocument } from "./document-io.mjs";
 import { extract } from "./extract.mjs";
+import { createExtractionCache } from "./extraction-cache.mjs";
 import { convert, suggestExcludedPages } from "./rules.mjs";
 import { listConverted } from "./recent.mjs";
 import { correctionHandler } from "./correct-host.mjs";
@@ -13,6 +14,7 @@ export function activate() {
   const correct = correctionHandler();
   const inspect = inspectDocument;
   const sessions = /* @__PURE__ */ new Map();
+  const extractedFile = createExtractionCache(extract);
   return {
     status: () => ({
       available: true,
@@ -91,8 +93,8 @@ export function activate() {
             "pdf_import_failed",
             "PDF를 다시 골라 주세요.",
           );
-        s.raw = await extract(s.p);
-        return { excludedPages: suggestExcludedPages(s.raw) };
+        const raw = await extractedFile(s.p, s.digest).promise;
+        return { excludedPages: suggestExcludedPages(raw) };
       },
       convert: async ({ id, excludedPages = [] }) => {
         const s = sessions.get(id);
@@ -102,7 +104,8 @@ export function activate() {
             "PDF를 다시 골라 주세요.",
           );
         const t = performance.now(),
-          raw = s.raw || (await extract(s.p)),
+          extraction = extractedFile(s.p, s.digest),
+          raw = await extraction.promise,
           extracted = performance.now(),
           result = convert(raw, excludedPages);
         s.result = result;
@@ -110,6 +113,7 @@ export function activate() {
           ...result,
           timings: {
             extractMs: extracted - t,
+            extractionReused: extraction.reused,
             rulesMs: performance.now() - extracted,
           },
         };
