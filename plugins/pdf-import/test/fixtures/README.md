@@ -32,3 +32,5 @@
 - `lsr-1.1/converted/answer-key`: 13쪽, 19.394초, task/result success, errors=[].
 
 - `lsr-1.1/converted/no-bookmarks`: 13쪽, 18.437초, task/result success, errors=[].
+
+현재 채점에 포함한 `standards.json`의 출처는 공개 합성 LSR 1.1 reference bundle의 `ground_truth/standards.json`(보관 태그의 원본 바이트)이며 라이선스는 CC0 1.0 Universal입니다. 책갈피 없는 사본의 정답은 중복 보관하지 않습니다.
