@@ -674,10 +674,10 @@ function Screen({
 .pdf-import-box:focus-visible{outline:2px solid var(--id-color-border-focus)!important;outline-offset:6px}
 .pdf-import-line::before,.pdf-import-line::after{display:none}
 .pdf-import-line{outline:1px solid var(--id-color-accent);outline-offset:2px}
-.pdf-import-excluded{position:absolute;--excluded-face:repeating-linear-gradient(135deg,color-mix(in srgb,var(--id-color-text-muted) 22%,transparent) 0 1px,transparent 1px 6px),color-mix(in srgb,var(--id-color-text-muted) 8%,transparent);background:var(--excluded-face);mix-blend-mode:multiply}
+.pdf-import-excluded{position:absolute;--excluded-ink:color-mix(in srgb,var(--id-color-text-muted) 70%,var(--id-color-surface));--excluded-face:repeating-linear-gradient(135deg,color-mix(in srgb,var(--excluded-ink) 80%,transparent) 0 2px,transparent 2px 7px),color-mix(in srgb,var(--excluded-ink) 35%,transparent);background:var(--excluded-face);mix-blend-mode:multiply}
 .pdf-import-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
 .pdf-import-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
-.pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face)}
+.pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
 @media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
 .pdf-import-narrow{display:block}
 }
@@ -1020,10 +1020,10 @@ function Screen({
                               style={{
                                 position: "absolute",
                                 pointerEvents: "auto",
-                                left: e.box.x0 * pos.scale,
-                                top: e.box.top * pos.scale,
-                                width: (e.box.x1 - e.box.x0) * pos.scale,
-                                height: (e.box.bottom - e.box.top) * pos.scale,
+                                left: e.box.x0 * pos.scale - 3,
+                                top: e.box.top * pos.scale - 3,
+                                width: (e.box.x1 - e.box.x0) * pos.scale + 6,
+                                height: (e.box.bottom - e.box.top) * pos.scale + 6,
                               }}
                              />
                           ))}
