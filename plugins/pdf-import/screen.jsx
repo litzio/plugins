@@ -1,6 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
+import {blockActions} from "./block-actions.mjs";
 import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
@@ -32,14 +33,6 @@ const colors = {
   margin: "border",
   front: "border",
 };
-const warningNames = {
-  "unnumbered-heading": "번호 없는 제목 후보",
-  "paragraph-boundary": "문단 경계가 불확실함",
-  "paragraph-end": "끝맺음 없는 문단",
-  "paragraph-start": "소문자로 시작하는 문단",
-  "heading-number": "제목 번호",
-  "footnote-pair": "각주 짝",
-};
 function exclusionSummary(pages) {
   const ranges = [];
   for (const p of [...pages].sort((a, b) => a - b)) {
@@ -51,6 +44,10 @@ function exclusionSummary(pages) {
     ? pages.size + "쪽 제외"
     : ranges.map(([a, b]) => (a === b ? a : a + "–" + b)).join(", ") +
         "쪽 제외";
+}
+function SourceBlock({ui,canEdit,busy,stale,block,actions,trigger}) {
+  if(!['paragraph','heading','list'].includes(block.documentKind)||!canEdit)return trigger;
+  return <ui.ContextMenu disabled={busy||stale} trigger={trigger} actions={actions}/>;
 }
 function Screen({
   React,
@@ -107,8 +104,7 @@ function Screen({
     [excludedPages, setExcludedPages] = useState(new Set()),
     [follow, setFollow] = useState(true),
     [followed, setFollowed] = useState(null),
-    [target, setTarget] = useState(null),
-    [warningFilter, setWarningFilter] = useState("all");
+    [target, setTarget] = useState(null);
   const anchor = useRef(null),
     scrollTimer = useRef(null),
     scrollOwner = useRef(null), sourceAuto = useRef(null);
@@ -130,26 +126,41 @@ function Screen({
     },
     [pdf],
   );
-  const allWarnings = mapping?.blocks.filter((b) => b.warning) || [];
-  const warnings = allWarnings.filter(
-    (b) => warningFilter === "all" || b.warning.code === warningFilter,
-  );
+  const warnings = mapping?.blocks.filter(b=>b.warning) || [];
   const warningIndex = warnings.findIndex((b) => b.id === selected?.id);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
   const canEdit = mapping?.lineVersion === 1 && !stale;
-  const oneText = chosen.length === 1 && ['paragraph','heading'].includes(chosen[0].documentKind);
-  const mergeable = chosen.length >= 2 && chosen.every((b,i) => b.documentKind === 'paragraph' &&
-    b.path[0] === chosen[0].path[0]+i);
-  async function correct(action, extra = {}) {
+  function actionItems(blocks,focusSource=false) {
+    return blockActions(blocks,mapping?.blocks||[]).map(a=>({...a,icon:null,
+      disabled:a.disabled||busy||stale,
+      run:()=>{
+        if(a.action==='split') {setSelection(blocks.map(b=>b.id));setSelected(blocks[0]);setSplitting(true);}
+        else return correct(a.action,a.extra,blocks,focusSource);
+      }}));
+  }
+  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.action==='kind');
+  const kindDisabled=kindTools.every(a=>a.disabled);
+  function prepareContext(b) {
+    if(!busy&&!stale&&!editing.current&&!selection.includes(b.id))select(b);
+  }
+  const actionTipStyle={position:'absolute',top:'100%',left:0,zIndex:3,background:'var(--id-color-surface)',padding:'var(--space-2)',width:240};
+  function toolButton(a) {
+    return <span key={a.id} tabIndex={a.disabled?0:undefined} style={{position:'relative'}}
+      onMouseEnter={()=>setActionHelp(a.id)} onMouseLeave={()=>setActionHelp(null)} onFocus={()=>setActionHelp(a.id)} onBlur={()=>setActionHelp(null)}>
+      <ui.Button disabled={a.disabled} onClick={a.run}>{a.label}</ui.Button>
+      {a.disabled&&actionHelp===a.id&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{a.disabledReason}</span>}
+    </span>;
+  }
+  async function correct(action, extra = {}, blocks = chosen, focusSource = false) {
     if (editing.current) return;
     const before=mapping, oldSelection=selection, oldSelected=selected;
     clearTimeout(scrollTimer.current);
     editing.current=true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
     let started=performance.now();
     try {
-      const input={document:file.document,revision:before.revision,ids:selection,action,
+      const input={document:file.document,revision:before.revision,ids:blocks.map(b=>b.id),action,
         historyId:historyId.current,time:new Date().toISOString(),...extra};
-      const irreversible=action==='remove' && before.snapshotNodes?.some(n=>chosen.some(b=>b.path[0]===n.path[0]) && references(n).length);
+      const irreversible=action==='remove' && before.snapshotNodes?.some(n=>blocks.some(b=>b.path[0]===n.path[0]) && references(n).length);
       if(irreversible) {
         if(!await confirm({title:'문서에서 빼기',message:'각주 호출이 들어 있어 이 동작은 되돌릴 수 없습니다. 문서에서 뺄까요?',confirmLabel:'문서에서 빼기'})) {
           setStatus('취소됨');return;
@@ -162,6 +173,7 @@ function Screen({
       clearTimeout(scrollTimer.current); setFollowed(null);
       const b=r.mapping.blocks.find(b=>b.id===r.targetId);
       setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b||null);
+      if(focusSource&&b)requestAnimationFrame(()=>pane.current?.querySelector('[data-source-id="'+b.id+'"]')?.focus({preventScroll:true}));
       metrics.current.correction={started,timings:r.timings,action};
       setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':'고침 완료');
     } catch(e) {
@@ -170,21 +182,9 @@ function Screen({
     } finally {editing.current=false;setBusy(false);}
   }
   useEffect(() => {
-    const cancel = e => {if(e.key==='Escape') {setSplitting(false);setSelection([]);setSelected(null);}};
+    const cancel = e => {if(e.key==='Escape'&&!e.defaultPrevented&&!e.target.closest?.('[role=menu],[role=listbox],[role=dialog]')) {setSplitting(false);setSelection([]);setSelected(null);}};
     window.addEventListener('keydown',cancel); return ()=>window.removeEventListener('keydown',cancel);
   },[]);
-  const warningOptions = [
-    { value: "all", label: "전체(" + allWarnings.length + ")" },
-    ...[...new Set(allWarnings.map((b) => b.warning.code))].map((code) => ({
-      value: code,
-      label:
-        (warningNames[code] ||
-          allWarnings.find((b) => b.warning.code === code).warning.reason) +
-        "(" +
-        allWarnings.filter((b) => b.warning.code === code).length +
-        ")",
-    })),
-  ];
   const frontPages = new Set([...excludedPages].map((p) => p - 1));
   const positions = useMemo(() => {
     let top = 0;
@@ -227,7 +227,7 @@ function Screen({
     setPicking(false);
     setFollowed(null);
     setTarget(null);
-    setWarningFilter("all");
+
     setError("");
     setMapping(null);
     setResult(null);
@@ -638,42 +638,6 @@ function Screen({
               다시 변환
             </ui.Button>
           )}
-          {allWarnings.length > 0 && (
-            <ui.Select
-              label="경고 종류"
-              value={warningFilter}
-              onValueChange={(value) => {
-                setWarningFilter(value);
-                setSelected(null);
-              }}
-              options={warningOptions}
-              disabled={busy}
-            />
-          )}
-          {warnings.length > 0 && (
-            <>
-              <ui.Button
-                disabled={busy || stale || warningIndex === 0}
-                onClick={() =>
-                  select(warnings[Math.max(0, warningIndex - 1)], true)
-                }
-              >
-                이전
-              </ui.Button>
-              <span>
-                {warningIndex < 0 ? "0" : warningIndex + 1} / {warnings.length}
-                {warningIndex >= 0
-                  ? " · " + warnings[warningIndex].warning.reason
-                  : ""}
-              </span>
-              <ui.Button
-                disabled={busy || stale || warningIndex === warnings.length - 1}
-                onClick={() => select(warnings[warningIndex + 1], true)}
-              >
-                다음
-              </ui.Button>
-            </>
-          )}
           {mapping && (
             <ui.Button
               onClick={async () => {
@@ -693,6 +657,7 @@ function Screen({
       }
     >
       <style>{`
+@container pdf-tools (max-width:850px){[data-comparison-navigation]{flex-basis:100%;justify-content:flex-end}}
 .pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}
 .pdf-import-narrow{display:none}
 .pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
@@ -719,7 +684,6 @@ function Screen({
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
       )}
-      {!picking && stale && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
       {mapping && mapping.lineVersion !== 1 && <ui.Notice>다시 변환해야 고칠 수 있습니다</ui.Notice>}
       {!file && recent.length > 0 && (
         <>
@@ -764,7 +728,25 @@ function Screen({
           <div className="pdf-import-narrow">
             <ui.Notice>넓은 창에서 보기</ui.Notice>
           </div>
-          <div style={{minHeight:72}}><ui.Toolbar>
+          <ui.Toolbar><div data-comparison-tools style={{containerType:'inline-size',containerName:'pdf-tools',display:'flex',alignItems:'center',flexWrap:'wrap',gap:'var(--space-2)',width:'100%'}}>
+            <div data-block-tools style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:'var(--space-2)',minHeight:32}}>
+              {canEdit && selection.length>0 ? <>
+                <span>{selection.length}개 선택</span>
+                {tools.filter(a=>a.action==='merge'||a.action==='split').map(a=>toolButton(a))}
+                <span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
+                  onFocus={()=>setActionHelp('kind')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('kind')} onMouseLeave={()=>setActionHelp(null)}>
+                  <ui.Select label="종류" hideLabel placeholder="종류" disabled={kindDisabled} value={chosen.length===1&&['paragraph','heading'].includes(chosen[0].documentKind)&&chosen[0].kind!=='heading_unnumbered'?(chosen[0].documentKind==='heading'?'h'+chosen[0].level:'paragraph'):''}
+                    options={kindTools.map(a=>({value:a.id,label:a.id==='paragraph'?'본문':'제목 '+a.extra.level}))}
+                    onValueChange={v=>{const a=kindTools.find(a=>a.id===v);if(a&&!a.disabled)a.run();}}/>
+                  {kindDisabled&&actionHelp==='kind'&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{kindTools[0].disabledReason}</span>}
+                </span>
+                {toolButton(tools.find(a=>a.action==='remove'))}
+              </> : <>{['heading','paragraph','list','table','figure','footnote','margin'].map(k=><span key={k} className="type-helper"><span aria-hidden="true" className={'pdf-import-key'+(k==='margin'?' pdf-import-excluded':'')} style={{'--block-color':'var(--id-color-'+colors[k]+')'}}/>{labels[k]}</span>)}<span className="type-helper">고침</span></>}
+            </div>
+            <div data-comparison-navigation style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'var(--space-2)',minHeight:32,flexShrink:0}}>
+              {warnings.length>0&&<><span className="type-helper">경고 {warningIndex<0?0:warningIndex+1} / {warnings.length}</span>
+                <ui.Button disabled={busy||stale||warningIndex===0} onClick={()=>select(warnings[Math.max(0,warningIndex-1)],true)}>이전</ui.Button>
+                <ui.Button disabled={busy||stale||warningIndex===warnings.length-1} onClick={()=>select(warnings[warningIndex+1],true)}>다음</ui.Button></>}
             <label
               style={{
                 display: "inline-flex",
@@ -811,49 +793,12 @@ function Screen({
                 </span>
               )}
             </label>
-            {canEdit && selection.length > 0 ? <>
-              <span>{selection.length}개 선택</span>
-              {[
-                {name:'합치기',ok:mergeable,why:'이웃한 문단을 둘 이상 골라야 합니다.',run:()=>correct('merge')},
-                {name:'나누기',ok:chosen.length===1 && chosen[0].documentKind==='paragraph' && chosen[0].lines?.length>1,
-                  why:'원본 줄이 둘 이상인 문단 하나를 골라야 합니다.',run:()=>setSplitting(x=>!x)},
-                {name:'문서에서 빼기',ok:chosen.length===1 && ['paragraph','heading','list'].includes(chosen[0].documentKind),
-                  why:'본문·제목·목록 블록 하나를 골라야 합니다.',run:()=>correct('remove')},
-              ].map(a=><span key={a.name} tabIndex={!a.ok ? 0 : undefined} style={{position:'relative',order:a.name==='문서에서 빼기'?1:0}}
-                onMouseEnter={()=>setActionHelp(a.name)} onMouseLeave={()=>setActionHelp(null)}
-                onFocus={()=>setActionHelp(a.name)} onBlur={()=>setActionHelp(null)}>
-                <ui.Button disabled={busy || !a.ok} onClick={a.run}>{a.name}</ui.Button>
-                {actionHelp===a.name && !a.ok && <span role="tooltip" className="type-helper" style={{position:'absolute',top:'100%',left:0,zIndex:3,background:'var(--id-color-surface)',padding:'var(--space-2)',width:240}}>{a.why}</span>}
-              </span>)}
-              <span tabIndex={!oneText?0:undefined} style={{position:'relative'}}
-                onFocus={()=>setActionHelp('kind')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('kind')} onMouseLeave={()=>setActionHelp(null)}>
-              <ui.Select label="종류" placeholder="종류 고르기" disabled={busy || !oneText} value={oneText && chosen[0].kind!=='heading_unnumbered' ? (chosen[0].documentKind==='heading' ? 'h'+chosen[0].level : 'paragraph') : ''}
-                options={[{value:'paragraph',label:'본문'},...[1,2,3,4,5,6].map(n=>({value:'h'+n,label:'제목 '+n}))]}
-                onValueChange={v=>correct('kind',v==='paragraph'?{kind:'paragraph'}:{kind:'heading',level:Number(v.slice(1))})}/>
-              {actionHelp==='kind' && !oneText && <span role="tooltip" className="type-helper" style={{position:'absolute',top:'100%',left:0,zIndex:3,background:'var(--id-color-surface)',width:240}}>본문이나 제목 하나를 골라야 합니다.</span>}
-              </span>
-              <span tabIndex={!undoCount?0:undefined} title={!undoCount?'이 화면에서 되돌릴 동작이 없습니다.':undefined} style={{marginLeft:'auto',order:2}}
-                onFocus={()=>setActionHelp('undo')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('undo')} onMouseLeave={()=>setActionHelp(null)}>
-                <ui.Button disabled={busy || !undoCount} onClick={()=>correct('undo')}>되돌리기</ui.Button>
-                {actionHelp==='undo' && !undoCount && <span role="tooltip" className="type-helper">이 화면에서 되돌릴 동작이 없습니다.</span>}
-              </span>
-            </> : <>{[
-              "heading",
-              "paragraph",
-              "list",
-              "table",
-              "figure",
-              "footnote",
-              "margin",
-            ].map((k) => (
-              <span key={k} className="type-helper">
-                <span aria-hidden="true" className={"pdf-import-key"+(k==='margin'?' pdf-import-excluded':'')} style={{"--block-color":"var(--id-color-"+colors[k]+")"}} />
-                {labels[k]}
-              </span>
-            ))}<span className="type-helper">고침</span>
-            {canEdit && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}</>}
-          </ui.Toolbar></div>
-          <div style={{minHeight:24}}>{splitting ? <p role="status" style={{margin:0}}>새 문단이 시작될 줄을 고르세요.</p> : tip?.page >= 0 && <span role="tooltip" className="type-helper">{tip.text}</span>}</div>
+              {undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
+            </div>
+          </div></ui.Toolbar>
+          <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+            {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>경고 {warningIndex+1} / {warnings.length} · {warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
+          </div>
           <div className="pdf-import-panes">
             <div style={{ minWidth: 0 }}>
               <div className="type-item-name">
@@ -943,8 +888,7 @@ function Screen({
                             b.boxes
                               .filter((x) => x.page === i)
                               .map((x, j) => (
-                                <ui.Button
-                                  key={b.id + "-" + j}
+                                <SourceBlock key={b.id+'-'+j} ui={ui} canEdit={canEdit} busy={busy} stale={stale} block={b} actions={actionItems(selection.includes(b.id)?chosen:[b],true)} trigger={<ui.Button
                                   className="pdf-import-box"
                                   data-selected={selection.includes(b.id)}
                                   data-source-id={b.id}
@@ -976,6 +920,7 @@ function Screen({
                                     })
                                   }
                                   onBlur={() => setTip(null)}
+                                  onContextMenu={e=>{if(canEdit&&['paragraph','heading','list'].includes(b.documentKind))prepareContext(b);else e.preventDefault();}}
                                   onClick={(e) => select(b,false,e.shiftKey)}
                                   style={{
                                     pointerEvents: "auto",
@@ -998,7 +943,8 @@ function Screen({
                                     {b.warning && <span style={{color:'var(--id-color-warning)'}}>!</span>}
                                     {b.edited && <span>고침</span>}
                                   </span>
-                                </ui.Button>
+                                </ui.Button>}/>
+
                               )),
                         )}
                         {splitting && chosen.length===1 && chosen[0].lines.map((l,j)=>l.page===i && <ui.Button
@@ -1013,6 +959,7 @@ function Screen({
                             <div
                               key={"e" + j}
                               className="pdf-import-excluded"
+                              onContextMenu={e=>e.preventDefault()}
                               tabIndex={0}
                               aria-label={e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'}
                               onMouseEnter={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
