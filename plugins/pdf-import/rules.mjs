@@ -1,7 +1,7 @@
 const HEAD = /^(\d+(?:\.\d+)*)\.?\s+(\S.*)$/,
   ANNEX = /^([A-Z](?:\.\d+)+)\s+(\S.*)$/,
   TOP = /^Annex\s+([A-Z])\b\s*(.*)$/;
-const CAP = /^(Table|Figure)\s+([A-Z]\.\d+|\d+)\s*[—–-]/;
+const CAP = /^(Table|Figure)\s+([A-Z]\.\d+|\d+)\s*[—–.:-]/;
 const BULLET = /^[—–•\-]\s*/;
 const LIST = /^(?:[a-z]\)|\d+\)|[—–•\-]|NOTE\b)/,
   END = /[.:;?!)\]”"]$|\[\^\w+\]$/;
@@ -71,6 +71,7 @@ const inside = (l, r) => {
   return r[0] - 2 <= x && x <= r[2] + 2 && r[1] - 2 <= y && y <= r[3] + 2;
 };
 function convert({ pages, toc }) {
+  pages = pages.map(p=>({...p}));
   const all = pages.map((p, i) =>
     p.raw
       .map((r) => line(r, i))
@@ -91,19 +92,38 @@ function convert({ pages, toc }) {
     for (const l of ls)
       if (margin(l, i) && ((seen.get(key(l)) || 0) >= pages.length * 0.3 || /^[ivxlc\d]+$/.test(l.plain)))
         l.kind = "margin";
-    const rest = ls.filter((l) => !l.kind),
-      tail = [];
-    for (const l of rest.toReversed()) {
-      if (l.main_size <= body - 1.5) tail.unshift(l);
-      else break;
+    // Resolve geometry before captions and footnotes: text order cannot split a crop.
+    const regions = coalesceOverlaps([
+      ...pages[i].tables.map(r => ({kind: "table", page:i, text:"", boxes:[box(i,r)]})),
+      ...pages[i].figures.map(r => ({kind: "figure", page:i, text:"", boxes:[box(i,r)]})),
+    ]);
+    for (const l of ls) {
+      if (l.kind || !CAP.test(l.plain)) continue;
+      const figure = l.plain.startsWith("Figure");
+      const candidates = regions.map(o => {
+        const r = o.boxes[0];
+        const below = l.y0 >= r.bottom;
+        const gap = below ? l.y0-r.bottom : r.top-l.y1;
+        const between = ls.filter(x => x !== l && !x.kind && x.y0 >= (below ? r.bottom : l.y1) && x.y1 <= (below ? l.y0 : r.top));
+        return {o,r,below,gap,between};
+      }).filter(c => l.x0 < c.r.x1 && l.x1 > c.r.x0 && c.gap >= 0 && c.gap <= (figure && c.below ? body*10 : body*4))
+        .sort((a,b) => a.gap-b.gap);
+      const c = candidates.find(c => !c.between.length || (figure && c.below && c.between.every(x => x.main_size < body)));
+      if (c) {
+        if (figure && c.below) for (const x of c.between) addBox(c.o, {page:i,bbox:x.bbox});
+        c.o.kind = figure ? "figure" : "table";
+        l.kind = "caption";
+      } else if (l.bold) l.kind = "caption";
     }
-    while (tail.length && !(tail[0].spans[0].size <= body * 0.7 && /^\d+/.test(tail[0].spans[0].text.trim())))
-      tail.shift();
-    for (const l of tail) l.kind = "footnote";
+    pages[i] = {...pages[i], tables:[], figures:[]};
+    for (const o of regions) {
+      const r = o.boxes[0];
+      pages[i][o.kind === "table" ? "tables" : "figures"].push([r.x0,r.top,r.x1,r.bottom]);
+    }
     for (const l of ls) {
       if (l.kind) continue;
-      if (pages[i].tables.some((t) => inside(l, t))) l.kind = "table";
-      else if (pages[i].figures.some((f) => inside(l, f))) l.kind = "figure";
+      if (pages[i].tables.some(t => inside(l,t))) l.kind = "table";
+      else if (pages[i].figures.some(f => inside(l,f))) l.kind = "figure";
     }
     for (const t of pages[i].tables) {
       let y = t[3],
@@ -121,10 +141,17 @@ function convert({ pages, toc }) {
         } else break;
       }
     }
+    const rest = ls.filter(l => !l.kind), tail = [];
+    for (const l of rest.toReversed()) {
+      if (l.main_size < body) tail.unshift(l);
+      else break;
+    }
+    while (tail.length && !( /^\d+\s+/.test(tail[0].plain) || (tail[0].first_size <= body*0.7 && /^\d+/.test(tail[0].plain)))) tail.shift();
+    for (const l of tail) l.kind = "footnote";
     let prev = null;
     for (const l of ls) {
       if (l.kind) {
-        prev = null;
+        prev = l.kind === "caption" ? l : null;
         continue;
       }
       const t = l.text();
@@ -152,6 +179,7 @@ function convert({ pages, toc }) {
     let prev = null,
       first = true,
       obj = null;
+    let noteShape = null, noteNumber = -1;
     for (const l of all[p]) {
       if (["margin", "front"].includes(l.kind)) continue;
       const t = l.text();
@@ -165,8 +193,13 @@ function convert({ pages, toc }) {
       }
       obj = null;
       if (l.kind === "footnote") {
-        const m = l.plain.match(/^\[?\^?(\d+)\]?\s*(.*)$/);
-        if (l.spans[0].size <= body * 0.7 && m) push("footnote", "[^" + m[1] + "]: " + m[2], l);
+        const m = l.plain.match(l.first_size <= body*0.7 ? /^(\d+)\s*(.*)$/ : /^(\d+)\s+(.*)$/);
+        const small = l.first_size <= body*0.7;
+        if (m && (noteShape === null || (small === noteShape && +m[1] > noteNumber))) {
+          noteShape ??= small;
+          noteNumber = +m[1];
+          push("footnote", "[^" + m[1] + "]: " + m[2], l);
+        }
         else if (blocks.at(-1)?.kind === "footnote") {
           blocks.at(-1).text += " " + l.plain;
           addBox(blocks.at(-1), l);
@@ -397,11 +430,48 @@ function footnoteContent(text, stats) {
 }
 export { BULLET, convert, footnoteContent, mergeRegions };
 
+function coalesceOverlaps(blocks) {
+  const out = [];
+  for (const source of blocks) {
+    let b = {...source, boxes:source.boxes.map(x=>({...x}))};
+    for (let changed = true; changed;) {
+      changed = false;
+      for (let i=0;i<out.length;i++) {
+        const o = out[i];
+        if (o.page !== b.page) continue;
+        const a=b.boxes[0], c=o.boxes[0];
+        const area=x=>Math.max(0,x.x1-x.x0)*Math.max(0,x.bottom-x.top);
+        const overlap=Math.max(0,Math.min(a.x1,c.x1)-Math.max(a.x0,c.x0))*Math.max(0,Math.min(a.bottom,c.bottom)-Math.max(a.top,c.top));
+        const contains=(x,y)=>x.x0<=y.x0 && x.x1>=y.x1 && x.top<=y.top && x.bottom>=y.bottom;
+        if (contains(a,c) || contains(c,a) || overlap > Math.min(area(a),area(c))/2) {
+          out.splice(i,1);
+          b.text += " " + o.text;
+          addBox(b,{page:o.page,bbox:[c.x0,c.top,c.x1,c.bottom]});
+          changed=true;
+          break;
+        }
+      }
+    }
+    out.push(b);
+  }
+  return out;
+}
 function mergeRegions(blocks) {
+  const objects = blocks.filter(b=>["table","figure"].includes(b.kind));
+  const united = coalesceOverlaps(objects);
+  const emitted = new Set();
+  blocks = blocks.flatMap(b => {
+    if (!objects.includes(b)) return [b];
+    const x=b.boxes[0];
+    const owner=united.find(o=>o.page===b.page && o.boxes[0].x0<=x.x0 && o.boxes[0].x1>=x.x1 && o.boxes[0].top<=x.top && o.boxes[0].bottom>=x.bottom);
+    if (emitted.has(owner)) return [];
+    emitted.add(owner);
+    return [owner];
+  });
   // Text enclosed by an object belongs to the crop, rather than separating its fragments.
   const enclosed = new Set();
   for (const b of blocks) {
-    if (b.kind !== "para") continue;
+    if (!["para", "heading_unnumbered"].includes(b.kind)) continue;
     const owner = blocks.find(
       (o) =>
         ["table", "figure"].includes(o.kind) &&
@@ -463,3 +533,4 @@ function mergeRegions(blocks) {
   }
   return merged;
 }
+

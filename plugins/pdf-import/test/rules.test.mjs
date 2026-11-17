@@ -28,6 +28,9 @@ test("public sample: headings, conservation, margins, and cross-page paragraph",
   }
 });
 test("public sample: unmatched superscript is retained as literal marker with warning", () => {
+  const unmatched = structuredClone(raw);
+  unmatched.pages[1].raw = unmatched.pages[1].raw.filter(l=>!l.spans.map(s=>s.text).join("").startsWith("17 A page note"));
+  const result = convert(unmatched);
   const b = result.blocks.find((b2) => b2.warning?.code === "footnote-pair");
   assert.ok(b);
   const n = result.stats.footnotes.refs_without_definition.find((n2) => b.text.includes("[^" + n2 + "]"));
@@ -67,4 +70,27 @@ test("public sample: whitespace around superscript stays exactly as extracted", 
   spans[at+1].text = spans[at+1].text.trimStart();
   const noGap = convert(modified).blocks.find(b=>b.text.includes("[^17]"));
   assert.match(noGap.text, /item\[\^17\]even/);
+});
+
+
+test("public sample: captions, one graph crop with axes, and paired endnotes", async () => {
+  const {authoring} = await import("../authoring.mjs");
+  for (const text of ["Figure K.1.", "Figure K.2.", "Table 1.", "Table 2.", "Table 3.", "Table 4."])
+    assert.ok(result.blocks.some(b=>b.kind==="caption" && b.text.startsWith(text)), text);
+  const graph=result.blocks.filter(b=>b.page===9 && ["table","figure"].includes(b.kind));
+  assert.equal(graph.length,1);
+  assert.equal(graph[0].kind,"figure");
+  assert.ok(graph[0].boxes[0].bottom>=492.8);
+  assert.ok(!result.blocks.some(b=>b.page===9 && b.kind==="paragraph" && /Time from capture|t ≥ 18/.test(b.text)));
+  for(const n of ["17","121"]) {
+    assert.ok(result.blocks.some(b=>b.kind==="footnote" && b.text.startsWith("[^"+n+"]:")));
+    assert.ok(authoring(result).authoring.inputs[0].blocks.some(b=>b.kind==="footnote" && b.label===n));
+    assert.ok(!result.stats.footnotes.refs_without_definition.includes(n));
+  }
+  assert.ok(!result.blocks.some(b=>b.kind==="paragraph" && b.text.startsWith("17 A page note")));
+  const blocked=structuredClone(raw);
+  const axis=blocked.pages[9].raw.find(l=>l.spans.some(s=>s.text.includes("Time from capture")));
+  axis.spans.forEach(s=>s.size=9.5);
+  blocked.pages[9].raw.find(l=>l.spans.some(s=>s.text.startsWith("Figure K.2."))).spans.forEach(s=>s.flags=0);
+  assert.ok(!convert(blocked).blocks.some(b=>b.kind==="caption" && b.text.startsWith("Figure K.2.")));
 });
