@@ -1,7 +1,9 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import { authoring } from "./authoring.mjs";
-pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
+  new Blob([workerSource], { type: "text/javascript" }),
+);
 const labels = {
   heading: "제목",
   heading_unnumbered: "제목",
@@ -26,8 +28,36 @@ const colors = {
   margin: "border",
   front: "border",
 };
-function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm }) {
+function Screen({
+  React,
+  ui,
+  invoke,
+  pickPath,
+  saveDocument,
+  openDocument,
+  confirm,
+}) {
   const { useState, useRef, useEffect, useMemo } = React;
+  const recentKey = "pdf-import-recent-folders";
+  const [recent, setRecent] = useState([]);
+  useEffect(() => {
+    let gone = false;
+    (async () => {
+      const folders = JSON.parse(localStorage.getItem(recentKey) || "[]");
+      const found = await invoke("recent", {
+        folders: Array.isArray(folders) ? folders : [],
+      });
+      if (!gone) {
+        setRecent(found.rows);
+        localStorage.setItem(recentKey, JSON.stringify(found.folders));
+      }
+    })().catch(() => {
+      if (!gone) setError("저장된 문서 목록을 읽지 못했습니다.");
+    });
+    return () => {
+      gone = true;
+    };
+  }, []);
   const [status, setStatus] = useState("PDF를 골라 주세요."),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -45,7 +75,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     metrics = useRef({});
   useEffect(() => {
     if (!pane.current) return;
-    const ro = new ResizeObserver((es) => setWidth(Math.max(1, es[0].contentRect.width - 16)));
+    const ro = new ResizeObserver((es) =>
+      setWidth(Math.max(1, es[0].contentRect.width - 16)),
+    );
     ro.observe(pane.current);
     return () => ro.disconnect();
   }, [pdf]);
@@ -57,11 +89,29 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   );
   const warnings = mapping?.blocks.filter((b) => b.warning) || [],
     warningIndex = warnings.findIndex((b) => b.id === selected?.id);
+  const frontPages = new Set(
+    Array.from(
+      {
+        length: Math.max(
+          0,
+          (mapping?.stats || result?.stats)?.body_start_page - 1 || 0,
+        ),
+      },
+      (_, i) => i,
+    ),
+  );
+  const frontEnd = Math.max(-1, ...frontPages) + 1;
+  const frontExplanation =
+    "첫 번호 제목 이전의 쪽(표지, 목차 등)은 문서에 넣지 않습니다.";
   const positions = useMemo(() => {
     let top = 0;
-    return (mapping?.pages || result?.pages || []).map((p) => {
+    return (mapping?.pages || result?.pages || []).map((p, i) => {
       const scale = width / p.width,
-        v = { top, height: p.height * scale + 16, scale };
+        v = {
+          top,
+          height: p.height * scale + 16 + (frontPages.has(i) ? 32 : 0),
+          scale,
+        };
       top += v.height;
       return v;
     });
@@ -74,7 +124,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       setError("PDF 선택에 실패했습니다.");
     }
   }
-  async function load(path) {
+  async function load(path, cachedOnly = false) {
     setBusy(true);
     setError("");
     setMapping(null);
@@ -85,10 +135,30 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     setStatus("PDF 읽는 중");
     metrics.current = { start: performance.now() };
     try {
-      const f = await invoke("load", { path });
+      const f = await invoke("load", { path, cachedOnly });
+      try {
+        const folders = JSON.parse(localStorage.getItem(recentKey) || "[]");
+        localStorage.setItem(
+          recentKey,
+          JSON.stringify(
+            [
+              ...new Set([
+                f.folder,
+                ...(Array.isArray(folders) ? folders : []),
+              ]),
+            ].slice(0, 10),
+          ),
+        );
+      } catch {
+        setError("최근 폴더 목록을 보관하지 못했습니다.");
+      }
       setFile(f);
       const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
-      const loadingTask = pdfjs.getDocument({ data: bytes, verbosity: 0, enableScripting: false });
+      const loadingTask = pdfjs.getDocument({
+        data: bytes,
+        verbosity: 0,
+        enableScripting: false,
+      });
       const doc = await loadingTask.promise;
       setPdf(doc);
       metrics.current.readMs = performance.now() - metrics.current.start;
@@ -96,11 +166,16 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
         setMapping(f.cached);
         setStale(f.cached.stale);
         setCached(true);
-        setStatus("변환 완료 · 확인할 곳 " + f.cached.blocks.filter((b) => b.warning).length);
+        setStatus(
+          "변환 완료 · 확인할 곳 " +
+            f.cached.blocks.filter((b) => b.warning).length,
+        );
       } else await run(f, doc);
     } catch (e) {
       setError(
-        e.code === "pdf_import_failed" || e.code === "block_mismatch" || e.code === "document_changed"
+        e.code === "pdf_import_failed" ||
+          e.code === "block_mismatch" ||
+          e.code === "document_changed"
           ? e.message
           : "PDF 변환에 실패했습니다. PDF와 저장 위치를 확인해 주세요.",
       );
@@ -140,7 +215,10 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     }
     metrics.current.imageMs = performance.now() - at;
     metrics.current.imageCount = images.length;
-    metrics.current.imageBytes = images.reduce((n, i) => n + Math.floor((i.base64.length * 3) / 4), 0);
+    metrics.current.imageBytes = images.reduce(
+      (n, i) => n + Math.floor((i.base64.length * 3) / 4),
+      0,
+    );
     const plan = authoring(r);
     setStatus("문서 저장 중");
     at = performance.now();
@@ -152,22 +230,32 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     });
     metrics.current.saveMs = performance.now() - at;
     at = performance.now();
-    const m = await invoke("mapping", { id: f.id, units: plan.units, revision: saved.revision });
+    const m = await invoke("mapping", {
+      id: f.id,
+      units: plan.units,
+      revision: saved.revision,
+    });
     metrics.current.mappingMs = performance.now() - at;
     metrics.current.documentBytes = m.documentBytes;
     metrics.current.blocks = plan.units.length;
     metrics.current.totalMs = performance.now() - metrics.current.start;
     metrics.current.savedAt = performance.now();
-    performance.measure("pdf-import-conversion", { start: metrics.current.start, detail: { ...metrics.current } });
+    performance.measure("pdf-import-conversion", {
+      start: metrics.current.start,
+      detail: { ...metrics.current },
+    });
     setMapping(m);
-    setStatus("변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length);
+    setStatus(
+      "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
+    );
   }
   async function rewrite() {
     try {
       if (
         !(await confirm({
           title: "다시 변환",
-          message: "기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",
+          message:
+            "기존 문서는 같은 폴더에 이전 사본으로 보관하고 새로 만듭니다.",
           confirmLabel: "다시 변환",
         }))
       )
@@ -182,7 +270,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       await run(file, pdf);
       setCached(false);
     } catch (e) {
-      setError("다시 변환에 실패했습니다. 이전 사본과 저장 위치를 확인해 주세요.");
+      setError(
+        "다시 변환에 실패했습니다. 이전 사본과 저장 위치를 확인해 주세요.",
+      );
       setStatus("실패");
     } finally {
       setBusy(false);
@@ -193,7 +283,11 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     try {
       const t = performance.now();
       setSelected(b);
-      metrics.current.lastSelection = { id: b.id, start: t, targetAt: performance.now() };
+      metrics.current.lastSelection = {
+        id: b.id,
+        start: t,
+        targetAt: performance.now(),
+      };
       if (scroll) pane.current.scrollTop = positions[b.boxes[0].page].top;
     } catch (e) {
       setError("문서 대응을 확인하지 못했습니다.");
@@ -229,11 +323,19 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   );
   const viewState = React.useCallback(
     (s) => {
-      if (s.state === "ready" && metrics.current.savedAt && !metrics.current.readyMs) {
+      if (
+        s.state === "ready" &&
+        metrics.current.savedAt &&
+        !metrics.current.readyMs
+      ) {
         metrics.current.readyMs = performance.now() - metrics.current.savedAt;
-        performance.measure("pdf-import-ready", { start: metrics.current.savedAt, detail: metrics.current.readyMs });
+        performance.measure("pdf-import-ready", {
+          start: metrics.current.savedAt,
+          detail: metrics.current.readyMs,
+        });
       }
-      if (s.revision && mapping && s.revision !== mapping.revision) setStale(true);
+      if (s.revision && mapping && s.revision !== mapping.revision)
+        setStale(true);
       if (s.state === "stale-target") {
         setStale(true);
         setSelected(null);
@@ -244,11 +346,59 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   );
   return (
     <ui.ScreenLayout
-      description={file ? file.name + (pdf ? " · " + pdf.numPages + "쪽" : "") : void 0}
-      status={<ui.Status tone={error ? "error" : busy ? "progress" : mapping ? "ok" : "neutral"} label={status} />}
+      description={
+        file ? (
+          <span
+            tabIndex={frontEnd ? 0 : undefined}
+            onMouseEnter={() =>
+              frontEnd && setTip({ text: frontExplanation, page: -1 })
+            }
+            onMouseLeave={() => setTip(null)}
+            onFocus={() =>
+              frontEnd && setTip({ text: frontExplanation, page: -1 })
+            }
+            onBlur={() => setTip(null)}
+            aria-describedby={
+              tip?.page === -1 ? "pdf-front-explanation" : undefined
+            }
+          >
+            {file.name +
+              (pdf ? " · " + pdf.numPages + "쪽" : "") +
+              (frontEnd
+                ? " · " +
+                  (frontEnd === 1 ? "1쪽" : "1–" + frontEnd + "쪽") +
+                  " 제외"
+                : "")}
+            {tip?.page === -1 && (
+              <span
+                id="pdf-front-explanation"
+                role="tooltip"
+                className="type-helper"
+                style={{ display: "block" }}
+              >
+                {tip.text}
+              </span>
+            )}
+          </span>
+        ) : (
+          void 0
+        )
+      }
+      status={
+        <ui.Status
+          tone={
+            error ? "error" : busy ? "progress" : mapping ? "ok" : "neutral"
+          }
+          label={status}
+        />
+      }
       actions={
         <>
-          <ui.Button variant={mapping ? "outline" : "default"} disabled={busy} onClick={choose}>
+          <ui.Button
+            variant={mapping ? "outline" : "default"}
+            disabled={busy}
+            onClick={choose}
+          >
             PDF 고르기
           </ui.Button>
           {cached && (
@@ -260,7 +410,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
             <>
               <ui.Button
                 disabled={busy || stale || warningIndex === 0}
-                onClick={() => select(warnings[Math.max(0, warningIndex - 1)], true)}
+                onClick={() =>
+                  select(warnings[Math.max(0, warningIndex - 1)], true)
+                }
               >
                 이전
               </ui.Button>
@@ -280,7 +432,8 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
               onClick={async () => {
                 try {
                   const r = await openDocument({ path: file.document });
-                  if (r.status !== "opened") setError("문서를 열지 못했습니다.");
+                  if (r.status !== "opened")
+                    setError("문서를 열지 못했습니다.");
                 } catch {
                   setError("문서를 열지 못했습니다.");
                 }
@@ -294,16 +447,67 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     >
       <style>{`.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}.pdf-import-narrow{display:none}.pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;background:transparent!important}.pdf-import-box:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}@media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}.pdf-import-narrow{display:block}}`}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
-      {stale && <ui.Notice tone="warning">문서가 바뀌어 대응을 표시할 수 없음</ui.Notice>}
+      {stale && (
+        <ui.Notice tone="warning">
+          문서가 바뀌어 대응을 표시할 수 없음
+        </ui.Notice>
+      )}
+      {!file && recent.length > 0 && (
+        <>
+          <h2 className="type-section-title">변환한 문서</h2>
+          <ui.DataTable
+            title="변환한 문서"
+            rows={recent.map((r) => ({
+              ...r,
+              name:
+                r.name +
+                (recent.filter((x) => x.name === r.name).length > 1
+                  ? " (" + r.folder + ")"
+                  : ""),
+              modified: new Date(r.modified).toLocaleString("ko-KR"),
+            }))}
+            columns={["name", "pages", "warnings", "modified", "state"]}
+            labels={{
+              name: "문서 이름",
+              pages: "쪽 수",
+              warnings: "확인할 곳 수",
+              modified: "변환한 때",
+              state: "상태",
+            }}
+            fields={{ pages: { type: "number" }, warnings: { type: "number" } }}
+            rowKey="id"
+            onSelectRow={(r) => {
+              if (busy) return;
+              if (r.state)
+                setError(
+                  r.state === "원본 없음"
+                    ? "원본 PDF가 없어 저장된 결과를 열 수 없습니다."
+                    : "원본 PDF가 바뀌어 저장된 결과를 열 수 없습니다. PDF를 다시 골라 주세요.",
+                );
+              else load(r.path, true);
+            }}
+          />
+        </>
+      )}
       {pdf && (
         <>
           <div className="pdf-import-narrow">
             <ui.Notice>넓은 창에서 보기</ui.Notice>
           </div>
           <ui.Toolbar>
-            {["heading", "paragraph", "list", "table", "figure", "footnote", "margin"].map((k) => (
+            {[
+              "heading",
+              "paragraph",
+              "list",
+              "table",
+              "figure",
+              "footnote",
+              "margin",
+            ].map((k) => (
               <span key={k} className="type-helper">
-                <span style={{ color: "var(--id-color-" + colors[k] + ")" }}>■</span>
+                <span style={{ color: "var(--id-color-" + colors[k] + ")" }}>
+                  ■
+                </span>
                 {labels[k]}
               </span>
             ))}
@@ -316,9 +520,16 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
               <div
                 data-pdf-pane
                 ref={pane}
-                style={{ height: 760, overflow: "auto", background: "var(--id-color-canvas)", position: "relative" }}
+                style={{
+                  height: 760,
+                  overflow: "auto",
+                  background: "var(--id-color-canvas)",
+                  position: "relative",
+                }}
                 onScroll={(e) => {
-                  const n = positions.findIndex((p) => p.top + p.height > e.currentTarget.scrollTop + 1);
+                  const n = positions.findIndex(
+                    (p) => p.top + p.height > e.currentTarget.scrollTop + 1,
+                  );
                   setPageNo(Math.max(1, n + 1));
                   setTip(null);
                 }}
@@ -327,64 +538,132 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                   <div
                     data-source-page={i + 1}
                     key={i}
-                    style={{ height: pos.height, position: "relative", width, marginBottom: 0 }}
+                    style={{
+                      height: pos.height,
+                      position: "relative",
+                      width,
+                      marginBottom: 0,
+                    }}
                   >
                     {Math.abs(i + 1 - pageNo) <= 2 && (
-                      <>
+                      <div
+                        style={{
+                          position: "relative",
+                          top: frontPages.has(i) ? 32 : 0,
+                        }}
+                      >
                         <Page index={i} scale={pos.scale} />
-                        {(mapping?.blocks || result?.blocks || []).flatMap((b) =>
-                          b.boxes
-                            .filter((x) => x.page === i)
-                            .map((x, j) => (
-                              <ui.Button
-                                key={b.id + "-" + j}
-                                className="pdf-import-box"
-                                data-source-id={b.id}
-                                aria-label={labels[b.kind] + (b.warning ? " · " + b.warning.reason : "")}
-                                onMouseEnter={() =>
-                                  setTip({
-                                    text: labels[b.kind] + (b.warning ? " · " + b.warning.reason : ""),
-                                    page: i,
-                                    top: x.bottom * pos.scale,
-                                  })
-                                }
-                                onMouseLeave={() => setTip(null)}
-                                onFocus={() =>
-                                  setTip({
-                                    text: labels[b.kind] + (b.warning ? " · " + b.warning.reason : ""),
-                                    page: i,
-                                    top: x.bottom * pos.scale,
-                                  })
-                                }
-                                onBlur={() => setTip(null)}
-                                onClick={() => select(b)}
-                                style={{
-                                  left: x.x0 * pos.scale,
-                                  top: x.top * pos.scale,
-                                  width: Math.max(1, (x.x1 - x.x0) * pos.scale),
-                                  height: Math.max(1, (x.bottom - x.top) * pos.scale),
-                                  border:
-                                    (selected?.id === b.id ? "3" : "1") +
-                                    "px solid var(--id-color-" +
-                                    (b.warning ? "warning" : colors[b.kind]) +
-                                    ")",
-                                }}
-                              >
-                                {b.warning && (
-                                  <span
-                                    style={{
-                                      position: "absolute",
-                                      right: 0,
-                                      top: 0,
-                                      color: "var(--id-color-warning)",
-                                      background: "var(--id-color-surface)",
-                                    }}
-                                  >
-                                    !
-                                  </span>
-                                )}
-                              </ui.Button>
-                            )),
+                        {frontPages.has(i) && (
+                          <div
+                            tabIndex={0}
+                            aria-label="변환에서 제외 · 본문 시작 전"
+                            aria-describedby={
+                              tip?.page === i
+                                ? "pdf-front-page-" + i
+                                : undefined
+                            }
+                            onMouseEnter={() =>
+                              setTip({
+                                text: frontExplanation,
+                                page: i,
+                                top: 32,
+                              })
+                            }
+                            onMouseLeave={() => setTip(null)}
+                            onFocus={() =>
+                              setTip({
+                                text: frontExplanation,
+                                page: i,
+                                top: 32,
+                              })
+                            }
+                            onBlur={() => setTip(null)}
+                            className="type-helper"
+                            style={{
+                              position: "absolute",
+                              top: -32,
+                              left: 0,
+                              right: 0,
+                              padding: "var(--space-2)",
+                              background: "var(--id-color-surface-muted)",
+                              color: "var(--id-color-text-muted)",
+                              border: "1px solid var(--id-color-border)",
+                            }}
+                          >
+                            변환에서 제외 · 본문 시작 전
+                          </div>
+                        )}
+                        {(mapping?.blocks || result?.blocks || []).flatMap(
+                          (b) =>
+                            b.boxes
+                              .filter((x) => x.page === i)
+                              .map((x, j) => (
+                                <ui.Button
+                                  key={b.id + "-" + j}
+                                  className="pdf-import-box"
+                                  data-source-id={b.id}
+                                  aria-label={
+                                    labels[b.kind] +
+                                    (b.warning ? " · " + b.warning.reason : "")
+                                  }
+                                  onMouseEnter={() =>
+                                    setTip({
+                                      text:
+                                        labels[b.kind] +
+                                        (b.warning
+                                          ? " · " + b.warning.reason
+                                          : ""),
+                                      page: i,
+                                      top: x.bottom * pos.scale,
+                                    })
+                                  }
+                                  onMouseLeave={() => setTip(null)}
+                                  onFocus={() =>
+                                    setTip({
+                                      text:
+                                        labels[b.kind] +
+                                        (b.warning
+                                          ? " · " + b.warning.reason
+                                          : ""),
+                                      page: i,
+                                      top: x.bottom * pos.scale,
+                                    })
+                                  }
+                                  onBlur={() => setTip(null)}
+                                  onClick={() => select(b)}
+                                  style={{
+                                    left: x.x0 * pos.scale,
+                                    top: x.top * pos.scale,
+                                    width: Math.max(
+                                      1,
+                                      (x.x1 - x.x0) * pos.scale,
+                                    ),
+                                    height: Math.max(
+                                      1,
+                                      (x.bottom - x.top) * pos.scale,
+                                    ),
+                                    border:
+                                      (selected?.id === b.id ? "3" : "1") +
+                                      "px solid var(--id-color-" +
+                                      (b.warning ? "warning" : colors[b.kind]) +
+                                      ")",
+                                  }}
+                                >
+                                  {b.warning && (
+                                    <span
+                                      style={{
+                                        position: "absolute",
+                                        right: 0,
+                                        top: 0,
+                                        color: "var(--id-color-warning)",
+                                        background: "var(--id-color-surface)",
+                                      }}
+                                    >
+                                      !
+                                    </span>
+                                  )}
+                                </ui.Button>
+                              )),
                         )}
                         {(mapping?.excluded || result?.excluded || [])
                           .filter((x) => x.page === i)
@@ -405,6 +684,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                           ))}
                         {tip?.page === i && (
                           <div
+                            id={"pdf-front-page-" + i}
                             role="tooltip"
                             className="type-helper"
                             style={{
@@ -422,7 +702,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                             {tip.text}
                           </div>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -433,7 +713,11 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
               {mapping && (
                 <ui.DocumentView
                   path={file.document}
-                  target={selected && !stale ? { revision: mapping.revision, path: selected.path } : void 0}
+                  target={
+                    selected && !stale
+                      ? { revision: mapping.revision, path: selected.path }
+                      : void 0
+                  }
                   height={760}
                   onStateChange={viewState}
                 />
