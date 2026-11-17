@@ -2,6 +2,8 @@ import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
+import SourceLinks from "./source-links.jsx";
+import {browseScales,steppedScale} from "./link-geometry.mjs";
 import {blockActions} from "./block-actions.mjs";
 import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
@@ -59,7 +61,12 @@ function Screen({
   openDocument,
   confirm,
 }) {
-  const { useState, useRef, useEffect, useMemo } = React;
+  const { useState, useRef, useEffect, useMemo, useLayoutEffect } = React;
+  const [browseScale,setBrowseScale]=useState(()=>{try{const value=Number(localStorage.getItem('pdf-import-browse-scale'));return browseScales.includes(value)?value:1;}catch{return 1;}});
+  const scaleValue=useRef(browseScale),scaleChange=useRef(null),scaleAnchor=useRef(null);
+  const linkController=useRef(null),documentLayout=useRef(null),comparisonPair=useRef(null),documentPreview=useRef(null);
+  const [pageLast,setPageLast]=useState(1);
+  const receiveLayout=React.useCallback(report=>{documentLayout.current=report;linkController.current?.layout();},[]);
   const recentKey = "pdf-import-recent-folders";
   const [recent, setRecent] = useState([]);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
@@ -106,6 +113,11 @@ function Screen({
     [follow, setFollow] = useState(true),
     [followed, setFollowed] = useState(null),
     [target, setTarget] = useState(null);
+  useEffect(()=>{
+    const pair=comparisonPair.current;if(!pair)return;
+    const wheel=e=>{if(!e.ctrlKey||!e.deltaY||!(pane.current?.contains(e.target)||documentPreview.current?.contains(e.target)))return;e.preventDefault();scaleChange.current?.(steppedScale(scaleValue.current,e.deltaY));};
+    pair.addEventListener('wheel',wheel,{capture:true,passive:false});return ()=>pair.removeEventListener('wheel',wheel,true);
+  },[pdf,picking]);
   const anchor = useRef(null),
     scrollTimer = useRef(null),
     scrollOwner = useRef(null), sourceAuto = useRef(null);
@@ -191,7 +203,7 @@ function Screen({
     let top = 0;
     return (mapping?.pages || result?.pages || pdf?.pageSizes || []).map(
       (p, i) => {
-        const scale = width / p.width,
+        const scale = width * browseScale / p.width,
           v = {
             top,
             height: p.height * scale + 16,
@@ -201,7 +213,7 @@ function Screen({
         return v;
       },
     );
-  }, [mapping, result, pdf, width]);
+  }, [mapping, result, pdf, width,browseScale]);
   async function choose() {
     try {
       const f = await pickPath({ kind: "pdf" });
@@ -214,7 +226,7 @@ function Screen({
     if(pickerSession.current) pickerSession.current.active=false;
     const session={active:true,touched:new Set()};
     pickerSession.current=session;
-    scrollOwner.current=null; sourceAuto.current=null;
+    scrollOwner.current=null; sourceAuto.current=null; scaleAnchor.current=null; documentLayout.current=null;
     replacementApproved.current=false;
     setPickerHelp(false);
     setPageTitles([]);
@@ -466,6 +478,26 @@ function Screen({
   }
 
   const locations = useMemo(()=>sourceLocations(mapping?.blocks || [], positions),[mapping,positions]);
+  function updateSourceViewport(){
+    if(!pane.current)return;
+    const top=pane.current.scrollTop,bottom=top+pane.current.clientHeight;
+    setPageNo(Math.max(1,positions.findIndex(p=>p.top+p.height>top+1)+1));
+    const last=positions.findIndex(p=>p.top>=bottom);setPageLast(last<0?positions.length:last);
+  }
+  function changeScale(value){
+    if(value===scaleValue.current||!browseScales.includes(value))return;
+    clearTimeout(scrollTimer.current);
+    if(pane.current){const y=pane.current.scrollTop+pane.current.clientHeight/3;const hit=locations.find(x=>x.top<=y&&x.bottom>=y)||locations.find(x=>x.top>=y)||locations.at(-1);if(hit)scaleAnchor.current={index:locations.indexOf(hit),id:hit.b.id,offset:hit.top-pane.current.scrollTop};}
+    scaleValue.current=value;setBrowseScale(value);
+    try{localStorage.setItem('pdf-import-browse-scale',String(value));}catch{setError('배율을 기억하지 못했습니다.');}
+  }
+  scaleChange.current=changeScale;
+  useLayoutEffect(()=>{
+    if(!pane.current)return;
+    const anchor=scaleAnchor.current,hit=anchor&&locations[anchor.index];
+    if(hit&&hit.b.id===anchor.id){pane.current.scrollTop=Math.max(0,hit.top-anchor.offset);sourceAuto.current=pane.current.scrollTop;scaleAnchor.current=null;}
+    updateSourceViewport();linkController.current?.refresh();
+  },[locations]);
   function ownScroll(side, event) {
     if(event?.type==='keydown' && (!['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key) || event.ctrlKey || event.altKey || event.metaKey))return;
     scrollOwner.current=side;
@@ -651,8 +683,8 @@ function Screen({
       }
     >
       <style>{`
-@container pdf-tools (max-width:850px){[data-comparison-navigation]{flex-basis:100%;justify-content:flex-end}}
-.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}
+@container pdf-tools (max-width:940px){[data-comparison-navigation]{flex-basis:100%;justify-content:flex-end}}
+.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);gap:0}
 .pdf-import-narrow{display:none}
 .pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
 .pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
@@ -670,6 +702,7 @@ function Screen({
 .pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
 @media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
 .pdf-import-narrow{display:block}
+[data-link-gutter]{display:none}
 }
 `}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
@@ -786,13 +819,14 @@ function Screen({
                 </span>
               )}
             </label>
+              <ui.Select label="훑어보기 배율" hideLabel value={String(browseScale)} options={browseScales.map(value=>({value:String(value),label:Math.round(value*100)+'%'}))} onValueChange={value=>changeScale(Number(value))}/>
               {undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
             </div>
           </div></ui.Toolbar>
           <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
             {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>경고 {warningIndex+1} / {warnings.length} · {warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
           </div>
-          <div className="pdf-import-panes">
+          <div className="pdf-import-panes" ref={comparisonPair}>
             <div style={{ minWidth: 0 }}>
               <div className="type-item-name">
                 원본 · {pageNo} / {pdf.numPages}쪽
@@ -812,10 +846,7 @@ function Screen({
                   position: "relative",
                 }}
                 onScroll={(e) => {
-                  const n = positions.findIndex(
-                    (p) => p.top + p.height > e.currentTarget.scrollTop + 1,
-                  );
-                  setPageNo(Math.max(1, n + 1));
+                  updateSourceViewport();linkController.current?.refresh();
                   setTip(null);
                   sourceScroll();
                 }}
@@ -827,11 +858,12 @@ function Screen({
                     style={{
                       height: pos.height,
                       position: "relative",
-                      width,
+                      width:width*browseScale,
+                      marginLeft:'auto',
                       marginBottom: 0,
                     }}
                   >
-                    {Math.abs(i + 1 - pageNo) <= 2 && (
+                    {i+1>=pageNo-2 && i+1<=pageLast+2 && (
                       <div
                         style={{
                           position: "relative",
@@ -889,8 +921,7 @@ function Screen({
                                     labels[b.kind] +
                                     (b.warning ? " · " + b.warning.reason : "")
                                   }
-                                  onMouseEnter={() =>
-                                    setTip({
+                                  onMouseEnter={() => {linkController.current?.source(b.id);setTip({
                                       text:
                                         labels[b.kind] +
                                         (b.warning
@@ -899,8 +930,8 @@ function Screen({
                                       page: i,
                                       top: x.bottom * pos.scale,
                                     })
-                                  }
-                                  onMouseLeave={() => setTip(null)}
+                                  }}
+                                  onMouseLeave={() => {linkController.current?.source(null);setTip(null);}}
                                   onFocus={() =>
                                     setTip({
                                       text:
@@ -932,9 +963,9 @@ function Screen({
                                   }}
                                 >
                                   <span className="type-helper" style={{position:'absolute',left:-x.x0*pos.scale,top:0,width:Math.max(0,x.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',gap:0,overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>
-                                    {b.level && (["heading","heading_unnumbered"].includes(b.kind) || (b.kind==='list' && b.level>=2)) && <span>{b.kind==='list'?b.level:'H'+Math.min(6,b.level)}</span>}
+                                    {b.level && (["heading","heading_unnumbered"].includes(b.kind) || (b.kind==='list' && b.level>=2)) && <span>{browseScale===.4?'·':b.kind==='list'?b.level:'H'+Math.min(6,b.level)}</span>}
                                     {b.warning && <span style={{color:'var(--id-color-warning)'}}>!</span>}
-                                    {b.edited && <span>고침</span>}
+                                    {b.edited && <span>{browseScale===.4?'·':'고침'}</span>}
                                   </span>
                                 </ui.Button>}/>
 
@@ -977,13 +1008,15 @@ function Screen({
                 ))}
               </div>
             </div>
+            <SourceLinks React={React} controller={linkController} layout={documentLayout} pane={pane} preview={documentPreview} mapping={mapping} sources={locations} pageWidth={width*browseScale} selection={selection} stale={stale} colors={colors} onSelect={b=>{ownScroll('source');select(b);}}/>
             <div data-document-pane style={{ minWidth: 0 }}
+              onPointerMove={e=>linkController.current?.document(e)} onPointerLeave={()=>linkController.current?.leaveDocument()}
               onWheelCapture={e=>ownScroll('document',e)}
               onPointerDownCapture={e=>ownScroll('document',e)}
               onKeyDownCapture={e=>ownScroll('document',e)}>
               <div className="type-item-name">변환된 문서</div>
               {mapping && (
-                <ui.DocumentView
+                <div ref={documentPreview}><ui.DocumentView
                   reloadKey={reloadKey}
                   path={file.document}
                   target={
@@ -992,10 +1025,12 @@ function Screen({
                       : void 0
                   }
                   height={760}
+                  scale={browseScale}
+                  onVisibleBlockLayoutChange={receiveLayout}
                   onStateChange={viewState}
                   onVisibleBlockChange={documentVisible}
                   onBlockClick={documentClick}
-                />
+                /></div>
               )}
             </div>
           </div>
