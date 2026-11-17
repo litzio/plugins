@@ -14,6 +14,7 @@ test('answer key: correct counts never fall below the recorded baseline', async 
   assert.deepEqual(Object.keys(report.summary).sort(), Object.keys(baseline.summary).sort());
   for (const [role, minimum] of Object.entries(baseline.summary))
     assert.ok(report.summary[role].correct >= minimum, `${role}: ${report.summary[role].correct} < ${minimum}`);
+  assert.ok(report.formulaSummary.own_image >= baseline.formulas.own_image);
   for(const [metric,minimum] of Object.entries(baseline.tables)) assert.ok(report.tableSummary[metric]>=minimum,metric);
 });
 
@@ -77,4 +78,17 @@ test('scoring uses page, geometry and heading level, including short text', () =
   assert.equal(score(r,g).summary.section_header.missing, 1);
   r.excludedPages = [1];
   assert.equal(score(r,g).summary.section_header.excluded_page, 1);
+});
+
+test('T-09 scoring distinguishes independent image, merged image, text fragments and absence',()=>{
+ const e={id:'formula',page:1,role:'formula',bbox:[10,10,50,30],text:''};
+ const r={blocks:[{id:'b0',kind:'figure',text:'',page:0,boxes:[{page:0,x0:10,top:10,x1:50,bottom:30}]}],stats:{},excluded:[],excludedPages:[]};
+ const ref={elements:[e],relations:[]};
+ assert.equal(score(r,ref).formulas[0].status,'own_image');
+ ref.elements.push({...e,id:'other',bbox:[40,20,60,40]});
+ assert.equal(score(r,ref).formulas[0].status,'merged');
+ r.blocks[0].kind='paragraph';
+ assert.equal(score(r,ref).formulas[0].status,'fragmented_text');
+ r.blocks=[];
+ assert.equal(score(r,ref).formulas[0].status,'missing');
 });

@@ -10,7 +10,7 @@ function authoring(result) {
   for (const cap of blocks.filter((b) => b.kind === "caption")) {
     const table = cap.text.startsWith("Table");
     const objs = blocks.filter(
-      (b) => b.page === cap.page && b.kind === (table ? "table" : "figure"),
+      (b) => !b.formula && b.page === cap.page && b.kind === (table ? "table" : "figure"),
     );
     const eligible = objs.filter((b) =>
       table
@@ -139,7 +139,7 @@ function authoring(result) {
         kind: "figure",
         enumerated: false,
         imageAsset: keys.get(b.id),
-        imageAlt: b.kind === "table" ? "표 영역" : "그림 영역",
+        imageAlt: b.formula ? "수식 영역" : b.kind === "table" ? "표 영역" : "그림 영역",
         caption: cap ? footnoteContent(cap.text, stats) : "",
       };
       if (cap) sources.push(cap.id);
