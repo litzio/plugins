@@ -1,8 +1,9 @@
+import { statusLabel } from './document-status.mjs';
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { koreanTime } from "./time.mjs";
 import { createHash } from "node:crypto";
-export async function listConverted(input) {
+export async function listConverted(input, inspect = async file => (await import('./document-io.mjs')).inspectDocument(file)) {
   const rows = [],
     folders = [];
   for (const folder of [...new Set(input)].slice(0, 10)) {
@@ -51,6 +52,7 @@ export async function listConverted(input) {
           warnings: data.blocks.filter((b) => b.warning).length,
           modified: koreanTime(info.mtime),
           state,
+          reviewStatus:statusLabel((await inspect(side.replace(/\.pdf-source\.json$/, ".md"))).status),
         });
       } catch (e) {
         if (e.code !== "ENOENT") throw e;
