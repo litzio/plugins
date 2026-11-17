@@ -73,9 +73,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const frontExplanation = "첫 번호 제목 이전의 쪽(표지, 목차 등)은 문서에 넣지 않습니다.";
   const positions = useMemo(() => {
     let top = 0;
-    return (mapping?.pages || result?.pages || []).map((p) => {
+    return (mapping?.pages || result?.pages || []).map((p, i) => {
       const scale = width / p.width,
-        v = { top, height: p.height * scale + 16, scale };
+        v = { top, height: p.height * scale + 16 + (frontPages.has(i) ? 32 : 0), scale };
       top += v.height;
       return v;
     });
@@ -364,7 +364,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                     style={{ height: pos.height, position: "relative", width, marginBottom: 0 }}
                   >
                     {Math.abs(i + 1 - pageNo) <= 2 && (
-                      <>
+                      <div style={{position:"relative",top:frontPages.has(i) ? 32 : 0}}>
                         <Page index={i} scale={pos.scale} />
                         {frontPages.has(i) && <div tabIndex={0}
                           aria-label="변환에서 제외 · 본문 시작 전"
@@ -374,7 +374,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                           onFocus={()=>setTip({text:frontExplanation,page:i,top:32})}
                           onBlur={()=>setTip(null)}
                           className="type-helper"
-                          style={{position:"absolute",top:0,left:0,right:0,padding:"var(--space-2)",background:"var(--id-color-surface-muted)",color:"var(--id-color-text-muted)",border:"1px solid var(--id-color-border)"}}>
+                          style={{position:"absolute",top:-32,left:0,right:0,padding:"var(--space-2)",background:"var(--id-color-surface-muted)",color:"var(--id-color-text-muted)",border:"1px solid var(--id-color-border)"}}>
                           변환에서 제외 · 본문 시작 전
                         </div>}
                         {(mapping?.blocks || result?.blocks || []).flatMap((b) =>
@@ -468,7 +468,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
                             {tip.text}
                           </div>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}
