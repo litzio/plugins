@@ -7,7 +7,8 @@ const LIST = /^(?:[a-z]\)|\d+\)|[—–•\-]|NOTE\b)/,
   END = /[.:;?!)\]”"]$|\[\^\w+\]$/;
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, ""),
   chars = (s) => s.replace(/\s/g, "").length;
-const round = (x) => (Math.abs(x % 1) === 0.5 ? 2 * Math.round(x / 2) : Math.round(x));
+const round = (x) =>
+  Math.abs(x % 1) === 0.5 ? 2 * Math.round(x / 2) : Math.round(x);
 const box = (page, b) => ({
   page,
   x0: Math.min(b[0], b[2]),
@@ -27,7 +28,10 @@ function addBox(b, l) {
 }
 function line(raw, page) {
   const spans = raw.spans.filter((s) => s.text.trim()),
-    main = spans.reduce((a, s) => (!a || s.text.length > a.text.length ? s : a), null),
+    main = spans.reduce(
+      (a, s) => (!a || s.text.length > a.text.length ? s : a),
+      null,
+    ),
     main_size = main ? round(main.size * 10) / 10 : 0;
   return {
     page,
@@ -43,7 +47,9 @@ function line(raw, page) {
       .trim(),
     size: Math.max(0, ...spans.map((s) => s.size)),
     main_size,
-    bold: spans.length > 0 && spans.filter((s) => s.size >= 7).every((s) => s.flags & 16),
+    bold:
+      spans.length > 0 &&
+      spans.filter((s) => s.size >= 7).every((s) => s.flags & 16),
     first_size: spans[0]?.size || 0,
     kind: null,
     text() {
@@ -71,7 +77,7 @@ const inside = (l, r) => {
   return r[0] - 2 <= x && x <= r[2] + 2 && r[1] - 2 <= y && y <= r[3] + 2;
 };
 function convert({ pages, toc }) {
-  pages = pages.map(p=>({...p}));
+  pages = pages.map((p) => ({ ...p }));
   const all = pages.map((p, i) =>
     p.raw
       .map((r) => line(r, i))
@@ -80,50 +86,91 @@ function convert({ pages, toc }) {
   );
   const sizes = /* @__PURE__ */ new Map();
   for (const lines of all)
-    for (const l of lines) sizes.set(l.main_size, (sizes.get(l.main_size) || 0) + l.plain.length);
+    for (const l of lines)
+      sizes.set(l.main_size, (sizes.get(l.main_size) || 0) + l.plain.length);
   const body = [...sizes].sort((a, b) => b[1] - a[1])[0]?.[0] || 0;
   const seen = /* @__PURE__ */ new Map(),
     key = (l) => l.plain.replace(/\d+/g, "#"),
-    margin = (l, i) => l.y1 < pages[i].height * 0.1 || l.y0 > pages[i].height * 0.9;
+    margin = (l, i) =>
+      l.y1 < pages[i].height * 0.1 || l.y0 > pages[i].height * 0.9;
   all.forEach((ls, i) => {
-    for (const k of new Set(ls.filter((l) => margin(l, i)).map(key))) seen.set(k, (seen.get(k) || 0) + 1);
+    for (const k of new Set(ls.filter((l) => margin(l, i)).map(key)))
+      seen.set(k, (seen.get(k) || 0) + 1);
   });
   all.forEach((ls, i) => {
     for (const l of ls)
-      if (margin(l, i) && ((seen.get(key(l)) || 0) >= pages.length * 0.3 || /^[ivxlc\d]+$/.test(l.plain)))
+      if (
+        margin(l, i) &&
+        ((seen.get(key(l)) || 0) >= pages.length * 0.3 ||
+          /^[ivxlc\d]+$/.test(l.plain))
+      )
         l.kind = "margin";
     // Resolve geometry before captions and footnotes: text order cannot split a crop.
     const regions = coalesceOverlaps([
-      ...pages[i].tables.map(r => ({kind: "table", page:i, text:"", boxes:[box(i,r)]})),
-      ...pages[i].figures.map(r => ({kind: "figure", page:i, text:"", boxes:[box(i,r)]})),
+      ...pages[i].tables.map((r) => ({
+        kind: "table",
+        page: i,
+        text: "",
+        boxes: [box(i, r)],
+      })),
+      ...pages[i].figures.map((r) => ({
+        kind: "figure",
+        page: i,
+        text: "",
+        boxes: [box(i, r)],
+      })),
     ]);
     for (const l of ls) {
       if (l.kind || !CAP.test(l.plain)) continue;
       const figure = l.plain.startsWith("Figure");
-      const candidates = regions.map(o => {
-        const r = o.boxes[0];
-        const below = l.y0 >= r.bottom;
-        const gap = below ? l.y0-r.bottom : r.top-l.y1;
-        const between = ls.filter(x => x !== l && !x.kind && x.y0 >= (below ? r.bottom : l.y1) && x.y1 <= (below ? l.y0 : r.top));
-        return {o,r,below,gap,between};
-      }).filter(c => l.x0 < c.r.x1 && l.x1 > c.r.x0 && c.gap >= 0 && c.gap <= (figure && c.below ? body*10 : body*4))
-        .sort((a,b) => a.gap-b.gap);
-      const c = candidates.find(c => !c.between.length || (figure && c.below && c.between.every(x => x.main_size < body)));
+      const candidates = regions
+        .map((o) => {
+          const r = o.boxes[0];
+          const below = l.y0 >= r.bottom;
+          const gap = below ? l.y0 - r.bottom : r.top - l.y1;
+          const between = ls.filter(
+            (x) =>
+              x !== l &&
+              x.kind !== "margin" &&
+              x.y0 >= (below ? r.bottom : l.y1) &&
+              x.y1 <= (below ? l.y0 : r.top),
+          );
+          return { o, r, below, gap, between };
+        })
+        .filter(
+          (c) =>
+            l.x0 < c.r.x1 &&
+            l.x1 > c.r.x0 &&
+            c.gap >= 0 &&
+            c.gap <= (figure && c.below ? body * 10 : body * 4),
+        )
+        .sort((a, b) => a.gap - b.gap);
+      const c = candidates.find(
+        (c) =>
+          !c.between.length ||
+          (figure && c.below && c.between.every((x) => x.main_size < body)),
+      );
       if (c) {
-        if (figure && c.below) for (const x of c.between) addBox(c.o, {page:i,bbox:x.bbox});
+        if (figure && c.below)
+          for (const x of c.between) addBox(c.o, { page: i, bbox: x.bbox });
         c.o.kind = figure ? "figure" : "table";
         l.kind = "caption";
       } else if (l.bold) l.kind = "caption";
     }
-    pages[i] = {...pages[i], tables:[], figures:[]};
+    pages[i] = { ...pages[i], tables: [], figures: [] };
     for (const o of regions) {
       const r = o.boxes[0];
-      pages[i][o.kind === "table" ? "tables" : "figures"].push([r.x0,r.top,r.x1,r.bottom]);
+      pages[i][o.kind === "table" ? "tables" : "figures"].push([
+        r.x0,
+        r.top,
+        r.x1,
+        r.bottom,
+      ]);
     }
     for (const l of ls) {
       if (l.kind) continue;
-      if (pages[i].tables.some(t => inside(l,t))) l.kind = "table";
-      else if (pages[i].figures.some(f => inside(l,f))) l.kind = "figure";
+      if (pages[i].tables.some((t) => inside(l, t))) l.kind = "table";
+      else if (pages[i].figures.some((f) => inside(l, f))) l.kind = "figure";
     }
     for (const t of pages[i].tables) {
       let y = t[3],
@@ -133,7 +180,11 @@ function convert({ pages, toc }) {
         if (l.y0 - y > 16) break;
         const starts =
           l.first_size <= body * 0.7 ||
-          (l.main_size < body && /^NOTE/.test(l.plain) && l.x0 > t[0] - 2 && l.x0 - t[0] < 12 && l.x0 > 92);
+          (l.main_size < body &&
+            /^NOTE/.test(l.plain) &&
+            l.x0 > t[0] - 2 &&
+            l.x0 - t[0] < 12 &&
+            l.x0 > 92);
         if (starts || (note && l.main_size < body)) {
           l.kind = "table";
           note = true;
@@ -141,12 +192,20 @@ function convert({ pages, toc }) {
         } else break;
       }
     }
-    const rest = ls.filter(l => !l.kind), tail = [];
+    const rest = ls.filter((l) => !l.kind),
+      tail = [];
     for (const l of rest.toReversed()) {
       if (l.main_size < body) tail.unshift(l);
       else break;
     }
-    while (tail.length && !( /^\d+\s+/.test(tail[0].plain) || (tail[0].first_size <= body*0.7 && /^\d+/.test(tail[0].plain)))) tail.shift();
+    while (
+      tail.length &&
+      !(
+        /^\d+\s+/.test(tail[0].plain) ||
+        (tail[0].first_size <= body * 0.7 && /^\d+/.test(tail[0].plain))
+      )
+    )
+      tail.shift();
     for (const l of tail) l.kind = "footnote";
     let prev = null;
     for (const l of ls) {
@@ -156,21 +215,37 @@ function convert({ pages, toc }) {
       }
       const t = l.text();
       if (l.bold && CAP.test(t)) l.kind = "caption";
-      else if (prev?.kind === "caption" && l.y0 - prev.y1 < 6 && l.x0 > 92) l.kind = "caption";
-      else if (l.bold && l.size >= body && (HEAD.test(t) || ANNEX.test(t) || TOP.test(t))) l.kind = "heading";
+      else if (prev?.kind === "caption" && l.y0 - prev.y1 < 6 && l.x0 > 92)
+        l.kind = "caption";
+      else if (
+        l.bold &&
+        l.size >= body &&
+        (HEAD.test(t) || ANNEX.test(t) || TOP.test(t))
+      )
+        l.kind = "heading";
       else if (l.size > body + 0.5) l.kind = "heading_unnumbered";
       prev = l;
     }
     for (const l of ls) l.kind ??= "body";
   });
-  let start = all.findIndex((ls) => ls.some((l) => l.kind === "heading" && /^1\.?\s/.test(l.text())));
+  let start = all.findIndex((ls) =>
+    ls.some((l) => l.kind === "heading" && /^1\.?\s/.test(l.text())),
+  );
   if (start < 0) start = 0;
-  for (let i = 0; i < start; i++) for (const l of all[i]) if (l.kind !== "margin") l.kind = "front";
+  for (let i = 0; i < start; i++)
+    for (const l of all[i]) if (l.kind !== "margin") l.kind = "front";
   const blocks = [],
     excluded = [];
   let joins = 0;
   const push = (kind, text, l, level) => {
-    const b = { id: "", kind, text, page: l.page, boxes: [], ...(level ? { level } : {}) };
+    const b = {
+      id: "",
+      kind,
+      text,
+      page: l.page,
+      boxes: [],
+      ...(level ? { level } : {}),
+    };
     addBox(b, l);
     blocks.push(b);
     return b;
@@ -179,7 +254,8 @@ function convert({ pages, toc }) {
     let prev = null,
       first = true,
       obj = null;
-    let noteShape = null, noteNumber = -1;
+    let noteShape = null,
+      noteNumber = -1;
     for (const l of all[p]) {
       if (["margin", "front"].includes(l.kind)) continue;
       const t = l.text();
@@ -193,14 +269,18 @@ function convert({ pages, toc }) {
       }
       obj = null;
       if (l.kind === "footnote") {
-        const m = l.plain.match(l.first_size <= body*0.7 ? /^(\d+)\s*(.*)$/ : /^(\d+)\s+(.*)$/);
-        const small = l.first_size <= body*0.7;
-        if (m && (noteShape === null || (small === noteShape && +m[1] > noteNumber))) {
+        const m = l.plain.match(
+          l.first_size <= body * 0.7 ? /^(\d+)\s*(.*)$/ : /^(\d+)\s+(.*)$/,
+        );
+        const small = l.first_size <= body * 0.7;
+        if (
+          m &&
+          (noteShape === null || (small === noteShape && +m[1] > noteNumber))
+        ) {
           noteShape ??= small;
           noteNumber = +m[1];
           push("footnote", "[^" + m[1] + "]: " + m[2], l);
-        }
-        else if (blocks.at(-1)?.kind === "footnote") {
+        } else if (blocks.at(-1)?.kind === "footnote") {
           blocks.at(-1).text += " " + l.plain;
           addBox(blocks.at(-1), l);
         }
@@ -229,7 +309,12 @@ function convert({ pages, toc }) {
         continue;
       }
       if (l.kind === "caption") {
-        if (blocks.at(-1)?.kind === "caption" && prev && l.y0 - prev.y1 < 6 && !CAP.test(t)) {
+        if (
+          blocks.at(-1)?.kind === "caption" &&
+          prev &&
+          l.y0 - prev.y1 < 6 &&
+          !CAP.test(t)
+        ) {
           blocks.at(-1).text += " " + t;
           addBox(blocks.at(-1), l);
         } else push("caption", t, l);
@@ -253,8 +338,15 @@ function convert({ pages, toc }) {
       } else {
         let joined = false;
         if (first && !LIST.test(t)) {
-          const b = blocks.findLast((b2) => ["para", "heading", "caption", "table", "figure"].includes(b2.kind));
-          if (b?.kind === "para" && b.page === p - 1 && !END.test(b.text) && /^[a-z(]/.test(t)) {
+          const b = blocks.findLast((b2) =>
+            ["para", "heading", "caption", "table", "figure"].includes(b2.kind),
+          );
+          if (
+            b?.kind === "para" &&
+            b.page === p - 1 &&
+            !END.test(b.text) &&
+            /^[a-z(]/.test(t)
+          ) {
             b.text += (b.text.endsWith("-") ? "" : " ") + t;
             addBox(b, l);
             blocks.splice(blocks.indexOf(b), 1);
@@ -271,11 +363,21 @@ function convert({ pages, toc }) {
   }
   all.forEach((ls) => {
     for (const l of ls)
-      if (["margin", "front"].includes(l.kind)) excluded.push({ page: l.page, kind: l.kind, box: box(l.page, l.bbox) });
+      if (["margin", "front"].includes(l.kind))
+        excluded.push({ page: l.page, kind: l.kind, box: box(l.page, l.bbox) });
   });
-  for (const b of blocks.filter((b2) => ["table", "figure"].includes(b2.kind))) {
+  for (const b of blocks.filter((b2) =>
+    ["table", "figure"].includes(b2.kind),
+  )) {
     const ls = all[b.page].filter(
-      (l) => l.kind === b.kind && inside(l, [b.boxes[0].x0, b.boxes[0].top, b.boxes[0].x1, b.boxes[0].bottom]),
+      (l) =>
+        l.kind === b.kind &&
+        inside(l, [
+          b.boxes[0].x0,
+          b.boxes[0].top,
+          b.boxes[0].x1,
+          b.boxes[0].bottom,
+        ]),
     );
     for (const r of pages[b.page][b.kind === "table" ? "tables" : "figures"])
       if (ls.some((l) => inside(l, r))) {
@@ -293,11 +395,19 @@ function convert({ pages, toc }) {
             (b) =>
               b.page === p &&
               b.kind === kind &&
-              b.boxes.some((x) => x.x0 <= r[0] + 2 && x.top <= r[1] + 2 && x.x1 >= r[2] - 2 && x.bottom >= r[3] - 2),
+              b.boxes.some(
+                (x) =>
+                  x.x0 <= r[0] + 2 &&
+                  x.top <= r[1] + 2 &&
+                  x.x1 >= r[2] - 2 &&
+                  x.bottom >= r[3] - 2,
+              ),
           )
         ) {
           const b = { id: "", kind, text: "", page: p, boxes: [box(p, r)] };
-          const at = blocks.findIndex((x) => x.page >= p && (x.page > p || x.boxes[0].top > r[1]));
+          const at = blocks.findIndex(
+            (x) => x.page >= p && (x.page > p || x.boxes[0].top > r[1]),
+          );
           if (at < 0) blocks.push(b);
           else blocks.splice(at, 0, b);
         }
@@ -306,8 +416,14 @@ function convert({ pages, toc }) {
   blocks.forEach((b, i) => (b.id = "b" + i));
   const stats = measure(pages, toc, all, blocks, start, body, joins);
   suspects(blocks, stats);
-  for (const b of blocks) if (b.kind === "para") b.kind = BULLET.test(b.text) ? "list" : "paragraph";
-  return { pages: pages.map((p) => ({ width: p.width, height: p.height })), blocks, excluded, stats };
+  for (const b of blocks)
+    if (b.kind === "para") b.kind = BULLET.test(b.text) ? "list" : "paragraph";
+  return {
+    pages: pages.map((p) => ({ width: p.width, height: p.height })),
+    blocks,
+    excluded,
+    stats,
+  };
 }
 function measure(pages, toc, all, blocks, start, body, joins) {
   const headings = blocks.filter((b) => b.kind === "heading"),
@@ -331,7 +447,9 @@ function measure(pages, toc, all, blocks, start, body, joins) {
     if (!used.has(i)) missing.push(t);
   });
   const buckets = {};
-  for (const ls of all) for (const l of ls) buckets[l.kind] = (buckets[l.kind] || 0) + chars(l.plain);
+  for (const ls of all)
+    for (const l of ls)
+      buckets[l.kind] = (buckets[l.kind] || 0) + chars(l.plain);
   const refs = /* @__PURE__ */ new Map(),
     defs = /* @__PURE__ */ new Map();
   for (const b of blocks) {
@@ -339,7 +457,8 @@ function measure(pages, toc, all, blocks, start, body, joins) {
       const n = b.text.match(/^\[\^(\d+)\]/)?.[1];
       if (n) defs.set(n, (defs.get(n) || 0) + 1);
     } else if (["para", "heading", "caption"].includes(b.kind))
-      for (const m of b.text.matchAll(/\[\^(\d+)\]/g)) refs.set(m[1], (refs.get(m[1]) || 0) + 1);
+      for (const m of b.text.matchAll(/\[\^(\d+)\]/g))
+        refs.set(m[1], (refs.get(m[1]) || 0) + 1);
   }
   return {
     pages: pages.length,
@@ -347,7 +466,9 @@ function measure(pages, toc, all, blocks, start, body, joins) {
     body_font_size: body,
     chars_total: pages.reduce((n, p) => n + p.nchars, 0),
     chars_by_kind: buckets,
-    chars_unaccounted: pages.reduce((n, p) => n + p.nchars, 0) - Object.values(buckets).reduce((a, b) => a + b, 0),
+    chars_unaccounted:
+      pages.reduce((n, p) => n + p.nchars, 0) -
+      Object.values(buckets).reduce((a, b) => a + b, 0),
     headings: {
       detected: headings.length,
       bookmarks_numbered: truth.length,
@@ -355,13 +476,19 @@ function measure(pages, toc, all, blocks, start, body, joins) {
       level_correct,
       missing,
       detected_by_level: levels,
-      unnumbered_candidates: blocks.filter((b) => b.kind === "heading_unnumbered").length,
+      unnumbered_candidates: blocks.filter(
+        (b) => b.kind === "heading_unnumbered",
+      ).length,
       numbering_gaps: [],
     },
     paragraphs: { cross_page_joined: joins },
     objects: {
-      table_captions: blocks.filter((b) => b.kind === "caption" && b.text.startsWith("Table")).length,
-      figure_captions: blocks.filter((b) => b.kind === "caption" && b.text.startsWith("Figure")).length,
+      table_captions: blocks.filter(
+        (b) => b.kind === "caption" && b.text.startsWith("Table"),
+      ).length,
+      figure_captions: blocks.filter(
+        (b) => b.kind === "caption" && b.text.startsWith("Figure"),
+      ).length,
     },
     footnotes: {
       definitions: [...defs.values()].reduce((a, b) => a + b, 0),
@@ -378,7 +505,8 @@ function suspects(blocks, stats) {
   };
   const seen = /* @__PURE__ */ new Set();
   for (const b of blocks) {
-    if (b.kind === "heading_unnumbered") warn(b, "unnumbered-heading", "번호 없는 제목 후보");
+    if (b.kind === "heading_unnumbered")
+      warn(b, "unnumbered-heading", "번호 없는 제목 후보");
     if (b.kind === "heading") {
       const m = b.text.match(HEAD) || b.text.match(ANNEX);
       if (!m) continue;
@@ -387,14 +515,26 @@ function suspects(blocks, stats) {
         parent = parts.slice(0, -1).join("."),
         last = parts.at(-1),
         reasons = [];
-      if (parent && !seen.has(parent) && !(parts.length === 2 && /^[A-Z]$/.test(parts[0])))
+      if (
+        parent &&
+        !seen.has(parent) &&
+        !(parts.length === 2 && /^[A-Z]$/.test(parts[0]))
+      )
         reasons.push("상위 번호 없음");
-      if (/^\d+$/.test(last) && +last > 1 && !seen.has((parent ? parent + "." : "") + (+last - 1)))
+      if (
+        /^\d+$/.test(last) &&
+        +last > 1 &&
+        !seen.has((parent ? parent + "." : "") + (+last - 1))
+      )
         reasons.push("앞 번호 없음");
       if (seen.has(n)) reasons.push("번호 중복");
       seen.add(n);
       for (const reason of reasons) {
-        stats.headings.numbering_gaps.push({ page: b.page + 1, number: n, reason });
+        stats.headings.numbering_gaps.push({
+          page: b.page + 1,
+          number: n,
+          reason,
+        });
         warn(b, "heading-number", reason);
       }
     }
@@ -402,18 +542,29 @@ function suspects(blocks, stats) {
   const seq = blocks.filter((b) => b.kind !== "footnote");
   seq.forEach((b, i) => {
     if (b.kind === "para") {
-      if (!END.test(b.text) && !LIST.test(b.text) && !(seq[i + 1]?.kind === "para" && LIST.test(seq[i + 1].text)))
+      if (
+        !END.test(b.text) &&
+        !LIST.test(b.text) &&
+        !(seq[i + 1]?.kind === "para" && LIST.test(seq[i + 1].text))
+      )
         warn(b, "paragraph-end", "끝맺음 없이 끝나는 문단");
-      if (/^[a-z]{2,}/.test(b.text) && !LIST.test(b.text) && !/^[^.]{2,90}:/.test(b.text))
+      if (
+        /^[a-z]{2,}/.test(b.text) &&
+        !LIST.test(b.text) &&
+        !/^[^.]{2,90}:/.test(b.text)
+      )
         warn(b, "paragraph-start", "소문자로 시작하는 문단");
     }
   });
   for (const b of blocks) {
-    const missing = stats.footnotes.refs_without_definition.filter((n) => b.text.includes("[^" + n + "]"));
+    const missing = stats.footnotes.refs_without_definition.filter((n) =>
+      b.text.includes("[^" + n + "]"),
+    );
     const unused = stats.footnotes.definitions_without_ref.filter(
       (n) => b.kind === "footnote" && b.text.startsWith("[^" + n + "]"),
     );
-    if (missing.length || unused.length) warn(b, "footnote-pair", "각주 짝 불일치");
+    if (missing.length || unused.length)
+      warn(b, "footnote-pair", "각주 짝 불일치");
   }
 }
 function footnoteContent(text, stats) {
@@ -421,8 +572,13 @@ function footnoteContent(text, stats) {
   const content = [];
   let at = 0;
   for (const m of text.matchAll(/\[\^(\d+)\]/g)) {
-    if (m.index > at) content.push({ kind: "text", text: text.slice(at, m.index) });
-    content.push(missing.has(m[1]) ? { kind: "text", text: "[" + m[1] + "]" } : { kind: "footnote", label: m[1] });
+    if (m.index > at)
+      content.push({ kind: "text", text: text.slice(at, m.index) });
+    content.push(
+      missing.has(m[1])
+        ? { kind: "text", text: "[" + m[1] + "]" }
+        : { kind: "footnote", label: m[1] },
+    );
     at = m.index + m[0].length;
   }
   if (at < text.length) content.push({ kind: "text", text: text.slice(at) });
@@ -433,21 +589,33 @@ export { BULLET, convert, footnoteContent, mergeRegions };
 function coalesceOverlaps(blocks) {
   const out = [];
   for (const source of blocks) {
-    let b = {...source, boxes:source.boxes.map(x=>({...x}))};
-    for (let changed = true; changed;) {
+    let b = { ...source, boxes: source.boxes.map((x) => ({ ...x })) };
+    for (let changed = true; changed; ) {
       changed = false;
-      for (let i=0;i<out.length;i++) {
+      for (let i = 0; i < out.length; i++) {
         const o = out[i];
         if (o.page !== b.page) continue;
-        const a=b.boxes[0], c=o.boxes[0];
-        const area=x=>Math.max(0,x.x1-x.x0)*Math.max(0,x.bottom-x.top);
-        const overlap=Math.max(0,Math.min(a.x1,c.x1)-Math.max(a.x0,c.x0))*Math.max(0,Math.min(a.bottom,c.bottom)-Math.max(a.top,c.top));
-        const contains=(x,y)=>x.x0<=y.x0 && x.x1>=y.x1 && x.top<=y.top && x.bottom>=y.bottom;
-        if (contains(a,c) || contains(c,a) || overlap > Math.min(area(a),area(c))/2) {
-          out.splice(i,1);
+        const a = b.boxes[0],
+          c = o.boxes[0];
+        const area = (x) =>
+          Math.max(0, x.x1 - x.x0) * Math.max(0, x.bottom - x.top);
+        const overlap =
+          Math.max(0, Math.min(a.x1, c.x1) - Math.max(a.x0, c.x0)) *
+          Math.max(0, Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top));
+        const contains = (x, y) =>
+          x.x0 <= y.x0 &&
+          x.x1 >= y.x1 &&
+          x.top <= y.top &&
+          x.bottom >= y.bottom;
+        if (
+          contains(a, c) ||
+          contains(c, a) ||
+          overlap > Math.min(area(a), area(c)) / 2
+        ) {
+          out.splice(i, 1);
           b.text += " " + o.text;
-          addBox(b,{page:o.page,bbox:[c.x0,c.top,c.x1,c.bottom]});
-          changed=true;
+          addBox(b, { page: o.page, bbox: [c.x0, c.top, c.x1, c.bottom] });
+          changed = true;
           break;
         }
       }
@@ -457,13 +625,20 @@ function coalesceOverlaps(blocks) {
   return out;
 }
 function mergeRegions(blocks) {
-  const objects = blocks.filter(b=>["table","figure"].includes(b.kind));
+  const objects = blocks.filter((b) => ["table", "figure"].includes(b.kind));
   const united = coalesceOverlaps(objects);
   const emitted = new Set();
-  blocks = blocks.flatMap(b => {
+  blocks = blocks.flatMap((b) => {
     if (!objects.includes(b)) return [b];
-    const x=b.boxes[0];
-    const owner=united.find(o=>o.page===b.page && o.boxes[0].x0<=x.x0 && o.boxes[0].x1>=x.x1 && o.boxes[0].top<=x.top && o.boxes[0].bottom>=x.bottom);
+    const x = b.boxes[0];
+    const owner = united.find(
+      (o) =>
+        o.page === b.page &&
+        o.boxes[0].x0 <= x.x0 &&
+        o.boxes[0].x1 >= x.x1 &&
+        o.boxes[0].top <= x.top &&
+        o.boxes[0].bottom >= x.bottom,
+    );
     if (emitted.has(owner)) return [];
     emitted.add(owner);
     return [owner];
@@ -489,7 +664,8 @@ function mergeRegions(blocks) {
     );
     if (owner) {
       owner.text += " " + b.text;
-      for (const x of b.boxes) addBox(owner, { page: x.page, bbox: [x.x0, x.top, x.x1, x.bottom] });
+      for (const x of b.boxes)
+        addBox(owner, { page: x.page, bbox: [x.x0, x.top, x.x1, x.bottom] });
       enclosed.add(b);
     }
   }
@@ -508,13 +684,24 @@ function mergeRegions(blocks) {
     while (isObject(blocks[end]) && blocks[end].page === first.page) {
       run.push(blocks[end++]);
     }
-    const area = (b) => (b.boxes[0].x1 - b.boxes[0].x0) * (b.boxes[0].bottom - b.boxes[0].top);
+    const area = (b) =>
+      (b.boxes[0].x1 - b.boxes[0].x0) * (b.boxes[0].bottom - b.boxes[0].top);
     const largest = run.reduce((a, b) => (area(b) > area(a) ? b : a));
     const prior = blocks[i - 1];
     const next = blocks[end];
-    const beforeCaption = prior?.page === first.page && prior.kind === "caption" && /^Table\b/.test(prior.text);
-    const afterCaption = next?.page === first.page && next.kind === "caption" && /^Figure\b/.test(next.text);
-    const kind = beforeCaption ? "table" : afterCaption ? "figure" : largest.kind;
+    const beforeCaption =
+      prior?.page === first.page &&
+      prior.kind === "caption" &&
+      /^Table\b/.test(prior.text);
+    const afterCaption =
+      next?.page === first.page &&
+      next.kind === "caption" &&
+      /^Figure\b/.test(next.text);
+    const kind = beforeCaption
+      ? "table"
+      : afterCaption
+        ? "figure"
+        : largest.kind;
     const combined = {
       ...first,
       kind,
@@ -533,4 +720,3 @@ function mergeRegions(blocks) {
   }
   return merged;
 }
-
