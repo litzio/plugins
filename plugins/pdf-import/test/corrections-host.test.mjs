@@ -19,7 +19,7 @@ test('official CLI integration: five corrections, repeated undo, saved-only reop
     await run(['create',doc,'--input',input,'--format','json']);
     const initial=await readFile(doc,'utf8'), snapshot=await run(['inspect',doc,'--format','json']);
     const texts=[['First line.','Next line.'],['Second paragraph.'],['Final paragraph.']];
-    const mapping={lineVersion:1,revision:snapshot.revision,excluded:[],blocks:texts.map((text,i)=>{
+    const mapping={snapshotNodes:snapshot.nodes,lineVersion:1,revision:snapshot.revision,excluded:[],blocks:texts.map((text,i)=>{
       const lines=text.map((text,j)=>({page:0,text,box:{page:0,x0:0,x1:100,top:i*50+j*12,bottom:i*50+j*12+10}}));
       return {id:'b'+i,path:[i+1],kind:'paragraph',documentKind:'paragraph',lines,boxes:boxesFor(lines)};
     })};
@@ -27,7 +27,10 @@ test('official CLI integration: five corrections, repeated undo, saved-only reop
     let m=mapping, correct=correctionHandler(cli);
     const act=async(action,extra={})=>{
       const r=await correct({document:doc,revision:m.revision,historyId:'screen',action,ids:['b0'],...extra});
-      assert.ok(r.mapping,JSON.stringify(r));m=r.mapping;return r;
+      assert.ok(r.mapping,JSON.stringify(r));m=r.mapping;
+      const verified=await correct.verify({document:doc,revision:m.revision});
+      assert.equal(verified.stale,false,JSON.stringify(verified));
+      m=JSON.parse(await readFile(side,'utf8'));return r;
     };
     await act('merge',{ids:['b0','b1']});await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
     await act('kind',{kind:'paragraph'});await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
@@ -39,6 +42,17 @@ test('official CLI integration: five corrections, repeated undo, saved-only reop
     assert.equal(await readFile(doc,'utf8'),initial);
     const stale=await correct({document:doc,revision:'0'.repeat(64),historyId:'screen',action:'remove',ids:['b0']});
     assert.equal(stale.stale,true);assert.equal(await readFile(doc,'utf8'),initial);
+    // External edits must be refused by the operation's own revision guard.
+    await run(['convert-block',doc,'--path','3','--to','heading','--level','2']);
+    const refused=await correct({document:doc,revision:m.revision,historyId:'screen',action:'remove',ids:['b0']});
+    assert.equal(refused.stale,true);
+    const deferred=await correct.verify({document:doc,revision:m.revision});
+    assert.equal(deferred.stale,true);
+    // A calculated path/kind mismatch is caught even with the same revision.
+    const current=await run(['inspect',doc,'--format','json']);
+    m.revision=current.revision;m.blocks[0].documentKind='heading';
+    await writeFile(side,JSON.stringify(m));
+    assert.equal((await correct.verify({document:doc,revision:m.revision})).stale,true);
     const checked=await run(['check',doc,'--format','json']);assert.equal(checked.validation.valid,true);
   } finally {await rm(dir,{recursive:true,force:true});}
 });

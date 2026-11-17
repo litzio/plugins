@@ -1,6 +1,7 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import { authoring } from "./authoring.mjs";
+import { previewCorrection, references } from "./corrections.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
   new Blob([workerSource], { type: "text/javascript" }),
 );
@@ -63,6 +64,8 @@ function Screen({
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
     [actionHelp, setActionHelp] = useState(null);
+  const undoPreviews = useRef([]);
+  const [settledRevision,setSettledRevision] = useState(null);
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
   useEffect(() => {
     let gone = false;
@@ -134,27 +137,56 @@ function Screen({
     b.path[0] === chosen[0].path[0]+i);
   async function correct(action, extra = {}) {
     if (editing.current) return;
-    editing.current = true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
-    const started = performance.now();
+    const before=mapping, oldSelection=selection, oldSelected=selected;
+    editing.current=true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
+    let started=performance.now(), leftMs;
     try {
-      const input = {document:file.document,revision:mapping.revision,ids:selection,action,historyId:historyId.current,...extra};
-      let r = await invoke('correct',input);
-      if (r.requiresConfirm) {
-        if (!await confirm({title:'문서에서 빼기',message:'각주 호출이 들어 있어 이 동작은 되돌릴 수 없습니다. 문서에서 뺄까요?',confirmLabel:'문서에서 빼기'})) {
-          setStatus('취소됨'); return;
+      const input={document:file.document,revision:before.revision,ids:selection,action,
+        historyId:historyId.current,time:new Date().toISOString(),...extra};
+      const irreversible=action==='remove' && before.snapshotNodes?.some(n=>chosen.some(b=>b.path[0]===n.path[0]) && references(n).length);
+      if(irreversible) {
+        if(!await confirm({title:'문서에서 빼기',message:'각주 호출이 들어 있어 이 동작은 되돌릴 수 없습니다. 문서에서 뺄까요?',confirmLabel:'문서에서 빼기'})) {
+          setStatus('취소됨');return;
         }
-        r = await invoke('correct',{...input,confirmed:true});
+        input.confirmed=true;started=performance.now();
       }
-      if (r.stale) {setStale(true); setError(r.message);setStatus('문서가 바뀜');return;}
-      clearTimeout(scrollTimer.current);
-      setMapping(r.mapping); setUndoCount(r.undoCount); setReloadKey(k=>k+1);
-      const b = r.mapping.blocks.find(b=>b.id===r.targetId);
-      setSelection(b ? [b.id] : []); setSelected(b || null); setTarget(b || null); setFollowed(null);
-      metrics.current.correction = {started,timings:r.timings,action};
+      const preview=previewCorrection(before,input,undoPreviews.current.at(-1));
+      clearTimeout(scrollTimer.current); setFollowed(null); setMapping(preview);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        leftMs=performance.now()-started;
+        performance.measure('pdf-import-correction-left',{start:started,detail:{action,leftMs}});
+      }));
+      const r=await invoke('correct',input);
+      if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
+      if(action==='undo') undoPreviews.current.pop();
+      else if(irreversible) undoPreviews.current=[];
+      else undoPreviews.current.push(before);
+      setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(false);
+      const b=r.mapping.blocks.find(b=>b.id===r.targetId);
+      setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b||null);
+      metrics.current.correction={started,timings:{...r.timings,leftMs},action};
       setStatus('고침 완료');
-    } catch(e) {setError(e.message);setStatus('고치기 실패');}
-    finally {editing.current=false;setBusy(false);}
+    } catch(e) {
+      setMapping(before);setSelection(oldSelection);setSelected(oldSelected);
+      setError(e.message);setStatus('고치기 실패');
+    } finally {editing.current=false;setBusy(false);}
   }
+  useEffect(()=>{
+    if(!mapping?.verificationPending || !file || settledRevision!==mapping.revision) return;
+    let cancelled=false;
+    const revision=mapping.revision, document=file.document;
+    const frame=requestAnimationFrame(()=>{
+      invoke('verify',{document,revision}).then(r=>{
+        if(cancelled || r.superseded) return;
+        performance.measure('pdf-import-verification',{start:performance.now()-r.inspectMs,
+          detail:{inspectMs:r.inspectMs,stale:r.stale}});
+        if(r.stale) {setStale(true);setError(r.message);setStatus('문서가 바뀜');}
+        setMapping(m=>m?.revision===revision?{...m,stale:r.stale,verificationPending:false,
+          ...(r.nodes?{snapshotNodes:r.nodes}:{})}:m);
+      }).catch(e=>{if(!cancelled){setStale(true);setError(e.message);setStatus('문서가 바뀜');}});
+    });
+    return ()=>{cancelled=true;cancelAnimationFrame(frame);};
+  },[mapping?.verificationPending,mapping?.revision,file?.document,settledRevision]);
   useEffect(() => {
     const cancel = e => {if(e.key==='Escape') {setSplitting(false);setSelection([]);setSelected(null);}};
     window.addEventListener('keydown',cancel); return ()=>window.removeEventListener('keydown',cancel);
@@ -196,6 +228,7 @@ function Screen({
     }
   }
   async function load(path, cachedOnly = false) {
+    undoPreviews.current=[];
     setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
     clearTimeout(scrollTimer.current);
     anchor.current = null;
@@ -501,6 +534,8 @@ function Screen({
   );
   const viewState = React.useCallback(
     (s) => {
+      if(['ready','stale-target','target-not-found','error'].includes(s.state))
+        setSettledRevision(mapping?.revision);
       if(s.state === 'ready' && metrics.current.correction) {
         performance.measure('pdf-import-correction',{start:metrics.current.correction.started,
           detail:{...metrics.current.correction.timings,action:metrics.current.correction.action,
@@ -634,6 +669,7 @@ function Screen({
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
       )}
+      {stale && undoCount>0 && <ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
       {mapping && mapping.lineVersion !== 1 && <ui.Notice>다시 변환해야 고칠 수 있습니다</ui.Notice>}
       {!file && recent.length > 0 && (
         <>

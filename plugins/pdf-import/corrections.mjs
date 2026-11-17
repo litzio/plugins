@@ -11,6 +11,69 @@ export function boxesFor(lines) {
   return boxes;
 }
 export const editableMapping = m => m?.lineVersion === 1;
+export const snapshotNodes = s => s.nodes.filter(n => n.path.length === 1 && n.type !== 'caption');
+export function references(value) {
+  if (!value || typeof value !== 'object') return [];
+  return [...(value.kind === 'footnote' ? [value.label] : []),
+    ...Object.values(value).flatMap(v => typeof v === 'object' ? references(v) : [])];
+}
+function splitContent(content, offset) {
+  const left = [], right = []; let pos = 0;
+  for (const c of content) {
+    const length = c.kind === 'text' ? c.text.length : 1;
+    if (pos + length <= offset) left.push(c);
+    else if (pos >= offset) right.push(c);
+    else {
+      if (c.kind !== 'text') throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
+      left.push({...c,text:c.text.slice(0,offset-pos)});
+      right.push({...c,text:c.text.slice(offset-pos)});
+    }
+    pos += length;
+  }
+  return [left,right];
+}
+// Predict only operations this screen supports. The official revision guard is
+// authoritative for the write; a deferred inspect verifies this projection.
+export function previewCorrection(mapping, input, undoBefore) {
+  const {action,ids=[],line,kind,level,time = new Date().toISOString()} = input;
+  if (action === 'undo') {
+    if (!undoBefore) throw Error('되돌릴 동작이 없습니다.');
+    return restoreMapping(undoBefore,mapping,undoBefore.blocks.find(b=>ids.includes(b.id))?.id,time);
+  }
+  if (!mapping.snapshotNodes) throw Error('저장된 문서를 다시 열어 주세요.');
+  const selected = mapping.blocks.filter(b=>ids.includes(b.id));
+  const paths = [...new Set(selected.map(b=>b.path[0]))];
+  const nodes = mapping.snapshotNodes.filter(n=>paths.includes(n.path[0]));
+  if (!nodes.length) throw Error('고칠 블록을 찾지 못했습니다.');
+  const at = paths[0], first = nodes[0];
+  let replacement;
+  if(action === 'merge') replacement=[{...first,content:nodes.flatMap((n,i)=>i?[{kind:'text',text:' '},...n.content]:n.content)}];
+  else if(action === 'split') replacement=splitContent(first.content,splitOffset(selected[0].lines,line,first.content)).map(content=>({...first,content}));
+  else if(action === 'kind') replacement=[{...first,type:kind,level:kind==='heading'?level:undefined}];
+  else if(action === 'remove') replacement=[];
+  else throw Error('지원하지 않는 고치기입니다.');
+  const next = transformMapping(mapping,{...input,at,removeCount:nodes.length,newCount:replacement.length,time});
+  let predicted = structuredClone(mapping.snapshotNodes);
+  const start = predicted.findIndex(n=>n.path[0]===at);
+  predicted.splice(start,nodes.length,...replacement);
+  if(action === 'remove') {
+    const labels=references(first);
+    const orphans=predicted.filter(n=>n.type==='footnote' && labels.includes(n.label) &&
+      !predicted.some(other=>other.type!=='footnote' && references(other).includes(n.label)));
+    for(const n of orphans) {
+      // Map source paths before rebasing the rest, including multi-page notes.
+      const oldPath=n.path[0]-nodes.length;
+      for(const b of next.blocks.filter(b=>b.path[0]===oldPath)) for(const box of b.boxes)
+        next.excluded.push({page:box.page,box,kind:'removed',lines:b.lines,edited:{action,at:time,who:'user'}});
+    }
+    const removedPaths = new Set(orphans.map(n=>n.path[0]-nodes.length));
+    next.blocks=next.blocks.filter(b=>!removedPaths.has(b.path[0]));
+    for(const b of next.blocks) b.path[0]-=[...removedPaths].filter(p=>p<b.path[0]).length;
+    predicted=predicted.filter(n=>!orphans.includes(n));
+  }
+  next.snapshotNodes=predicted.map((n,i)=>({...n,path:[i+1]}));
+  return next;
+}
 export function restoreMapping(original, current, targetId, time) {
   const m = structuredClone(original), edited = {action:'undo',at:time,who:'user'};
   m.history = [...(current.history || []),edited];

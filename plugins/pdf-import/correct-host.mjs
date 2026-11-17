@@ -3,13 +3,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { assertMapping, editableMapping, transformMapping, restoreMapping, splitOffset } from './corrections.mjs';
+import { assertMapping, editableMapping, previewCorrection, restoreMapping, splitOffset, snapshotNodes, references } from './corrections.mjs';
 const exec = promisify(execFile);
-const topNodes = s => s.nodes.filter(n => n.path.length === 1 && n.type !== 'caption');
-function references(value) {
-  if(!value || typeof value!=='object') return [];
-  return [...(value.kind==='footnote'?[value.label]:[]),...Object.values(value).flatMap(v=>typeof v==='object'?references(v):[])];
-}
+const topNodes = snapshotNodes;
 const insert = (n, at) => n.type === 'paragraph'
   ? {command:'insert-block',at,content:n.content}
   : n.type === 'heading' ? {command:'insert-heading',at,level:n.level,content:n.content}
@@ -35,7 +31,7 @@ export function correctionHandler(cli) {
     try {await writeFile(tmp,JSON.stringify(m));await rename(tmp,side);}
     finally {await rm(tmp,{force:true});}
   };
-  return async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,confirmed=false}) {
+  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,confirmed=false,time=new Date().toISOString()}) {
     if (!doc || path.extname(doc) !== '.md') throw Error('저장된 문서를 찾지 못했습니다.');
     if (locks.has(doc)) throw Error('이 문서를 고치는 중입니다.');
     locks.add(doc);
@@ -44,11 +40,11 @@ export function correctionHandler(cli) {
       const side = doc.replace(/\.md$/,'.pdf-source.json');
       const before = JSON.parse(await readFile(side,'utf8'));
       if (!editableMapping(before)) throw Error('다시 변환해야 고칠 수 있습니다');
-      const current = await inspect(doc);
-      timings.beforeInspectMs = performance.now()-t;
-      if (current.revision !== before.revision || revision !== before.revision)
+      const current = {revision:before.revision,nodes:before.snapshotNodes || []};
+      if (revision !== before.revision)
         return {stale:true,message:'문서가 바뀌어 대응을 표시할 수 없음'};
-      assertMapping(before,current);
+      if (!before.snapshotNodes) throw Error('저장된 문서를 다시 열어 주세요.');
+      if(action!=='undo') assertMapping(before,current);
       const key = doc + ':' + historyId, stack = histories.get(key) || [];
       let next, ops, inverse, targetId, irreversible = false;
       const undo = action === 'undo', prior = stack.at(-1);
@@ -56,7 +52,7 @@ export function correctionHandler(cli) {
         if (!prior || prior.revision !== current.revision) throw Error('되돌릴 동작이 없습니다.');
         ops = prior.inverse; inverse = prior.forward;
         targetId = prior.targetId;
-        next = restoreMapping(prior.before,before,targetId,new Date().toISOString());
+        next = restoreMapping(prior.before,before,targetId,time);
       } else {
         const selected = before.blocks.filter(b => ids.includes(b.id));
         if (!selected.length || selected.length !== ids.length) throw Error('고칠 블록을 다시 골라 주세요.');
@@ -97,48 +93,56 @@ export function correctionHandler(cli) {
           ops = [{command:'remove-block',at}]; inverse = restore ? [restore] : [];
           newCount = 0;
         } else throw Error('지원하지 않는 고치기입니다.');
-        next = transformMapping(before,{action,ids,line,kind,level,at,removeCount:nodes.length,newCount,time:new Date().toISOString()});
-        if (action === 'remove' && irreversible) {
-          // Core drops an endnote whose last call was removed. Its source is also
-          // explicitly excluded; this is known before the write, never guessed.
-          const labels = [...new Set(references(first))];
-          const orphans = topNodes(current).filter(n=>n.type==='footnote' && labels.includes(n.label) &&
-            !topNodes(current).some(other=>other!==first && other.type!=='footnote' && references(other).includes(n.label)));
-          for (const n of orphans.sort((a,b)=>b.path[0]-a.path[0])) {
-            const oldPath = n.path[0]-1;
-            const removed = next.blocks.filter(b=>b.path[0]===oldPath);
-            for(const b of removed) for(const box of b.boxes) next.excluded.push({page:box.page,box,kind:'removed',lines:b.lines,edited:{action:'remove',at:new Date().toISOString(),who:'user'}});
-            next.blocks=next.blocks.filter(b=>b.path[0]!==oldPath);
-            for(const b of next.blocks) if(b.path[0]>oldPath) b.path[0]--;
-          }
-        }
+        next = previewCorrection(before,{action,ids,line,kind,level,time});
         targetId = next.blocks.find(x=>x.id===b.id)?.id || next.blocks.find(x=>x.path[0]>=at)?.id || next.blocks.at(-1)?.id;
       }
-      let receipt, after;
+      let receipt;
       try {
-        const started = performance.now(); receipt = await batch(doc,ops,current.revision);
+        const started = performance.now(); receipt = await batch(doc,ops,before.revision);
         timings.operationMs = performance.now()-started;
-        const checked = performance.now(); after = await inspect(doc);
-        timings.inspectMs = performance.now()-checked;
-        assertMapping(next,after); next.revision = after.revision;
-        await persist(side,next);
       } catch (e) {
-        if (!receipt) throw Error('문서를 고치지 못했습니다. 원본과 저장 상태를 확인해 주세요.');
-        try {
-          await batch(doc,inverse,receipt.revision);
-          const restored = await inspect(doc); assertMapping(before,restored);
-          await persist(side,{...before,revision:restored.revision});
-        } catch {
-          return {stale:true,message:'고친 뒤 대응을 확인하지 못했고 되돌리기도 실패해 대응을 멈췄습니다.'};
-        }
-        throw Error('고친 뒤 대응을 확인하지 못해 문서의 동작을 되돌렸습니다.');
+        if (/revision/i.test(e.stderr || ''))
+          return {stale:true,message:'문서가 바뀌어 대응을 표시할 수 없음'};
+        throw Error('문서를 고치지 못했습니다. 원본과 저장 상태를 확인해 주세요.');
       }
-      if (undo) {stack.pop(); if(stack.length) stack.at(-1).revision = after.revision;}
+      // apply-batch returns the committed revision; no extra CLI on this path.
+      if(!/^[0-9a-f]{64}$/.test(receipt?.revision || '')) {
+        const checked=performance.now(), actual=await inspect(doc);
+        assertMapping(next,actual); receipt={revision:actual.revision};
+        timings.inspectMs=performance.now()-checked;
+      }
+      next.revision = receipt.revision;
+      next.verificationPending = true;
+      next.stale = false;
+      try { await persist(side,next); }
+      catch { return {stale:true,message:'문서는 고쳤지만 대응 자료를 기록하지 못했습니다. 문서를 다시 열어 주세요.'}; }
+      if (undo) {stack.pop(); if(stack.length) stack.at(-1).revision = receipt.revision;}
       else if (irreversible) stack.length = 0;
-      else stack.push({before,forward:ops,inverse,revision:after.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id});
+      else stack.push({before,forward:ops,inverse,revision:receipt.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id});
       histories.set(key,stack);
       timings.totalMs = performance.now()-t;
       return {mapping:next,targetId,undoCount:stack.length,timings};
     } finally {locks.delete(doc);}
   };
+  correct.verify = async ({document:doc,revision}) => {
+    const side = doc.replace(/\.md$/,'.pdf-source.json');
+    const started = performance.now(), actual = await inspect(doc);
+    const mapping = JSON.parse(await readFile(side,'utf8'));
+    if(mapping.revision !== revision) return {superseded:true,revision};
+    let stale = actual.revision !== revision;
+    try { assertMapping(mapping,actual); } catch { stale=true; }
+    mapping.stale=stale; mapping.verificationPending=false;
+    if(!stale) mapping.snapshotNodes=snapshotNodes(actual);
+    if(locks.has(doc)) return {superseded:true,revision};
+    locks.add(doc);
+    try {
+      const latest=JSON.parse(await readFile(side,'utf8'));
+      if(latest.revision !== revision) return {superseded:true,revision};
+      await persist(side,mapping);
+    } finally {locks.delete(doc);}
+    return {revision,stale,nodes:stale?undefined:mapping.snapshotNodes,
+      inspectMs:performance.now()-started,
+      message:stale?'저장 뒤 대응이 문서와 달라 대응 표시를 멈췄습니다. 되돌리기는 사용할 수 있습니다.':''};
+  };
+  return correct;
 }
