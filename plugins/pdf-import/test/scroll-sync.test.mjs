@@ -1,0 +1,33 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {extract} from '../extract.mjs';
+import {convert} from '../rules.mjs';
+import {authoring} from '../authoring.mjs';
+import {sourceForPath,sourceLocations,blockAtSource,sourceScrollTop} from '../scroll-sync.mjs';
+
+const result=convert(await extract(new URL('./fixtures/LSR-1.1-standards.pdf',import.meta.url)));
+const units=authoring(result).units;
+const blocks=units.flatMap((u,i)=>u.sources.map(id=>({...result.blocks.find(b=>b.id===id),path:[i+1]})));
+const positions=result.pages.map((p,i)=>({top:i*1200,scale:1}));
+test('public source mapping finds exact top-level blocks, a preceding fallback only for scrolling, and cross-page locations',()=>{
+  const first=blocks[0],last=blocks.at(-1);
+  assert.equal(sourceForPath(blocks,first.path),first);
+  assert.equal(sourceForPath(blocks,[first.path[0],1]),first);
+  assert.equal(sourceForPath(blocks,[0],true),null);
+  assert.equal(sourceForPath(blocks,[last.path[0]+1]),null);
+  const prior=sourceForPath(blocks,[last.path[0]+1],true);
+  assert.equal(prior.path[0],last.path[0]);
+  const middle=blocks.find(b=>b.kind==='heading'&&b!==first);
+  const gap=blocks.filter(b=>b.path[0]!==middle.path[0]);
+  assert.equal(sourceForPath(gap,middle.path),null);
+  assert.ok(sourceForPath(gap,middle.path,true).path[0]<middle.path[0]);
+  const locations=sourceLocations(blocks,positions);
+  const crossing=blocks.find(b=>b.boxes.length>1);
+  const second=locations.find(x=>x.b===crossing&&x.top>=positions[crossing.boxes[1].page].top);
+  assert.equal(blockAtSource(locations,(second.top+second.bottom)/2),crossing);
+  assert.equal(blockAtSource(locations,-1),locations[0].b);
+  assert.equal(blockAtSource(locations,Infinity),locations.at(-1).b);
+  assert.equal(blockAtSource([],1),null);
+  assert.equal(sourceScrollTop(crossing,positions,600),positions[crossing.boxes[0].page].top+crossing.boxes[0].top-200);
+  assert.deepEqual(sourceLocations(blocks,[]),[]);
+});
