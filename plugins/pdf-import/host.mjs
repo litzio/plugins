@@ -6,6 +6,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { extract } from "./extract.mjs";
 import { convert } from "./rules.mjs";
+import { listConverted } from "./recent.mjs";
 const exec = promisify(execFile), sha = (b) => createHash("sha256").update(b).digest("hex");
 export function activate(context) {
   const inspect = async (p) => {
@@ -15,7 +16,11 @@ export function activate(context) {
   };
   const sessions = /* @__PURE__ */ new Map();
   return { status: () => ({ available: !!context.cli, message: context.cli ? "준비됨" : "공식 CLI 없음" }), operations: {
-    load: async ({ path: p }) => {
+    recent: async ({folders=[]}) => {
+      try { return await listConverted(folders); }
+      catch { throw new PluginPublicError("pdf_import_failed","저장된 문서 목록을 읽지 못했습니다."); }
+    },
+    load: async ({ path: p, cachedOnly=false }) => {
       if (path.extname(p).toLowerCase() !== ".pdf") throw new PluginPublicError("pdf_import_failed", "PDF 파일을 골라 주세요.");
       const bytes = await readFile(p), digest = sha(bytes), doc = path.join(path.dirname(p), path.basename(p, path.extname(p)) + ".md"), side = doc.replace(/\.md$/, ".pdf-source.json");
       const id = sha(Buffer.from(p));
@@ -30,6 +35,7 @@ export function activate(context) {
       } catch (e) {
         if (e.code !== "ENOENT") throw new PluginPublicError("pdf_import_failed", "저장된 대응 자료나 문서를 읽을 수 없습니다.");
       }
+      if (cachedOnly && !cached) throw new PluginPublicError("pdf_import_failed", "원본이 바뀌었거나 저장된 대응 자료가 없습니다. PDF를 다시 골라 주세요.");
       return { id, base64: bytes.toString("base64"), name: path.basename(p), folder: path.dirname(p), document: doc, cached };
     },
     convert: async ({ id }) => {

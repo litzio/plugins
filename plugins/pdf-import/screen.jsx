@@ -28,6 +28,17 @@ const colors = {
 };
 function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm }) {
   const { useState, useRef, useEffect, useMemo } = React;
+  const recentKey="pdf-import-recent-folders";
+  const [recent,setRecent]=useState([]);
+  useEffect(()=>{
+    let gone=false;
+    (async()=>{
+      const folders=JSON.parse(localStorage.getItem(recentKey)||"[]");
+      const found=await invoke("recent",{folders:Array.isArray(folders)?folders:[]});
+      if(!gone) { setRecent(found.rows); localStorage.setItem(recentKey,JSON.stringify(found.folders)); }
+    })().catch(()=>{if(!gone) setError("저장된 문서 목록을 읽지 못했습니다.");});
+    return ()=>{gone=true;};
+  },[]);
   const [status, setStatus] = useState("PDF를 골라 주세요."),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -57,7 +68,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   );
   const warnings = mapping?.blocks.filter((b) => b.warning) || [],
     warningIndex = warnings.findIndex((b) => b.id === selected?.id);
-  const frontPages = new Set((mapping?.excluded || result?.excluded || []).filter(e=>e.kind==="front").map(e=>e.page));
+  const frontPages = new Set(Array.from({length: Math.max(0,(mapping?.stats || result?.stats)?.body_start_page-1 || 0)},(_,i)=>i));
   const frontEnd = Math.max(-1,...frontPages)+1;
   const frontExplanation = "첫 번호 제목 이전의 쪽(표지, 목차 등)은 문서에 넣지 않습니다.";
   const positions = useMemo(() => {
@@ -77,7 +88,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       setError("PDF 선택에 실패했습니다.");
     }
   }
-  async function load(path) {
+  async function load(path, cachedOnly=false) {
     setBusy(true);
     setError("");
     setMapping(null);
@@ -88,7 +99,11 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     setStatus("PDF 읽는 중");
     metrics.current = { start: performance.now() };
     try {
-      const f = await invoke("load", { path });
+      const f = await invoke("load", { path, cachedOnly });
+      try {
+        const folders=JSON.parse(localStorage.getItem(recentKey)||"[]");
+        localStorage.setItem(recentKey,JSON.stringify([...new Set([f.folder,...(Array.isArray(folders)?folders:[])])].slice(0,10)));
+      } catch { setError("최근 폴더 목록을 보관하지 못했습니다."); }
       setFile(f);
       const bytes = Uint8Array.from(atob(f.base64), (c) => c.charCodeAt(0));
       const loadingTask = pdfjs.getDocument({ data: bytes, verbosity: 0, enableScripting: false });
@@ -304,6 +319,16 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       <style>{`.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-4)}.pdf-import-narrow{display:none}.pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;background:transparent!important}.pdf-import-box:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}@media(max-width:800px){.pdf-import-panes{grid-template-columns:minmax(0,1fr)}.pdf-import-narrow{display:block}}`}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {stale && <ui.Notice tone="warning">문서가 바뀌어 대응을 표시할 수 없음</ui.Notice>}
+      {!file && recent.length>0 && <><h2 className="type-section-title">변환한 문서</h2><ui.DataTable title="변환한 문서"
+        rows={recent.map(r=>({...r, name:r.name+(recent.filter(x=>x.name===r.name).length>1 ? " ("+r.folder+")" : ""),modified:new Date(r.modified).toLocaleString("ko-KR")}))}
+        columns={["name","pages","warnings","modified","state"]}
+        labels={{name:"문서 이름",pages:"쪽 수",warnings:"확인할 곳 수",modified:"변환한 때",state:"상태"}}
+        fields={{pages:{type:"number"},warnings:{type:"number"}}} rowKey="id"
+        onSelectRow={r=>{
+          if(busy) return;
+          if(r.state) setError(r.state==="원본 없음" ? "원본 PDF가 없어 저장된 결과를 열 수 없습니다." : "원본 PDF가 바뀌어 저장된 결과를 열 수 없습니다. PDF를 다시 골라 주세요.");
+          else load(r.path,true);
+        }} /></>}
       {pdf && (
         <>
           <div className="pdf-import-narrow">
