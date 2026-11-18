@@ -10,6 +10,7 @@ import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
+import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
   new Blob([workerSource], { type: "text/javascript" }),
 );
@@ -524,7 +525,7 @@ function Screen({
     if(value===scaleValue.current||!browseScales.includes(value))return;
     clearTimeout(scrollTimer.current);
     if(pane.current){const y=pane.current.scrollTop+pane.current.clientHeight/3;const hit=locations.find(x=>x.top<=y&&x.bottom>=y)||locations.find(x=>x.top>=y)||locations.at(-1);if(hit)scaleAnchor.current={index:locations.indexOf(hit),id:hit.b.id,offset:hit.top-pane.current.scrollTop};}
-    scaleValue.current=value;setBrowseScale(value);
+    scaleValue.current=value;setBrowseScale(value);setError('');
     try{localStorage.setItem('pdf-import-browse-scale',String(value));}catch{setError('배율을 기억하지 못했습니다.');}
   }
   scaleChange.current=changeScale;
@@ -580,6 +581,8 @@ function Screen({
     try {
       const t = performance.now();
       clearTimeout(scrollTimer.current);
+      // The error box has no close button; the next successful action clears it.
+      setError("");
       setFollowed(null);
       setTarget({...b,highlight:true});
       setSelected(b);
@@ -604,27 +607,32 @@ function Screen({
     () =>
       function Page2({ index, scale }) {
         const ref = useRef(null);
+        const [failed, setFailed] = useState(false), [attempt, setAttempt] = useState(0);
         useEffect(() => {
-          let gone = false,
-            task;
+          let gone = false, canvas = null;
           (async () => {
             const p = await pdf.getPage(index + 1);
-            if (gone) return;
-            const v = p.getViewport({ scale }),
-              c = ref.current;
-            c.width = v.width;
-            c.height = v.height;
-            task = p.render({ canvasContext: c.getContext("2d"), viewport: v });
-            await task.promise;
+            canvas = ref.current;
+            // The page may have left the visible range (canvas detached) before getPage resolved.
+            if (gone || !canvas) return;
+            if (await renderPage(canvas, p, p.getViewport({ scale }), () => gone) && !gone) setFailed(false);
           })().catch((e) => {
-            if (!gone) setError("원본 쪽을 그리지 못했습니다.");
+            // A failure stays on this page only; it never becomes the screen's error.
+            if (renderFailed(e, gone)) setFailed(true);
           });
           return () => {
             gone = true;
-            task?.cancel();
+            cancelRender(canvas);
           };
-        }, [index, scale]);
-        return <canvas ref={ref} style={{ display: "block", width: "100%" }} />;
+        }, [index, scale, attempt]);
+        return <>
+          <canvas ref={ref} style={{ display: "block", width: "100%" }} />
+          {failed && <div data-page-render-failed style={{ position: "absolute", top: "var(--space-4)", left: "var(--space-4)", right: "var(--space-4)", zIndex: 1 }}>
+            <ui.Notice tone="error">
+              이 쪽을 그리지 못했습니다. <ui.Button onClick={() => setAttempt((n) => n + 1)}>다시 그리기</ui.Button>
+            </ui.Notice>
+          </div>}
+        </>;
       },
     [pdf],
   );
@@ -897,8 +905,7 @@ function Screen({
               onClick={async () => {
                 try {
                   const r = await openDocument({ path: file.document });
-                  if (r.status !== "opened")
-                    setError("문서를 열지 못했습니다.");
+                  setError(r.status === "opened" ? "" : "문서를 열지 못했습니다.");
                 } catch {
                   setError("문서를 열지 못했습니다.");
                 }
@@ -976,7 +983,7 @@ function Screen({
           />
         </>
       )}
-      {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy} onError={setError}/> }
+      {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
       {pdf && !picking && !missingMapping && (
         <>
           <div className="pdf-import-narrow">
