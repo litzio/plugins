@@ -139,6 +139,9 @@ test("L-05 merge accepts adjacent lists of one kind and still refuses mixed or p
   assert.match(merge("a1", "b1").disabledReason, /모두/);
   assert.equal(merge("a1", "a2", "c1").disabled, true, "not adjacent");
   assert.match(merge("b1", "c1").disabledReason, /같은 종류의 목록/);
+  // Converted blocks are drawn before the saved document exists; they have no path.
+  const unsaved = [{ id: "u", kind: "list", boxes: [] }];
+  assert.ok(blockActions(unsaved, [], []).every((x) => x.disabled));
 });
 
 test("L-05 merging lists keeps every source item on the merged list and undo restores both", () => {

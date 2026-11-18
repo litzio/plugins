@@ -3,7 +3,8 @@ export function blockActions(blocks, allBlocks, nodes=[]) {
   const single=blocks.length===1, first=blocks[0], text=single&&['paragraph','heading'].includes(first.documentKind);
   const complete=blocks.every(b=>allBlocks.filter(x=>x.path[0]===b.path[0]).every(x=>blocks.some(y=>y.id===x.id)));
   const groupReason='같은 문서 블록에 속한 원본 상자를 모두 골라야 합니다.';
-  const paths=[...new Set(blocks.map(b=>b.path[0]))].sort((a,b)=>a-b);
+  // Before the document is saved, source blocks have no path yet.
+  const paths=[...new Set(blocks.map(b=>b.path?.[0]))].sort((a,b)=>a-b);
   const ordered=p=>!!nodes.find(n=>n.path.length===1&&n.path[0]===p)?.ordered;
   const lists=paths.length>=2&&blocks.every(b=>b.documentKind==='list')&&paths.every((p,i)=>p===paths[0]+i)&&paths.every(p=>ordered(p)===ordered(paths[0]));
   const make=(id,label,ok,reason,action,extra={})=>({id,label,disabled:!ok,disabledReason:!ok?(!complete?groupReason:reason):undefined,action,extra});
