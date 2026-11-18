@@ -1,0 +1,72 @@
+name: Plugin tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Plugin unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Install and test each plugin
+        shell: bash
+        run: |
+          status=0
+          for manifest in plugins/*/package.json; do
+            [[ -f "$manifest" ]] || continue
+            has_test=$(node -p 'Boolean(require("./" + process.argv[1]).scripts?.test)' "$manifest")
+            [[ "$has_test" == true ]] || continue
+            echo "::group::${manifest%/package.json}"
+            (cd "${manifest%/package.json}" && npm ci && npm test) || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+
+  sdk-integration:
+    name: PDF import SDK integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: litzio/litzio
+          ref: master
+          path: litzio
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: litzio/package.json
+      - name: Install Litzio dependencies
+        working-directory: litzio
+        run: pnpm install --frozen-lockfile
+      - name: Run all three SDK integration tests
+        working-directory: plugins/pdf-import
+        shell: bash
+        run: |
+          litzio="$GITHUB_WORKSPACE/litzio"
+          mkdir -p node_modules/@litzio
+          ln -s "$litzio/packages/plugin-sdk" node_modules/@litzio/plugin-sdk
+          loader=$(cd "$litzio" && node --input-type=module -e 'console.log(import.meta.resolve("tsx"))')
+          export PDF_IMPORT_TEST_CLI_ARGS
+          PDF_IMPORT_TEST_CLI_ARGS=$(node -p 'JSON.stringify(process.argv.slice(1))' -- --import "$loader" "$litzio/packages/cli/src/cli.ts")
+          report="$RUNNER_TEMP/pdf-import-sdk.tap"
+          node --import "$loader" --test --test-reporter=tap test/corrections-host.test.mjs | tee "$report"
+          grep -Fx '# tests 3' "$report"
+          grep -Fx '# pass 3' "$report"
+          grep -Fx '# skipped 0' "$report"
