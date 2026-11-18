@@ -1,4 +1,5 @@
 import { koreanTime } from "./time.mjs";
+import { referenceText } from "./references.mjs";
 // Source mapping transformations are independent of the Host and document engine.
 export function boxesFor(lines) {
   const boxes = [];
@@ -124,7 +125,8 @@ export function transformMapping(mapping, { action, ids, line, kind, level, at, 
   return m;
 }
 // Compare the complete character sequence, allowing only whitespace differences.
-// Footnote calls are one rendered position; never guess around unsupported atoms.
+// Footnote calls and figure/table references are one rendered position; the reference
+// stands for its original words. Never guess around unsupported atoms.
 export function splitOffset(lines, lineIndex, content) {
   if (lineIndex < 1 || lineIndex >= lines.length) throw Error('둘째 줄부터 고르세요.');
   const chars = [], positions = []; let offset = 0;
@@ -133,6 +135,7 @@ export function splitOffset(lines, lineIndex, content) {
     if (c.kind === 'text') {
       for (let i=0;i<c.text.length;i++) { add(c.text[i],offset); offset++; }
     } else if (c.kind === 'footnote') { add('[^'+c.label+']', offset); offset++; }
+    else if (c.kind === 'reference' && referenceText(c.label)) { add(referenceText(c.label), offset); offset++; }
     else throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
   }
   const normalized = lines.map(l => l.text.replace(/\s/gu,''));

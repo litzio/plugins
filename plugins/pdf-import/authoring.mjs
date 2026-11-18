@@ -1,6 +1,7 @@
 import { imageKeys } from "./output.mjs";
 import { footnoteContent, BULLET, reconcileFootnotes } from "./rules.mjs";
 import { profiles } from "./profiles/index.mjs";
+import { captionTargets, figureTableLabels, refsFor, cellReferences } from "./references.mjs";
 function authoring(result) {
   reconcileFootnotes(result);
   const profile = profiles[result.profile] ?? profiles.generic;
@@ -8,27 +9,22 @@ function authoring(result) {
   const { blocks, stats } = result,
     consumed = /* @__PURE__ */ new Set(),
     units = [];
-  const captionFor = /* @__PURE__ */ new Map();
-  for (const cap of blocks.filter((b) => b.kind === "caption")) {
-    const table = profile.captionKind(cap.text) === "table";
-    const objs = blocks.filter(
-      (b) => !b.formula && b.page === cap.page && b.kind === (table ? "table" : "figure"),
-    );
-    const eligible = objs.filter((b) =>
-      table
-        ? b.boxes[0].top >= cap.boxes[0].top
-        : b.boxes[0].top <= cap.boxes[0].top,
-    );
-    const obj = eligible.sort(
-      (a, b) =>
-        Math.abs(a.boxes[0].top - cap.boxes[0].top) -
-        Math.abs(b.boxes[0].top - cap.boxes[0].top),
-    )[0];
-    if (obj && !captionFor.has(obj.id)) {
-      captionFor.set(obj.id, cap);
-      consumed.add(cap.id);
-    }
-  }
+  const captionFor = captionTargets(blocks, profile);
+  for (const cap of captionFor.values()) consumed.add(cap.id);
+  // Figures and tables with a caption number of their own kind get a label and that
+  // fixed number; a reference is kept only when its target is in this block list.
+  const labels = figureTableLabels(blocks, profile, captionFor);
+  const live = new Set([...labels.values()].map((v) => v.label));
+  const inline = (b, text) => footnoteContent(text, stats, refsFor(b, text, live));
+  // Litzio puts "Figure 3" in front of a numbered caption; the original number goes.
+  const captionOf = (b) => {
+    const cap = captionFor.get(b.id);
+    if (!cap) return { caption: "" };
+    const n = labels.get(b.id);
+    const m = n && cap.text.match(profile.caption);
+    if (!m) return { enumerated: false, caption: inline(cap, cap.text) };
+    return { label: n.label, enumerator: n.number, caption: inline(cap, cap.text.slice(m[0].length).trimStart()) };
+  };
   let listRun = [],
     lastList = null;
   for (const b of blocks) {
@@ -43,20 +39,20 @@ function authoring(result) {
     }
     let block;
     const sources = [b.id];
-    const content = footnoteContent(b.text, stats);
+    const content = inline(b, b.text);
     if (b.kind === "heading")
       block = { kind: "heading", level: b.level, content };
     else if (b.kind === "note")
       block = {
         kind: "admonition",
         variant: "note",
-        content: footnoteContent(profile.noteBody(b.text), stats),
+        content: inline(b, profile.noteBody(b.text)),
       };
     else if (b.kind === "footnote") {
       const m = b.text.match(/^\[\^(\d+)\]:\s*(.*)$/);
       block = (stats.footnotes.definitions_without_ref.includes(m[1]) || stats.footnotes.duplicate_definitions.includes(m[1]))
         ? { kind: "paragraph", text: "[" + m[1] + "] " + m[2] }
-        : { kind: "footnote", label: m[1], text: m[2] };
+        : { kind: "footnote", label: m[1], ...(refsFor(b, m[2], live).length ? { content: inline(b, m[2]) } : { text: m[2] }) };
     } else if (b.kind === "list") {
       const marker = b.marker || b.text.match(BULLET)?.[0]?.trim() || "";
       const m = marker.match(/^([a-z]+|\d+)\)$/i);
@@ -109,10 +105,7 @@ function authoring(result) {
       };
       const strip = ordered || BULLET.test(marker);
       const item = {
-        content: footnoteContent(
-          strip ? b.text.slice(marker.length).trimStart() : b.text,
-          stats,
-        ),
+        content: inline(b, strip ? b.text.slice(marker.length).trimStart() : b.text),
       };
       while (listRun.length && listRun.at(-1).level > b.level) listRun.pop();
       const parent = listRun.at(-1);
@@ -144,19 +137,19 @@ function authoring(result) {
       listRun.push({ level: b.level, list, unit });
       continue;
     } else if (b.kind === "table" && b.table) {
-      const cap=captionFor.get(b.id);
-      block={kind:"table", enumerated:false, rows:b.table.tokenRows.map(row=>row.map(cells=>cells.flatMap((c,ci)=>[
-        ...(ci?[{kind:"text",text:" / "}]:[]), ...tableContent(c,stats)
-      ]))),caption:cap?footnoteContent(cap.text,stats):""};
+      const cap=captionFor.get(b.id), {caption, ...number}=captionOf(b);
+      block={kind:"table", ...(cap?number:{enumerated:false}), rows:b.table.tokenRows.map(row=>row.map(cells=>cells.flatMap((c,ci)=>[
+        ...(ci?[{kind:"text",text:" / "}]:[]), ...cellReferences(tableContent(c,stats),c.refs,profile,live)
+      ]))),caption};
       if(cap) sources.push(cap.id);
     } else if (["table", "figure"].includes(b.kind)) {
-      const cap = captionFor.get(b.id);
+      const cap = captionFor.get(b.id), { caption, ...number } = captionOf(b);
       block = {
         kind: "figure",
-        enumerated: false,
+        ...(cap ? number : { enumerated: false }),
         imageAsset: keys.get(b.id),
         imageAlt: b.formula ? "수식 영역" : b.kind === "table" ? "표 영역" : "그림 영역",
-        caption: cap ? footnoteContent(cap.text, stats) : "",
+        caption,
       };
       if (cap) sources.push(cap.id);
     } else block = { kind: "paragraph", content };
