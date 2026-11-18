@@ -7,6 +7,12 @@ export const caption = /^(Table|Figure)\s+([A-Z]\.\d+|\d+)\s*[—–.:-]/;
 // A caption block's text names its object.
 export const captionKind = (text) =>
   /^Table\b/.test(text) ? "table" : /^Figure\b/.test(text) ? "figure" : null;
+// A figure or table reference in running text: "Figure 3", "Table B.2".
+// A longer number ("Table 3.1") or a following letter is not this reference.
+// Used with matchAll only.
+export const reference = /\b(Figure|Table)\s+([A-Z]\.\d+|\d+)(?![\w.-]?\d|\w)/g;
+// Without links, a number that belongs to another standard is not ours ("ANSI C84.1 Table 1").
+export const foreignReference = /\b(?:IEEE|ANSI|IEC|ISO|UL|NFPA|NEMA)(?:\s+Std)?(?:\s+[\w.:™-]+)?[\s,]*$/;
 // "NOTE 1—" starts its own paragraph.
 export const note = /^NOTE(?:\s|[—–―-])/;
 // A NOTE paragraph becomes a Litzio note box. The box shows only its kind label,
@@ -37,6 +43,8 @@ export default {
   },
   caption,
   captionKind,
+  reference,
+  foreignReference,
   note,
   noteBody,
   tableNote,

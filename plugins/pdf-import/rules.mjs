@@ -1,6 +1,7 @@
 import { formulaRegions } from "./formula-regions.mjs";
 import { buildGrid, flattenGrid, joinText } from "./table-grid.mjs";
 import { profiles, selectProfile } from "./profiles/index.mjs";
+import { findReferences } from "./references.mjs";
 // The engine reads layout signals only. Document-family text conventions come from a profile.
 const profileOf = (raw, name) => {
   const p = profiles[name ?? selectProfile(raw)];
@@ -729,6 +730,7 @@ function convert(raw, excludedPages = [], profileName) {
   suspects(blocks, stats, profile);
   for (const b of blocks) if(b.formula) b.warning={code:"formula-as-image",reason:"수식을 그림으로 둠"};
   for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
+  stats.references = findReferences(raw, blocks, profile);
   return {
     pages: pages.map((p) => ({ width: p.width, height: p.height })),
     blocks,
@@ -903,19 +905,26 @@ function reconcileFootnotes(result) {
   return result;
 }
 
-function footnoteContent(text, stats) {
+// refs: [{ at, length, label }] in this text become figure/table references.
+function footnoteContent(text, stats, refs = []) {
   const missing = new Set([...stats.footnotes.refs_without_definition,...(stats.footnotes.duplicate_definitions||[])]);
   const content = [];
   let at = 0;
-  for (const m of text.matchAll(/\[\^(\d+)\]/g)) {
-    if (m.index > at)
-      content.push({ kind: "text", text: text.slice(at, m.index) });
-    content.push(
-      missing.has(m[1])
+  const cuts = [
+    ...[...text.matchAll(/\[\^(\d+)\]/g)].map((m) => ({
+      at: m.index,
+      length: m[0].length,
+      node: missing.has(m[1])
         ? { kind: "text", text: "[" + m[1] + "]" }
         : { kind: "footnote", label: m[1] },
-    );
-    at = m.index + m[0].length;
+    })),
+    ...refs.map((r) => ({ at: r.at, length: r.length, node: { kind: "reference", role: "numref", label: r.label } })),
+  ].sort((a, b) => a.at - b.at);
+  for (const c of cuts) {
+    if (c.at < at) continue;
+    if (c.at > at) content.push({ kind: "text", text: text.slice(at, c.at) });
+    content.push(c.node);
+    at = c.at + c.length;
   }
   if (at < text.length) content.push({ kind: "text", text: text.slice(at) });
   return content;
