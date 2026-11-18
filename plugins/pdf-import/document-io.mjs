@@ -1,5 +1,5 @@
 import { machineNodes, getEditableDocument, mergeParagraphWithPrevious, splitParagraph,
-  convertBlock, updateHeadingLevel, removeBlock, insertParagraph, insertHeading, insertList } from '@litzio/plugin-sdk';
+  convertBlock, updateHeadingLevel, removeBlock, insertParagraph, insertHeading, insertList, updateList } from '@litzio/plugin-sdk';
 import { readDocument } from '@litzio/plugin-sdk/node';
 
 export const documentNodes = document => machineNodes(getEditableDocument(document));
@@ -25,6 +25,7 @@ export function applyCorrections(document, operations) {
       case 'insert-block': document=insertParagraph(document,op.at,op.content); break;
       case 'insert-heading': document=insertHeading(document,op.at,op.level,op.content); break;
       case 'insert-list': document=insertList(document,op.at,op.list); break;
+      case 'update-list': document=updateList(document,blockPath,op.list); break;
       case 'format': break;
       default: throw Error('지원하지 않는 고치기입니다.');
     }
