@@ -3,8 +3,8 @@ import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
-import SourceLinks from "./source-links.jsx";
-import {browseScales,steppedScale} from "./link-geometry.mjs";
+import { linkedItems } from "./linked-items.mjs";
+import {browseScales,steppedScale} from "./browse-scale.mjs";
 import {blockActions} from "./block-actions.mjs";
 import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
@@ -65,9 +65,10 @@ function Screen({
   const { useState, useRef, useEffect, useMemo, useLayoutEffect } = React;
   const [browseScale,setBrowseScale]=useState(()=>{try{const value=Number(localStorage.getItem('pdf-import-browse-scale'));return browseScales.includes(value)?value:0.75;}catch{return 0.75;}});
   const scaleValue=useRef(browseScale),scaleChange=useRef(null),scaleAnchor=useRef(null);
-  const linkController=useRef(null),documentLayout=useRef(null),comparisonPair=useRef(null),documentPreview=useRef(null);
+  const comparisonPair = useRef(null);
+  const [viewport, setViewport] = useState(null);
+  const [viewportHeight, setViewportHeight] = useState(0);
   const [pageLast,setPageLast]=useState(1);
-  const receiveLayout=React.useCallback(report=>{documentLayout.current=report;linkController.current?.layout();},[]);
   const recentKey = "pdf-import-recent-folders";
   const [recent, setRecent] = useState([]);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
@@ -118,24 +119,30 @@ function Screen({
     [target, setTarget] = useState(null);
   useEffect(()=>{
     const pair=comparisonPair.current;if(!pair)return;
-    const wheel=e=>{if(!e.ctrlKey||!e.deltaY||!(pane.current?.contains(e.target)||documentPreview.current?.contains(e.target)))return;e.preventDefault();scaleChange.current?.(steppedScale(scaleValue.current,e.deltaY));};
+    const wheel=e=>{if(!e.ctrlKey||!e.deltaY)return;e.preventDefault();scaleChange.current?.(steppedScale(scaleValue.current,e.deltaY));};
     pair.addEventListener('wheel',wheel,{capture:true,passive:false});return ()=>pair.removeEventListener('wheel',wheel,true);
-  },[pdf,picking,missingMapping]);
+  },[viewport]);
   const anchor = useRef(null),
     scrollTimer = useRef(null),
     scrollOwner = useRef(null), sourceAuto = useRef(null);
   useEffect(() => () => clearTimeout(scrollTimer.current), []);
   const pane = useRef(null),
     metrics = useRef({});
-  useEffect(() => {
-    if (!pane.current) return;
-    pane.current.scrollTop = 0;
-    const ro = new ResizeObserver((es) =>
-      setWidth(Math.max(1, es[0].contentRect.width - 16)),
-    );
-    ro.observe(pane.current);
-    return () => ro.disconnect();
-  }, [pdf, picking, missingMapping]);
+  const sourceRef = React.useCallback(element => {
+    pane.current = element;
+    setViewport(element);
+  }, []);
+  useLayoutEffect(() => {
+    if (!viewport) return;
+    const measure = () => {
+      setWidth(Math.max(1, viewport.clientWidth - 16));
+      setViewportHeight(viewport.clientHeight);
+    };
+    const observer = new ResizeObserver(measure);
+    measure();
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [viewport]);
   useEffect(
     () => () => {
       pdf?.loadingTask.destroy();
@@ -198,7 +205,7 @@ function Screen({
       clearTimeout(scrollTimer.current); setFollowed(null);
       const b=r.mapping.blocks.find(b=>b.id===r.targetId);
       setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b||null);
-      if(focusSource&&b)requestAnimationFrame(()=>pane.current?.querySelector('[data-source-id="'+b.id+'"]')?.focus({preventScroll:true}));
+      if(focusSource&&b)requestAnimationFrame(()=>pane.current?.querySelector('[data-linked-item="'+b.id+'"]')?.focus({preventScroll:true}));
       metrics.current.correction={started,timings:r.timings,action};
       setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':'고침 완료');
     } catch(e) {
@@ -207,7 +214,7 @@ function Screen({
     } finally {editing.current=false;setBusy(false);}
   }
   useEffect(() => {
-    const cancel = e => {if(e.key==='Escape'&&!e.defaultPrevented&&!e.target.closest?.('[role=menu],[role=listbox],[role=dialog]')) {setSplitting(false);setSelection([]);setSelected(null);}};
+    const cancel = e => {if(e.key==='Escape'&&!e.defaultPrevented&&!e.target.closest?.('[role=menu],[role=listbox],[role=dialog]')) {setSplitting(false);setSelection([]);setSelected(null);setTarget(null);selectionAnchor.current=null;}};
     window.addEventListener('keydown',cancel); return ()=>window.removeEventListener('keydown',cancel);
   },[]);
   const frontPages = new Set([...excludedPages].map((p) => p - 1));
@@ -238,7 +245,7 @@ function Screen({
     if(pickerSession.current) pickerSession.current.active=false;
     const session={active:true,touched:new Set()};
     pickerSession.current=session;
-    scrollOwner.current=null; sourceAuto.current=null; scaleAnchor.current=null; documentLayout.current=null;
+    scrollOwner.current=null; sourceAuto.current=null; scaleAnchor.current=null;
     replacementApproved.current=false;
     setPickerHelp(false);
     setPageTitles([]);
@@ -444,6 +451,7 @@ function Screen({
     setMapping(null);
     setResult(null);
     setSelected(null);
+    selectionAnchor.current = null;
     setTarget(null);
     setFollowed(null);
     setStatus("뺄 쪽을 고른 뒤 변환하세요.");
@@ -528,8 +536,8 @@ function Screen({
     if(!pane.current)return;
     const anchor=scaleAnchor.current,hit=anchor&&locations[anchor.index];
     if(hit&&hit.b.id===anchor.id){pane.current.scrollTop=Math.max(0,hit.top-anchor.offset);sourceAuto.current=pane.current.scrollTop;scaleAnchor.current=null;}
-    updateSourceViewport();linkController.current?.refresh();
-  },[locations]);
+    updateSourceViewport();
+  },[locations,viewport,viewportHeight]);
   function ownScroll(side, event) {
     if(event?.type==='keydown' && (!['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key) || event.ctrlKey || event.altKey || event.metaKey))return;
     scrollOwner.current=side;
@@ -566,10 +574,10 @@ function Screen({
     setTarget(null);
     moveSource(b);
   }
-  function documentClick(report) {
-    if(stale || busy || editing.current || !mapping || report.revision!==mapping.revision)return;
-    const b=sourceForPath(mapping.blocks,report.path);
-    if(b){scrollOwner.current='document';select(b,true);}
+  function selectLinkedBlock(id) {
+    if (editing.current) return;
+    const block = mapping?.blocks.find(item => item.id === id);
+    if (block) select(block, scrollOwner.current !== 'source');
   }
   async function select(b, scroll = false, shift = false) {
     if (stale || busy) return;
@@ -581,7 +589,9 @@ function Screen({
       setSelected(b);
       setSplitting(false);
       if (shift && selectionAnchor.current) {
-        const a = mapping.blocks.findIndex(x=>x.id===selectionAnchor.current), z = mapping.blocks.findIndex(x=>x.id===b.id);
+        const z = mapping.blocks.findIndex(x=>x.id===b.id);
+        const anchor = mapping.blocks.findIndex(x=>x.id===selectionAnchor.current);
+        const a = anchor < 0 ? z : anchor;
         setSelection(mapping.blocks.slice(Math.min(a,z),Math.max(a,z)+1).map(x=>x.id));
       } else {selectionAnchor.current=b.id;setSelection([b.id]);}
       metrics.current.lastSelection = {
@@ -651,8 +661,184 @@ function Screen({
     },
     [mapping],
   );
+  const linkedSelection = stale ? undefined : selected?.id;
+  const items = useMemo(
+    () => linkedItems(mapping?.blocks ?? [], positions, width * browseScale, width + 16, labels, colors),
+    [mapping, positions, width, browseScale],
+  );
+  function ownComparisonScroll(event) {
+    const side = pane.current?.contains(event.target) ? 'source' : 'document';
+    ownScroll(side, event.type === 'keydown' && event.key === 'Enter' ? undefined : event);
+  }
+  const sourcePages = pdf && !picking && !missingMapping && (
+    <div>
+      {positions.map((pos, i) => (
+        <div
+          data-source-page={i + 1}
+          key={i}
+          style={{
+            height: pos.height,
+            position: "relative",
+            width:width*browseScale,
+            marginLeft: Math.max(0, width + 16 - width * browseScale),
+            marginBottom: 0,
+          }}
+        >
+          {i+1>=pageNo-2 && i+1<=pageLast+2 && (
+            <div
+              style={{
+                position: "relative",
+                outline: frontPages.has(i)
+                  ? "3px solid var(--id-color-danger)"
+                  : undefined,
+                outlineOffset: -3,
+              }}
+            >
+              <div
+                style={{ opacity: frontPages.has(i) ? 0.4 : 1 }}
+              >
+                <Page index={i} scale={pos.scale} />
+              </div>
+              {frontPages.has(i) && (
+                <svg
+                  aria-label="제외"
+                  viewBox="0 0 400 500"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: "100%",
+                    height: "100%",
+                    pointerEvents: "none",
+                    color: "var(--id-color-danger)",
+                    opacity: 0.55,
+                  }}
+                >
+                  <g transform="translate(200 250) rotate(-35) scale(5)">
+                    <text
+                      x="0"
+                      y="0"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="currentColor"
+                      style={{ color: "var(--id-color-danger)" }}
+                      className="type-screen-title"
+                    >
+                      제외
+                    </text>
+                  </g>
+                </svg>
+              )}
+              <div style={{position:"absolute",inset:0,mixBlendMode:"multiply",pointerEvents:"none"}}>
+              {(mapping?.blocks || result?.blocks || []).flatMap(
+                (b) =>
+                  b.boxes
+                    .filter((x) => x.page === i)
+                    .map((x, j) => (
+                      <SourceBlock key={b.id+'-'+j} ui={ui} canEdit={canEdit} busy={busy} stale={stale} block={b} actions={actionItems(selection.includes(b.id)?chosen:[b],true)} trigger={<ui.Button
+                        className="pdf-import-box"
+                        data-selected={selection.includes(b.id) && b.id !== linkedSelection}
+                        data-linked-item={mapping && b.path ? b.id : undefined}
+                        aria-pressed={b.id === linkedSelection}
+                        aria-label={
+                          labels[b.kind] +
+                          (b.warning ? " · " + b.warning.reason : "")
+                        }
+                        onMouseEnter={() => setTip({
+                            text:
+                              labels[b.kind] +
+                              (b.warning
+                                ? " · " + b.warning.reason
+                                : ""),
+                            page: i,
+                            top: x.bottom * pos.scale,
+                          })
+                        }
+                        onMouseLeave={() => setTip(null)}
+                        onFocus={() =>
+                          setTip({
+                            text:
+                              labels[b.kind] +
+                              (b.warning
+                                ? " · " + b.warning.reason
+                                : ""),
+                            page: i,
+                            top: x.bottom * pos.scale,
+                          })
+                        }
+                        onBlur={() => setTip(null)}
+                        onContextMenu={e=>{if(canEdit&&['paragraph','heading','list'].includes(b.documentKind))prepareContext(b);else e.preventDefault();}}
+                        onClick={e => {
+                          ownScroll('source');
+                          if (e.shiftKey && mapping) {
+                            e.stopPropagation();
+                            select(b, false, true);
+                          }
+                        }}
+                        style={{
+                          pointerEvents: "auto",
+                          left: x.x0 * pos.scale,
+                          top: x.top * pos.scale,
+                          width: Math.max(
+                            1,
+                            (x.x1 - x.x0) * pos.scale,
+                          ),
+                          height: Math.max(
+                            1,
+                            (x.bottom - x.top) * pos.scale,
+                          ),
+                          "--block-color": "var(--id-color-" + colors[b.kind] + ")",
+                          "--strip-color": "var(--id-color-" + (b.warning ? "warning" : followed?.id === b.id ? "accent" : colors[b.kind]) + ")",
+                        }}
+                      >
+                        <span className="type-helper" style={{position:'absolute',left:-x.x0*pos.scale,top:0,width:Math.max(0,x.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',gap:0,overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>
+                          {b.level && (["heading","heading_unnumbered"].includes(b.kind) || (b.kind==='list' && b.level>=2)) && <span>{browseScale===.4?'·':b.kind==='list'?b.level:'H'+Math.min(6,b.level)}</span>}
+                          {b.warning && <span style={{color:'var(--id-color-warning)'}}>!</span>}
+                          {b.edited && <span>{browseScale===.4?'·':'고침'}</span>}
+                        </span>
+                      </ui.Button>}/>
+
+                    )),
+              )}
+              {splitting && chosen.length===1 && chosen[0].lines.map((l,j)=>l.page===i && <ui.Button
+                key={'line'+j} className="pdf-import-box pdf-import-line" data-source-line={j} disabled={j===0 || busy}
+                aria-label={j===0?'첫째 줄은 나눌 수 없습니다.':(j+1)+'번째 줄 앞에서 나누기'}
+                onClick={()=>correct('split',{line:j})}
+                style={{pointerEvents:'auto',left:l.box.x0*pos.scale,top:l.box.top*pos.scale,width:(l.box.x1-l.box.x0)*pos.scale,
+                  height:Math.max(1,(l.box.bottom-l.box.top)*pos.scale),outline:'1px solid var(--id-color-accent)',outlineOffset:2}} />)}
+              {(mapping?.excluded || result?.excluded || [])
+                .filter((x) => x.page === i)
+                .map((e, j) => (
+                  <div
+                    key={"e" + j}
+                    className="pdf-import-excluded"
+                    onContextMenu={e=>e.preventDefault()}
+                    tabIndex={0}
+                    aria-label={e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'}
+                    onMouseEnter={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
+                    onMouseLeave={()=>setTip(null)}
+                    onFocus={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
+                    onBlur={()=>setTip(null)}
+                    style={{
+                      position: "absolute",
+                      pointerEvents: "auto",
+                      left: e.box.x0 * pos.scale - 3,
+                      top: e.box.top * pos.scale - 3,
+                      width: (e.box.x1 - e.box.x0) * pos.scale + 6,
+                      height: (e.box.bottom - e.box.top) * pos.scale + 6,
+                    }}
+                   />
+                ))}
+              </div>
+
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
   return (
     <ui.ScreenLayout
+      fillHeight={Boolean(pdf && !picking && !missingMapping)}
       description={
         file
           ? file.name +
@@ -721,7 +907,7 @@ function Screen({
     >
       <style>{`
 @container pdf-tools (max-width:940px){[data-comparison-navigation]{flex-basis:100%;justify-content:flex-end}}
-.pdf-import-panes{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);gap:0}
+.pdf-import-pane-labels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .pdf-import-narrow{display:none}
 .pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
 .pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
@@ -730,16 +916,15 @@ function Screen({
 .pdf-import-box:hover::before,.pdf-import-box:focus-visible::before{background:color-mix(in srgb,var(--block-color) 18%,transparent)}
 .pdf-import-box[data-selected=true]::before{background:color-mix(in srgb,var(--block-color) 22%,transparent)}
 .pdf-import-box[data-selected=true]{outline:1px solid var(--block-color);outline-offset:4px}
-.pdf-import-box:focus-visible{outline:2px solid var(--id-color-border-focus)!important;outline-offset:6px}
+.pdf-import-box:not([data-linked-item]):focus-visible{outline:2px solid var(--id-color-border-focus)!important;outline-offset:6px}
 .pdf-import-line::before,.pdf-import-line::after{display:none}
 .pdf-import-line{outline:1px solid var(--id-color-accent);outline-offset:2px}
 .pdf-import-excluded{position:absolute;--excluded-ink:color-mix(in srgb,var(--id-color-text-muted) 70%,var(--id-color-surface));--excluded-face:repeating-linear-gradient(135deg,color-mix(in srgb,var(--excluded-ink) 80%,transparent) 0 2px,transparent 2px 7px),color-mix(in srgb,var(--excluded-ink) 35%,transparent);background:var(--excluded-face);mix-blend-mode:multiply}
 .pdf-import-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
 .pdf-import-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
 .pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
-@media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}.pdf-import-panes{grid-template-columns:minmax(0,1fr)}
+@media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}.pdf-import-pane-labels{display:none}
 .pdf-import-narrow{display:block}
-[data-link-gutter]{display:none}
 }
 `}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
@@ -864,213 +1049,49 @@ function Screen({
           <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
             {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>경고 {warningIndex+1} / {warnings.length} · {warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
           </div>
-          <div className="pdf-import-panes" ref={comparisonPair}>
-            <div style={{ minWidth: 0 }}>
-              <div className="type-item-name">
-                원본 · {pageNo} / {pdf.numPages}쪽
-              </div>
-              <div
-                data-pdf-pane
-                tabIndex={0}
-                aria-label="원본 PDF"
-                onWheelCapture={e=>ownScroll('source',e)}
-                onPointerDownCapture={e=>ownScroll('source',e)}
-                onKeyDownCapture={e=>ownScroll('source',e)}
-                ref={pane}
-                style={{
-                  height: 760,
-                  overflow: "auto",
-                  background: "var(--id-color-canvas)",
-                  position: "relative",
+          <div className="pdf-import-pane-labels">
+            <div className="type-item-name">원본 · {pageNo} / {pdf.numPages}쪽</div>
+            <div className="type-item-name">변환된 문서</div>
+          </div>
+          <div style={{display:'contents'}} ref={comparisonPair}
+            onWheelCapture={ownComparisonScroll}
+            onPointerDownCapture={ownComparisonScroll}
+            onKeyDownCapture={ownComparisonScroll}
+            onScrollCapture={event => {
+              if (event.target !== pane.current) return;
+              updateSourceViewport();
+              setTip(null);
+              sourceScroll();
+            }}>
+            {mapping ? (
+              <ui.LinkedDocumentView
+                document={{
+                  reloadKey,
+                  path: file.document,
+                  target: target && !stale
+                    ? {revision: mapping.revision, path: target.path, highlight: target.highlight !== false}
+                    : undefined,
+                  height: "fill",
+                  label: "변환된 문서",
+                  scale: browseScale,
+                  onStateChange: viewState,
+                  onVisibleBlockChange: documentVisible,
                 }}
-                onScroll={(e) => {
-                  updateSourceViewport();linkController.current?.refresh();
-                  setTip(null);
-                  sourceScroll();
-                }}
-              >
-                {positions.map((pos, i) => (
-                  <div
-                    data-source-page={i + 1}
-                    key={i}
-                    style={{
-                      height: pos.height,
-                      position: "relative",
-                      width:width*browseScale,
-                      marginLeft:'auto',
-                      marginBottom: 0,
-                    }}
-                  >
-                    {i+1>=pageNo-2 && i+1<=pageLast+2 && (
-                      <div
-                        style={{
-                          position: "relative",
-                          outline: frontPages.has(i)
-                            ? "3px solid var(--id-color-danger)"
-                            : undefined,
-                          outlineOffset: -3,
-                        }}
-                      >
-                        <div
-                          style={{ opacity: frontPages.has(i) ? 0.4 : 1 }}
-                        >
-                          <Page index={i} scale={pos.scale} />
-                        </div>
-                        {frontPages.has(i) && (
-                          <svg
-                            aria-label="제외"
-                            viewBox="0 0 400 500"
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              width: "100%",
-                              height: "100%",
-                              pointerEvents: "none",
-                              color: "var(--id-color-danger)",
-                              opacity: 0.55,
-                            }}
-                          >
-                            <g transform="translate(200 250) rotate(-35) scale(5)">
-                              <text
-                                x="0"
-                                y="0"
-                                textAnchor="middle"
-                                dominantBaseline="central"
-                                fill="currentColor"
-                                style={{ color: "var(--id-color-danger)" }}
-                                className="type-screen-title"
-                              >
-                                제외
-                              </text>
-                            </g>
-                          </svg>
-                        )}
-                        <div style={{position:"absolute",inset:0,mixBlendMode:"multiply",pointerEvents:"none"}}>
-                        {(mapping?.blocks || result?.blocks || []).flatMap(
-                          (b) =>
-                            b.boxes
-                              .filter((x) => x.page === i)
-                              .map((x, j) => (
-                                <SourceBlock key={b.id+'-'+j} ui={ui} canEdit={canEdit} busy={busy} stale={stale} block={b} actions={actionItems(selection.includes(b.id)?chosen:[b],true)} trigger={<ui.Button
-                                  className="pdf-import-box"
-                                  data-selected={selection.includes(b.id)}
-                                  data-source-id={b.id}
-                                  aria-label={
-                                    labels[b.kind] +
-                                    (b.warning ? " · " + b.warning.reason : "")
-                                  }
-                                  onMouseEnter={() => {linkController.current?.source(b.id);setTip({
-                                      text:
-                                        labels[b.kind] +
-                                        (b.warning
-                                          ? " · " + b.warning.reason
-                                          : ""),
-                                      page: i,
-                                      top: x.bottom * pos.scale,
-                                    })
-                                  }}
-                                  onMouseLeave={() => {linkController.current?.source(null);setTip(null);}}
-                                  onFocus={() =>
-                                    setTip({
-                                      text:
-                                        labels[b.kind] +
-                                        (b.warning
-                                          ? " · " + b.warning.reason
-                                          : ""),
-                                      page: i,
-                                      top: x.bottom * pos.scale,
-                                    })
-                                  }
-                                  onBlur={() => setTip(null)}
-                                  onContextMenu={e=>{if(canEdit&&['paragraph','heading','list'].includes(b.documentKind))prepareContext(b);else e.preventDefault();}}
-                                  onClick={(e) => select(b,false,e.shiftKey)}
-                                  style={{
-                                    pointerEvents: "auto",
-                                    left: x.x0 * pos.scale,
-                                    top: x.top * pos.scale,
-                                    width: Math.max(
-                                      1,
-                                      (x.x1 - x.x0) * pos.scale,
-                                    ),
-                                    height: Math.max(
-                                      1,
-                                      (x.bottom - x.top) * pos.scale,
-                                    ),
-                                    "--block-color": "var(--id-color-" + colors[b.kind] + ")",
-                                    "--strip-color": "var(--id-color-" + (b.warning ? "warning" : followed?.id === b.id ? "accent" : colors[b.kind]) + ")",
-                                  }}
-                                >
-                                  <span className="type-helper" style={{position:'absolute',left:-x.x0*pos.scale,top:0,width:Math.max(0,x.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',gap:0,overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>
-                                    {b.level && (["heading","heading_unnumbered"].includes(b.kind) || (b.kind==='list' && b.level>=2)) && <span>{browseScale===.4?'·':b.kind==='list'?b.level:'H'+Math.min(6,b.level)}</span>}
-                                    {b.warning && <span style={{color:'var(--id-color-warning)'}}>!</span>}
-                                    {b.edited && <span>{browseScale===.4?'·':'고침'}</span>}
-                                  </span>
-                                </ui.Button>}/>
-
-                              )),
-                        )}
-                        {splitting && chosen.length===1 && chosen[0].lines.map((l,j)=>l.page===i && <ui.Button
-                          key={'line'+j} className="pdf-import-box pdf-import-line" data-source-line={j} disabled={j===0 || busy}
-                          aria-label={j===0?'첫째 줄은 나눌 수 없습니다.':(j+1)+'번째 줄 앞에서 나누기'}
-                          onClick={()=>correct('split',{line:j})}
-                          style={{pointerEvents:'auto',left:l.box.x0*pos.scale,top:l.box.top*pos.scale,width:(l.box.x1-l.box.x0)*pos.scale,
-                            height:Math.max(1,(l.box.bottom-l.box.top)*pos.scale),outline:'1px solid var(--id-color-accent)',outlineOffset:2}} />)}
-                        {(mapping?.excluded || result?.excluded || [])
-                          .filter((x) => x.page === i)
-                          .map((e, j) => (
-                            <div
-                              key={"e" + j}
-                              className="pdf-import-excluded"
-                              onContextMenu={e=>e.preventDefault()}
-                              tabIndex={0}
-                              aria-label={e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'}
-                              onMouseEnter={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
-                              onMouseLeave={()=>setTip(null)}
-                              onFocus={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
-                              onBlur={()=>setTip(null)}
-                              style={{
-                                position: "absolute",
-                                pointerEvents: "auto",
-                                left: e.box.x0 * pos.scale - 3,
-                                top: e.box.top * pos.scale - 3,
-                                width: (e.box.x1 - e.box.x0) * pos.scale + 6,
-                                height: (e.box.bottom - e.box.top) * pos.scale + 6,
-                              }}
-                             />
-                          ))}
-                        </div>
-
-                      </div>
-                    )}
-                  </div>
-                ))}
+                revision={mapping.revision}
+                source={sourcePages}
+                sourceLabel="원본 PDF"
+                sourceRef={sourceRef}
+                sourceScale={browseScale}
+                items={items}
+                selectedId={linkedSelection}
+                onSelect={selectLinkedBlock}
+              />
+            ) : (
+              <div ref={sourceRef} tabIndex={0} aria-label="원본 PDF"
+                style={{flex:1,minHeight:0,overflow:'auto',background:'var(--id-color-canvas)'}}>
+                {sourcePages}
               </div>
-            </div>
-            <SourceLinks React={React} controller={linkController} layout={documentLayout} pane={pane} preview={documentPreview} mapping={mapping} sources={locations} pageWidth={width*browseScale} selection={selection} stale={stale} colors={colors} onSelect={b=>{ownScroll('source');select(b);}}/>
-            <div data-document-pane style={{ minWidth: 0 }}
-              onPointerMove={e=>linkController.current?.document(e)} onPointerLeave={()=>linkController.current?.leaveDocument()}
-              onWheelCapture={e=>ownScroll('document',e)}
-              onPointerDownCapture={e=>ownScroll('document',e)}
-              onKeyDownCapture={e=>ownScroll('document',e)}>
-              <div className="type-item-name">변환된 문서</div>
-              {mapping && (
-                <div ref={documentPreview}><ui.DocumentView
-                  reloadKey={reloadKey}
-                  path={file.document}
-                  target={
-                    target && !stale
-                      ? { revision: mapping.revision, path: target.path, highlight:target.highlight!==false }
-                      : void 0
-                  }
-                  height={760}
-                  scale={browseScale}
-                  onVisibleBlockLayoutChange={receiveLayout}
-                  onStateChange={viewState}
-                  onVisibleBlockChange={documentVisible}
-                  onBlockClick={documentClick}
-                /></div>
-              )}
-            </div>
+            )}
           </div>
         </>
       )}
