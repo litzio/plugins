@@ -86,7 +86,7 @@ test('SDK integration: L-05 merging adjacent lists, undo, and P-07 note boxes as
     await writeFile(input,JSON.stringify({authoring:{inputs:[{key:'sample',blocks:[
       {kind:'list',...ordered,start:1,items:[{content:[{kind:'text',text:'First item.'}]},{content:[{kind:'text',text:'Second item.'}]}]},
       {kind:'list',...ordered,start:3,items:[{content:[{kind:'text',text:'Third item'},{kind:'footnote',label:'1'}]}]},
-      {kind:'admonition',variant:'note',text:'2 — A remark.'},
+      {kind:'admonition',variant:'note',text:'NOTE 2—A remark.'},
       {kind:'footnote',label:'1',text:'A public note.'}]}]}}));
     await run(['create',doc,'--input',input,'--format','json']);
     const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);
@@ -114,5 +114,49 @@ test('SDK integration: L-05 merging adjacent lists, undo, and P-07 note boxes as
     assert.deepEqual(m.blocks.map(b=>b.path[0]),[1,1,2,3,4]);
     await assert.rejects(()=>correct({document:doc,revision:m.revision,historyId:'screen',action:'merge',ids:['b1','n']}),/목록/);
     assert.equal(await readFile(doc,'utf8'),initial);
+  } finally {await rm(dir,{recursive:true,force:true});}
+});
+test('SDK integration: S-02 figure/table references survive split, merge, kind, remove and undo', {skip:!args},async()=>{
+  const {inspectDocument}=await import('../document-io.mjs');
+  const {correctionHandler}=await import('../correct-host.mjs');
+  const cli={bin:process.execPath,args:JSON.parse(args)}, exec=promisify(execFile);
+  const run=async a=>JSON.parse((await exec(cli.bin,[...cli.args,...a],{windowsHide:true})).stdout || 'null');
+  const dir=await mkdtemp(path.join(os.tmpdir(),'pdf-import-refs-'));
+  try {
+    const doc=path.join(dir,'refs.md'),side=path.join(dir,'refs.pdf-source.json'),input=path.join(dir,'input.json');
+    const ref=label=>({kind:'reference',role:'numref',label});
+    await writeFile(input,JSON.stringify({authoring:{inputs:[{key:'sample',blocks:[
+      {kind:'paragraph',content:[{kind:'text',text:'Limits are in '},ref('tab-B.2'),{kind:'text',text:'. The next line names '},ref('tab-B.2'),{kind:'text',text:' again.'}]},
+      {kind:'paragraph',text:'Second paragraph.'},
+      {kind:'table',label:'tab-B.2',enumerator:'B.2',rows:[['a','b'],['1','2']],caption:'Limits'}]}]}}));
+    await run(['create',doc,'--input',input,'--format','json']);
+    const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);
+    const table=snapshot.nodes.find(n=>n.type==='table');
+    assert.equal(table.referenceText.replace(/\s/g,' '),'Table B.2');
+    const texts=[['Limits are in Table B.2. The next line','names Table B.2 again.'],['Second paragraph.']];
+    const lines=texts.map((t,i)=>t.map((text,j)=>({page:0,text,box:{page:0,x0:0,x1:100,top:i*50+j*12,bottom:i*50+j*12+10}})));
+    let m={snapshotNodes:snapshot.nodes.filter(n=>n.path.length===1),revision:snapshot.revision,excluded:[],blocks:[
+      ...lines.map((l,i)=>({id:'b'+i,path:[i+1],kind:'paragraph',documentKind:'paragraph',lines:l,boxes:boxesFor(l)})),
+      {id:'t',path:[3],kind:'table',documentKind:'table',lines:[],boxes:[{page:0,x0:0,x1:100,top:120,bottom:160}]}]};
+    await writeFile(side,JSON.stringify(m));
+    const correct=correctionHandler();
+    const act=async(action,extra)=>{
+      const r=await correct({document:doc,revision:m.revision,historyId:'screen',action,...extra});
+      assert.ok(r.mapping,JSON.stringify(r));assert.equal(r.mapping.stale,false,JSON.stringify(r));
+      m=JSON.parse(await readFile(side,'utf8'));return r;
+    };
+    const refs=()=>inspectDocument(doc).nodes.filter(n=>n.path.length===1&&n.content).flatMap(n=>n.content.filter(c=>c.kind==='reference').map(c=>c.label));
+    const valid=async()=>{const c=await run(['check',doc,'--format','json']);assert.equal(c.validation.valid,true);assert.deepEqual(c.references.unresolved,[]);};
+    await act('split',{ids:['b0'],line:1});
+    const split=inspectDocument(doc).nodes.filter(n=>n.type==='paragraph');
+    assert.equal(split[1].content[0].text.trim(),'names');
+    assert.deepEqual(refs(),['tab-B.2','tab-B.2']);await valid();
+    await act('undo',{ids:['b0']});assert.equal(await readFile(doc,'utf8'),initial);
+    await act('merge',{ids:['b0','b1']});assert.deepEqual(refs(),['tab-B.2','tab-B.2']);await valid();
+    await act('undo',{ids:['b0']});assert.equal(await readFile(doc,'utf8'),initial);
+    await act('kind',{ids:['b0'],kind:'heading',level:2});assert.deepEqual(refs(),['tab-B.2','tab-B.2']);await valid();
+    await act('undo',{ids:['b0']});assert.equal(await readFile(doc,'utf8'),initial);
+    await act('remove',{ids:['b0']});assert.deepEqual(refs(),[]);await valid();
+    await act('undo',{ids:['b0']});assert.equal(await readFile(doc,'utf8'),initial);
   } finally {await rm(dir,{recursive:true,force:true});}
 });

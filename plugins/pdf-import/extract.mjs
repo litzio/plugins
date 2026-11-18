@@ -201,7 +201,27 @@ async function extract(pdfPath) {
         });
       }
     }
-    pages.push({ width: W, height: H, raw, tables, figures, nchars, words, rulings, graphics: [...graphics, ...images.map(box => ({box, image:true}))] });
+    // Internal links: the source rectangle and the destination point (page, top).
+    const links = [];
+    for (const a of await page.getAnnotations()) {
+      if (a.subtype !== "Link" || !a.dest) continue;
+      try {
+        const dest = typeof a.dest === "string" ? await doc.getDestination(a.dest) : a.dest;
+        if (!Array.isArray(dest)) continue;
+        const index = typeof dest[0] === "number" ? dest[0] : await doc.getPageIndex(dest[0]);
+        const type = dest[1]?.name;
+        const y = type === "XYZ" ? dest[3] : type === "FitH" || type === "FitBH" ? dest[2] : type === "FitR" ? dest[5] : null;
+        const view = (await doc.getPage(index + 1)).view;
+        const [x0, y0, x1, y1] = a.rect;
+        links.push({
+          box: { x0: x0 - vx0, top: top(y1), x1: x1 - vx0, bottom: top(y0) },
+          dest: { page: index, top: typeof y === "number" ? view[3] - y : 0 },
+        });
+      } catch {
+        // A broken destination is not a link we can follow.
+      }
+    }
+    pages.push({ width: W, height: H, raw, tables, figures, nchars, words, rulings, links, graphics: [...graphics, ...images.map(box => ({box, image:true}))] });
     page.cleanup();
   }
   const toc = [];
