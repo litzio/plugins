@@ -86,7 +86,7 @@ test('SDK integration: L-05 merging adjacent lists, undo, and P-07 note boxes as
     await writeFile(input,JSON.stringify({authoring:{inputs:[{key:'sample',blocks:[
       {kind:'list',...ordered,start:1,items:[{content:[{kind:'text',text:'First item.'}]},{content:[{kind:'text',text:'Second item.'}]}]},
       {kind:'list',...ordered,start:3,items:[{content:[{kind:'text',text:'Third item'},{kind:'footnote',label:'1'}]}]},
-      {kind:'admonition',variant:'note',text:'2 — A remark.'},
+      {kind:'admonition',variant:'note',text:'NOTE 2—A remark.'},
       {kind:'footnote',label:'1',text:'A public note.'}]}]}}));
     await run(['create',doc,'--input',input,'--format','json']);
     const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);

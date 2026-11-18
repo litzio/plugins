@@ -22,7 +22,7 @@ const body = [
 ];
 const blocksOf = (input) => authoring(input).authoring.inputs[0].blocks;
 
-test("P-07 IEEE NOTE paragraphs become note boxes with the number in front of the body", () => {
+test("P-07 IEEE NOTE paragraphs become note boxes that keep the original words", () => {
   const raw = { pages: [page([
     ...body,
     line("NOTE 2—A numbered remark that follows the paragraph.", 60, 178, { end: 400, size: 9 }),
@@ -33,13 +33,13 @@ test("P-07 IEEE NOTE paragraphs become note boxes with the number in front of th
   const ieee = convert(structuredClone(raw), [], "ieee");
   assert.deepEqual(ieee.blocks.map((b) => b.kind), ["paragraph", "note", "note", "note", "paragraph"]);
   assert.equal(ieee.stats.notes, 3);
-  // The block keeps the source text; only the authored box drops the NOTE label.
+  // The block and the authored box keep the source text, NOTE label and separator included.
   assert.ok(ieee.blocks[1].text.startsWith("NOTE 2—"));
   const boxes = blocksOf(ieee).filter((b) => b.kind === "admonition");
   assert.deepEqual(boxes.map((b) => [b.variant, b.content.map((c) => c.text).join("")]), [
-    ["note", "2 — A numbered remark that follows the paragraph."],
-    ["note", "An unnumbered remark."],
-    ["note", "3 — A remark with spaces around an en dash."],
+    ["note", "NOTE 2—A numbered remark that follows the paragraph."],
+    ["note", "NOTE—An unnumbered remark."],
+    ["note", "NOTE 3 – A remark with spaces around an en dash."],
   ]);
   const generic = convert(structuredClone(raw), [], "generic");
   assert.ok(generic.blocks.every((b) => b.kind !== "note"));
@@ -60,7 +60,7 @@ test("P-07 a NOTE continued on the next page stays one box; a following paragrap
   assert.match(note.text, /and continues on the next page\.$/);
   assert.equal(r.blocks.at(-1).kind, "paragraph");
   const box = blocksOf(r).find((b) => b.kind === "admonition");
-  assert.match(box.content.map((c) => c.text).join(""), /^1 — A remark .* continues on the next page\.$/);
+  assert.match(box.content.map((c) => c.text).join(""), /^NOTE 1—A remark .* continues on the next page\.$/);
 });
 
 test("P-07 a table note exported from a text table stays a paragraph", () => {
@@ -168,5 +168,5 @@ test("P-07 L-05 synthetic sample: NOTE boxes, one list across pages and two adja
   assert.equal(r.stats.chars_unaccounted, 0);
   const authored = blocksOf(r);
   assert.deepEqual(authored.filter((b) => b.kind === "list").map((b) => b.items.length), [4, 2, 2]);
-  assert.deepEqual(authored.filter((b) => b.kind === "admonition").map((b) => b.content[0].text.slice(0, 4)), ["1 — ", "2 — ", "The "]);
+  assert.deepEqual(authored.filter((b) => b.kind === "admonition").map((b) => b.content[0].text.slice(0, 7)), ["NOTE 1—", "NOTE 2—", "NOTE—Th"]);
 });

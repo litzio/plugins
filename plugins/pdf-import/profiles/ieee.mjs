@@ -15,13 +15,10 @@ export const reference = /\b(Figure|Table)\s+([A-Z]\.\d+|\d+)(?![\w.-]?\d|\w)/g;
 export const foreignReference = /\b(?:IEEE|ANSI|IEC|ISO|UL|NFPA|NEMA)(?:\s+Std)?(?:\s+[\w.:™-]+)?[\s,]*$/;
 // "NOTE 1—" starts its own paragraph.
 export const note = /^NOTE(?:\s|[—–―-])/;
-// A NOTE paragraph becomes a Litzio note box. The box shows only its kind label,
-// so a NOTE number stays in front of the body: "NOTE 2—text" → "2 — text".
-const notePrefix = /^NOTE(?:\s+(\d+))?\s*[—–―-]\s*/;
-export const noteBody = (text) => {
-  const m = text.match(notePrefix);
-  return m ? (m[1] ? m[1] + " — " : "") + text.slice(m[0].length) : null;
-};
+// A NOTE paragraph becomes a Litzio note box. The box body keeps the original words,
+// label, number, separator and spaces included: "NOTE 2—text" stays "NOTE 2—text".
+const notePrefix = /^NOTE(?:\s+\d+)?\s*[—–―-]/;
+export const noteBody = (text) => (notePrefix.test(text) ? text : null);
 // Small-print NOTE lines under a table belong to the table crop.
 export const tableNote = /^NOTE/;
 // The front matter ends at the first clause-1 heading.
