@@ -27,7 +27,7 @@ PDF 가져오기가 쓰는 pdf.js(`pdfjs-dist` 6.5.438)의 기능과, 쓰지 않
 | `getOperatorList` | 사용 | 선·사각형으로 표 격자를 찾고, 그림이 그려진 영역을 찾는다 |
 | `getOutline`, `getDestination`, `getPageIndex` | 사용 | 책갈피로 번호 제목을 확인하고 쪽 고르기 화면에 첫 제목을 보인다 |
 | `getMetadata` | 사용 | 문서 형식 프로필 선택(제목 칸) |
-| `render` | 사용 | 원본 칸의 쪽 그림, 쪽 고르기 미리 보기, 그림 블록 잘라 내기 |
+| `render` | 사용 | 원본 칸의 쪽 그림, 쪽 고르기 미리 보기, 그림 블록 잘라 내기. 같은 canvas에 다시 그릴 때는 이전 작업을 `cancel()`하고 끝나기를 기다린 뒤 시작해 겹치지 않게 한다. `RenderingCancelledException`과 화면에서 내려간 쪽의 오류는 실패로 보지 않는다(`page-render.mjs`) |
 | `getStructTree` + `getTextContent({includeMarkedContent:true})` | 미사용·유망 | 태그된 PDF의 논리 구조(제목·목록·표·Note·Reference·읽는 순서). 있으면 모양으로 추측하는 것보다 강한 신호다. 태그가 없거나 품질이 낮은 PDF가 있어, 규칙은 기본 길로 남기고 구조 트리는 있으면 쓰는 신호로 공통 엔진에 넣는 방향을 검토한다 |
 | `getAnnotations` (Link) | 측정 중 | 문서 안 링크는 그림·표·조항 참조의 대상을 추측 없이 알려 준다. 밖 링크(URL)는 문서의 일반 링크로 살릴 수 있다 |
 | `getPageLabels` | 미사용·유망 | 인쇄된 쪽 번호. 원본 칸의 쪽 표시와 머리·바닥의 쪽 번호 줄 판단에 쓸 수 있다 |

@@ -1,3 +1,4 @@
+import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
 function ShortcutButton({React,ui,hint,children,...props}) {
   const [visible,setVisible]=React.useState(false),id=React.useId();
   return <span style={{position:'relative'}} onMouseEnter={()=>setVisible(true)} onMouseLeave={()=>setVisible(false)} onFocus={()=>setVisible(true)} onBlur={()=>setVisible(false)}>
@@ -14,9 +15,9 @@ function ExcludedMark({React}) {
   </svg>;
 }
 
-function Thumbnail({React, pdf, index, root, enqueue, onError}) {
+function Thumbnail({React, pdf, index, root, enqueue}) {
   const canvas = React.useRef(null), finished = React.useRef(false);
-  const [near, setNear] = React.useState(false), [ready, setReady] = React.useState(false);
+  const [near, setNear] = React.useState(false), [ready, setReady] = React.useState(false), [failed, setFailed] = React.useState(false);
   React.useEffect(() => {
     const observer = new IntersectionObserver(entries => setNear(entries[0].isIntersecting), {root:root.current, rootMargin:'300px'});
     observer.observe(canvas.current);
@@ -24,47 +25,50 @@ function Thumbnail({React, pdf, index, root, enqueue, onError}) {
   }, [root]);
   React.useEffect(() => {
     if (!near || finished.current) return;
-    let cancelled = false, task;
+    let cancelled = false, c = null;
     const cancel = enqueue(async () => {
       const page = await pdf.getPage(index + 1);
-      if (cancelled) return;
+      c = canvas.current;
+      if (cancelled || !c) return;
       const viewport = page.getViewport({scale:thumbnailWidth / pdf.pageSizes[index].width});
-      const c = canvas.current;
-      c.width = Math.ceil(viewport.width); c.height = Math.ceil(viewport.height);
-      task = page.render({canvasContext:c.getContext('2d'), viewport});
-      await task.promise;
-      if (!cancelled) {
-        finished.current = true; setReady(true);
+      if (await renderPage(c, page, viewport, () => cancelled) && !cancelled) {
+        finished.current = true; setReady(true); setFailed(false);
       }
-    }, () => {if (!cancelled) onError('쪽 미리 보기를 그리지 못했습니다.');});
-    return () => {cancelled=true; cancel(); task?.cancel();};
+    }, e => {if (renderFailed(e, cancelled)) setFailed(true);});
+    return () => {cancelled=true; cancel(); cancelRender(c);};
   }, [near, pdf, index, enqueue]);
-  return <canvas ref={canvas} data-thumbnail={index+1} data-ready={ready} width={0} height={0}
-    style={{display:'block',width:thumbnailWidth,height:thumbnailWidth*pdf.pageSizes[index].height/pdf.pageSizes[index].width}} />;
+  // A failed thumbnail says so in its own place and tries again when it comes near the view again.
+  return <>
+    <canvas ref={canvas} data-thumbnail={index+1} data-ready={ready} width={0} height={0}
+      style={{display:'block',width:thumbnailWidth,height:thumbnailWidth*pdf.pageSizes[index].height/pdf.pageSizes[index].width}} />
+    {failed && <span className="type-helper" style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',textAlign:'center',color:'var(--id-color-danger)'}}>그리지 못했습니다</span>}
+  </>;
 }
 
-function LargePage({React, pdf, index, onError}) {
+function LargePage({React, ui, pdf, index}) {
   const canvas=React.useRef(null), container=React.useRef(null);
-  const [width,setWidth]=React.useState(0);
+  const [width,setWidth]=React.useState(0), [failed,setFailed]=React.useState(false), [attempt,setAttempt]=React.useState(0);
   React.useEffect(()=>{
     const observer=new ResizeObserver(entries=>setWidth(Math.min(850,entries[0].contentRect.width)));
     observer.observe(container.current); return ()=>observer.disconnect();
   },[]);
   React.useEffect(()=>{
     if(!width)return;
-    let gone=false, task;
+    let gone=false, c=null;
     (async()=>{
-      const page=await pdf.getPage(index+1);if(gone)return;
-      const viewport=page.getViewport({scale:width/pdf.pageSizes[index].width}),c=canvas.current;
-      c.width=Math.ceil(viewport.width);c.height=Math.ceil(viewport.height);
-      task=page.render({canvasContext:c.getContext('2d'),viewport});await task.promise;
-    })().catch(()=>{if(!gone)onError('큰 쪽을 그리지 못했습니다.');});
-    return ()=>{gone=true;task?.cancel();};
-  },[pdf,index,width]);
-  return <div ref={container} style={{width:'100%'}}><canvas ref={canvas} data-large-page={index+1} style={{display:'block',width:'100%',maxWidth:850,marginInline:'auto'}} /></div>;
+      const page=await pdf.getPage(index+1);c=canvas.current;if(gone||!c)return;
+      if(await renderPage(c,page,page.getViewport({scale:width/pdf.pageSizes[index].width}),()=>gone)&&!gone)setFailed(false);
+    })().catch(e=>{if(renderFailed(e,gone))setFailed(true);});
+    return ()=>{gone=true;cancelRender(c);};
+  },[pdf,index,width,attempt]);
+  return <div ref={container} style={{width:'100%',position:'relative'}}><canvas ref={canvas} data-large-page={index+1} style={{display:'block',width:'100%',maxWidth:850,marginInline:'auto'}} />
+    {failed&&<div data-page-render-failed style={{position:'absolute',top:'var(--space-4)',left:'var(--space-4)',right:'var(--space-4)',zIndex:1}}>
+      <ui.Notice tone="error">이 쪽을 그리지 못했습니다. <ui.Button onClick={()=>setAttempt(n=>n+1)}>다시 그리기</ui.Button></ui.Notice>
+    </div>}
+  </div>;
 }
 
-export default function PagePicker({React, ui, pdf, titles, excluded, toggle, busy, onError}) {
+export default function PagePicker({React, ui, pdf, titles, excluded, toggle, busy}) {
   const root=React.useRef(null), scroll=React.useRef(0), origin=React.useRef(null), largeControls=React.useRef(null);
   const [expanded,setExpanded]=React.useState(null), [help,setHelp]=React.useState('');
   // Only two nearby thumbnails render concurrently. Completed canvases stay mounted;
@@ -122,7 +126,7 @@ export default function PagePicker({React, ui, pdf, titles, excluded, toggle, bu
             onKeyDown={e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();if(!e.repeat)toggle(i+1,e.shiftKey);}}}
             onMouseEnter={()=>setHelp(titles[i]||'')} onMouseLeave={()=>setHelp('')} onFocus={e=>{if(e.currentTarget.matches(':focus-visible'))setHelp(titles[i]||'');}} onBlur={()=>setHelp('')}>
             <div className="pdf-picker-image" style={{outline:excluded.has(i+1)?'2px solid var(--id-color-danger)':undefined,outlineOffset:-2}}>
-              <div style={{opacity:excluded.has(i+1)?0.4:1}}><Thumbnail React={React} pdf={pdf} index={i} root={root} enqueue={enqueue} onError={onError}/></div>
+              <div style={{opacity:excluded.has(i+1)?0.4:1}}><Thumbnail React={React} pdf={pdf} index={i} root={root} enqueue={enqueue}/></div>
               {excluded.has(i+1)&&<ExcludedMark React={React}/>}
             </div>
             <span className="pdf-picker-caption type-helper"><span style={{display:'block'}}>{i+1}쪽</span><span className="pdf-picker-bookmark" aria-hidden={!titles[i]}>{titles[i]||' '}</span></span>
@@ -145,7 +149,7 @@ export default function PagePicker({React, ui, pdf, titles, excluded, toggle, bu
       </ui.Toolbar>
       <div style={{height:'min(68vh,820px)',overflow:'auto',background:'var(--id-color-canvas)',padding:'var(--space-3)'}}>
         <div style={{position:'relative',maxWidth:850,marginInline:'auto',outline:excluded.has(expanded+1)?'2px solid var(--id-color-danger)':undefined}}>
-          <div style={{opacity:excluded.has(expanded+1)?0.4:1}}><LargePage key={expanded} React={React} pdf={pdf} index={expanded} onError={onError}/></div>
+          <div style={{opacity:excluded.has(expanded+1)?0.4:1}}><LargePage key={expanded} React={React} ui={ui} pdf={pdf} index={expanded}/></div>
           {excluded.has(expanded+1)&&<ExcludedMark React={React}/>}
         </div>
       </div>
