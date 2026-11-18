@@ -1,14 +1,16 @@
 import { imageKeys } from "./output.mjs";
 import { footnoteContent, BULLET, reconcileFootnotes } from "./rules.mjs";
+import { profiles } from "./profiles/index.mjs";
 function authoring(result) {
   reconcileFootnotes(result);
+  const profile = profiles[result.profile] ?? profiles.generic;
   const keys = imageKeys(result.blocks);
   const { blocks, stats } = result,
     consumed = /* @__PURE__ */ new Set(),
     units = [];
   const captionFor = /* @__PURE__ */ new Map();
   for (const cap of blocks.filter((b) => b.kind === "caption")) {
-    const table = cap.text.startsWith("Table");
+    const table = profile.captionKind(cap.text) === "table";
     const objs = blocks.filter(
       (b) => !b.formula && b.page === cap.page && b.kind === (table ? "table" : "figure"),
     );

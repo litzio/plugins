@@ -190,6 +190,7 @@ export function activate() {
           excluded: s.result.excluded,
           excludedPages: s.result.excludedPages,
           stats: s.result.stats,
+          profile: s.result.profile,
         };
         const info = await stat(s.doc);
         const pending = s.side + ".pending-" + randomUUID();
