@@ -704,6 +704,28 @@ function convert(raw, excludedPages = [], profileName) {
     for (const b of blocks)
       if (b.kind === "para" && !b.tableNote && profile.noteBody(b.text) !== null)
         b.kind = "note";
+  // L-07: a NOTE indented past the marker of the list item right before it (on the same
+  // page) is part of that item. A Litzio list item holds one paragraph, so its words
+  // follow the item's words; the list is not cut there.
+  for (let i = 1; i < blocks.length; i++) {
+    const b = blocks[i];
+    if (b.kind !== "note") continue;
+    let j = i - 1;
+    while (j >= 0 && blocks[j].kind === "footnote") j--;
+    const item = blocks[j];
+    const at = item?.kind === "list" && item.boxes.find((q) => q.page === b.page);
+    if (!at || b.boxes.length !== 1 || b.boxes[0].x0 < at.x0 + body * 0.7) continue;
+    item.text = item.text + " " + b.text;
+    item.lines = [...(item.lines || []), ...(b.lines || [])];
+    for (const q of b.boxes) {
+      const a = item.boxes.find((x) => x.page === q.page);
+      a.x0 = Math.min(a.x0, q.x0); a.top = Math.min(a.top, q.top);
+      a.x1 = Math.max(a.x1, q.x1); a.bottom = Math.max(a.bottom, q.bottom);
+    }
+    item.noteInItem = (item.noteInItem || 0) + 1;
+    blocks.splice(i, 1);
+    i--;
+  }
   blocks.forEach((b, i) => (b.id = "b" + i));
   let listIndents = [];
   for (const b of blocks) {

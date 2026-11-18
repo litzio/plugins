@@ -170,3 +170,27 @@ test("P-07 L-05 synthetic sample: NOTE boxes, one list across pages and two adja
   assert.deepEqual(authored.filter((b) => b.kind === "list").map((b) => b.items.length), [4, 2, 2]);
   assert.deepEqual(authored.filter((b) => b.kind === "admonition").map((b) => b.content[0].text.slice(0, 7)), ["NOTE 1—", "NOTE 2—", "NOTE—Th"]);
 });
+
+test("L-07 a NOTE indented inside a list item stays in that item; one at the margin is a box after the list", () => {
+  const raw = (noteX) => ({ pages: [page([
+    ...body,
+    line("a) The first item of the list.", 60, 178, { end: 300 }),
+    line("NOTE—A remark that belongs to the first item.", noteX, 190, { end: 400, size: 9 }),
+    line("b) The second item of the list.", 60, 214, { end: 300 }),
+  ])], toc: [] });
+  // Indented past the marker, to the item's text: part of item a).
+  const inside = convert(raw(74), [], "ieee");
+  assert.deepEqual(inside.blocks.map((b) => b.kind), ["paragraph", "list", "list"]);
+  assert.equal(inside.stats.notes, 0);
+  assert.equal(inside.blocks[1].boxes[0].bottom, 192);
+  const lists = blocksOf(inside).filter((b) => b.kind === "list");
+  assert.equal(lists.length, 1);
+  assert.deepEqual(lists[0].items.map((i) => i.content.map((c) => c.text).join("")), [
+    "The first item of the list. NOTE—A remark that belongs to the first item.",
+    "The second item of the list.",
+  ]);
+  // At the list's own margin the NOTE is outside the item: a note box, and the list is cut.
+  const outside = convert(raw(60), [], "ieee");
+  assert.deepEqual(outside.blocks.map((b) => b.kind), ["paragraph", "list", "note", "list"]);
+  assert.deepEqual(blocksOf(outside).map((b) => b.kind), ["paragraph", "list", "admonition", "list"]);
+});
