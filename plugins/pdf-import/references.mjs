@@ -156,11 +156,15 @@ export function findReferences(raw, blocks, profile) {
       const target = destinationBlock(blocks, link.dest);
       const info = target && labels.get(objectOf.get(target.id) ?? target.id);
       if (!info) continue;
-      const source = blocks.find((b) =>
+      // A link over a wrapped reference covers two lines; its centre may fall between them.
+      const q = link.box, overlaps = (x) => x.x0 < q.x1 && q.x0 < x.x1 && x.top < q.bottom && q.top < x.bottom;
+      const holds = (b, hit) =>
         b.table
-          ? b.boxes.some((q) => q.page === link.page && inside(q, cx, cy))
-          : textKinds.includes(b.kind) && (b.lines || []).some((l) => l.page === link.page && inside(l.box, cx, cy)),
-      );
+          ? b.boxes.some((x) => x.page === link.page && hit(x))
+          : textKinds.includes(b.kind) && (b.lines || []).some((l) => l.page === link.page && hit(l.box));
+      const source =
+        blocks.find((b) => holds(b, (x) => inside(x, cx, cy))) ??
+        blocks.find((b) => !b.table && holds(b, overlaps));
       if (!source) continue;
       const same = (m) => m.kind === info.kind && m.number === info.number && !ownNumber(source, m, profile);
       if (source.table) {

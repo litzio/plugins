@@ -71,6 +71,17 @@ test("S-02 the linked occurrence is chosen when the same number appears twice in
   assert.deepEqual(blocks[0].refs.map((r) => r.at), [blocks[0].text.lastIndexOf("Table 2")]);
 });
 
+test("S-02 a link over a reference wrapped onto two lines still finds it", () => {
+  const blocks = sample();
+  const a = lineAt(0, 100, "Limits are in Table"), b = lineAt(0, 120, "2 for each value.");
+  blocks[0] = { id: "p", kind: "paragraph", page: 0, text: "Limits are in Table 2 for each value.", lines: [a, b], boxes: [{ ...a.box, bottom: 130 }] };
+  blocks[0].boxes = [{ page: 0, x0: 60, top: 100, x1: 160, bottom: 110 }, { page: 0, x0: 60, top: 120, x1: 160, bottom: 130 }];
+  // One rectangle over both lines: its centre (y 115) lies between them.
+  const link = { box: { x0: 60, top: 100, x1: 160, bottom: 130 }, dest: { page: 1, top: 60 } };
+  findReferences({ pages: [{ links: [link] }, {}, {}] }, blocks, ieee);
+  assert.deepEqual(blocks[0].refs, [{ at: 14, length: 7, label: "tab-2" }]);
+});
+
 test("S-02 the text rule runs only without internal links and only for captions that exist", () => {
   const blocks = sample();
   blocks[0] = textBlock("p", "paragraph", 0, 100, "See Table 2, Table 9, ANSI C84.1 Table 2 and Figure 4.");
