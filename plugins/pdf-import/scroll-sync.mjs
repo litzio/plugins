@@ -14,7 +14,7 @@ export function sourceForPath(blocks, path, preceding = false) {
 export function sourceLocations(blocks, positions) {
   return blocks.flatMap(b => b.boxes.flatMap(box => {
     const p = positions[box.page];
-    return p ? [{b, right:box.x1*p.scale, top:p.top + box.top*p.scale, bottom:p.top + box.bottom*p.scale}] : [];
+    return p ? [{b, top:p.top + box.top*p.scale, bottom:p.top + box.bottom*p.scale}] : [];
   })).sort((a,b) => a.top-b.top);
 }
 
