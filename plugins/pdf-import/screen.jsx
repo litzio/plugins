@@ -4,7 +4,7 @@ import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
 import SourceLinks from "./source-links.jsx";
-import {browseScales,steppedScale} from "./link-geometry.mjs";
+import {browseScales,steppedScale} from "./browse-scale.mjs";
 import {blockActions} from "./block-actions.mjs";
 import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";

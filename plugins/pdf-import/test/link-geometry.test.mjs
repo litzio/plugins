@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ribbonPath,connectorBands,steppedScale} from '../link-geometry.mjs';
+import {ribbonPath,connectorBands} from '../link-geometry.mjs';
 test('ribbons use horizontal cubic tangents, clip shared visibility and route only active unmatched ends out of view',()=>{
  const b={id:'a',path:[2]},sources=[{b,top:10,bottom:30},{b,top:210,bottom:240}],base={sources,sourceScroll:0,sourceHeight:100,documentHeight:100,width:64,documentBlocks:[{path:[2],top:-5,bottom:40}]};
  const quiet=connectorBands(base);assert.equal(quiet.length,1);assert.deepEqual(quiet[0].left,[10,30]);assert.deepEqual(quiet[0].right,[0,40]);assert.equal(quiet[0].d,'M0 10 C32 10 32 0 64 0 L64 40 C32 40 32 30 0 30 Z');
@@ -12,7 +12,4 @@ test('ribbons use horizontal cubic tangents, clip shared visibility and route on
  assert.deepEqual(connectorBands({...base,documentOffset:1})[0].right,[1,41]);
  assert.match(ribbonPath(64,0,1,2,3,15),/^M-15 0 L0 0 C/);
  assert.equal((ribbonPath(64,0,1,2,3).match(/C/g)||[]).length,2);
-});
-test('browse wheel steps stop at the supported limits',()=>{
- assert.equal(steppedScale(1,1),.75);assert.equal(steppedScale(.75,1),.5);assert.equal(steppedScale(.5,1),.4);assert.equal(steppedScale(.4,1),.4);assert.equal(steppedScale(.4,-1),.5);assert.equal(steppedScale(1,-1),1);
 });
