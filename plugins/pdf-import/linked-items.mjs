@@ -1,3 +1,14 @@
+export function sourcePagePositions(pages, pageWidth, gap) {
+  let top = 0;
+  return pages.map(page => {
+    const scale = pageWidth / page.width;
+    const height = page.height * scale;
+    const position = { top, height, scale };
+    top += height + gap;
+    return position;
+  });
+}
+
 export function linkedItems(blocks, positions, pageWidth, viewportWidth, labels, colors) {
   const pageLeft = Math.max(0, viewportWidth - pageWidth);
   return blocks.flatMap(block => {

@@ -3,7 +3,7 @@ import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
-import { linkedItems } from "./linked-items.mjs";
+import { linkedItems, sourcePagePositions } from "./linked-items.mjs";
 import {browseScales,steppedScale} from "./browse-scale.mjs";
 import {blockActions} from "./block-actions.mjs";
 import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
@@ -128,6 +128,10 @@ function Screen({
   useEffect(() => () => clearTimeout(scrollTimer.current), []);
   const pane = useRef(null),
     metrics = useRef({});
+  const [pageGap, setPageGap] = useState(0);
+  const measurePageGap = React.useCallback(element => {
+    if (element) setPageGap(parseFloat(getComputedStyle(element).rowGap) || 0);
+  }, []);
   const sourceRef = React.useCallback(element => {
     pane.current = element;
     setViewport(element);
@@ -218,21 +222,11 @@ function Screen({
     window.addEventListener('keydown',cancel); return ()=>window.removeEventListener('keydown',cancel);
   },[]);
   const frontPages = new Set([...excludedPages].map((p) => p - 1));
-  const positions = useMemo(() => {
-    let top = 0;
-    return (mapping?.pages || result?.pages || pdf?.pageSizes || []).map(
-      (p, i) => {
-        const scale = width * browseScale / p.width,
-          v = {
-            top,
-            height: p.height * scale + 16,
-            scale,
-          };
-        top += v.height;
-        return v;
-      },
-    );
-  }, [mapping, result, pdf, width,browseScale]);
+  const positions = useMemo(
+    () => sourcePagePositions(mapping?.pages || result?.pages || pdf?.pageSizes || [],
+      width * browseScale, pageGap),
+    [mapping, result, pdf, width, browseScale, pageGap],
+  );
   async function choose() {
     try {
       const f = await pickPath({ kind: "pdf" });
@@ -670,18 +664,27 @@ function Screen({
     const side = pane.current?.contains(event.target) ? 'source' : 'document';
     ownScroll(side, event.type === 'keydown' && event.key === 'Enter' ? undefined : event);
   }
+  const lastPage = positions.at(-1);
   const sourcePages = pdf && !picking && !missingMapping && (
-    <div>
+    <div ref={measurePageGap} style={{
+      position: "relative",
+      rowGap: "var(--space-2)",
+      minHeight: "100%",
+      height: lastPage ? lastPage.top + lastPage.height : 0,
+      background: "var(--id-color-canvas)",
+    }}>
       {positions.map((pos, i) => (
         <div
           data-source-page={i + 1}
           key={i}
           style={{
             height: pos.height,
-            position: "relative",
+            position: "absolute",
+            top: pos.top,
             width:width*browseScale,
-            marginLeft: Math.max(0, width + 16 - width * browseScale),
-            marginBottom: 0,
+            left: Math.max(0, width + 16 - width * browseScale),
+            background: "var(--id-color-paper)",
+            boxShadow: "var(--shadow-paper)",
           }}
         >
           {i+1>=pageNo-2 && i+1<=pageLast+2 && (
