@@ -1,9 +1,12 @@
 import { formulaRegions } from "./formula-regions.mjs";
 import { buildGrid, flattenGrid, joinText } from "./table-grid.mjs";
-const HEAD = /^(\d+(?:\.\d+)*)\.?\s+(\S.*)$/,
-  ANNEX = /^([A-Z](?:\.\d+)+)\s+(\S.*)$/,
-  TOP = /^Annex\s+([A-Z])\b\s*(.*)$/;
-const CAP = /^(Table|Figure)\s+([A-Z]\.\d+|\d+)\s*[—–.:-]/;
+import { profiles, selectProfile } from "./profiles/index.mjs";
+// The engine reads layout signals only. Document-family text conventions come from a profile.
+const profileOf = (raw, name) => {
+  const p = profiles[name ?? selectProfile(raw)];
+  if (!p) throw new Error("알 수 없는 문서 형식입니다.");
+  return p;
+};
 const BULLET = /^[—–•\-]\s*/;
 const END = /[.:;?!)\]”"]$|\[\^\w+\]$/;
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, ""),
@@ -82,14 +85,15 @@ const inside = (l, r) => {
   return r[0] - 2 <= x && x <= r[2] + 2 && r[1] - 2 <= y && y <= r[3] + 2;
 };
 // Page numbers at this boundary are one-based, like the page picker.
-function suggestExcludedPages({ pages }) {
-  const { all } = classifyLines(pages);
+function suggestExcludedPages(raw, profileName) {
+  const profile = profileOf(raw, profileName);
+  const { all } = classifyLines(raw.pages, profile);
   const start = all.findIndex((ls) =>
-    ls.some((l) => l.kind === "heading" && /^1\.?\s/.test(l.text())),
+    ls.some((l) => l.kind === "heading" && profile.bodyStart.test(l.text())),
   );
   return Array.from({ length: Math.max(0, start) }, (_, i) => i + 1);
 }
-function classifyLines(pages) {
+function classifyLines(pages, profile) {
   pages = pages.map((p) => ({ ...p }));
   const all = pages.map((p, i) =>
     p.raw
@@ -134,8 +138,8 @@ function classifyLines(pages) {
       })),
     ]);
     for (const l of ls) {
-      if (l.kind || !CAP.test(l.plain)) continue;
-      const figure = l.plain.startsWith("Figure");
+      if (l.kind || !profile.caption.test(l.plain)) continue;
+      const figure = profile.captionKind(l.plain) === "figure";
       const candidates = regions
         .map((o) => {
           const r = o.boxes[0];
@@ -196,7 +200,7 @@ function classifyLines(pages) {
         const starts =
           l.first_size <= body * 0.7 ||
           (l.main_size < body &&
-            /^NOTE/.test(l.plain) &&
+            profile.tableNote?.test(l.plain) &&
             l.x0 > t[0] - 2 &&
             l.x0 - t[0] < 12 &&
             l.x0 > 92);
@@ -236,13 +240,13 @@ function classifyLines(pages) {
         continue;
       }
       const t = l.text();
-      if (l.bold && CAP.test(t)) l.kind = "caption";
+      if (l.bold && profile.caption.test(t)) l.kind = "caption";
       else if (prev?.kind === "caption" && l.y0 - prev.y1 < 6 && l.x0 > 92)
         l.kind = "caption";
       else if (
         l.bold &&
         l.size >= body &&
-        (HEAD.test(t) || ANNEX.test(t) || TOP.test(t))
+        profile.heading(t)
       )
         l.kind = "heading";
       else if (l.size > body + 0.5 && !BULLET.test(t))
@@ -253,14 +257,17 @@ function classifyLines(pages) {
   });
   return { pages, all, body };
 }
-function convert({ pages, toc }, excludedPages = []) {
+function convert(raw, excludedPages = [], profileName) {
+  const profile = profileOf(raw, profileName);
+  let { pages } = raw;
+  const { toc } = raw;
   if (
     !Array.isArray(excludedPages) ||
     excludedPages.some((p) => !Number.isInteger(p) || p < 1 || p > pages.length)
   )
     throw new Error("제외할 쪽 번호가 올바르지 않습니다.");
   const omitted = new Set(excludedPages);
-  const classified = classifyLines(pages);
+  const classified = classifyLines(pages, profile);
   pages = classified.pages;
   let { all } = classified;
   const { body } = classified;
@@ -431,8 +438,7 @@ function convert({ pages, toc }, excludedPages = []) {
         continue;
       }
       if (l.kind === "heading") {
-        const m = t.match(HEAD) || t.match(ANNEX);
-        push("heading", t, l, TOP.test(t) ? 1 : m[1].split(".").length);
+        push("heading", t, l, profile.heading(t).level);
         prev = l;
         continue;
       }
@@ -456,7 +462,7 @@ function convert({ pages, toc }, excludedPages = []) {
           blocks.at(-1)?.kind === "caption" &&
           prev &&
           l.y0 - prev.y1 < 6 &&
-          !CAP.test(t)
+          !profile.caption.test(t)
         ) {
           blocks.at(-1).text += " " + t;
           addBox(blocks.at(-1), l);
@@ -493,7 +499,7 @@ function convert({ pages, toc }, excludedPages = []) {
       const same =
         prev?.kind === "body" &&
         !mark &&
-        !/^NOTE(?:\s|[—–-])/.test(t) &&
+        !profile.note?.test(t) &&
         ((!largeGap &&
           !indent &&
           (active?.kind === "list" ||
@@ -613,7 +619,7 @@ function convert({ pages, toc }, excludedPages = []) {
           if (at < 0) blocks.push(b);
           else blocks.splice(at, 0, b);
         }
-  const merged = mergeRegions(blocks);
+  const merged = mergeRegions(blocks, profile);
   for(let i=0;i<merged.length;i++) {
     const b=merged[i];if(b.kind!=="table")continue;
     const x=b.boxes[0],p=pages[b.page];
@@ -664,14 +670,14 @@ function convert({ pages, toc }, excludedPages = []) {
       listIndents.push(x);
     b.level = listIndents.length;
   }
-  const stats = measure(pages, toc, all, blocks, start, body, joins);
+  const stats = measure(pages, toc, all, blocks, start, body, joins, profile);
   stats.paragraphs.layout = {
     full_line_ratio: fullRatio,
     justified,
     baseline_step: step,
     right_edges: right,
   };
-  suspects(blocks, stats);
+  suspects(blocks, stats, profile);
   for (const b of blocks) if(b.formula) b.warning={code:"formula-as-image",reason:"수식을 그림으로 둠"};
   for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
   return {
@@ -680,11 +686,12 @@ function convert({ pages, toc }, excludedPages = []) {
     excluded,
     excludedPages: [...omitted].sort((a, b) => a - b),
     stats,
+    profile: profile.name,
   };
 }
-function measure(pages, toc, all, blocks, start, body, joins) {
+function measure(pages, toc, all, blocks, start, body, joins, profile) {
   const headings = blocks.filter((b) => b.kind === "heading"),
-    truth = toc.filter(([, t]) => HEAD.test(t) || ANNEX.test(t) || TOP.test(t)),
+    truth = toc.filter(([, t]) => profile.heading(t)),
     used = /* @__PURE__ */ new Map(),
     levels = {},
     missing = [];
@@ -731,16 +738,16 @@ function measure(pages, toc, all, blocks, start, body, joins) {
     paragraphs: { cross_page_joined: joins },
     objects: {
       table_captions: blocks.filter(
-        (b) => b.kind === "caption" && b.text.startsWith("Table"),
+        (b) => b.kind === "caption" && profile.captionKind(b.text) === "table",
       ).length,
       figure_captions: blocks.filter(
-        (b) => b.kind === "caption" && b.text.startsWith("Figure"),
+        (b) => b.kind === "caption" && profile.captionKind(b.text) === "figure",
       ).length,
     },
     footnotes: footnotePairs(blocks),
   };
 }
-function suspects(blocks, stats) {
+function suspects(blocks, stats, profile) {
   const warn = (b, code, reason) => {
     if (b.warning) b.warning.reason += " · " + reason;
     else b.warning = { code, reason };
@@ -750,9 +757,9 @@ function suspects(blocks, stats) {
     if (b.kind === "heading_unnumbered")
       warn(b, "unnumbered-heading", "번호 없는 제목 후보");
     if (b.kind === "heading") {
-      const m = b.text.match(HEAD) || b.text.match(ANNEX);
-      if (!m) continue;
-      const n = m[1],
+      const h = profile.heading(b.text);
+      if (!h?.number) continue;
+      const n = h.number,
         parts = n.split("."),
         parent = parts.slice(0, -1).join("."),
         last = parts.at(-1),
@@ -760,7 +767,7 @@ function suspects(blocks, stats) {
       if (
         parent &&
         !seen.has(parent) &&
-        !(parts.length === 2 && /^[A-Z]$/.test(parts[0]))
+        h.parentHeading
       )
         reasons.push("상위 번호 없음");
       if (
@@ -910,7 +917,7 @@ function coalesceOverlaps(blocks) {
   }
   return out;
 }
-function mergeRegions(blocks) {
+function mergeRegions(blocks, profile = profiles.generic) {
   const objects = blocks.filter((b) => ["table", "figure"].includes(b.kind));
   const united = coalesceOverlaps(objects);
   const emitted = new Set();
@@ -978,11 +985,11 @@ function mergeRegions(blocks) {
     const beforeCaption =
       prior?.page === first.page &&
       prior.kind === "caption" &&
-      /^Table\b/.test(prior.text);
+      profile.captionKind(prior.text) === "table";
     const afterCaption =
       next?.page === first.page &&
       next.kind === "caption" &&
-      /^Figure\b/.test(next.text);
+      profile.captionKind(next.text) === "figure";
     const kind = beforeCaption
       ? "table"
       : afterCaption

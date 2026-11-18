@@ -212,8 +212,9 @@ async function extract(pdfPath) {
     }
   };
   walk(await doc.getOutline(), 1);
+  const title = (await doc.getMetadata()).info?.Title;
   await loadingTask.destroy();
-  return { pages, toc };
+  return { pages, toc, title: typeof title === "string" ? title : "" };
 }
 export {
   extract

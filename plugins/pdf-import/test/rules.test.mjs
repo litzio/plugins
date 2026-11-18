@@ -12,6 +12,8 @@ const raw = await extract(
 );
 const result = convert(raw);
 test("public sample: headings, conservation, margins, and cross-page paragraph", () => {
+  // Its PDF information mentions IEEE, but it has no IEEE designation line.
+  assert.equal(result.profile, "generic");
   assert.equal(result.stats.headings.detected, 15);
   assert.equal(result.stats.headings.matched, 15);
   assert.equal(result.stats.headings.level_correct, 15);
