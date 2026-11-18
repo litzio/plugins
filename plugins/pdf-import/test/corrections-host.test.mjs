@@ -74,3 +74,45 @@ test('SDK integration: corrections, repeated undo, saved-only reopening and revi
     const checked=await run(['check',doc,'--format','json']);assert.equal(checked.validation.valid,true);
   } finally {await rm(dir,{recursive:true,force:true});}
 });
+test('SDK integration: L-05 merging adjacent lists, undo, and P-07 note boxes as their own kind', {skip:!args},async()=>{
+  const {inspectDocument}=await import('../document-io.mjs');
+  const {correctionHandler}=await import('../correct-host.mjs');
+  const cli={bin:process.execPath,args:JSON.parse(args)}, exec=promisify(execFile);
+  const run=async a=>JSON.parse((await exec(cli.bin,[...cli.args,...a],{windowsHide:true})).stdout || 'null');
+  const dir=await mkdtemp(path.join(os.tmpdir(),'pdf-import-lists-'));
+  try {
+    const doc=path.join(dir,'lists.md'),side=path.join(dir,'lists.pdf-source.json'),input=path.join(dir,'input.json');
+    const ordered={ordered:true,style:'lower-alpha',delimiter:')'};
+    await writeFile(input,JSON.stringify({authoring:{inputs:[{key:'sample',blocks:[
+      {kind:'list',...ordered,start:1,items:[{content:[{kind:'text',text:'First item.'}]},{content:[{kind:'text',text:'Second item.'}]}]},
+      {kind:'list',...ordered,start:3,items:[{content:[{kind:'text',text:'Third item'},{kind:'footnote',label:'1'}]}]},
+      {kind:'admonition',variant:'note',text:'2 — A remark.'},
+      {kind:'footnote',label:'1',text:'A public note.'}]}]}}));
+    await run(['create',doc,'--input',input,'--format','json']);
+    const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);
+    assert.deepEqual(snapshot.nodes.filter(n=>n.path.length===1).map(n=>n.type),['list','list','admonition','footnote']);
+    const source=(id,at,top)=>{const lines=[{page:0,text:id,box:{page:0,x0:0,x1:100,top,bottom:top+10}}];
+      return {id,path:[at],kind:'list',documentKind:'list',lines,boxes:boxesFor(lines)};};
+    let m={snapshotNodes:snapshot.nodes.filter(n=>n.path.length===1),revision:snapshot.revision,excluded:[],blocks:[
+      source('a1',1,0),source('a2',1,12),source('b1',2,30),
+      {...source('n',3,50),kind:'note',documentKind:'admonition'},{...source('f',4,90),kind:'footnote',documentKind:'footnote'}]};
+    await writeFile(side,JSON.stringify(m));
+    const correct=correctionHandler();
+    const act=async(action,ids)=>{
+      const r=await correct({document:doc,revision:m.revision,historyId:'screen',action,ids});
+      assert.ok(r.mapping,JSON.stringify(r));assert.equal(r.mapping.stale,false,JSON.stringify(r));
+      m=JSON.parse(await readFile(side,'utf8'));return r;
+    };
+    await act('merge',['a1','a2','b1']);
+    const merged=inspectDocument(doc).nodes.filter(n=>n.path.length===1);
+    assert.deepEqual(merged.map(n=>n.type),['list','admonition','footnote']);
+    assert.equal(merged[0].items.length,3);
+    assert.deepEqual(m.blocks.map(b=>b.path[0]),[1,1,1,2,3]);
+    assert.equal((await run(['check',doc,'--format','json'])).validation.valid,true);
+    await act('undo',['a1']);
+    assert.equal(await readFile(doc,'utf8'),initial);
+    assert.deepEqual(m.blocks.map(b=>b.path[0]),[1,1,2,3,4]);
+    await assert.rejects(()=>correct({document:doc,revision:m.revision,historyId:'screen',action:'merge',ids:['b1','n']}),/목록/);
+    assert.equal(await readFile(doc,'utf8'),initial);
+  } finally {await rm(dir,{recursive:true,force:true});}
+});

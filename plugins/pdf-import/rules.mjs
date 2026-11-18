@@ -9,6 +9,23 @@ const profileOf = (raw, name) => {
 };
 const BULLET = /^[—–•\-]\s*/;
 const END = /[.:;?!)\]”"]$|\[\^\w+\]$/;
+// L-05: a list item continues the previous page's list when it has the same marker
+// shape and the next number (or the same bullet) at the same indentation.
+const romans = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x"];
+function nextMarker(a, b) {
+  const ordered = /^(\(?)([a-z]+|\d+)\)$/i,
+    x = a.match(ordered),
+    y = b.match(ordered);
+  if (!x || !y) return !x && !y && a === b;
+  if (x[1] !== y[1]) return false;
+  const [u, v] = [x[2], y[2]];
+  if (/^\d+$/.test(u) || /^\d+$/.test(v))
+    return /^\d+$/.test(u) && /^\d+$/.test(v) && +v === +u + 1;
+  if ((u === u.toLowerCase()) !== (v === v.toLowerCase())) return false;
+  const r = romans.indexOf(u.toLowerCase());
+  if (r >= 0 && romans[r + 1] === v.toLowerCase()) return true;
+  return u.length === 1 && v.length === 1 && v.charCodeAt(0) === u.charCodeAt(0) + 1;
+}
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, ""),
   chars = (s) => s.replace(/\s/g, "").length;
 const round = (x) =>
@@ -384,7 +401,8 @@ function convert(raw, excludedPages = [], profileName) {
   };
   const blocks = [],
     excluded = [];
-  let joins = 0;
+  let joins = 0,
+    listJoins = 0;
   const push = (kind, text, l, level) => {
     const b = {
       id: "",
@@ -546,9 +564,33 @@ function convert(raw, excludedPages = [], profileName) {
               boundary(b, "짧은 줄로 끝났지만 다음 쪽이 문장 중간처럼 시작함");
           }
         }
+        let continues = false;
+        if (first && mark) {
+          const b = blocks.findLast((b) =>
+            ["para", "list", "heading", "caption", "table", "figure"].includes(
+              b.kind,
+            ),
+          );
+          if (b?.kind === "list" && lastLines.get(b)?.page === p - 1) {
+            const run = [];
+            for (let k = blocks.length - 1; k >= 0; k--) {
+              if (blocks[k].kind === "footnote") continue;
+              if (blocks[k].kind !== "list") break;
+              run.push(blocks[k]);
+            }
+            const peer = run.find(
+              (x) => Math.abs(x.boxes[0].x0 - l.x0) < body * 0.7,
+            );
+            continues = !!peer && nextMarker(peer.marker, mark.marker);
+          }
+        }
         if (!joined) {
           const b = push(mark ? "list" : "para", t, l);
           if (mark) Object.assign(b, mark, { level: 1 });
+          if (continues) {
+            b.continuesList = true;
+            listJoins++;
+          }
           lastLines.set(b, l);
           if (prev?.kind === "body" && !mark && active?.kind === "para") {
             if (justified && full(prev) && (largeGap || indent))
@@ -656,6 +698,11 @@ function convert(raw, excludedPages = [], profileName) {
     for(const note of notes) note.lines=[{page:note.page,box:{...note.boxes[0]},text:note.text}];
     blocks.splice(i+1,0,...notes);i+=notes.length;
   }
+  // A NOTE paragraph becomes a note box; table notes stay table-note paragraphs.
+  if (profile.noteBody)
+    for (const b of blocks)
+      if (b.kind === "para" && !b.tableNote && profile.noteBody(b.text) !== null)
+        b.kind = "note";
   blocks.forEach((b, i) => (b.id = "b" + i));
   let listIndents = [];
   for (const b of blocks) {
@@ -677,6 +724,8 @@ function convert(raw, excludedPages = [], profileName) {
     baseline_step: step,
     right_edges: right,
   };
+  stats.notes = blocks.filter((b) => b.kind === "note").length;
+  stats.lists = { cross_page_joined: listJoins };
   suspects(blocks, stats, profile);
   for (const b of blocks) if(b.formula) b.warning={code:"formula-as-image",reason:"수식을 그림으로 둠"};
   for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
@@ -805,6 +854,7 @@ function footnotePairs(blocks) {
       [
         "para",
         "paragraph",
+        "note",
         "list",
         "heading",
         "heading_unnumbered",

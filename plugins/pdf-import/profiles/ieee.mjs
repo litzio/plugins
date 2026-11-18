@@ -8,7 +8,14 @@ export const caption = /^(Table|Figure)\s+([A-Z]\.\d+|\d+)\s*[—–.:-]/;
 export const captionKind = (text) =>
   /^Table\b/.test(text) ? "table" : /^Figure\b/.test(text) ? "figure" : null;
 // "NOTE 1—" starts its own paragraph.
-export const note = /^NOTE(?:\s|[—–-])/;
+export const note = /^NOTE(?:\s|[—–―-])/;
+// A NOTE paragraph becomes a Litzio note box. The box shows only its kind label,
+// so a NOTE number stays in front of the body: "NOTE 2—text" → "2 — text".
+const notePrefix = /^NOTE(?:\s+(\d+))?\s*[—–―-]\s*/;
+export const noteBody = (text) => {
+  const m = text.match(notePrefix);
+  return m ? (m[1] ? m[1] + " — " : "") + text.slice(m[0].length) : null;
+};
 // Small-print NOTE lines under a table belong to the table crop.
 export const tableNote = /^NOTE/;
 // The front matter ends at the first clause-1 heading.
@@ -31,6 +38,7 @@ export default {
   caption,
   captionKind,
   note,
+  noteBody,
   tableNote,
   bodyStart,
 };

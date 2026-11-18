@@ -17,6 +17,7 @@ const labels = {
   heading: "제목",
   heading_unnumbered: "제목",
   paragraph: "본문",
+  note: "참고",
   caption: "캡션",
   list: "목록",
   table: "표",
@@ -29,6 +30,7 @@ const colors = {
   heading: "accent",
   heading_unnumbered: "accent",
   paragraph: "info",
+  note: "info",
   caption: "info",
   list: "success",
   table: "border-focus",
@@ -158,7 +160,7 @@ function Screen({
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
   const canEdit = !!mapping && !stale;
   function actionItems(blocks,focusSource=false) {
-    return blockActions(blocks,mapping?.blocks||[]).map(a=>({...a,icon:null,
+    return blockActions(blocks,mapping?.blocks||[],mapping?.snapshotNodes||[]).map(a=>({...a,icon:null,
       disabled:a.disabled||busy||stale,
       run:()=>{
         if(a.action==='split') {setSelection(blocks.map(b=>b.id));setSelected(blocks[0]);setSplitting(true);}

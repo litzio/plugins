@@ -47,7 +47,8 @@ export function previewCorrection(mapping, input, undoBefore) {
   if (!nodes.length) throw Error('고칠 블록을 찾지 못했습니다.');
   const at = paths[0], first = nodes[0];
   let replacement;
-  if(action === 'merge') replacement=[{...first,content:nodes.flatMap((n,i)=>i?[{kind:'text',text:' '},...n.content]:n.content)}];
+  if(action === 'merge' && first.type === 'list') replacement=[{...first,items:nodes.flatMap(n=>n.items)}];
+  else if(action === 'merge') replacement=[{...first,content:nodes.flatMap((n,i)=>i?[{kind:'text',text:' '},...n.content]:n.content)}];
   else if(action === 'split') replacement=splitContent(first.content,splitOffset(selected[0].lines,line,first.content)).map(content=>({...first,content}));
   else if(action === 'kind') replacement=[{...first,type:kind,level:kind==='heading'?level:undefined}];
   else if(action === 'remove') replacement=[];
@@ -97,7 +98,10 @@ export function transformMapping(mapping, { action, ids, line, kind, level, at, 
   if (!selected.length) throw Error('고칠 블록을 찾지 못했습니다.');
   const first = selected[0], edited = { action, at: time, who: 'user' };
   let replacements;
-  if (action === 'merge') {
+  if (action === 'merge' && first.documentKind === 'list') {
+    // Every source item keeps its own boxes; the items now share the first list's path.
+    replacements = selected.map(b => ({ ...b, path:[at], edited }));
+  } else if (action === 'merge') {
     const lines = selected.flatMap(b => b.lines);
     replacements = [{ ...first, kind:'paragraph', documentKind:'paragraph', lines, boxes:boxesFor(lines), edited }];
   } else if (action === 'split') {

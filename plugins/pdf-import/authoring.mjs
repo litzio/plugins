@@ -29,15 +29,29 @@ function authoring(result) {
       consumed.add(cap.id);
     }
   }
-  let listRun = [];
+  let listRun = [],
+    lastList = null;
   for (const b of blocks) {
     if (consumed.has(b.id)) continue;
-    if (b.kind !== "list") listRun = [];
+    // Footnotes sit between pages; a list crosses a page only when rules say it continues.
+    if (b.kind === "list") {
+      if (lastList && lastList.page !== b.page && !b.continuesList) listRun = [];
+      lastList = b;
+    } else if (b.kind !== "footnote") {
+      listRun = [];
+      lastList = null;
+    }
     let block;
     const sources = [b.id];
     const content = footnoteContent(b.text, stats);
     if (b.kind === "heading")
       block = { kind: "heading", level: b.level, content };
+    else if (b.kind === "note")
+      block = {
+        kind: "admonition",
+        variant: "note",
+        content: footnoteContent(profile.noteBody(b.text), stats),
+      };
     else if (b.kind === "footnote") {
       const m = b.text.match(/^\[\^(\d+)\]:\s*(.*)$/);
       block = (stats.footnotes.definitions_without_ref.includes(m[1]) || stats.footnotes.duplicate_definitions.includes(m[1]))

@@ -6,10 +6,11 @@ import { assertMapping, previewCorrection, restoreMapping, splitOffset, snapshot
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections } from './document-io.mjs';
 const topNodes = snapshotNodes;
+const listOf = (n, items = n.items) => ({ordered:n.ordered,...(n.ordered?{start:n.start,style:n.style,delimiter:n.delimiter}:{}),items});
 const insert = (n, at) => n.type === 'paragraph'
   ? {command:'insert-block',at,content:n.content}
   : n.type === 'heading' ? {command:'insert-heading',at,level:n.level,content:n.content}
-  : n.type === 'list' ? {command:'insert-list',at,list:{ordered:n.ordered,...(n.ordered?{start:n.start,style:n.style,delimiter:n.delimiter}:{}),items:n.items}} : null;
+  : n.type === 'list' ? {command:'insert-list',at,list:listOf(n)} : null;
 export function correctionHandler() {
   const histories = new Map(), locks = new Set();
   const persist = async (side, m) => {
@@ -62,7 +63,17 @@ export function correctionHandler() {
         if (before.blocks.some(x => selectedPaths.includes(x.path[0]) && !ids.includes(x.id)))
           throw Error('같은 문서 블록에 속한 원본 상자를 모두 골라 주세요.');
         let newCount = 1;
-        if (action === 'merge') {
+        if (action === 'merge' && first?.type === 'list') {
+          if (nodes.length < 2 || nodes.some((n,i)=>n.type !== 'list' || n.path[0] !== at+i || !!n.ordered !== !!first.ordered))
+            throw Error('이웃한 같은 종류의 목록을 둘 이상 골라야 합니다.');
+          const items = nodes.flatMap(n=>n.items);
+          if (items.length > 100) throw Error('합친 목록이 100항목을 넘어 합치지 않았습니다.');
+          // The first list takes every item before the others go, so footnote calls stay alive.
+          ops = [{command:'update-list',path:String(at),list:listOf(first,items)},
+            ...nodes.slice(1).map(()=>({command:'remove-block',at:at+1}))];
+          inverse = [...nodes.slice(1).map((n,i)=>insert(n,at+1+i)),
+            {command:'update-list',path:String(at),list:listOf(first)}];
+        } else if (action === 'merge') {
           if (nodes.length < 2 || nodes.some((n,i)=>n.type !== 'paragraph' || n.path[0] !== at+i))
             throw Error('이웃한 문단을 둘 이상 골라야 합니다.');
           const content = nodes.flatMap((n,i)=>i ? [{kind:'text',text:' '},...n.content] : n.content);
