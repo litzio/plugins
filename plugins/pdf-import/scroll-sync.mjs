@@ -27,3 +27,25 @@ export function sourceScrollTop(block, positions, height) {
   const box = block.boxes[0], p = positions[box.page];
   return p.top + box.top*p.scale - height/3;
 }
+
+// Visible top (px below the source viewport's top edge) of the block's first box that is still on
+// screen, or null when no box intersects the viewport. A box that starts above the edge gives a
+// negative top so the document pair lands at the same, partly hidden, height.
+export function sourceVisibleTop(block, positions, scrollTop, height) {
+  for (const box of block.boxes) {
+    const p = positions[box.page];
+    if (!p) continue;
+    const top = p.top + box.top*p.scale - scrollTop, bottom = p.top + box.bottom*p.scale - scrollTop;
+    if (bottom > 0 && top < height) return top;
+  }
+  return null;
+}
+
+// Source scrollTop that puts the block's first box `top` px below the viewport edge, clamped to the
+// scroll range. Null when the clamped move is 8px (--space-2) or less, the same rule as target.top.
+export function sourceAlignScrollTop(block, positions, top, scrollTop, maxScroll) {
+  const box = block.boxes[0], p = box && positions[box.page];
+  if (!p || !Number.isFinite(top)) return null;
+  const next = Math.min(Math.max(0, maxScroll), Math.max(0, p.top + box.top*p.scale - top));
+  return Math.abs(next - scrollTop) <= 8 ? null : next;
+}

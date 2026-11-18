@@ -6,7 +6,7 @@ import PagePicker from "./page-picker.jsx";
 import { linkedItems, sourcePagePositions } from "./linked-items.mjs";
 import {browseScales,steppedScale} from "./browse-scale.mjs";
 import {blockActions} from "./block-actions.mjs";
-import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop} from "./scroll-sync.mjs";
+import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop, sourceVisibleTop, sourceAlignScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
@@ -127,7 +127,8 @@ function Screen({
   },[viewport]);
   const anchor = useRef(null),
     scrollTimer = useRef(null),
-    scrollOwner = useRef(null), sourceAuto = useRef(null);
+    scrollOwner = useRef(null), sourceAuto = useRef(null),
+    documentLayout = useRef(null), alignRequest = useRef(0), pairHeld = useRef(false);
   useEffect(() => () => clearTimeout(scrollTimer.current), []);
   const pane = useRef(null),
     metrics = useRef({});
@@ -211,7 +212,7 @@ function Screen({
       setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
       clearTimeout(scrollTimer.current); setFollowed(null);
       const b=r.mapping.blocks.find(b=>b.id===r.targetId);
-      setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b||null);
+      setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b?sourceTarget(b):null);
       if(focusSource&&b)requestAnimationFrame(()=>pane.current?.querySelector('[data-linked-item="'+b.id+'"]')?.focus({preventScroll:true}));
       metrics.current.correction={started,timings:r.timings,action};
       setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':'고침 완료');
@@ -524,7 +525,13 @@ function Screen({
   function changeScale(value){
     if(value===scaleValue.current||!browseScales.includes(value))return;
     clearTimeout(scrollTimer.current);
-    if(pane.current){const y=pane.current.scrollTop+pane.current.clientHeight/3;const hit=locations.find(x=>x.top<=y&&x.bottom>=y)||locations.find(x=>x.top>=y)||locations.at(-1);if(hit)scaleAnchor.current={index:locations.indexOf(hit),id:hit.b.id,offset:hit.top-pane.current.scrollTop};}
+    if(pane.current){
+      const top=pane.current.scrollTop,y=top+pane.current.clientHeight/3;
+      // A clicked pair nobody has scrolled away from stays the anchor and is aligned again after the change.
+      const held=pairHeld.current&&target?.top!=null&&locations.find(x=>x.b.id===target.id&&x.bottom>top&&x.top<top+pane.current.clientHeight);
+      const hit=held||locations.find(x=>x.top<=y&&x.bottom>=y)||locations.find(x=>x.top>=y)||locations.at(-1);
+      if(hit)scaleAnchor.current={index:locations.indexOf(hit),id:hit.b.id,offset:hit.top-top,realign:!!held};
+    }
     scaleValue.current=value;setBrowseScale(value);setError('');
     try{localStorage.setItem('pdf-import-browse-scale',String(value));}catch{setError('배율을 기억하지 못했습니다.');}
   }
@@ -532,12 +539,18 @@ function Screen({
   useLayoutEffect(()=>{
     if(!pane.current)return;
     const anchor=scaleAnchor.current,hit=anchor&&locations[anchor.index];
-    if(hit&&hit.b.id===anchor.id){pane.current.scrollTop=Math.max(0,hit.top-anchor.offset);sourceAuto.current=pane.current.scrollTop;scaleAnchor.current=null;}
+    if(hit&&hit.b.id===anchor.id){
+      pane.current.scrollTop=Math.max(0,hit.top-anchor.offset);sourceAuto.current=pane.current.scrollTop;scaleAnchor.current=null;
+      if(anchor.realign)setTarget(t=>t?.id===anchor.id?sourceTarget(t,t.highlight):t);
+    }
     updateSourceViewport();
   },[locations,viewport,viewportHeight]);
   function ownScroll(side, event) {
     if(event?.type==='keydown' && (!['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key) || event.ctrlKey || event.altKey || event.metaKey))return;
+    // Ctrl+wheel changes the scale; it is not a scroll.
+    if(event?.type==='wheel' && event.ctrlKey)return;
     scrollOwner.current=side;
+    pairHeld.current=false;
     sourceAuto.current=null;
     clearTimeout(scrollTimer.current);
   }
@@ -546,6 +559,26 @@ function Screen({
     pane.current.scrollTop=Math.max(0,sourceScrollTop(b,positions,pane.current.clientHeight));
     // Remember the clamped position, including no-op moves. Only fresh input clears it.
     sourceAuto.current=pane.current.scrollTop;
+  }
+  // The document pair of a source box comes to the box's visible height. A new request realigns
+  // the same block after the document alone was scrolled.
+  function sourceTarget(b, highlight = true) {
+    const el = pane.current, top = el && sourceVisibleTop(b, positions, el.scrollTop, el.clientHeight);
+    pairHeld.current = top != null;
+    return top == null ? {...b, highlight} : {...b, highlight, top, request: ++alignRequest.current};
+  }
+  // The source box comes to the clicked document block's visible height. True when it got there,
+  // false at a scroll limit or without a reported block position.
+  function alignSource(b) {
+    const el = pane.current, layout = documentLayout.current;
+    if (!el || !b.boxes.length) return false;
+    const hit = layout?.revision === mapping?.revision && layout.blocks.find(x => x.path[0] === b.path?.[0]);
+    if (!hit) {moveSource(b); return false;}
+    const next = sourceAlignScrollTop(b, positions, hit.top, el.scrollTop, el.scrollHeight - el.clientHeight);
+    if (next !== null) el.scrollTop = next;
+    sourceAuto.current = el.scrollTop;
+    const top = sourceVisibleTop(b, positions, el.scrollTop, el.clientHeight);
+    return top != null && Math.abs(top - hit.top) <= 8;
   }
   function sourceScroll() {
     const scrollAt=performance.now();
@@ -574,7 +607,7 @@ function Screen({
   function selectLinkedBlock(id) {
     if (editing.current) return;
     const block = mapping?.blocks.find(item => item.id === id);
-    if (block) select(block, scrollOwner.current !== 'source');
+    if (block) select(block, scrollOwner.current === 'source' ? false : 'document');
   }
   async function select(b, scroll = false, shift = false) {
     if (stale || busy) return;
@@ -584,7 +617,13 @@ function Screen({
       // The error box has no close button; the next successful action clears it.
       setError("");
       setFollowed(null);
-      setTarget({...b,highlight:true});
+      // A document click keeps the document still and moves the source to it.
+      // Once the source has reached it, the pair is held like a source click (the document stays
+      // within 8px and does not move); at a source limit the document keeps its place.
+      const reached = scroll === 'document' && alignSource(b);
+      if (scroll === true) moveSource(b);
+      if (scroll === 'document' && !reached) pairHeld.current = false;
+      setTarget(scroll === 'document' && !reached ? {...b,highlight:true} : sourceTarget(b));
       setSelected(b);
       setSplitting(false);
       if (shift && selectionAnchor.current) {
@@ -598,7 +637,6 @@ function Screen({
         start: t,
         targetAt: performance.now(),
       };
-      if (scroll) moveSource(b);
     } catch (e) {
       setError("문서 대응을 확인하지 못했습니다.");
     }
@@ -1081,13 +1119,15 @@ function Screen({
                   reloadKey,
                   path: file.document,
                   target: target && !stale
-                    ? {revision: mapping.revision, path: target.path, highlight: target.highlight !== false}
+                    ? {revision: mapping.revision, path: target.path, highlight: target.highlight !== false,
+                       ...(target.top == null ? {} : {top: target.top, request: target.request})}
                     : undefined,
                   height: "fill",
                   label: "변환된 문서",
                   scale: browseScale,
                   onStateChange: viewState,
                   onVisibleBlockChange: documentVisible,
+                  onVisibleBlockLayoutChange: layout => {documentLayout.current = layout;},
                 }}
                 revision={mapping.revision}
                 source={sourcePages}
