@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, mkdir, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -30,10 +30,10 @@ test("recent folders scan PDF output folders, ignore flat files and report origi
     const output = path.join(root,"sample");
     await mkdir(output);
     await writeFile(path.join(output, "sample.md"), "saved");
-    await writeFile(
-      path.join(output, "sample.pdf-source.json"),
-      JSON.stringify(side),
-    );
+    const sidePath = path.join(output, "sample.pdf-source.json");
+    await writeFile(sidePath, JSON.stringify(side));
+    const legacyTime = new Date("2026-11-23T01:23:45Z");
+    await utimes(sidePath, legacyTime, legacyTime);
     await writeFile(
       path.join(root, "sample.previous-1.pdf-source.json"),
       JSON.stringify(side),
@@ -47,7 +47,16 @@ test("recent folders scan PDF output folders, ignore flat files and report origi
     assert.equal(found.rows[0].state, "");
     assert.equal(found.rows[0].reviewStatus, "초안");
     assert.equal(found.rows[0].warnings, 1);
-    assert.match(found.rows[0].modified,/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    assert.equal(found.rows[0].convertedAt, "2026-11-23 10:23:45");
+    const convertedAt = "2026-11-23T00:00:00.123Z";
+    await writeFile(sidePath, JSON.stringify({ ...side, convertedAt }));
+    const list = async () => (await listConverted([root], async () => ({status:"draft"}))).rows[0];
+    assert.equal((await list()).convertedAt, "2026-11-23 09:00:00");
+    await writeFile(sidePath, JSON.stringify({ ...side, convertedAt, verificationPending: false }));
+    await utimes(sidePath, legacyTime, legacyTime);
+    assert.equal((await list()).convertedAt, "2026-11-23 09:00:00");
+    await writeFile(sidePath, JSON.stringify({ ...side, convertedAt: "2026-11-24T02:00:00.456Z" }));
+    assert.equal((await list()).convertedAt, "2026-11-24 11:00:00");
     await writeFile(path.join(root, "sample.pdf"), "changed");
     assert.equal((await listConverted([root],async()=>({status:"approved"}))).rows[0].state, "원본이 바뀜");
     await rm(path.join(root, "sample.pdf"));

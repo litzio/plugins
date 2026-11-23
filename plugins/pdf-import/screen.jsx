@@ -205,7 +205,7 @@ function Screen({
     try {
       const r=await invoke('correct',{document:file.document,revision:mapping.revision,action:'status',status:statusAction(documentStatus).value,historyId:historyId.current});
       if(r.stale){setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
-      setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 확인할 곳 '+r.mapping.blocks.filter(b=>b.warning).length);
+      setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 변환 경고 '+r.mapping.blocks.filter(b=>b.warning).length+'개');
     } catch(e){setError(e.message);setStatus('검토 상태 변경 실패');} finally{editing.current=false;setBusy(false);}
   }
   async function correct(action, extra = {}, blocks = chosen, focusSource = false) {
@@ -353,8 +353,8 @@ function Screen({
         setStale(f.cached.stale);
         setCached(true);
         if(cachedOnly) setStatus(
-          "변환 완료 · 확인할 곳 " +
-            f.cached.blocks.filter((b) => b.warning).length,
+          "변환 완료 · 변환 경고 " +
+            f.cached.blocks.filter((b) => b.warning).length + "개",
         );
       } else if (f.missingMapping) {
         setPdf(doc);
@@ -458,7 +458,7 @@ function Screen({
     setMissingMapping(false);
     if (m.cleanupError) setError(m.cleanupError);
     setStatus(
-      "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
+      "변환 완료 · 변환 경고 " + m.blocks.filter((b) => b.warning).length + "개",
     );
   }
   async function rewrite() {
@@ -922,7 +922,7 @@ function Screen({
         details: [
           `${row.pages}쪽`,
           group.id !== "검토 완료" && row.warnings > 0 ? `변환 경고 ${row.warnings}개` : null,
-          recentDate(row.modified, now),
+          recentDate(row.convertedAt, now),
           row.state || null,
         ],
       };
@@ -1020,7 +1020,7 @@ function Screen({
           )}
           {mapping && !picking && toolButton({id:'document-status',label:statusAction(documentStatus).label,
             disabled:busy||stale,disabledReason:stale?'문서가 바뀌어 대응을 표시할 수 없음':'문서를 고치는 중입니다.',
-            help:warnings.length?'확인할 곳 '+warnings.length+'개가 남아 있습니다':null,run:changeDocumentStatus})}
+            help:warnings.length?'변환 경고 '+warnings.length+'개가 남아 있습니다':null,run:changeDocumentStatus})}
           {(mapping || missingMapping) && !picking && (
             <ui.Button
               disabled={busy}
@@ -1089,7 +1089,7 @@ function Screen({
               </> : <>{['heading','paragraph','list','table','figure','footnote','margin'].map(k=><span key={k} className="type-helper"><span aria-hidden="true" className={'pdf-import-key'+(k==='margin'?' pdf-import-excluded':'')} style={{'--block-color':'var(--id-color-'+colors[k]+')'}}/>{labels[k]}</span>)}<span className="type-helper">고침</span></>}
             </div>
             <div data-comparison-navigation style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'var(--space-2)',minHeight:32,flexShrink:0}}>
-              {warnings.length>0&&<><span className="type-helper">경고 {warningIndex<0?0:warningIndex+1} / {warnings.length}</span>
+              {warnings.length>0&&<><span className="type-helper">변환 경고 {warningIndex<0?0:warningIndex+1} / {warnings.length}</span>
                 <ui.Button disabled={busy||stale||warningIndex===0} onClick={()=>select(warnings[Math.max(0,warningIndex-1)],true)}>이전</ui.Button>
                 <ui.Button disabled={busy||stale||warningIndex===warnings.length-1} onClick={()=>select(warnings[warningIndex+1],true)}>다음</ui.Button></>}
             <label
@@ -1143,7 +1143,7 @@ function Screen({
             </div>
           </div></ui.Toolbar>
           <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-            {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>경고 {warningIndex+1} / {warnings.length} · {warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
+            {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>변환 경고 {warningIndex+1} / {warnings.length} · {warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
           </div>
           <div className="pdf-import-pane-labels">
             <div className="type-item-name">원본 · {pageNo} / {pdf.numPages}쪽</div>
