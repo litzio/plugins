@@ -11,6 +11,7 @@ import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-sel
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
+import { ConvertedDocuments, readListVariant } from "./converted-documents.jsx";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
   new Blob([workerSource], { type: "text/javascript" }),
 );
@@ -74,6 +75,7 @@ function Screen({
   const [pageLast,setPageLast]=useState(1);
   const recentKey = "pdf-import-recent-folders";
   const [recent, setRecent] = useState([]);
+  const [listVariant] = useState(readListVariant);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
     [actionHelp, setActionHelp] = useState(null);
@@ -887,6 +889,15 @@ function Screen({
       ))}
     </div>
   );
+  const showingRecent = !file && !busy && recent.length > 0;
+  function openRecent(row) {
+    if (busy) return;
+    if (row.state) {
+      setError(row.state === "원본 없음"
+        ? "원본 PDF가 없어 저장된 결과를 열 수 없습니다."
+        : "원본 PDF가 바뀌어 저장된 결과를 열 수 없습니다. PDF를 다시 골라 주세요.");
+    } else load(row.path, true);
+  }
   return (
     <ui.ScreenLayout
       fillHeight={Boolean(pdf && !picking && !missingMapping)}
@@ -898,7 +909,7 @@ function Screen({
             (excludedPages.size ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
           : undefined
       }
-      status={
+      status={showingRecent ? undefined : (
         <span className="pdf-picker-status" tabIndex={picking?0:undefined}
           onMouseEnter={()=>setPickerHelp(true)} onMouseLeave={()=>setPickerHelp(false)}
           onFocus={()=>setPickerHelp(true)} onBlur={()=>setPickerHelp(false)}
@@ -907,7 +918,7 @@ function Screen({
           {mapping&&!picking&&statusLabel(documentStatus)&&<ui.Status tone={documentStatus==='approved'?'ok':'neutral'} label={statusLabel(documentStatus)}/>}
           {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
         </span>
-      }
+      )}
       actions={
         <>
           {!picking && <ui.Button
@@ -984,42 +995,7 @@ function Screen({
         </ui.Notice>
       )}
       {!file && recent.length > 0 && (
-        <>
-          <h2 className="type-section-title">변환한 문서</h2>
-          <ui.DataTable
-            title="변환한 문서"
-            rows={recent.map((r) => ({
-              ...r,
-              name:
-                r.name +
-                (recent.filter((x) => x.name === r.name).length > 1
-                  ? " (" + r.folder + ")"
-                  : ""),
-              modified: r.modified,
-            }))}
-            columns={["name", "pages", "warnings", "reviewStatus", "modified", "state"]}
-            labels={{
-              name: "문서 이름",
-              pages: "쪽 수",
-              warnings: "확인할 곳 수",
-              modified: "변환한 때",
-              reviewStatus: "검토 상태",
-              state: "원본 상태",
-            }}
-            fields={{ pages: { type: "number" }, warnings: { type: "number" } }}
-            rowKey="id"
-            onSelectRow={(r) => {
-              if (busy) return;
-              if (r.state)
-                setError(
-                  r.state === "원본 없음"
-                    ? "원본 PDF가 없어 저장된 결과를 열 수 없습니다."
-                    : "원본 PDF가 바뀌어 저장된 결과를 열 수 없습니다. PDF를 다시 골라 주세요.",
-                );
-              else load(r.path, true);
-            }}
-          />
-        </>
+        <ConvertedDocuments ui={ui} recent={recent} variant={listVariant} onOpen={openRecent} />
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
       {pdf && !picking && !missingMapping && (
