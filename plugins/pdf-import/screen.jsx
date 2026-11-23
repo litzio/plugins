@@ -11,7 +11,7 @@ import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-sel
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
-import { ConvertedDocuments, readListVariant } from "./converted-documents.jsx";
+import { ConvertedDocuments } from "./converted-documents.jsx";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
   new Blob([workerSource], { type: "text/javascript" }),
 );
@@ -75,7 +75,6 @@ function Screen({
   const [pageLast,setPageLast]=useState(1);
   const recentKey = "pdf-import-recent-folders";
   const [recent, setRecent] = useState([]);
-  const [listVariant] = useState(readListVariant);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
     [actionHelp, setActionHelp] = useState(null);
@@ -995,7 +994,7 @@ function Screen({
         </ui.Notice>
       )}
       {!file && recent.length > 0 && (
-        <ConvertedDocuments ui={ui} recent={recent} variant={listVariant} onOpen={openRecent} />
+        <ConvertedDocuments recent={recent} onOpen={openRecent} />
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
       {pdf && !picking && !missingMapping && (
