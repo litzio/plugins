@@ -43,6 +43,7 @@ export async function listConverted(input, inspect = async file => (await import
           if (e.code === "ENOENT") state = "원본 없음";
           else throw e;
         }
+        const convertedAt = typeof data.convertedAt === "string" ? Date.parse(data.convertedAt) : NaN;
         rows.push({
           id: side,
           path: pdf,
@@ -50,7 +51,7 @@ export async function listConverted(input, inspect = async file => (await import
           folder: path.basename(folder),
           pages: data.pages.length,
           warnings: data.blocks.filter((b) => b.warning).length,
-          modified: koreanTime(info.mtime),
+          convertedAt: koreanTime(Number.isFinite(convertedAt) ? convertedAt : info.mtime),
           state,
           reviewStatus:statusLabel((await inspect(side.replace(/\.pdf-source\.json$/, ".md"))).status),
         });
@@ -61,6 +62,6 @@ export async function listConverted(input, inspect = async file => (await import
   }
   return {
     folders,
-    rows: rows.sort((a, b) => b.modified.localeCompare(a.modified)),
+    rows: rows.sort((a, b) => b.convertedAt.localeCompare(a.convertedAt)),
   };
 }

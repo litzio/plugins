@@ -195,6 +195,7 @@ export function activate() {
         const info = await stat(s.doc);
         const pending = s.side + ".pending-" + randomUUID();
         try {
+          data.convertedAt = new Date().toISOString();
           await writeFile(pending, JSON.stringify(data), {flag:"wx"});
           await rename(pending, s.side);
         } catch (e) {

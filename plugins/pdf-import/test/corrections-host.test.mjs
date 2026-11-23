@@ -21,7 +21,7 @@ test('SDK integration: corrections, repeated undo, saved-only reopening and revi
     await run(['create',doc,'--input',input,'--format','json']);
     const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);
     const texts=[['First line.','Next line.'],['Second paragraph.'],['Final paragraph.']];
-    const mapping={snapshotNodes:snapshot.nodes,revision:snapshot.revision,excluded:[],blocks:texts.map((text,i)=>{
+    const mapping={convertedAt:"2026-11-23T00:00:00.123Z",snapshotNodes:snapshot.nodes,revision:snapshot.revision,excluded:[],blocks:texts.map((text,i)=>{
       const lines=text.map((text,j)=>({page:0,text,box:{page:0,x0:0,x1:100,top:i*50+j*12,bottom:i*50+j*12+10}}));
       return {id:'b'+i,path:[i+1],kind:'paragraph',documentKind:'paragraph',lines,boxes:boxesFor(lines)};
     })};
@@ -32,7 +32,9 @@ test('SDK integration: corrections, repeated undo, saved-only reopening and revi
       assert.ok(r.mapping,JSON.stringify(r));m=r.mapping;
       assert.equal(m.stale,false,JSON.stringify(r));
       assert.equal(m.verificationPending,false);
-      m=JSON.parse(await readFile(side,'utf8'));return r;
+      m=JSON.parse(await readFile(side,'utf8'));
+      assert.equal(m.convertedAt,mapping.convertedAt);
+      return r;
     };
     await act('merge',{ids:['b0','b1']});await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
     await act('merge',{ids:['b0','b1']});
