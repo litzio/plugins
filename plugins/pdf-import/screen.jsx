@@ -181,6 +181,9 @@ function Screen({
   function actionItems(blocks,focusSource=false) {
     return blockActions(blocks,mapping?.blocks||[],mapping?.snapshotNodes||[]).map(a=>({...a,icon:null,
       disabled:a.disabled||busy||stale,
+      disabledReason:a.action==='merge'&&a.disabled
+        ? a.disabledReason+' 원본 상자 하나를 누른 뒤 Shift를 누른 채 다른 상자를 눌러 범위를 고르세요. 키보드로는 Enter나 Space로 첫 상자를 고르고, 다른 상자에 초점을 옮겨 Shift+Enter 또는 Shift+Space를 누르세요.'
+        : a.disabledReason,
       run:()=>{
         if(a.action==='split') {setSelection(blocks.map(b=>b.id));setSelected(blocks[0]);setSplitting(true);}
         else return correct(a.action,a.extra,blocks,focusSource);
@@ -196,7 +199,8 @@ function Screen({
     return <span key={a.id} tabIndex={a.disabled?0:undefined} style={{position:'relative'}}
       onMouseEnter={()=>setActionHelp(a.id)} onMouseLeave={()=>setActionHelp(null)} onFocus={()=>setActionHelp(a.id)} onBlur={()=>setActionHelp(null)}>
       <ui.Button disabled={a.disabled} onClick={a.run}>{a.label}</ui.Button>
-      {(a.disabled||a.help)&&actionHelp===a.id&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{a.disabled?a.disabledReason:a.help}</span>}
+      {(a.disabled||a.help)&&actionHelp===a.id&&<span role="tooltip" className="type-helper"
+        style={a.action==='merge'?{...actionTipStyle,width:420,maxWidth:'65vw'}:actionTipStyle}>{a.disabled?a.disabledReason:a.help}</span>}
     </span>;
   }
   async function changeDocumentStatus() {
@@ -253,7 +257,8 @@ function Screen({
       const f = await pickPath({ kind: "pdf" });
       if (f) await load(f.path);
     } catch (e) {
-      setError("PDF 선택에 실패했습니다.");
+      if (e?.name === "AbortError") return;
+      setError("PDF를 고를 수 없습니다. 열린 폴더가 없다면 왼쪽 탐색기의 ‘폴더 열기’에서 PDF가 든 폴더를 먼저 여세요. 이미 열었다면 폴더에 접근할 수 있는지 확인하고 다시 시도하세요.");
     }
   }
   function resetDocument() {
@@ -1140,8 +1145,8 @@ function Screen({
               {undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
             </div>
           </div></ui.Toolbar>
-          <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-            {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>변환 경고 {warningIndex+1} / {warnings.length} · {warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
+          <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textAlign:!splitting&&warningIndex>=0?'right':undefined}}>
+            {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>{warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
           </div>
           <div className="pdf-import-pane-labels">
             <div className="type-item-name">원본 · {pageNo} / {pdf.numPages}쪽</div>
