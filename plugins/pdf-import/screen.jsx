@@ -11,6 +11,7 @@ import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-sel
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
+import { recentDate } from "./time.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(
   new Blob([workerSource], { type: "text/javascript" }),
 );
@@ -56,6 +57,12 @@ function SourceBlock({ui,canEdit,busy,stale,block,actions,trigger}) {
   if(!['paragraph','heading','list'].includes(block.documentKind)||!canEdit)return trigger;
   return <ui.ContextMenu disabled={busy||stale} trigger={trigger} actions={actions}/>;
 }
+const reviewGroups = [
+  { id: "검토 중", title: "검토 중", tone: "warning" },
+  { id: "초안", title: "초안", tone: "neutral" },
+  { id: "검토 완료", title: "검토 완료", tone: "ok" },
+  { id: "상태 미지정", title: "상태 미지정", tone: "neutral" },
+];
 function Screen({
   React,
   ui,
@@ -73,31 +80,15 @@ function Screen({
   const [viewportHeight, setViewportHeight] = useState(0);
   const [pageLast,setPageLast]=useState(1);
   const recentKey = "pdf-import-recent-folders";
-  const [recent, setRecent] = useState([]);
+  const [recent, setRecent] = useState(null);
+  const homeContent = useRef(null);
+  const focusHome = useRef(false);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
     [actionHelp, setActionHelp] = useState(null);
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
-  useEffect(() => {
-    let gone = false;
-    (async () => {
-      const folders = JSON.parse(localStorage.getItem(recentKey) || "[]");
-      const found = await invoke("recent", {
-        folders: Array.isArray(folders) ? folders : [],
-      });
-      if (!gone) {
-        setRecent(found.rows);
-        localStorage.setItem(recentKey, JSON.stringify(found.folders));
-      }
-    })().catch(() => {
-      if (!gone) setError("저장된 문서 목록을 읽지 못했습니다.");
-    });
-    return () => {
-      gone = true;
-    };
-  }, []);
   const [documentStatus,setDocumentStatus]=useState(undefined);
-  const [status, setStatus] = useState("PDF를 골라 주세요."),
+  const [status, setStatus] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [file, setFile] = useState(null),
@@ -111,6 +102,32 @@ function Screen({
     [pageNo, setPageNo] = useState(1),
     [width, setWidth] = useState(600),
     [tip, setTip] = useState(null);
+  const atHome = !file && !busy;
+  useEffect(() => {
+    if (!atHome) return;
+    let gone = false;
+    (async () => {
+      const folders = JSON.parse(localStorage.getItem(recentKey) || "[]");
+      const found = await invoke("recent", {
+        folders: Array.isArray(folders) ? folders : [],
+      });
+      if (!gone) {
+        setRecent(found.rows);
+        localStorage.setItem(recentKey, JSON.stringify(found.folders));
+      }
+    })().catch(() => {
+      if (!gone) {
+        setRecent(current => current ?? []);
+        setError("저장된 문서 목록을 읽지 못했습니다.");
+      }
+    });
+    return () => { gone = true; };
+  }, [atHome]);
+  useLayoutEffect(() => {
+    if (!atHome || recent === null || !focusHome.current) return;
+    homeContent.current?.querySelector("button")?.focus();
+    focusHome.current = false;
+  }, [atHome, recent]);
   const [pageTitles, setPageTitles] = useState([]);
   const replacementApproved = useRef(false), pickerSession = useRef(null);
   const [pickerHelp, setPickerHelp] = useState(false);
@@ -239,11 +256,12 @@ function Screen({
       setError("PDF 선택에 실패했습니다.");
     }
   }
-  async function load(path, cachedOnly = false) {
+  function resetDocument() {
     if(pickerSession.current) pickerSession.current.active=false;
-    const session={active:true,touched:new Set()};
-    pickerSession.current=session;
+    pickerSession.current = null;
     scrollOwner.current=null; sourceAuto.current=null; scaleAnchor.current=null;
+    documentLayout.current = null; pairHeld.current = false;
+    selectionAnchor.current = null;
     replacementApproved.current=false;
     setPickerHelp(false);
     setPageTitles([]);
@@ -253,7 +271,6 @@ function Screen({
     setPageNo(1);
     setTip(null);
     setExcludedPages(new Set());
-    setBusy(true);
     setPicking(false);
     setFollowed(null);
     setTarget(null);
@@ -267,6 +284,13 @@ function Screen({
     setMissingMapping(false);
     setFile(null);
     setPdf(null);
+    setDocumentStatus(undefined);
+  }
+  async function load(path, cachedOnly = false) {
+    resetDocument();
+    const session = {active:true,touched:new Set()};
+    pickerSession.current = session;
+    setBusy(true);
     setStatus("PDF 읽는 중");
     metrics.current = { start: performance.now() };
     const loadingMetrics=metrics.current;
@@ -501,18 +525,12 @@ function Screen({
     setExcludedPages(current=>togglePageRange(current,from,page,shift));
     anchor.current = page;
   }
-  function cancelPicking() {
-    if(pickerSession.current) pickerSession.current.active=false;
-    setPickerHelp(false);
-    clearTimeout(scrollTimer.current);
-    setPicking(false);setPdf(null);setFile(null);setMapping(null);setResult(null);
-    setCached(false);setExcludedPages(new Set());setError("");setSelection([]);setStale(false);
-    setMissingMapping(false);
-    setStatus("PDF를 골라 주세요.");
-    let folders=[];
-    try {const saved=JSON.parse(localStorage.getItem(recentKey)||"[]");if(Array.isArray(saved))folders=saved;} catch {}
-    invoke("recent",{folders})
-      .then(found=>setRecent(found.rows)).catch(()=>setError("저장된 문서 목록을 읽지 못했습니다."));
+  function returnHome() {
+    if (busy || editing.current) return;
+    focusHome.current = true;
+    setRecent(null);
+    resetDocument();
+    setStatus("");
   }
 
   const locations = useMemo(()=>sourceLocations(mapping?.blocks || [], positions),[mapping,positions]);
@@ -887,6 +905,69 @@ function Screen({
       ))}
     </div>
   );
+  if (atHome) {
+    const rows = recent ?? [];
+    const statuses = new Set(rows.map(row => row.reviewStatus));
+    const grouped = statuses.size > 1;
+    const names = new Map();
+    for (const row of rows) names.set(row.name, (names.get(row.name) ?? 0) + 1);
+    const now = Date.now();
+    const items = rows.map(row => {
+      const group = reviewGroups.find(group => group.id === row.reviewStatus) ?? reviewGroups.at(-1);
+      return {
+        id: row.id,
+        label: names.get(row.name) > 1 ? `${row.name} (${row.folder})` : row.name,
+        group: group.id,
+        status: { tone: group.tone, label: group.title },
+        details: [
+          `${row.pages}쪽`,
+          group.id !== "검토 완료" && row.warnings > 0 ? `변환 경고 ${row.warnings}개` : null,
+          recentDate(row.modified, now),
+          row.state || null,
+        ],
+      };
+    });
+    const choosePdf = <ui.Button variant="default" onClick={choose}>PDF 고르기</ui.Button>;
+    return (
+      <ui.ScreenLayout
+        width="narrow"
+        status={recent === null ? <ui.Status tone="progress" label="저장된 문서 목록 읽는 중" /> : undefined}
+        actions={items.length > 0 ? choosePdf : undefined}
+      >
+        {error && <ui.Notice tone="error">{error}</ui.Notice>}
+        {recent !== null && (
+          <section ref={homeContent} aria-label="변환한 문서">
+            {items.length > 0 ? (
+              <>
+                <h2 className="type-section-title">변환한 문서</h2>
+                <ui.ItemList
+                  items={items}
+                  groups={grouped ? reviewGroups : undefined}
+                  hideStatusLabel={grouped}
+                  onOpen={item => {
+                    const row = rows.find(row => row.id === item.id);
+                    if (row.state) {
+                      setError(row.state === "원본 없음"
+                        ? "원본 PDF가 없어 저장된 결과를 열 수 없습니다."
+                        : "원본 PDF가 바뀌어 저장된 결과를 열 수 없습니다. PDF를 다시 골라 주세요.");
+                    } else {
+                      load(row.path, true);
+                    }
+                  }}
+                />
+              </>
+            ) : (
+              <ui.EmptyState
+                title="변환한 문서가 없습니다"
+                description="PDF를 변환하면 원본과 결과를 나란히 보며 확인할 수 있습니다."
+                action={choosePdf}
+              />
+            )}
+          </section>
+        )}
+      </ui.ScreenLayout>
+    );
+  }
   return (
     <ui.ScreenLayout
       fillHeight={Boolean(pdf && !picking && !missingMapping)}
@@ -910,6 +991,9 @@ function Screen({
       }
       actions={
         <>
+          {file && !picking && (
+            <ui.Button disabled={busy} onClick={returnHome}>변환한 문서로</ui.Button>
+          )}
           {!picking && <ui.Button
             variant={file ? "outline" : "default"}
             disabled={busy}
@@ -919,7 +1003,7 @@ function Screen({
           </ui.Button>}
           {picking && (
             <>
-              <ui.Button disabled={busy} onClick={cancelPicking}>취소</ui.Button>
+              <ui.Button disabled={busy} onClick={returnHome}>취소</ui.Button>
               <ui.Button
                 variant="default"
                 disabled={busy}
@@ -982,44 +1066,6 @@ function Screen({
         <ui.Notice tone="warning">
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
-      )}
-      {!file && recent.length > 0 && (
-        <>
-          <h2 className="type-section-title">변환한 문서</h2>
-          <ui.DataTable
-            title="변환한 문서"
-            rows={recent.map((r) => ({
-              ...r,
-              name:
-                r.name +
-                (recent.filter((x) => x.name === r.name).length > 1
-                  ? " (" + r.folder + ")"
-                  : ""),
-              modified: r.modified,
-            }))}
-            columns={["name", "pages", "warnings", "reviewStatus", "modified", "state"]}
-            labels={{
-              name: "문서 이름",
-              pages: "쪽 수",
-              warnings: "확인할 곳 수",
-              modified: "변환한 때",
-              reviewStatus: "검토 상태",
-              state: "원본 상태",
-            }}
-            fields={{ pages: { type: "number" }, warnings: { type: "number" } }}
-            rowKey="id"
-            onSelectRow={(r) => {
-              if (busy) return;
-              if (r.state)
-                setError(
-                  r.state === "원본 없음"
-                    ? "원본 PDF가 없어 저장된 결과를 열 수 없습니다."
-                    : "원본 PDF가 바뀌어 저장된 결과를 열 수 없습니다. PDF를 다시 골라 주세요.",
-                );
-              else load(r.path, true);
-            }}
-          />
-        </>
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
       {pdf && !picking && !missingMapping && (

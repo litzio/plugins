@@ -5,6 +5,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { listConverted } from "../recent.mjs";
+import { recentDate } from "../time.mjs";
+
+test("recent dates use Korean midnight and keep the year on older dates", () => {
+  const now = Date.parse("2026-12-31T15:05:00Z");
+  assert.equal(recentDate("2027-01-01 00:04:52", now), "오늘 00:04");
+  assert.equal(recentDate("2026-12-31 14:20:00", now), "어제");
+  assert.equal(recentDate("2026-11-17 14:20:00", now), "2026년 11월 17일");
+  assert.equal(recentDate("2026-11-17 14:20:00", Date.parse("2026-11-23T00:00:00Z")), "11월 17일");
+});
 test("recent folders scan PDF output folders, ignore flat files and report original state", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "pdf-recent-"));
   try {
