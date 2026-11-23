@@ -971,6 +971,7 @@ function Screen({
   return (
     <ui.ScreenLayout
       fillHeight={Boolean(pdf && !picking && !missingMapping)}
+      back={file && !picking ? { label: "변환한 문서", onBack: returnHome, disabled: busy } : undefined}
       description={
         file
           ? file.name +
@@ -991,9 +992,6 @@ function Screen({
       }
       actions={
         <>
-          {file && !picking && (
-            <ui.Button disabled={busy} onClick={returnHome}>변환한 문서로</ui.Button>
-          )}
           {!picking && <ui.Button
             variant={file ? "outline" : "default"}
             disabled={busy}
