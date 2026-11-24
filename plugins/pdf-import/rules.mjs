@@ -1,7 +1,8 @@
 import { formulaRegions } from "./formula-regions.mjs";
-import { buildGrid, flattenGrid, joinText } from "./table-grid.mjs";
+import { buildGrid, flattenGrid, joinText, markTableLabels, captionTokens, splitNoteTokens } from "./table-grid.mjs";
+export const tableNoteMarker = text => /^a\s+value\s+of\b/i.test(text||'') ? null : text?.match(/^([a-z*†‡])\s+/)?.[1] || null;
 import { profiles, selectProfile } from "./profiles/index.mjs";
-import { findReferences } from "./references.mjs";
+import { findReferences, captionTargets } from "./references.mjs";
 // The engine reads layout signals only. Document-family text conventions come from a profile.
 const profileOf = (raw, name) => {
   const p = profiles[name ?? selectProfile(raw)];
@@ -703,12 +704,64 @@ function convert(raw, excludedPages = [], profileName) {
     if(reasons.length) b.warning={code:"table-unmerged",reason:"병합 칸을 풀어 적음: "+reasons.join(", ")};
     const suspicious=grid.cells.filter(c=>c.graphic);
     if(suspicious.length) b.warning={code:"table-cell-graphic",reason:"글자가 아닌 내용 의심: "+suspicious.map(c=>`${c.r0+1}행 ${c.c0+1}열`).join(", ")+(b.warning?" · "+b.warning.reason:"")};
-    const notes=flat.notes.map(c=>({kind:"para",text:c.text,page:b.page,tableNote:true,boxes:[c.box?box(b.page,c.box):{page:b.page,x0:grid.colEdges[c.c0],top:grid.rowEdges[c.r0],x1:grid.colEdges[c.c1],bottom:grid.rowEdges[c.r1]}]}));
-    notes.forEach((note,index)=>{
-      const cell=flat.notes[index];
-      note.lines=[{page:note.page,box:{...note.boxes[0]},text:note.text,...(!cell.graphic && cell.tokens ? {tokens:cell.tokens} : {})}];
+    const notes=flat.notes.flatMap(c=>{
+      const bounds=c.box?box(b.page,c.box):{page:b.page,x0:grid.colEdges[c.c0],top:grid.rowEdges[c.r0],x1:grid.colEdges[c.c1],bottom:grid.rowEdges[c.r1]};
+      const groups=splitNoteTokens(c.tokens,tableNoteMarker);
+      if(!groups.length) groups.push([]);
+      return groups.map(tokens=>{
+        const text=tokens.length ? tokens.reduce((s,t)=>t.newLine&&s?joinText(s,t.text.trim()):s+t.text,'').trim() : c.text;
+        return {kind:"para",text,page:b.page,tableNote:true,boxes:[bounds],lines:[{page:b.page,box:{...bounds},text,...(!c.graphic&&tokens.length?{tokens}:{})}]};
+      });
     });
     blocks.splice(i+1,0,...notes);i+=notes.length;
+  }
+  // Adjacent paragraphs can be outside the detected grid. Require independent
+  // evidence before treating their initial letter as a local table marker.
+  blocks.forEach((b,i)=>b.id='b'+i);
+  const captions=captionTargets(blocks,profile);
+  for (let i=0;i<blocks.length;i++) {
+    const table=blocks[i]; if (!table.table) continue;
+    const cap=captions.get(table.id);
+    const capWords=cap?(pages[table.page].words||[]).filter(w=>cap.boxes.some(q=>(w.x0+w.x1)/2>=q.x0-1&&(w.x0+w.x1)/2<=q.x1+1&&(w.top+w.bottom)/2>=q.top-1&&(w.top+w.bottom)/2<=q.bottom+1)):[];
+    const candidates=[]; let bottom=table.boxes[0].bottom;
+    for (let j=i+1;j<blocks.length;j++) {
+      const n=blocks[j], q=n.boxes?.[0], m=tableNoteMarker(n.text);
+      if(n.tableNote && n.page===table.page && q) { bottom=Math.max(bottom,q.bottom); continue; }
+      if (n.page!==table.page || n.kind!=="para" || !m || !q || q.top<bottom-2 || q.top-bottom>body*8) break;
+      candidates.push({n,marker:m}); bottom=q.bottom;
+    }
+    const sequence=candidates.length>=2 && candidates.every((c,j)=>c.marker===String.fromCharCode(97+j));
+    for (const {n,marker} of candidates) {
+      const q=n.boxes[0];
+      const ws=(pages[n.page].words||[]).filter(w=>(w.x0+w.x1)/2>=q.x0-1&&(w.x0+w.x1)/2<=q.x1+1&&(w.top+w.bottom)/2>=q.top-1&&(w.top+w.bottom)/2<=q.bottom+1);
+      const small=ws.length>0 && ws.reduce((s,w)=>s+w.size*w.text.length,0)/ws.reduce((s,w)=>s+w.text.length,0)<body-0.5;
+      const raised=table.table.tokenRows.flat(2).some(c=>c.tokens?.some(t=>t.superscript&&t.text.trim()===marker)) || captionTokens(capWords,new Set([marker])).at(-1)?.superscript===true;
+      const signals=[...(raised?["raised"]:[]),...(sequence?["sequence"]:[]),...(small?["small"]:[])];
+      if (!signals.length) break;
+      n.tableNote=true; n.tableNoteSignals=signals;
+      const groups=[];
+      for(const line of n.lines||[]) {
+        if(!groups.length || tableNoteMarker(line.text)) groups.push([]);
+        groups.at(-1).push(line);
+      }
+      if(groups.length>1 && groups.every(g=>g.every(line=>line.page===n.page))) {
+        const split=groups.map(lines=>{
+          const boxes=lines.map(l=>l.box);
+          const bounds={page:n.page,x0:Math.min(...boxes.map(q=>q.x0)),top:Math.min(...boxes.map(q=>q.top)),x1:Math.max(...boxes.map(q=>q.x1)),bottom:Math.max(...boxes.map(q=>q.bottom))};
+          return {...n,lines,boxes:[bounds],text:lines.map(l=>l.text).reduce((a,b)=>a?joinText(a,b):b,'')};
+        });
+        blocks.splice(blocks.indexOf(n),1,...split);
+      }
+    }
+    const labels=new Set();
+    for(let j=i+1;blocks[j]?.tableNote && blocks[j].page===table.page;j++) {
+      const m=blocks[j].text.match(/^([a-z*†‡])\s/); if(m) labels.add(m[1]);
+    }
+    if(labels.size) {
+      markTableLabels(table.grid,pages[table.page].words||[],labels,footnoteLabels);
+      const tokens=captionTokens(capWords,labels);
+      if(cap && tokens.at(-1)?.superscript) { cap.tableNoteCaption=true; cap.lines=[{page:cap.page,box:{...cap.boxes[0]},text:cap.text,tokens}]; }
+    }
   }
   // A NOTE paragraph becomes a note box; table notes stay table-note paragraphs.
   if (profile.noteBody)

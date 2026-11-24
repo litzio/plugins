@@ -18,9 +18,12 @@ function authoring(result) {
   const live = new Set([...labels.values()].map((v) => v.label));
   const display = c => c.text ?? (c.kind === "reference" ? referenceText(c.label) : c.kind === "footnote" ? c.label : c.children?.map(x=>x.text).join(""));
   const inline = (b, text) => {
-    const content = footnoteContent(text, stats, refsFor(b, text, live));
-    if (!["paragraph","list","footnote","note"].includes(b.kind)) return content;
-    return decorate(content,b.lines?.flatMap(l=>l.tokens || []),display);
+    const marker = b.tableNote && text.match(/^([a-z*†‡])(?=\s)/);
+    const rest = marker ? text.slice(marker[1].length) : text;
+    const content = footnoteContent(rest, stats, refsFor(b, rest, live));
+    if (!["paragraph","list","footnote","note"].includes(b.kind) && !b.tableNoteCaption) return content;
+    const styled = decorate(content,b.lines?.flatMap(l=>l.tokens || []),display);
+    return marker ? [{kind:"superscript",children:[{kind:"text",text:marker[1]}]}, ...styled] : styled;
   };
   // Litzio puts "Figure 3" in front of a numbered caption; the original number goes.
   const captionOf = (b) => {

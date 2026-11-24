@@ -15,11 +15,11 @@ const coverage = (segments, pos, a, b) => {
   for(const [l,r] of intervals) { n+=Math.max(0,r-Math.max(end,l));end=Math.max(end,r); }
   return n/(b-a);
 };
-function cellText(words, graphic = false, footnoteLabels) {
+function cellText(words, graphic = false, footnoteLabels, tableLabels) {
   const lines=[];
   for(const w of [...words].sort((a,b)=>a.top-b.top || a.x0-b.x0)) {
     const mid=(w.top+w.bottom)/2;
-    let line=lines.find(l=>mid>=l.top-0.5 && mid<=l.bottom+0.5);
+    let line=lines.find(l=>(mid>=l.top-0.5 && mid<=l.bottom+0.5) || (w.top<=l.bottom+0.5 && w.bottom>=l.top-0.5));
     if(!line) lines.push(line={top:w.top,bottom:w.bottom,words:[]});
     line.top=Math.min(line.top,w.top);line.bottom=Math.max(line.bottom,w.bottom);line.words.push(w);
   }
@@ -31,8 +31,9 @@ function cellText(words, graphic = false, footnoteLabels) {
       // Compare it with its immediate neighbour on this visible cell line too.
       const w={...source};
       if(prev && w.size<prev.size*0.8 && w.base<prev.base-1) w.superscript=true;
-      const script=scriptPosition(prev,w);
-      if(script) w.superscript=script==="power" && footnoteLabels?.has(w.text.trim());
+      const script=scriptPosition(prev,w,tableLabels);
+      if(script) w.superscript=(script==="power" && footnoteLabels?.has(w.text.trim())) || (script==="superscript" && tableLabels?.has(w.text.trim()));
+      if(tableLabels?.has(w.text.trim())) w.superscript=script==="superscript";
       const space=prev && (w.superscript || prev.superscript || w.x0-prev.x1>0.12*Math.max(prev.size,w.size)) && !/\s$/.test(prev.text)&&!/^\s/.test(w.text);
       const piece=(space?' ':'')+w.text;
       tokens.push({...sourceToken(w,graphic ? undefined : script),text:piece,superscript:!graphic && !!w.superscript,newLine:!prev});
@@ -41,6 +42,25 @@ function cellText(words, graphic = false, footnoteLabels) {
     text=text?joinText(text,row.trim()):row.trim();
   }
   return {text:text.replace(/\s+/g,' ').trim(),tokens};
+}
+export function captionTokens(words, labels) { return cellText(words,false,undefined,labels).tokens; }
+export function splitNoteTokens(tokens, isMarker) {
+  const lines=[], groups=[];
+  for(const t of tokens||[]) {
+    if(!lines.length || t.newLine) lines.push([]);
+    lines.at(-1).push(t);
+  }
+  for(const line of lines) {
+    if(!groups.length || isMarker(line.map(t=>t.text).join('').trimStart())) groups.push([]);
+    groups.at(-1).push(...line);
+  }
+  return groups;
+}
+export function markTableLabels(grid, words, labels, footnoteLabels) {
+  for (const cell of grid.cells) {
+    const source=cell.wordIds.map(id=>words[id]).filter(Boolean);
+    Object.assign(cell,cellText(source,cell.graphic,footnoteLabels,labels));
+  }
 }
 export function buildGrid(box, rulings, words, graphics = [], footnoteLabels) {
   words=words.map((w,id)=>({...w,id:w.id??id}));
