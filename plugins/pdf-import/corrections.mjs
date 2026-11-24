@@ -18,6 +18,19 @@ export function references(value) {
   return [...(value.kind === 'footnote' ? [value.label] : []),
     ...Object.values(value).flatMap(v => typeof v === 'object' ? references(v) : [])];
 }
+// The document title takes plain words only. Formatting falls away; atoms whose
+// words this plugin cannot state exactly (footnote calls, math, citations) refuse.
+export function titleText(node) {
+  if (references(node).length) return {reason:'미주 호출이 든 블록은 문서 제목으로 쓸 수 없습니다.'};
+  let refused = null;
+  const words = c => c.kind === 'text' ? c.text : c.kind === 'code' ? c.value
+    : c.kind === 'break' ? ' ' : c.kind === 'reference' && referenceText(c.label) ? referenceText(c.label)
+    : c.children ? c.children.map(words).join('')
+    : (refused = '수식이나 인용이 든 블록은 문서 제목으로 쓸 수 없습니다.', '');
+  const text = (node?.content || []).map(words).join('').replace(/\s+/gu, ' ').trim();
+  if (refused) return {reason:refused};
+  return text ? {text} : {reason:'글자가 없는 블록은 문서 제목으로 쓸 수 없습니다.'};
+}
 function splitContent(content, offset) {
   const left = [], right = []; let pos = 0;
   for (const c of content) {
@@ -52,7 +65,7 @@ export function previewCorrection(mapping, input, undoBefore) {
   else if(action === 'merge') replacement=[{...first,content:nodes.flatMap((n,i)=>i?[{kind:'text',text:' '},...n.content]:n.content)}];
   else if(action === 'split') replacement=splitContent(first.content,splitOffset(selected[0].lines,line,first.content)).map(content=>({...first,content}));
   else if(action === 'kind') replacement=[{...first,type:kind,level:kind==='heading'?level:undefined}];
-  else if(action === 'remove') replacement=[];
+  else if(action === 'remove' || action === 'title') replacement=[];
   else throw Error('지원하지 않는 고치기입니다.');
   const next = transformMapping(mapping,{...input,at,removeCount:nodes.length,newCount:replacement.length,time});
   let predicted = structuredClone(mapping.snapshotNodes);
@@ -112,10 +125,11 @@ export function transformMapping(mapping, { action, ids, line, kind, level, at, 
       path:[at+i], lines, boxes:boxesFor(lines), edited }));
   } else if (action === 'kind') {
     replacements = [{ ...first, kind, documentKind:kind, level: kind === 'heading' ? level : undefined, edited }];
-  } else if (action === 'remove') {
+  } else if (action === 'remove' || action === 'title') {
+    // A block used as the document title leaves the body like a removed one, marked apart.
     replacements = [];
     for (const b of selected) for (const box of b.boxes)
-      m.excluded.push({page:box.page, box, kind:'removed', lines:b.lines, edited});
+      m.excluded.push({page:box.page, box, kind:action === 'title' ? 'title' : 'removed', lines:b.lines, edited});
   } else throw Error('지원하지 않는 고치기입니다.');
   const start = m.blocks.indexOf(first);
   m.blocks = m.blocks.filter(b => !ids.includes(b.id));

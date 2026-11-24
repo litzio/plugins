@@ -53,6 +53,7 @@ function exclusionSummary(pages) {
     : ranges.map(([a, b]) => (a === b ? a : a + "–" + b)).join(", ") +
         "쪽 제외";
 }
+const excludedLabel = e => e.kind==='title' ? '문서 제목으로 쓰임' : e.kind==='removed' ? '제외 · 문서에서 뺌' : '제외 · 머리글·바닥글';
 function SourceBlock({ui,canEdit,busy,stale,block,actions,trigger}) {
   if(!['paragraph','heading','list'].includes(block.documentKind)||!canEdit)return trigger;
   return <ui.ContextMenu disabled={busy||stale} trigger={trigger} actions={actions}/>;
@@ -189,8 +190,9 @@ function Screen({
         else return correct(a.action,a.extra,blocks,focusSource);
       }}));
   }
-  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.action==='kind');
-  const kindDisabled=kindTools.every(a=>a.disabled);
+  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.action==='kind'||a.action==='title');
+  const kindDisabled=kindTools.every(a=>a.disabled), titleTool=kindTools.find(a=>a.action==='title');
+  const kindHelp=kindDisabled?kindTools[0].disabledReason:titleTool.disabled?'문서 제목: '+titleTool.disabledReason:null;
   function prepareContext(b) {
     if(!busy&&!stale&&!editing.current&&!selection.includes(b.id))select(b);
   }
@@ -228,7 +230,13 @@ function Screen({
         }
         input.confirmed=true;started=performance.now();
       }
-      const r=await invoke('correct',input);
+      let r=await invoke('correct',input);
+      if(r.requiresConfirm&&action==='title') {
+        if(!await confirm({title:'문서 제목 바꾸기',message:'이 문서에는 이미 제목 “'+r.title+'”이 있습니다. 고른 블록의 글자로 바꿀까요? 이전 제목은 본문으로 돌아오지 않습니다.',confirmLabel:'제목 바꾸기'})) {
+          setStatus('취소됨');return;
+        }
+        started=performance.now();r=await invoke('correct',{...input,confirmed:true});
+      }
       if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
       setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
       clearTimeout(scrollTimer.current); setFollowed(null);
@@ -887,10 +895,10 @@ function Screen({
                     className="pdf-import-excluded"
                     onContextMenu={e=>e.preventDefault()}
                     tabIndex={0}
-                    aria-label={e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'}
-                    onMouseEnter={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
+                    aria-label={excludedLabel(e)}
+                    onMouseEnter={()=>setTip({page:i,top:0,text:excludedLabel(e)})}
                     onMouseLeave={()=>setTip(null)}
-                    onFocus={()=>setTip({page:i,top:0,text:e.kind==='removed'?'제외 · 문서에서 뺌':'제외 · 머리글·바닥글'})}
+                    onFocus={()=>setTip({page:i,top:0,text:excludedLabel(e)})}
                     onBlur={()=>setTip(null)}
                     style={{
                       position: "absolute",
@@ -1084,9 +1092,9 @@ function Screen({
                 <span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
                   onFocus={()=>setActionHelp('kind')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('kind')} onMouseLeave={()=>setActionHelp(null)}>
                   <ui.Select label="종류" hideLabel placeholder="종류" disabled={kindDisabled} value={chosen.length===1&&['paragraph','heading'].includes(chosen[0].documentKind)&&chosen[0].kind!=='heading_unnumbered'?(chosen[0].documentKind==='heading'?'h'+chosen[0].level:'paragraph'):''}
-                    options={kindTools.map(a=>({value:a.id,label:a.id==='paragraph'?'본문':'제목 '+a.extra.level}))}
-                    onValueChange={v=>{const a=kindTools.find(a=>a.id===v);if(a&&!a.disabled)a.run();}}/>
-                  {kindDisabled&&actionHelp==='kind'&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{kindTools[0].disabledReason}</span>}
+                    options={kindTools.map(a=>({value:a.id,label:a.id==='paragraph'?'본문':a.id==='title'?'문서 제목':'제목 '+a.extra.level}))}
+                    onValueChange={v=>{const a=kindTools.find(a=>a.id===v);if(a?.disabled)setError(a.disabledReason);else if(a)a.run();}}/>
+                  {kindHelp&&actionHelp==='kind'&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{kindHelp}</span>}
                 </span>
                 {toolButton(tools.find(a=>a.action==='remove'))}
               </> : <>{['heading','paragraph','list','table','figure','footnote','margin'].map(k=><span key={k} className="type-helper"><span aria-hidden="true" className={'pdf-import-key'+(k==='margin'?' pdf-import-excluded':'')} style={{'--block-color':'var(--id-color-'+colors[k]+')'}}/>{labels[k]}</span>)}<span className="type-helper">고침</span></>}

@@ -12,8 +12,8 @@ import { listConverted } from "./recent.mjs";
 import { correctionHandler } from "./correct-host.mjs";
 import { snapshotNodes, assertMapping } from "./corrections.mjs";
 const sha = (b) => createHash("sha256").update(b).digest("hex");
-export function activate() {
-  const correct = correctionHandler();
+export function activate(context = {}) {
+  const correct = correctionHandler({cli:context.cli});
   const inspect = inspectDocument;
   const sessions = /* @__PURE__ */ new Map();
   const extractedFile = createExtractionCache(extract);

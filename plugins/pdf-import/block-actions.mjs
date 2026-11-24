@@ -1,3 +1,4 @@
+import { titleText } from './corrections.mjs';
 // nodes: the saved top-level document nodes, used to tell ordered from unordered lists.
 export function blockActions(blocks, allBlocks, nodes=[]) {
   const single=blocks.length===1, first=blocks[0], text=single&&['paragraph','heading'].includes(first.documentKind);
@@ -7,6 +8,8 @@ export function blockActions(blocks, allBlocks, nodes=[]) {
   const paths=[...new Set(blocks.map(b=>b.path?.[0]))].sort((a,b)=>a-b);
   const ordered=p=>!!nodes.find(n=>n.path.length===1&&n.path[0]===p)?.ordered;
   const lists=paths.length>=2&&blocks.every(b=>b.documentKind==='list')&&paths.every((p,i)=>p===paths[0]+i)&&paths.every(p=>ordered(p)===ordered(paths[0]));
+  // Without the saved node the handler checks the words itself.
+  const node=text&&nodes.find(n=>n.path.length===1&&n.path[0]===first.path?.[0]), title=node?titleText(node):{};
   const make=(id,label,ok,reason,action,extra={})=>({id,label,disabled:!ok,disabledReason:!ok?(!complete?groupReason:reason):undefined,action,extra});
   return [
     make('merge','합치기',complete&&(lists||blocks.length>=2&&blocks.every((b,i)=>b.documentKind==='paragraph'&&b.path[0]===first.path[0]+i)),'이웃한 문단이나 같은 종류의 목록을 둘 이상 골라야 합니다.','merge'),
@@ -15,6 +18,7 @@ export function blockActions(blocks, allBlocks, nodes=[]) {
       const same=text&&first.documentKind===kind&&(kind!=='heading'||first.level===level);
       return make(kind==='paragraph'?'paragraph':'h'+level,label,complete&&text&&!same,same?'이미 같은 종류입니다.':'본문이나 제목 하나를 골라야 합니다.','kind',{kind,...(level?{level}:{})});
     }),
+    make('title','문서 제목으로',complete&&text&&!title.reason,text?title.reason:'본문이나 제목 하나를 골라야 합니다.','title'),
     {...make('remove','문서에서 빼기',complete&&single&&['paragraph','heading','list'].includes(first.documentKind),'본문·제목·목록 블록 하나를 골라야 합니다.','remove'),danger:true},
   ];
 }
