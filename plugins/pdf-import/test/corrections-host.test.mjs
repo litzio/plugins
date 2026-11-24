@@ -17,7 +17,7 @@ test('SDK integration: corrections, repeated undo, saved-only reopening and revi
   try {
     const doc=path.join(dir,'public.md'),side=path.join(dir,'public.pdf-source.json'),input=path.join(dir,'input.json');
     await writeFile(input,JSON.stringify({authoring:{inputs:[{key:'sample',blocks:[
-      {kind:'paragraph',text:'First line. Next line.'},{kind:'paragraph',text:'Second paragraph.'},{kind:'paragraph',text:'Final paragraph.'}]}]}}));
+      {kind:'paragraph',content:[{kind:'text',text:'First '},{kind:'strong',children:[{kind:'text',text:'line. Next'}]},{kind:'text',text:' line.'}]},{kind:'paragraph',text:'Second paragraph.'},{kind:'paragraph',text:'Final paragraph.'}]}]}}));
     await run(['create',doc,'--input',input,'--format','json']);
     const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);
     const texts=[['First line.','Next line.'],['Second paragraph.'],['Final paragraph.']];

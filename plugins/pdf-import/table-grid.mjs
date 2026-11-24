@@ -1,3 +1,4 @@
+import { scriptPosition, sourceToken } from "./inline-styles.mjs";
 // Pure geometry; coordinates are PDF points with a top-left origin.
 export const joinText = (a, b) => a + (a.endsWith('-') ? '' : ' ') + b;
 const cluster = values => {
@@ -14,7 +15,7 @@ const coverage = (segments, pos, a, b) => {
   for(const [l,r] of intervals) { n+=Math.max(0,r-Math.max(end,l));end=Math.max(end,r); }
   return n/(b-a);
 };
-function cellText(words, graphic = false) {
+function cellText(words, graphic = false, footnoteLabels) {
   const lines=[];
   for(const w of [...words].sort((a,b)=>a.top-b.top || a.x0-b.x0)) {
     const mid=(w.top+w.bottom)/2;
@@ -30,16 +31,18 @@ function cellText(words, graphic = false) {
       // Compare it with its immediate neighbour on this visible cell line too.
       const w={...source};
       if(prev && w.size<prev.size*0.8 && w.base<prev.base-1) w.superscript=true;
+      const script=scriptPosition(prev,w);
+      if(script) w.superscript=script==="power" && footnoteLabels?.has(w.text.trim());
       const space=prev && (w.superscript || prev.superscript || w.x0-prev.x1>0.12*Math.max(prev.size,w.size)) && !/\s$/.test(prev.text)&&!/^\s/.test(w.text);
       const piece=(space?' ':'')+w.text;
-      tokens.push({text:piece,superscript:!graphic && !!w.superscript,newLine:!prev});
+      tokens.push({...sourceToken(w,graphic ? undefined : script),text:piece,superscript:!graphic && !!w.superscript,newLine:!prev});
       row+=piece;prev=w;
     }
     text=text?joinText(text,row.trim()):row.trim();
   }
   return {text:text.replace(/\s+/g,' ').trim(),tokens};
 }
-export function buildGrid(box, rulings, words, graphics = []) {
+export function buildGrid(box, rulings, words, graphics = [], footnoteLabels) {
   words=words.map((w,id)=>({...w,id:w.id??id}));
   const [l,t,r,b]=box, pad=2;
   const source=words.filter(w=>(w.x0+w.x1)/2>=l-pad && (w.x0+w.x1)/2<=r+pad && (w.top+w.bottom)/2>=t-pad && (w.top+w.bottom)/2<=b+pad);
@@ -86,11 +89,11 @@ export function buildGrid(box, rulings, words, graphics = []) {
     const l=xs[c.c0],r=xs[c.c1],t=ys[c.r0],bottom=ys[c.r1];
     const graphic=rulings.some(s=>s.axis==='h'&&!ys.some(y=>Math.abs(y-s.pos)<2)&&s.pos>t+2&&s.pos<bottom-2&&s.a>l+2&&s.b<r-2)
       || graphics.some(g=>(g.image||(!g.rectangle&&(g.box[2]-g.box[0])*(g.box[3]-g.box[1])<(r-l)*(bottom-t)*0.5))&&g.box[0]>l+1&&g.box[2]<r-1&&g.box[1]>t+1&&g.box[3]<bottom-1);
-    return {...c,graphic,...cellText(words,graphic),wordIds:words.map(w=>w.id)};
+    return {...c,graphic,...cellText(words,graphic,footnoteLabels),wordIds:words.map(w=>w.id)};
   }).sort((a,b)=>a.r0-b.r0||a.c0-b.c0);
   const below=source.filter(w=>grid.outside.includes(w.id)&&(w.top+w.bottom)/2>ys.at(-1));
   if(below.length && Math.min(...below.map(w=>w.x0)) <= xs[0]+(xs.at(-1)-xs[0])*0.1) {
-    grid.externalNotes=[{...cellText(below),wordIds:below.map(w=>w.id),box:[Math.min(...below.map(w=>w.x0)),Math.min(...below.map(w=>w.top)),Math.max(...below.map(w=>w.x1)),Math.max(...below.map(w=>w.bottom))]}];
+    grid.externalNotes=[{...cellText(below,false,footnoteLabels),wordIds:below.map(w=>w.id),box:[Math.min(...below.map(w=>w.x0)),Math.min(...below.map(w=>w.top)),Math.max(...below.map(w=>w.x1)),Math.max(...below.map(w=>w.bottom))]}];
     grid.outside=grid.outside.filter(id=>!below.some(w=>w.id===id));
   }
   if(grid.outside.length) grid.reason='어느 칸에도 들어가지 않는 글자가 있음';

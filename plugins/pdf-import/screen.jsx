@@ -90,6 +90,7 @@ function Screen({
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
   const [documentStatus,setDocumentStatus]=useState(undefined);
   const [status, setStatus] = useState(""),
+    [conversion, setConversion] = useState(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [file, setFile] = useState(null),
@@ -270,6 +271,7 @@ function Screen({
     }
   }
   function resetDocument() {
+    setConversion(null);
     if(pickerSession.current) pickerSession.current.active=false;
     pickerSession.current = null;
     scrollOwner.current=null; sourceAuto.current=null; scaleAnchor.current=null;
@@ -413,7 +415,7 @@ function Screen({
       objects = r.blocks.filter((b) => ["table", "figure"].includes(b.kind) && !b.table);
     at = performance.now();
     for (let i = 0; i < objects.length; i++) {
-      stage("그림 만드는 중 " + (i + 1) + " / " + objects.length, "그림을 만들지 못했습니다.");
+      stage("그림 만드는 중 " + (i + 1) + " / " + objects.length, "그림을 만들지 못했습니다.", {value:(i + 1) / objects.length,label:"그림 " + (i + 1) + " / " + objects.length});
       const b = objects[i],
         box = b.boxes[0],
         p = await doc.getPage(box.page + 1),
@@ -477,6 +479,7 @@ function Screen({
   async function rewrite() {
     if(!await confirm({title:"다시 변환",message:"새로 변환한 문서는 초안이 됩니다. 새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",confirmLabel:"뺄 쪽 고르기"})) return;
     replacementApproved.current=true;
+    setConversion(null);
     setError("");
     setUndoCount(0);historyId.current=crypto.randomUUID();
     setSelection([]);setSplitting(false);
@@ -496,9 +499,11 @@ function Screen({
     setPickerHelp(false);
     const replacing = cached || missingMapping;
     let failure = "이전 문서를 옮기지 못했습니다.";
-    function stage(label, failureLabel) {
+    function stage(label, failureLabel, progress) {
       failure = failureLabel;
       setStatus(label);
+      const key = label.startsWith("이전 문서") ? "이전 문서 정리" : label.startsWith("구조") ? "구조 분석" : label.startsWith("그림") ? "그림 만들기" : label.startsWith("문서") ? "문서 저장" : "원본 연결";
+      setConversion({replacing, key, progress});
     }
     try {
       if (
@@ -513,6 +518,8 @@ function Screen({
         return;
       setBusy(true);
       setError("");
+      setPicking(false);
+      setConversion({replacing, key: replacing ? "이전 문서 정리" : "구조 분석"});
       metrics.current = { start: performance.now() };
       if (replacing) {
         stage("이전 문서 옮기는 중", failure);
@@ -523,6 +530,7 @@ function Screen({
       setPicking(false);
       setStale(false);
       await run(file, pdf, stage);
+      setConversion(null);
     } catch (e) {
       setError(e.message || "변환에 실패했습니다.");
       setStatus(failure);
@@ -983,14 +991,14 @@ function Screen({
   }
   return (
     <ui.ScreenLayout
-      fillHeight={Boolean(pdf && !picking && !missingMapping)}
+      fillHeight={Boolean(pdf && !picking && !missingMapping && !conversion)}
       back={file && !picking ? { label: "변환한 문서", onBack: returnHome, disabled: busy } : undefined}
       description={
         file
           ? file.name +
-            (pdf && !picking ? " · " + pdf.numPages + "쪽" : "") +
+            (pdf && !picking ? " · " + pdf.numPages + "쪽" + (conversion && excludedPages.size ? " 중 " + (pdf.numPages - excludedPages.size) + "쪽" : "") : "") +
             (picking && pdf ? " · " + pdf.numPages + "쪽 중 " + excludedPages.size + "쪽 제외" : "") +
-            (excludedPages.size ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
+            (excludedPages.size && !conversion ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
           : undefined
       }
       status={
@@ -1072,14 +1080,18 @@ function Screen({
 .pdf-import-narrow{display:block}
 }
 `}</style>
-      {error && <ui.Notice tone="error">{error}</ui.Notice>}
+      {!conversion && error && <ui.Notice tone="error">{error}</ui.Notice>}
+      {conversion && <div style={{width:'min(100%, 560px)',margin:'var(--space-8) auto',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
+        <ui.Steps steps={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결']} current={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결'].indexOf(conversion.key)}/>
+        {error ? <ui.Notice tone="error">{status} {error}</ui.Notice> : <ui.Progress value={conversion.progress?.value} label={conversion.progress?.label || conversion.key}/>}
+      </div>}
       {!picking && stale && (
         <ui.Notice tone="warning">
           문서가 바뀌어 대응을 표시할 수 없음
         </ui.Notice>
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
-      {pdf && !picking && !missingMapping && (
+      {pdf && !picking && !missingMapping && !conversion && (
         <>
           <div className="pdf-import-narrow">
             <ui.Notice>넓은 창에서 보기</ui.Notice>

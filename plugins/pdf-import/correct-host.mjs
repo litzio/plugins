@@ -3,7 +3,7 @@ import { koreanTime } from "./time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import { assertMapping, previewCorrection, restoreMapping, splitOffset, snapshotNodes, references, titleText } from './corrections.mjs';
+import { assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText } from './corrections.mjs';
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections } from './document-io.mjs';
 const topNodes = snapshotNodes;
@@ -96,12 +96,19 @@ export function correctionHandler({cli} = {}) {
           ops = nodes.slice(1).map(()=>({command:'merge-paragraph',path:String(at+1)}));
           ops.push({command:'remove-block',at},{command:'insert-block',at,content});
           inverse = nodes.slice(0,-1).map((n,i)=>({command:'split-paragraph',path:String(at+i),
-            offset:n.content.reduce((sum,c)=>sum+(c.kind==='text'?c.text.length:1),0)}));
+            offset:n.content.reduce((sum,c)=>sum+inlineLength(c),0)}));
         } else if (action === 'split') {
           if (nodes.length !== 1 || first.type !== 'paragraph') throw Error('문단 하나를 골라야 합니다.');
           const offset = splitOffset(b.lines,line,first.content);
           ops = [{command:'split-paragraph',path:String(at),offset}];
-          inverse = [{command:'merge-paragraph',path:String(at+1)}]; newCount = 2;
+          inverse = [{command:'merge-paragraph',path:String(at+1)}];
+          if(first.content.some(c=>c.children)) {
+            const halves=splitContent(first.content,offset);
+            ops=halves.map((content,i)=>({command:'insert-block',at:at+i,content}));
+            ops.push({command:'remove-block',at:at+2});
+            inverse=[insert(first,at),{command:'remove-block',at:at+1},{command:'remove-block',at:at+1}];
+          }
+          newCount = 2;
         } else if (action === 'kind') {
           if (nodes.length !== 1 || !['paragraph','heading'].includes(first.type) ||
             !['paragraph','heading'].includes(kind) || (kind === 'heading' && !(level>=1 && level<=6)))
