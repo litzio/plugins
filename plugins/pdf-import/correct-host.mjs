@@ -2,7 +2,8 @@ import { updateDocumentStatus } from '@litzio/plugin-sdk';
 import { koreanTime } from "./time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references } from './corrections.mjs';
+import { execFile } from 'node:child_process';
+import { assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText } from './corrections.mjs';
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections } from './document-io.mjs';
 const topNodes = snapshotNodes;
@@ -11,7 +12,20 @@ const insert = (n, at) => n.type === 'paragraph'
   ? {command:'insert-block',at,content:n.content}
   : n.type === 'heading' ? {command:'insert-heading',at,level:n.level,content:n.content}
   : n.type === 'list' ? {command:'insert-list',at,list:listOf(n)} : null;
-export function correctionHandler() {
+// The SDK has no title operation, so a step that touches the title goes through
+// one official CLI apply-batch: the body and the title change in one revision-checked commit.
+function applyWithCli(cli, doc, ops, revision) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(cli.bin, [...cli.args, 'apply-batch', doc, '--operations', '-', '--if-revision', revision, '--format', 'json'],
+      {windowsHide:true}, (error, stdout) => {
+        if (!error) return resolve({revision:JSON.parse(stdout).revision});
+        try { if (inspectDocument(doc).revision !== revision) return reject(new FileChangedError(doc)); } catch {}
+        reject(error);
+      });
+    child.stdin.end(JSON.stringify(ops));
+  });
+}
+export function correctionHandler({cli} = {}) {
   const histories = new Map(), locks = new Set();
   const persist = async (side, m) => {
     const tmp = side + '.pending';
@@ -110,18 +124,34 @@ export function correctionHandler() {
           if (irreversible && !confirmed) return {requiresConfirm:true};
           ops = [{command:'remove-block',at}]; inverse = restore ? [restore] : [];
           newCount = 0;
+        } else if (action === 'title') {
+          if (nodes.length !== 1 || !['paragraph','heading'].includes(first.type)) throw Error('본문이나 제목 하나를 골라야 합니다.');
+          const {text, reason} = titleText(first);
+          if (reason) throw Error(reason);
+          if (current.title && !confirmed) return {requiresConfirm:true, title:current.title};
+          // The replaced title does not return to the body; undo restores the previous value.
+          ops = [{command:'remove-block',at},{command:'update-title',text}];
+          inverse = [insert(first,at), current.title === null ? {command:'update-title',remove:true} : {command:'update-title',text:current.title}];
+          newCount = 0;
         } else throw Error('지원하지 않는 고치기입니다.');
         next = previewCorrection(before,{action,ids,line,kind,level,time});
         targetId = next.blocks.find(x=>x.id===b.id)?.id || next.blocks.find(x=>x.path[0]>=at)?.id || next.blocks.at(-1)?.id;
       }
+      const viaCli = ops.some(op => op.command === 'update-title');
+      if (viaCli && !cli) throw Error('이 리치오에서는 공식 CLI를 찾지 못해 문서 제목을 바꿀 수 없습니다.');
       let receipt;
       try {
         const started = performance.now();
-        const document=applyCorrections(current.document,ops);
-        timings.coreMs=performance.now()-started;
-        const writing=performance.now();
-        receipt=writeDocument(doc,document,before.revision);
-        timings.writeMs=performance.now()-writing;
+        if (viaCli) {
+          receipt = await applyWithCli(cli,doc,ops,before.revision);
+          timings.cliMs = performance.now()-started;
+        } else {
+          const document=applyCorrections(current.document,ops);
+          timings.coreMs=performance.now()-started;
+          const writing=performance.now();
+          receipt=writeDocument(doc,document,before.revision);
+          timings.writeMs=performance.now()-writing;
+        }
         timings.operationMs = performance.now()-started;
       } catch (e) {
         if (e instanceof FileChangedError)
