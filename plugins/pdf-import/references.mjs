@@ -1,4 +1,4 @@
-// Figure and table references (S-02, in part). The engine follows internal PDF links to
+// Internal section links and figure/table references (S-02). The engine follows internal PDF links to
 // the block they point at; the profile reads "Figure n" / "Table n". A reference becomes a
 // Litzio reference only when its target is the figure or table with the same number.
 // Without any internal link in the document, the text rule is used, and only for numbers
@@ -113,6 +113,37 @@ function pickOccurrence(b, candidates, link) {
   return scored[0]?.c ?? (candidates.length === 1 ? candidates[0] : null);
 }
 
+// Match complete PDF text items under the annotation to their offsets in one source line.
+// Partially covered items and ambiguous line reconstructions stay plain text.
+function coveredWords(link, words) {
+  const q = link.box;
+  const hits = words.filter(w => w.top < q.bottom && w.bottom > q.top &&
+    w.x0 < q.x1 - 1 && w.x1 > q.x0 + 1);
+  if (!hits.length || hits.some(w => w.x0 < q.x0 - 2 || w.x1 > q.x1 + 3)) return null;
+  return hits.sort((a,b)=>a.x0-b.x0);
+}
+
+function sectionRange(source, link, hits, words) {
+  if (!hits) return null;
+  const ranges = lineRanges(source);
+  const r = ranges?.find(({line}) => line.page === link.page && hits.every(w =>
+    w.x0 >= line.box.x0 - 2 && w.x1 <= line.box.x1 + 2 &&
+    (w.top + w.bottom)/2 >= line.box.top && (w.top + w.bottom)/2 <= line.box.bottom));
+  if (!r) return null;
+  const inLine = words.filter(w => w.x0 >= r.line.box.x0 - 2 && w.x1 <= r.line.box.x1 + 2 &&
+    (w.top + w.bottom)/2 >= r.line.box.top && (w.top + w.bottom)/2 <= r.line.box.bottom).sort((a,b)=>a.x0-b.x0);
+  const compact = s => s.replace(/\s/gu, "");
+  const lineText = source.text.slice(r.from,r.to);
+  if (compact(inLine.map(w=>w.text).join("")) !== compact(lineText)) return null;
+  const first = inLine.findIndex(w=>hits.includes(w));
+  if (first < 0 || !inLine.slice(first,first+hits.length).every(w=>hits.includes(w))) return null;
+  const start = compact(inLine.slice(0,first).map(w=>w.text).join("")).length;
+  const count = compact(hits.map(w=>w.text).join("")).length;
+  const chars = [...lineText.matchAll(/\S/g)];
+  const at = chars[start].index, end = chars[start+count-1];
+  return {at:r.from+at,length:end.index+end[0].length-at};
+}
+
 function gridCell(b, x, y) {
   const g = b.grid;
   if (!g?.cells) return null;
@@ -131,7 +162,14 @@ const textKinds = ["paragraph", "list", "note", "footnote", "caption", "heading"
 export function findReferences(raw, blocks, profile) {
   const links = (raw.pages || []).flatMap((p, page) => (p.links || []).map((l) => ({ ...l, page })));
   const result = { method: links.length ? "links" : "text", links: links.length, converted: 0, targets: 0, unmatched: 0 };
-  for (const b of blocks) delete b.refs;
+  const sections = result.sections = { candidates:0, converted:0, unsupportedSource:0, uncertainRange:0, mismatch:0 };
+  for (const b of blocks) {
+    delete b.refs;
+    delete b.sectionLabel;
+    for (const cell of b.grid?.cells || []) delete cell.refs;
+  }
+  const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const reserved = new Set(blocks.filter(b=>b.kind==="heading").map(b=>slug(b.text)));
   if (!profile.reference) return result;
   const captionFor = captionTargets(blocks, profile);
   const labels = figureTableLabels(blocks, profile, captionFor);
@@ -155,7 +193,9 @@ export function findReferences(raw, blocks, profile) {
       const cx = (link.box.x0 + link.box.x1) / 2, cy = (link.box.top + link.box.bottom) / 2;
       const target = destinationBlock(blocks, link.dest);
       const info = target && labels.get(objectOf.get(target.id) ?? target.id);
-      if (!info) continue;
+      const heading = !link.dest.pageOnly && target?.kind === "heading";
+      if (!info && !heading) continue;
+      if (heading) sections.candidates++;
       // A link over a wrapped reference covers two lines; its centre may fall between them.
       const q = link.box, overlaps = (x) => x.x0 < q.x1 && q.x0 < x.x1 && x.top < q.bottom && q.top < x.bottom;
       const holds = (b, hit) =>
@@ -165,6 +205,39 @@ export function findReferences(raw, blocks, profile) {
       const source =
         blocks.find((b) => holds(b, (x) => inside(x, cx, cy))) ??
         blocks.find((b) => !b.table && holds(b, overlaps));
+      if (heading) {
+        if (!source || /\.{3,}\s*\d+\s*$/.test(source.text)) { sections.unsupportedSource++; continue; }
+        const words = raw.pages[link.page].words || [];
+        const hits = coveredWords(link,words);
+        const cell = source.table && gridCell(source,cx,cy);
+        if (source.table && (!cell || cell.graphic || !source.table.tokenRows.some(row=>row.some(cells=>cells.includes(cell))))) {
+          sections.unsupportedSource++; continue;
+        }
+        const owner = cell || source;
+        let range;
+        if (cell && hits && !cell.tokens.some(t=>t.superscript)) {
+          const text = hits.map(w=>w.text.trim()).join(" ");
+          const at = cell.text.indexOf(text);
+          if (text && at >= 0 && at === cell.text.lastIndexOf(text)) range = {at,length:text.length};
+        } else if (!cell) range = sectionRange(source,link,hits,words);
+        if (!range || owner.refs?.some(r=>r.at < range.at+range.length && range.at < r.at+r.length)) {
+          sections.uncertainRange++; continue;
+        }
+        const text = owner.text.slice(range.at,range.at+range.length);
+        const number = profile.sectionNumber(target.text), shown = profile.linkedNumber(text);
+        if (referenceMatches(text, profile).length || (number && shown && number !== shown)) { sections.mismatch++; continue; }
+        if (!target.sectionLabel) {
+          const base = (/^[A-Z]/.test(number || "") ? "annex-" : "sec-") +
+            (slug(number || target.text).slice(0,70) || "section");
+          let label = base, n = 2;
+          while (reserved.has(label)) label = base + "-" + n++;
+          reserved.add(label);
+          target.sectionLabel = label;
+        }
+        (owner.refs ||= []).push({...range,label:target.sectionLabel,section:true,text});
+        sections.converted++;
+        continue;
+      }
       if (!source) continue;
       const same = (m) => m.kind === info.kind && m.number === info.number && !ownNumber(source, m, profile);
       if (source.table) {
@@ -238,11 +311,20 @@ export function cellReferences(content, refs, profile, labels) {
     if (c.kind !== "text") return [c];
     const out = [];
     let at = 0;
-    for (const m of referenceMatches(c.text, profile)) {
-      const r = usable.find((r) => r.kind === m.kind && r.number === m.number);
-      if (!r) continue;
+    const matches = referenceMatches(c.text,profile).map(m=>({...m,ref:usable.find(r=>!r.section && r.kind===m.kind && r.number===m.number)}));
+    for (const ref of usable.filter(r=>r.section)) {
+      const index = c.text.indexOf(ref.text);
+      if (index >= 0 && index === c.text.lastIndexOf(ref.text)) matches.push({at:index,length:ref.text.length,ref});
+    }
+    for (const m of matches.sort((a,b)=>a.at-b.at)) {
+      const r = m.ref;
+      if (!r || m.at < at) continue;
       if (m.at > at) out.push({ kind: "text", text: c.text.slice(at, m.at) });
-      out.push({ kind: "reference", role: "numref", label: r.label });
+      const previous = out.at(-1);
+      if (!r.section) out.push({ kind: "reference", role: "numref", label:r.label });
+      else if (previous?.kind === "link" && previous.url === "#"+r.label)
+        previous.children[0].text += r.text;
+      else out.push({kind:"link",url:"#"+r.label,children:[{kind:"text",text:r.text}]});
       at = m.at + m.length;
     }
     if (at < c.text.length) out.push({ kind: "text", text: c.text.slice(at) });

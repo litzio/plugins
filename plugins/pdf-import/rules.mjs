@@ -1004,12 +1004,15 @@ function footnoteContent(text, stats, refs = []) {
         ? { kind: "text", text: "[" + m[1] + "]" }
         : { kind: "footnote", label: m[1] },
     })),
-    ...refs.map((r) => ({ at: r.at, length: r.length, node: { kind: "reference", role: "numref", label: r.label } })),
+    ...refs.map((r) => ({ at: r.at, length: r.length, node: r.section ? {kind:"link",url:"#"+r.label,children:[{kind:"text",text:text.slice(r.at,r.at+r.length)}]} : { kind: "reference", role: "numref", label: r.label } })),
   ].sort((a, b) => a.at - b.at);
   for (const c of cuts) {
     if (c.at < at) continue;
     if (c.at > at) content.push({ kind: "text", text: text.slice(at, c.at) });
-    content.push(c.node);
+    const previous = content.at(-1);
+    if (c.node.kind === "link" && previous?.kind === "link" && c.node.url === previous.url)
+      previous.children[0].text += c.node.children[0].text;
+    else content.push(c.node);
     at = c.at + c.length;
   }
   if (at < text.length) content.push({ kind: "text", text: text.slice(at) });

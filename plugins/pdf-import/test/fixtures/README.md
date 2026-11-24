@@ -38,3 +38,7 @@
 ## NOTE·목록 합성 표본
 
 `notes-lists.pdf`는 `make-notes-lists.py`(reportlab)로 만든 3쪽 합성 표본이다. 내용은 이 저장소 작업자가 새로 쓴 가상의 기록 절차이며 CC0 1.0 Universal이다. 첫 쪽의 `IEEE Std 0000-2026` 줄은 IEEE 프로필 선택 신호를 시험하려는 것이며 IEEE 간행물이 아니라고 같은 줄에 적었다. NOTE 문단 셋, 쪽을 넘는 `a)`~`d)` 목록 하나, 이웃한 번호 목록 둘(`1)`·`a)`)을 담는다. 글꼴은 PDF 기본 14종이라 포함하지 않는다.
+
+## 조항 링크 합성 표본
+
+`clause-links.pdf`는 `make-clause-links.py`로 만든 4쪽 CC0 표본이다. 서로 다른 세 제목으로 가는 PDF 링크, 표시 번호가 다른 링크, 링크를 받지 않는 제목을 포함한다.

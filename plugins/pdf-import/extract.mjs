@@ -221,7 +221,7 @@ async function extract(pdfPath) {
         const [x0, y0, x1, y1] = a.rect;
         links.push({
           box: { x0: x0 - vx0, top: top(y1), x1: x1 - vx0, bottom: top(y0) },
-          dest: { page: index, top: typeof y === "number" ? view[3] - y : 0 },
+          dest: { page: index, top: typeof y === "number" ? view[3] - y : 0, ...(typeof y === "number" ? {} : {pageOnly:true}) },
         });
       } catch {
         // A broken destination is not a link we can follow.

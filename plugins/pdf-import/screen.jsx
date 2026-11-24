@@ -215,6 +215,14 @@ function Screen({
       setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 변환 경고 '+r.mapping.blocks.filter(b=>b.warning).length+'개');
     } catch(e){setError(e.message);setStatus('검토 상태 변경 실패');} finally{editing.current=false;setBusy(false);}
   }
+  async function runCorrection(input) {
+    const {jobId} = await invoke('correct',{...input,background:true});
+    for (;;) {
+      const response = await invoke('correctionResult',{jobId});
+      if (!response.pending) return response.result;
+      await new Promise(resolve=>setTimeout(resolve,150));
+    }
+  }
   async function correct(action, extra = {}, blocks = chosen, focusSource = false) {
     if (editing.current) return;
     const before=mapping, oldSelection=selection, oldSelected=selected;
@@ -231,12 +239,12 @@ function Screen({
         }
         input.confirmed=true;started=performance.now();
       }
-      let r=await invoke('correct',input);
+      let r=await runCorrection(input);
       if(r.requiresConfirm&&action==='title') {
         if(!await confirm({title:'문서 제목 바꾸기',message:'이 문서에는 이미 제목 “'+r.title+'”이 있습니다. 고른 블록의 글자로 바꿀까요? 이전 제목은 본문으로 돌아오지 않습니다.',confirmLabel:'제목 바꾸기'})) {
           setStatus('취소됨');return;
         }
-        started=performance.now();r=await invoke('correct',{...input,confirmed:true});
+        started=performance.now();r=await runCorrection({...input,confirmed:true});
       }
       if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
       setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
@@ -245,7 +253,7 @@ function Screen({
       setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b?sourceTarget(b):null);
       if(focusSource&&b)requestAnimationFrame(()=>pane.current?.querySelector('[data-linked-item="'+b.id+'"]')?.focus({preventScroll:true}));
       metrics.current.correction={started,timings:r.timings,action};
-      setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':'고침 완료');
+      setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':r.brokenLinks?'고침 완료 · 이 제목을 가리키는 링크 '+r.brokenLinks+'개가 끊깁니다.':'고침 완료');
     } catch(e) {
       setMapping(before);setSelection(oldSelection);setSelected(oldSelected);
       setError(e.message);setStatus('고치기 실패');
