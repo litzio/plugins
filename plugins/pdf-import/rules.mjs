@@ -40,7 +40,7 @@ const box = (page, b) => ({
 });
 function addBox(b, l) {
   if (typeof l.text === "function") {
-    (b.lines ||= []).push({ page: l.page, box: box(l.page, l.bbox), text: l.text() });
+    (b.lines ||= []).push({ page: l.page, box: box(l.page, l.bbox), text: l.text(), ...(l.tokens ? {tokens:l.tokens} : {}) });
   }
   l = { ...l, x0: l.bbox[0], y0: l.bbox[1], x1: l.bbox[2], y1: l.bbox[3] };
   const a = b.boxes.find((x) => x.page === l.page);
@@ -52,7 +52,7 @@ function addBox(b, l) {
   } else b.boxes.push(box(l.page, l.bbox));
 }
 function line(raw, page) {
-  const spans = raw.spans.filter((s) => s.text.trim()),
+  const spans = raw.spans.filter((s) => s.text.trim()).map(s => s.flags & 32 ? {...s} : s),
     main = spans.reduce(
       (a, s) => (!a || s.text.length > a.text.length ? s : a),
       null,
@@ -60,6 +60,7 @@ function line(raw, page) {
     main_size = main ? round(main.size * 10) / 10 : 0;
   return {
     page,
+    tokens: raw.tokens,
     metrics: raw.metrics,
     bbox: raw.bbox,
     x0: raw.bbox[0],
@@ -293,6 +294,12 @@ function convert(raw, excludedPages = [], profileName) {
   all.forEach((ls, i) => {
     if (omitted.has(i + 1)) for (const l of ls) l.kind = "front";
   });
+  // Preserve a raised numeric call when its definition is present on an included page.
+  const footnoteLabels = new Set(all.flat().filter(l=>l.kind==="footnote")
+    .map(l=>l.plain.match(/^(\d+)/)?.[1]).filter(Boolean));
+  for (const lines of all) for (const l of lines) {
+    for (const span of l.spans) if ((span.flags & 32) && footnoteLabels.has(span.text.trim())) span.flags |= 1;
+  }
   // Only paragraph assembly uses body-sized baselines; classification stays intact.
   const bodyLines = all
     .flat()
@@ -389,6 +396,7 @@ function convert(raw, excludedPages = [], profileName) {
           plain: a.plain + " " + l.plain,
           x1: l.x1,
           bbox: [a.x0, Math.min(a.y0, l.y0), l.x1, Math.max(a.y1, l.y1)],
+          tokens: [...(a.tokens || []), ...(l.tokens || [])],
           metrics: [...(a.metrics || []), ...(l.metrics || [])],
           text: () => a.text() + " " + l.text(),
         };
@@ -668,7 +676,7 @@ function convert(raw, excludedPages = [], profileName) {
     const x=b.boxes[0],p=pages[b.page];
     const regions=p.tables.filter(r=>r[0]>=x.x0-2&&r[2]<=x.x1+2&&r[1]>=x.top-2&&r[3]<=x.bottom+2).sort((a,b)=>a[1]-b[1]);
     if(regions.length<2 || regions.some((r,j)=>j&&r[1]<=regions[j-1][3]))continue;
-    const grids=regions.map(r=>buildGrid(r,p.rulings||[],(p.words||[]).map((w,id)=>({...w,id})),p.graphics||[]));
+    const grids=regions.map(r=>buildGrid(r,p.rulings||[],(p.words||[]).map((w,id)=>({...w,id})),p.graphics||[],footnoteLabels));
     const ok=grids.every(g=>!g.reason&&flattenGrid(g).rows.length<=100&&g.cols<=32);
     if(!ok){b.stackFallback=true;continue;}
     const parts=regions.map((r,j)=>({...b,boxes:[box(b.page,r)],text:grids[j].cells.map(c=>c.text).join(" "),stackSplit:true}));
@@ -680,7 +688,7 @@ function convert(raw, excludedPages = [], profileName) {
     if(b.stackFallback){b.warning={code:"table-as-image",reason:"세로 묶음의 일부 영역을 글자로 옮길 수 없음"};continue;}
     const p=pages[b.page], x=b.boxes[0];
     const words=(p.words||[]).map((w,id)=>({...w,id}));
-    const grid=buildGrid([x.x0,x.top,x.x1,x.bottom],p.rulings||[],words,p.graphics||[]);
+    const grid=buildGrid([x.x0,x.top,x.x1,x.bottom],p.rulings||[],words,p.graphics||[],footnoteLabels);
     if(grid.reason) {b.warning={code:"table-as-image",reason:grid.reason};continue;}
     const flat=flattenGrid(grid);
     if(flat.rows.length>100 || grid.cols>32) {b.warning={code:"table-as-image",reason:"100행 또는 32열 한도를 넘음"};continue;}
@@ -696,7 +704,10 @@ function convert(raw, excludedPages = [], profileName) {
     const suspicious=grid.cells.filter(c=>c.graphic);
     if(suspicious.length) b.warning={code:"table-cell-graphic",reason:"글자가 아닌 내용 의심: "+suspicious.map(c=>`${c.r0+1}행 ${c.c0+1}열`).join(", ")+(b.warning?" · "+b.warning.reason:"")};
     const notes=flat.notes.map(c=>({kind:"para",text:c.text,page:b.page,tableNote:true,boxes:[c.box?box(b.page,c.box):{page:b.page,x0:grid.colEdges[c.c0],top:grid.rowEdges[c.r0],x1:grid.colEdges[c.c1],bottom:grid.rowEdges[c.r1]}]}));
-    for(const note of notes) note.lines=[{page:note.page,box:{...note.boxes[0]},text:note.text}];
+    notes.forEach((note,index)=>{
+      const cell=flat.notes[index];
+      note.lines=[{page:note.page,box:{...note.boxes[0]},text:note.text,...(!cell.graphic && cell.tokens ? {tokens:cell.tokens} : {})}];
+    });
     blocks.splice(i+1,0,...notes);i+=notes.length;
   }
   // A NOTE paragraph becomes a note box; table notes stay table-note paragraphs.

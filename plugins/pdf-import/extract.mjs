@@ -1,3 +1,4 @@
+import { scriptPosition, sourceToken } from "./inline-styles.mjs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -182,10 +183,15 @@ async function extract(pdfPath) {
         const main = Math.max(...seg.map((w) => w.size));
         const base = Math.max(...seg.filter((w) => w.size === main).map((w) => w.base));
         const spans = [];
+        const tokens = [];
         seg.forEach((w, i) => {
           let flags = /bold/i.test(w.font) ? 16 : 0;
           if (w.size < main * 0.8 && w.base < base - 1) flags |= 1;
+          const script = scriptPosition(seg[i-1],w);
+          if (script === "power" && (flags & 1)) flags |= 32;
+          if (script) flags &= ~1;
           w.superscript = !!(flags & 1);
+          tokens.push(sourceToken(w,script));
           const prev = seg[i - 1];
           const gap = prev ? w.x0 - prev.x1 : 0;
           const needSpace = prev && gap > 0.12 * main && !/\s$/.test(prev.text) && !/^\s/.test(w.text);
@@ -196,7 +202,7 @@ async function extract(pdfPath) {
         });
         raw.push({
           bbox: [seg[0].x0, Math.min(...seg.map((w) => w.top)), seg[seg.length - 1].x1, Math.max(...seg.map((w) => w.bottom))],
-          spans,
+          spans, tokens,
           metrics: seg.map(({text, x0, x1, base, size}) => ({text, x0, x1, base, size}))
         });
       }

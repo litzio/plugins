@@ -1,7 +1,8 @@
+import { decorate } from "./inline-styles.mjs";
 import { imageKeys } from "./output.mjs";
 import { footnoteContent, BULLET, reconcileFootnotes } from "./rules.mjs";
 import { profiles } from "./profiles/index.mjs";
-import { captionTargets, figureTableLabels, refsFor, cellReferences } from "./references.mjs";
+import { captionTargets, figureTableLabels, referenceText, refsFor, cellReferences } from "./references.mjs";
 function authoring(result) {
   reconcileFootnotes(result);
   const profile = profiles[result.profile] ?? profiles.generic;
@@ -15,7 +16,12 @@ function authoring(result) {
   // fixed number; a reference is kept only when its target is in this block list.
   const labels = figureTableLabels(blocks, profile, captionFor);
   const live = new Set([...labels.values()].map((v) => v.label));
-  const inline = (b, text) => footnoteContent(text, stats, refsFor(b, text, live));
+  const display = c => c.text ?? (c.kind === "reference" ? referenceText(c.label) : c.kind === "footnote" ? c.label : c.children?.map(x=>x.text).join(""));
+  const inline = (b, text) => {
+    const content = footnoteContent(text, stats, refsFor(b, text, live));
+    if (!["paragraph","list","footnote","note"].includes(b.kind)) return content;
+    return decorate(content,b.lines?.flatMap(l=>l.tokens || []),display);
+  };
   // Litzio puts "Figure 3" in front of a numbered caption; the original number goes.
   const captionOf = (b) => {
     const cap = captionFor.get(b.id);
@@ -39,9 +45,8 @@ function authoring(result) {
     }
     let block;
     const sources = [b.id];
-    const content = inline(b, b.text);
     if (b.kind === "heading")
-      block = { kind: "heading", level: b.level, content };
+      block = { kind: "heading", level: b.level, content: inline(b,b.text) };
     else if (b.kind === "note")
       block = {
         kind: "admonition",
@@ -50,9 +55,11 @@ function authoring(result) {
       };
     else if (b.kind === "footnote") {
       const m = b.text.match(/^\[\^(\d+)\]:\s*(.*)$/);
+      const body = inline(b,m[2]);
+      const rich = body.some(n=>n.kind!=="text");
       block = (stats.footnotes.definitions_without_ref.includes(m[1]) || stats.footnotes.duplicate_definitions.includes(m[1]))
-        ? { kind: "paragraph", text: "[" + m[1] + "] " + m[2] }
-        : { kind: "footnote", label: m[1], ...(refsFor(b, m[2], live).length ? { content: inline(b, m[2]) } : { text: m[2] }) };
+        ? { kind: "paragraph", ...(rich ? {content:[{kind:"text",text:"["+m[1]+"] "},...body]} : {text:"[" + m[1] + "] " + m[2]}) }
+        : { kind: "footnote", label: m[1], ...(rich ? { content: body } : { text: m[2] }) };
     } else if (b.kind === "list") {
       const marker = b.marker || b.text.match(BULLET)?.[0]?.trim() || "";
       const m = marker.match(/^([a-z]+|\d+)\)$/i);
@@ -139,7 +146,7 @@ function authoring(result) {
     } else if (b.kind === "table" && b.table) {
       const cap=captionFor.get(b.id), {caption, ...number}=captionOf(b);
       block={kind:"table", ...(cap?number:{enumerated:false}), rows:b.table.tokenRows.map(row=>row.map(cells=>cells.flatMap((c,ci)=>[
-        ...(ci?[{kind:"text",text:" / "}]:[]), ...cellReferences(tableContent(c,stats),c.refs,profile,live)
+        ...(ci?[{kind:"text",text:" / "}]:[]), ...decorate(cellReferences(tableContent(c,stats),c.refs,profile,live),c.graphic ? [] : c.tokens,display)
       ]))),caption};
       if(cap) sources.push(cap.id);
     } else if (["table", "figure"].includes(b.kind)) {
@@ -152,7 +159,7 @@ function authoring(result) {
         caption,
       };
       if (cap) sources.push(cap.id);
-    } else block = { kind: "paragraph", content };
+    } else block = { kind: "paragraph", content: inline(b,b.text) };
     units.push({ block, sources });
   }
   const defs = units.filter((u) => u.block.kind === "footnote"),
@@ -222,6 +229,11 @@ function tableContent(cell,stats) {
       }
     } else out.push({kind:"text",text});
   }
-  const last=out.at(-1);if(last?.kind==='text') last.text=last.text.trimEnd();
-  return out.filter(t=>t.kind!=='text'||t.text);
+  const merged=[];
+  for(const n of out) {
+    if(n.kind==="text" && merged.at(-1)?.kind==="text") merged.at(-1).text+=n.text;
+    else merged.push(n);
+  }
+  const last=merged.at(-1);if(last?.kind==='text') last.text=last.text.trimEnd();
+  return merged.filter(t=>t.kind!=='text'||t.text);
 }
