@@ -1076,7 +1076,7 @@ function Screen({
       {conversion && <div style={{width:'min(100%, 560px)',margin:'var(--space-8) auto',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <div>{file.name} · {pdf.numPages}쪽 중 {pdf.numPages-excludedPages.size}쪽</div>
         <ui.Steps steps={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결']} current={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결'].indexOf(conversion.key)}/>
-        {error ? <ui.Notice tone="error">{status} {error}</ui.Notice> : <><div>{conversion.progress?.label || conversion.key}</div><ui.Progress value={conversion.progress?.value} label={conversion.progress?.label || conversion.key}/></>}
+        {error ? <ui.Notice tone="error">{status} {error}</ui.Notice> : <ui.Progress value={conversion.progress?.value} label={conversion.progress?.label || conversion.key}/>}
       </div>}
       {!picking && stale && (
         <ui.Notice tone="warning">
