@@ -3,7 +3,7 @@ import { koreanTime } from "./time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import { assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText } from './corrections.mjs';
+import { detachedTarget, assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText } from './corrections.mjs';
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections } from './document-io.mjs';
 const topNodes = snapshotNodes;
@@ -61,7 +61,7 @@ export function correctionHandler({cli} = {}) {
         }
         return {mapping:next,status:actual.status,undoCount:stack.length};
       }
-      let next, ops, inverse, targetId, irreversible = false;
+      let next, ops, inverse, targetId, irreversible = false, brokenLinks = 0;
       const undo = action === 'undo', prior = stack.at(-1);
       if (undo) {
         if (!prior || prior.revision !== current.revision) throw Error('되돌릴 동작이 없습니다.');
@@ -134,11 +134,26 @@ export function correctionHandler({cli} = {}) {
           inverse = [insert(first,at), current.title === null ? {command:'update-title',remove:true} : {command:'update-title',text:current.title}];
           newCount = 0;
         } else throw Error('지원하지 않는 고치기입니다.');
+        const target = detachedTarget(topNodes(current),first,action,kind);
+        if (target) {
+          const index = target.path[0];
+          ops.push({command:"remove-block",at:index});
+          inverse.unshift({command:"insert-target",at:index,label:target.label});
+          const count = value => value && typeof value === "object"
+            ? Number(value.kind === "link" && value.url === "#"+target.label) +
+              Object.values(value).reduce((sum,child)=>sum+count(child),0) : 0;
+          // Inspect exposes table cell content on separate paths. Other supported
+          // containers carry their inline children on the top-level node.
+          brokenLinks = current.nodes
+            .filter(n => n.type === "cell" || (n.path.length === 1 && n.type !== "caption"))
+            .filter(n => action === "kind" || n.path[0] !== at)
+            .reduce((sum,n) => sum + count(n), 0);
+        }
         next = previewCorrection(before,{action,ids,line,kind,level,time});
         targetId = next.blocks.find(x=>x.id===b.id)?.id || next.blocks.find(x=>x.path[0]>=at)?.id || next.blocks.at(-1)?.id;
       }
-      const viaCli = ops.some(op => op.command === 'update-title');
-      if (viaCli && !cli) throw Error('이 리치오에서는 공식 CLI를 찾지 못해 문서 제목을 바꿀 수 없습니다.');
+      const viaCli = ops.some(op => ['update-title','insert-target'].includes(op.command));
+      if (viaCli && !cli) throw Error('공식 CLI를 찾지 못해 문서 제목이나 이름표를 고칠 수 없습니다.');
       let receipt;
       try {
         const started = performance.now();
@@ -173,7 +188,7 @@ export function correctionHandler({cli} = {}) {
       else stack.push({before,forward:ops,inverse,revision:receipt.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id});
       histories.set(key,stack);
       timings.totalMs = performance.now()-t;
-      return {mapping:next,targetId,undoCount:stack.length,timings,
+      return {mapping:next,targetId,undoCount:stack.length,timings,brokenLinks,
         message:invalid?'저장 뒤 대응이 문서와 달라 대응 표시를 멈췄습니다. 되돌리기는 사용할 수 있습니다.':''};
     } finally {locks.delete(doc);}
   };

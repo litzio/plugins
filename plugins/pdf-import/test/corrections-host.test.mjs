@@ -129,8 +129,8 @@ test('SDK integration: S-02 figure/table references survive split, merge, kind, 
     const ref=label=>({kind:'reference',role:'numref',label});
     await writeFile(input,JSON.stringify({authoring:{inputs:[{key:'sample',blocks:[
       {kind:'paragraph',content:[{kind:'text',text:'Limits are in '},ref('tab-B.2'),{kind:'text',text:'. The next line names '},ref('tab-B.2'),{kind:'text',text:' again.'}]},
-      {kind:'paragraph',text:'Second paragraph.'},
-      {kind:'table',label:'tab-B.2',enumerator:'B.2',rows:[['a','b'],['1','2']],caption:'Limits'}]}]}}));
+      {kind:'paragraph',content:[{kind:'link',url:'#sec-2',children:[{kind:'text',text:'Second paragraph.'}]}]},
+      {kind:'table',label:'tab-B.2',enumerator:'B.2',rows:[['a','b'],['1',[{kind:'link',url:'#sec-2',children:[{kind:'text',text:'See details'}]}]]],caption:'Limits'},{kind:'target',label:'sec-2'},{kind:'heading',text:'2. Limits',level:1}]}]}}));
     await run(['create',doc,'--input',input,'--format','json']);
     const initial=await readFile(doc,'utf8'), snapshot=inspectDocument(doc);
     const table=snapshot.nodes.find(n=>n.type==='table');
@@ -139,14 +139,21 @@ test('SDK integration: S-02 figure/table references survive split, merge, kind, 
     const lines=texts.map((t,i)=>t.map((text,j)=>({page:0,text,box:{page:0,x0:0,x1:100,top:i*50+j*12,bottom:i*50+j*12+10}})));
     let m={snapshotNodes:snapshot.nodes.filter(n=>n.path.length===1),revision:snapshot.revision,excluded:[],blocks:[
       ...lines.map((l,i)=>({id:'b'+i,path:[i+1],kind:'paragraph',documentKind:'paragraph',lines:l,boxes:boxesFor(l)})),
-      {id:'t',path:[3],kind:'table',documentKind:'table',lines:[],boxes:[{page:0,x0:0,x1:100,top:120,bottom:160}]}]};
+      {id:'t',path:[3],kind:'table',documentKind:'table',lines:[],boxes:[{page:0,x0:0,x1:100,top:120,bottom:160}]},{id:'h',path:[5],kind:'heading',documentKind:'heading',level:1,lines:[],boxes:[]}]};
     await writeFile(side,JSON.stringify(m));
-    const correct=correctionHandler();
+    const correct=correctionHandler({cli});
     const act=async(action,extra)=>{
       const r=await correct({document:doc,revision:m.revision,historyId:'screen',action,...extra});
       assert.ok(r.mapping,JSON.stringify(r));assert.equal(r.mapping.stale,false,JSON.stringify(r));
       m=JSON.parse(await readFile(side,'utf8'));return r;
     };
+    for (const action of ['kind','remove','title']) {
+      const r=await act(action,{ids:['h'],kind:'paragraph'});
+      assert.equal(r.brokenLinks,2);
+      assert.ok(!inspectDocument(doc).nodes.some(n=>n.type==='target'));
+      await act('undo',{ids:['h']});
+      assert.equal(await readFile(doc,'utf8'),initial);
+    }
     const refs=()=>inspectDocument(doc).nodes.filter(n=>n.path.length===1&&n.content).flatMap(n=>n.content.filter(c=>c.kind==='reference').map(c=>c.label));
     const valid=async()=>{const c=await run(['check',doc,'--format','json']);assert.equal(c.validation.valid,true);assert.deepEqual(c.references.unresolved,[]);};
     await act('split',{ids:['b0'],line:1});

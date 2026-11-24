@@ -150,3 +150,32 @@ test("S-02 public sample: five references by the text rule, the pictured table s
   const pictured = out.filter((b) => b.enumerated === false && /^Table/.test(b.caption?.[0]?.text || ""));
   assert.equal(pictured.length, 2);
 });
+
+test("S-02 PDF annotation spans keep their words and only label included matching headings", async () => {
+  const raw = await extract(fileURLToPath(new URL("./fixtures/clause-links.pdf", import.meta.url)));
+  for (const excluded of [[], [2]]) {
+    const result = convert(raw, excluded);
+    const {authoring:input, units} = authoring(result);
+    const blocks = input.inputs[0].blocks;
+    assert.deepEqual(units.map(u=>u.kind), blocks.map(b=>b.kind));
+    assert.deepEqual(blocks.filter(b=>b.kind==="target").map(b=>b.label),
+      excluded.length ? ["sec-1","sec-4"] : ["sec-1","sec-2","sec-4"]);
+    const links = blocks.flatMap(b=>b.content || []).filter(c=>c.kind==="link");
+    assert.equal(links.length, excluded.length ? 6 : 12);
+    for (const link of links) assert.equal(link.children[0].text, "Clause "+link.url.slice(5));
+    assert.ok(blocks.some(b=>b.content?.some(c=>c.text?.includes("Clause 8"))));
+  }
+});
+
+test("S-02 page-only destinations stay plain and labels avoid another heading ID", async () => {
+  const raw = await extract(fileURLToPath(new URL("./fixtures/clause-links.pdf", import.meta.url)));
+  const {blocks} = convert(raw);
+  blocks.find(b=>b.text==="3. Review").text = "sec-4";
+  for (const page of raw.pages)
+    for (const link of page.links) if (link.dest.page === 1) link.dest.pageOnly = true;
+  findReferences(raw, blocks, generic);
+  assert.equal(blocks.find(b=>b.text==="4. Closing").sectionLabel, "sec-4-2");
+  assert.equal(blocks.find(b=>b.text==="2. Inspection").sectionLabel, undefined);
+  assert.equal(ieee.linkedNumber("Annex B.1"), "B.1");
+  assert.equal(ieee.linkedNumber("see 6.4.1"), "6.4.1");
+});

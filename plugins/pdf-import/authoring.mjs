@@ -16,6 +16,7 @@ function authoring(result) {
   // fixed number; a reference is kept only when its target is in this block list.
   const labels = figureTableLabels(blocks, profile, captionFor);
   const live = new Set([...labels.values()].map((v) => v.label));
+  for (const b of blocks) if (b.sectionLabel) live.add(b.sectionLabel);
   const display = c => c.text ?? (c.kind === "reference" ? referenceText(c.label) : c.kind === "footnote" ? c.label : c.children?.map(x=>x.text).join(""));
   const inline = (b, text) => {
     const marker = b.tableNote && text.match(/^([a-z*†‡])(?=\s)/);
@@ -163,13 +164,16 @@ function authoring(result) {
       };
       if (cap) sources.push(cap.id);
     } else block = { kind: "paragraph", content: inline(b,b.text) };
+    if (b.sectionLabel) units.push({block:{kind:"target",label:b.sectionLabel},sources:[]});
     units.push({ block, sources });
   }
   const defs = units.filter((u) => u.block.kind === "footnote"),
     body = units.filter((u) => u.block.kind !== "footnote"),
     order = [];
+  const linkedSections = new Set();
   const refs = (x) => {
     if (!x || typeof x !== "object") return;
+    if (x.kind === "link" && x.url.startsWith("#")) linkedSections.add(x.url.slice(1));
     if (x.kind === "footnote" && x.label && !order.includes(x.label))
       order.push(x.label);
     for (const v of Object.values(x))
@@ -180,7 +184,8 @@ function authoring(result) {
   defs.sort(
     (a, b) => order.indexOf(a.block.label) - order.indexOf(b.block.label),
   );
-  const sorted = [...body, ...defs];
+  defs.forEach(u => refs(u.block));
+  const sorted = [...body.filter(u => u.block.kind !== "target" || linkedSections.has(u.block.label)), ...defs];
   const input = {
     inputs: [{ key: "pdf", blocks: sorted.map((u) => u.block) }],
   };

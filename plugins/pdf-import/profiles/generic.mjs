@@ -7,6 +7,8 @@ import ieee from "./ieee.mjs";
 export default {
   name: "generic",
   heading: ieee.heading,
+  sectionNumber: ieee.sectionNumber,
+  linkedNumber: ieee.linkedNumber,
   caption: ieee.caption,
   captionKind: ieee.captionKind,
   reference: ieee.reference,

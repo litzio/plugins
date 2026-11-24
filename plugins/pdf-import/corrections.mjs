@@ -31,7 +31,7 @@ export function titleText(node) {
   if (refused) return {reason:refused};
   return text ? {text} : {reason:'글자가 없는 블록은 문서 제목으로 쓸 수 없습니다.'};
 }
-const mark = c => ["strong","emphasis","subscript","superscript"].includes(c.kind);
+const mark = c => ["strong","emphasis","subscript","superscript","link"].includes(c.kind);
 export const inlineLength = c => c.kind === "text" ? c.text.length :
   mark(c) ? c.children.reduce((n,child)=>n+inlineLength(child),0) : 1;
 export function splitContent(content, offset) {
@@ -63,6 +63,10 @@ export function splitContent(content, offset) {
 }
 // Predict only operations this screen supports. The official revision guard is
 // authoritative for the write; the handler verifies this projection before returning.
+export function detachedTarget(snapshot, heading, action, kind) {
+  if (heading?.type !== "heading" || !(action === "title" || action === "remove" || (action === "kind" && kind === "paragraph"))) return;
+  return snapshot.find(n => n.type === "target" && n.path[0] === heading.path[0]-1);
+}
 export function previewCorrection(mapping, input, undoBefore) {
   const {action,ids=[],line,kind,level,time = koreanTime()} = input;
   if (action === 'undo') {
@@ -101,6 +105,11 @@ export function previewCorrection(mapping, input, undoBefore) {
     for(const b of next.blocks) b.path[0]-=[...removedPaths].filter(p=>p<b.path[0]).length;
     predicted=predicted.filter(n=>!orphans.includes(n));
   }
+  const target = detachedTarget(mapping.snapshotNodes,first,action,kind);
+  if (target) {
+    predicted = predicted.filter(n=>n.path[0] !== target.path[0]);
+    for (const b of next.blocks) if (b.path[0] > target.path[0]) b.path[0]--;
+  }
   next.snapshotNodes=predicted.map((n,i)=>({...n,path:[i+1]}));
   return next;
 }
@@ -113,7 +122,7 @@ export function restoreMapping(original, current, targetId, time) {
 }
 export function assertMapping(mapping, snapshot) {
   const nodes = snapshot.nodes.filter(n => n.path.length === 1 && n.type !== 'caption');
-  const groups = new Map();
+  const groups = new Map((mapping.snapshotNodes || []).filter(n=>n.type==="target").map(n=>[n.path.join("."),"target"]));
   for (const b of mapping.blocks) {
     const key = b.path.join('.');
     if (!groups.has(key)) groups.set(key, b.documentKind);

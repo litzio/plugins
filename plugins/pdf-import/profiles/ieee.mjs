@@ -38,6 +38,13 @@ export default {
     if (!m) return clauseHeading(text);
     return { number: m[1], level: m[1].split(".").length, parentHeading: !/^[A-Z]\.\d+$/.test(m[1]) };
   },
+  sectionNumber(text) {
+    return text.match(annexTitle)?.[1] ?? text.match(annexClause)?.[1] ?? text.match(clause)?.[1];
+  },
+  linkedNumber(text) {
+    const match = /\bAnnex\s+([A-Z](?:\.\d+)*)\b|\b([A-Z]\.\d+(?:\.\d+)*|\d+(?:\.\d+)*)\b|^([A-Z])$/i.exec(text);
+    return match?.slice(1).find(Boolean)?.toUpperCase();
+  },
   caption,
   captionKind,
   reference,

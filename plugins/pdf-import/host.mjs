@@ -14,6 +14,11 @@ import { snapshotNodes, assertMapping } from "./corrections.mjs";
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 export function activate(context = {}) {
   const correct = correctionHandler({cli:context.cli});
+  const corrections = new Map();
+  const publicCorrection = async input => {
+    try { return await correct(input); }
+    catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
+  };
   const inspect = inspectDocument;
   const sessions = /* @__PURE__ */ new Map();
   const extractedFile = createExtractionCache(extract);
@@ -24,8 +29,26 @@ export function activate(context = {}) {
     }),
     operations: {
       correct: async (input) => {
-        try { return await correct(input); }
-        catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
+        if (!input.background) return publicCorrection(input);
+        const jobId = randomUUID(), job = {pending:true};
+        corrections.set(jobId, job);
+        publicCorrection(input).then(
+          result => { job.result = result; },
+          error => { job.error = error; },
+        ).finally(() => {
+          job.pending = false;
+          // A closed screen can reopen the saved document. Drop its uncollected result.
+          setTimeout(() => corrections.delete(jobId), 60000).unref();
+        });
+        return {jobId};
+      },
+      correctionResult: ({jobId}) => {
+        const job = corrections.get(jobId);
+        if (!job) throw new PluginPublicError("pdf_import_failed", "고치기 결과를 찾지 못했습니다. 문서를 다시 열어 주세요.");
+        if (job.pending) return {pending:true};
+        corrections.delete(jobId);
+        if (job.error) throw job.error;
+        return {result:job.result};
       },
       recent: async ({ folders = [] }) => {
         try {
@@ -210,6 +233,7 @@ export function activate(context = {}) {
     },
     dispose() {
       sessions.clear();
+      corrections.clear();
     },
   };
 }
