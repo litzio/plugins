@@ -22,3 +22,8 @@ export function blockActions(blocks, allBlocks, nodes=[]) {
     {...make('remove','문서에서 빼기',complete&&single&&['paragraph','heading','list'].includes(first.documentKind),'본문·제목·목록 블록 하나를 골라야 합니다.','remove'),danger:true},
   ];
 }
+
+// Title sources remain in the persisted exclusion array but are displayed separately.
+export function sourceOverlays(entries) {
+  return { titles: entries.filter(e => e.kind === 'title'), excluded: entries.filter(e => e.kind !== 'title') };
+}

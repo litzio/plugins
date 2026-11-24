@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {boxesFor,titleText,previewCorrection,restoreMapping,assertMapping} from '../corrections.mjs';
-import {blockActions} from '../block-actions.mjs';
+import {blockActions,sourceOverlays} from '../block-actions.mjs';
 const line = (text,top) => ({text,page:0,box:{page:0,x0:10,top,x1:100,bottom:top+10}});
 const block = (id,at,kind,lines,extra={}) => ({id,path:[at],kind,documentKind:kind==='heading_unnumbered'?'heading':kind,lines,boxes:boxesFor(lines),...extra});
 const text = t => [{kind:'text',text:t}];
@@ -34,6 +34,10 @@ test('H-01 sending a heading candidate to the document title removes it from the
   assert.deepEqual(next.blocks.map(b=>[b.id,b.path[0]]),[['h',1],['p',2],['tb',3],['f',4]]);
   assert.equal(next.blocks.filter(b=>b.warning).length,0);
   assert.deepEqual(next.excluded.map(e=>[e.kind,e.page,e.lines.length]),[['title',0,2]]);
+  const overlays=sourceOverlays([...next.excluded,{kind:'removed',page:0}]);
+  assert.deepEqual(overlays.titles.map(e=>e.kind),['title']);
+  assert.deepEqual(overlays.excluded.map(e=>e.kind),['removed']);
+  assert.ok(blockActions([],next.blocks,next.snapshotNodes).every(a=>a.disabled));
   assert.equal(next.history.at(-1).action,'title');
   assert.deepEqual(next.snapshotNodes.map(n=>[n.type,n.path[0]]),[['heading',1],['paragraph',2],['table',3],['footnote',4]]);
   assertMapping(next,{nodes:next.snapshotNodes});

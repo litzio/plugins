@@ -5,7 +5,7 @@ import workerSource from "./worker-source.js";
 import PagePicker from "./page-picker.jsx";
 import { linkedItems, sourcePagePositions } from "./linked-items.mjs";
 import {browseScales,steppedScale} from "./browse-scale.mjs";
-import {blockActions} from "./block-actions.mjs";
+import {blockActions, sourceOverlays} from "./block-actions.mjs";
 import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop, sourceVisibleTop, sourceAlignScrollTop} from "./scroll-sync.mjs";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
@@ -742,7 +742,7 @@ function Screen({
     },
     [mapping],
   );
-  const linkedSelection = stale ? undefined : selected?.id;
+  const linkedSelection = stale || selected?.documentTitle ? undefined : selected?.id;
   const items = useMemo(
     () => linkedItems(mapping?.blocks ?? [], positions, width * browseScale, width + 16, labels, colors),
     [mapping, positions, width, browseScale],
@@ -895,7 +895,16 @@ function Screen({
                 onClick={()=>correct('split',{line:j})}
                 style={{pointerEvents:'auto',left:l.box.x0*pos.scale,top:l.box.top*pos.scale,width:(l.box.x1-l.box.x0)*pos.scale,
                   height:Math.max(1,(l.box.bottom-l.box.top)*pos.scale),outline:'1px solid var(--id-color-accent)',outlineOffset:2}} />)}
-              {(mapping?.excluded || result?.excluded || [])
+              {sourceOverlays(mapping?.excluded || result?.excluded || []).titles.map((e,j) => e.page === i && <ui.Button
+                key={'title'+j} className="pdf-import-box" data-selected={selected?.id === 'title-'+j}
+                aria-label="문서 제목으로 쓰임" aria-pressed={selected?.id === 'title-'+j}
+                onMouseEnter={()=>setTip({page:i,top:0,text:'문서 제목으로 쓰임'})} onMouseLeave={()=>setTip(null)}
+                onFocus={()=>setTip({page:i,top:0,text:'문서 제목으로 쓰임'})} onBlur={()=>setTip(null)}
+                onClick={()=>{if(stale||busy)return; ownScroll('source'); setSelected({id:'title-'+j,documentTitle:true}); setSelection(['title-'+j]); selectionAnchor.current=null; setSplitting(false); setTarget(null);}}
+                style={{pointerEvents:'auto',left:e.box.x0*pos.scale,top:e.box.top*pos.scale,width:Math.max(1,(e.box.x1-e.box.x0)*pos.scale),height:Math.max(1,(e.box.bottom-e.box.top)*pos.scale),'--block-color':'var(--id-color-accent)'}}>
+                <span className="type-helper" style={{position:'absolute',left:-e.box.x0*pos.scale,top:0,width:Math.max(0,e.box.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>제목</span>
+              </ui.Button>)}
+              {sourceOverlays(mapping?.excluded || result?.excluded || []).excluded
                 .filter((x) => x.page === i)
                 .map((e, j) => (
                   <div
