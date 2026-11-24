@@ -2,14 +2,15 @@ const letter = /[\p{L}\p{N}]/u;
 const compact = text => text.replace(/\s/g, "");
 const textNode = text => ({kind:"text", text});
 
-export function scriptPosition(previous, word) {
+export function scriptPosition(previous, word, tableLabels) {
   if (!previous || word.size >= previous.size * 0.8 || word.size < previous.size * 0.45 ||
-      !/^[a-zA-Z0-9]+$/.test(word.text.trim()) || !previous.upright || !word.upright) return;
+      !/^(?:[a-zA-Z0-9]+|[*†‡])$/.test(word.text.trim()) || !previous.upright || !word.upright) return;
   const gap = (word.x0 - previous.x1) / previous.size;
   const shift = (word.base - previous.base) / previous.size;
   if (gap < -0.16 || gap > 0.12 || Math.abs(shift) > 0.65) return;
   if (shift >= 0.035) return "subscript";
   if (shift <= -0.12) {
+    if (tableLabels?.has(word.text.trim())) return "superscript";
     const base = previous.text.trimEnd();
     if (/(?:^|[^\p{L}])(?:mm|cm|km|m|s)$/u.test(base) && /^[23]$/.test(word.text.trim())) return "superscript";
     if (/\d$/.test(base) && /^(?:st|nd|rd|th)$/i.test(word.text.trim())) return "superscript";

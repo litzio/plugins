@@ -48,3 +48,54 @@ test('T-10 F-05 graphic cell keeps raised words as plain text and excludes footn
  reconcileFootnotes(result);assert.deepEqual(result.stats.footnotes.definitions_without_ref,['7']);
  const blocks=authoring(result).authoring.inputs[0].blocks;const table=blocks.find(b=>b.kind==='table');assert.ok(table.rows.flat(2).every(t=>t.kind==='text'));assert.equal(table.enumerated,false);
 });
+
+test('F-03 table note marker is superscript without changing ordinary paragraphs',async()=>{
+ const {authoring}=await import('../authoring.mjs');
+ const result={blocks:[{id:'n',kind:'paragraph',text:'a Explanation',tableNote:true,page:0},{id:'p',kind:'paragraph',text:'a Ordinary text',page:0},{id:'q',kind:'paragraph',text:'NOTE— Explanation',tableNote:true,page:0}],stats:{}};
+ const blocks=authoring(result).authoring.inputs[0].blocks;
+ assert.deepEqual(blocks[0].content,[{kind:'superscript',children:[{kind:'text',text:'a'}]},{kind:'text',text:' Explanation'}]);
+ assert.deepEqual(blocks[1].content,[{kind:'text',text:'a Ordinary text'}]);
+ assert.deepEqual(blocks[2].content,[{kind:'text',text:'NOTE— Explanation'}]);
+});
+
+test('F-03 LSR local table notes retain individual paragraphs and superscript labels',async()=>{
+ const {authoring}=await import('../authoring.mjs');
+ const notes=result.blocks.filter(b=>b.tableNote);
+ assert.deepEqual(notes.map(b=>b.page+1),[4,4,5,6,7]);
+ const output=authoring(result);
+ for(const n of notes) {
+   const index=output.units.findIndex(u=>u.sources.includes(n.id));
+   assert.equal(output.authoring.inputs[0].blocks[index].content[0].kind,'superscript');
+ }
+ assert.equal(result.stats.chars_unaccounted,0);
+});
+
+test('F-03 F-05 local labels require raised small glyphs and leave ordinary values alone',async()=>{
+ const {buildGrid,markTableLabels}=await import('../table-grid.mjs');
+ const lines=[0,30,60].map(pos=>({axis:'h',pos,a:0,b:100}));lines.push(...[0,100].map(pos=>({axis:'v',pos,a:0,b:60})));
+ const word=(text,x0,x1,top,bottom,base,size)=>({text,x0,x1,top,bottom,base,size,upright:true});
+ const words=[word('Header',5,35,5,15,13,10),word('value',5,30,35,45,43,10),word('a',30,34,31,37,38,6),word(' 45',40,56,35,45,43,10),word('2',56,62,35,45,43,10)];
+ const grid=buildGrid([0,0,100,60],lines,words);markTableLabels(grid,words,new Set(['a']),new Set());
+ const tokens=grid.cells[1].tokens;assert.equal(tokens.find(t=>t.text.trim()==='a').superscript,true);assert.equal(tokens.find(t=>t.text.trim()==='2').superscript,false);
+});
+
+test('F-03 marker rejects list prefixes and the ordinary sentence a value of',async()=>{
+ const {tableNoteMarker}=await import('../rules.mjs');
+ for(const text of ['a) item','a. item','a value of 5']) assert.equal(tableNoteMarker(text),null);
+ assert.equal(tableNoteMarker('a Explanation'),'a');assert.equal(tableNoteMarker('† Explanation'),'†');
+});
+
+test('F-03 separate note paragraphs at marked source lines, including separate marker tokens',async()=>{
+ const {splitNoteTokens}=await import('../table-grid.mjs');const {tableNoteMarker}=await import('../rules.mjs');
+ const tokens=[{text:'a',newLine:true},{text:' First note'},{text:'continued',newLine:true},{text:'b',newLine:true},{text:' Second note'}];
+ const groups=splitNoteTokens(tokens,tableNoteMarker);
+ assert.equal(groups.length,2);assert.equal(groups[0].map(t=>t.text).join(''),'a First notecontinued');assert.equal(groups[1].map(t=>t.text).join(''),'b Second note');
+});
+
+test('F-03 caption label uses the same baseline and size check as table cells',async()=>{
+ const {captionTokens}=await import('../table-grid.mjs');
+ const words=[{text:'Caption',x0:0,x1:40,top:10,bottom:20,base:18,size:10,upright:true},{text:'a',x0:40,x1:44,top:6,bottom:13,base:13,size:6,upright:true}];
+ assert.equal(captionTokens(words,new Set(['a'])).at(-1).script,'superscript');
+ words[1]={...words[1],size:10,base:18,top:10,bottom:20};
+ assert.equal(captionTokens(words,new Set(['a'])).at(-1).superscript,false);
+});
