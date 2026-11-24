@@ -988,9 +988,9 @@ function Screen({
       description={
         file
           ? file.name +
-            (pdf && !picking ? " · " + pdf.numPages + "쪽" : "") +
+            (pdf && !picking ? " · " + pdf.numPages + "쪽" + (conversion && excludedPages.size ? " 중 " + (pdf.numPages - excludedPages.size) + "쪽" : "") : "") +
             (picking && pdf ? " · " + pdf.numPages + "쪽 중 " + excludedPages.size + "쪽 제외" : "") +
-            (excludedPages.size ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
+            (excludedPages.size && !conversion ? " · " + (picking ? exclusionSummary(excludedPages).replace(/ 제외$/, "") : exclusionSummary(excludedPages)) : "")
           : undefined
       }
       status={
@@ -1074,7 +1074,6 @@ function Screen({
 `}</style>
       {!conversion && error && <ui.Notice tone="error">{error}</ui.Notice>}
       {conversion && <div style={{width:'min(100%, 560px)',margin:'var(--space-8) auto',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
-        <div>{file.name} · {pdf.numPages}쪽 중 {pdf.numPages-excludedPages.size}쪽</div>
         <ui.Steps steps={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결']} current={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결'].indexOf(conversion.key)}/>
         {error ? <ui.Notice tone="error">{status} {error}</ui.Notice> : <ui.Progress value={conversion.progress?.value} label={conversion.progress?.label || conversion.key}/>}
       </div>}
