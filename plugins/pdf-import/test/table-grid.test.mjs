@@ -21,16 +21,18 @@ test('T-08 T-11 F-05 original sample grids, strict values and source word conser
 test('T-05 separated side-by-side tables stay one image with a reason',()=>{assert.ok(result.blocks.some(b=>b.page===10&&b.warning?.reason==='서로 닿지 않는 격자가 둘 이상임'));});
 test('T-10 vector formula cells warn while retaining the text table',()=>{assert.ok(result.blocks.some(b=>b.page===4&&b.table&&b.warning?.code==='table-cell-graphic'));});
 
-test('T-08 exported full width notes retain correction source lines',async()=>{
+test('T-08 F-03 exported full width notes retain separate correction source lines',async()=>{
  const sample=await extract(new URL('./fixtures/LSR-1.1-standards.pdf',import.meta.url)), p=sample.pages[3], box=p.tables[0]||p.figures[0];
  // Extend a real ruled table by one full-width note row using source text words.
- const bottom=box[3],left=box[0],right=box[2],y=bottom+20;
+ const bottom=box[3],left=box[0],right=box[2],y=bottom+35;
  box[3]=y;
  p.rulings.push({axis:'h',pos:y,a:left,b:right},{axis:'v',pos:left,a:bottom,b:y},{axis:'v',pos:right,a:bottom,b:y});
- const note={text:'NOTE source text.',x0:left+5,x1:right-5,base:bottom+12,top:bottom+4,bottom:bottom+14,size:10,id:9999};
- p.words=p.words.filter(w=>w.top<bottom||w.top>y);p.words.push(note);
- const out=convert(sample,suggestExcludedPages(sample));const b=out.blocks.find(b=>b.tableNote&&b.text==='NOTE source text.');
- assert.ok(b);assert.equal(b.lines[0].text,b.text);assert.deepEqual(b.lines[0].box,b.boxes[0]);
+ const note={text:'a First note.',x0:left+5,x1:right-5,base:bottom+12,top:bottom+4,bottom:bottom+14,size:10,id:9999};
+ const note2={...note,text:'b Second note.',base:bottom+27,top:bottom+19,bottom:bottom+29,id:10000};
+ p.words=p.words.filter(w=>w.top<bottom||w.top>y);p.words.push(note,note2);
+ const out=convert(sample,suggestExcludedPages(sample));const b=out.blocks.find(b=>b.tableNote&&b.text==='a First note.');
+ const next=out.blocks[out.blocks.indexOf(b)+1];assert.equal(next.text,'b Second note.');
+ assert.equal(b.lines[0].text,b.text);assert.deepEqual(b.lines[0].box,b.boxes[0]);assert.ok(b.boxes[0].bottom<next.boxes[0].top);
  const table=out.blocks[out.blocks.indexOf(b)-1];assert.ok(table.boxes[0].bottom<=b.boxes[0].top);
 });
 
@@ -63,9 +65,14 @@ test('F-03 LSR local table notes retain individual paragraphs and superscript la
  const notes=result.blocks.filter(b=>b.tableNote);
  assert.deepEqual(notes.map(b=>b.page+1),[4,4,5,6,7]);
  const output=authoring(result);
+ const pair=notes.filter(n=>n.page===3);
+ assert.equal(pair.length,2);
+ assert.ok(pair[0].boxes[0].bottom<=pair[1].boxes[0].top);
  for(const n of notes) {
    const index=output.units.findIndex(u=>u.sources.includes(n.id));
    assert.equal(output.authoring.inputs[0].blocks[index].content[0].kind,'superscript');
+   assert.equal(output.units.filter(u=>u.sources.includes(n.id)).length,1);
+   assert.ok(n.lines.every(l=>l.box.top>=n.boxes[0].top && l.box.bottom<=n.boxes[0].bottom));
  }
  assert.equal(result.stats.chars_unaccounted,0);
 });

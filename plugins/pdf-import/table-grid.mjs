@@ -36,7 +36,7 @@ function cellText(words, graphic = false, footnoteLabels, tableLabels) {
       if(tableLabels?.has(w.text.trim())) w.superscript=script==="superscript";
       const space=prev && (w.superscript || prev.superscript || w.x0-prev.x1>0.12*Math.max(prev.size,w.size)) && !/\s$/.test(prev.text)&&!/^\s/.test(w.text);
       const piece=(space?' ':'')+w.text;
-      tokens.push({...sourceToken(w,graphic ? undefined : script),text:piece,superscript:!graphic && !!w.superscript,newLine:!prev});
+      tokens.push({...sourceToken(w,graphic ? undefined : script),text:piece,superscript:!graphic && !!w.superscript,newLine:!prev,box:[w.x0,w.top,w.x1,w.bottom]});
       row+=piece;prev=w;
     }
     text=text?joinText(text,row.trim()):row.trim();
