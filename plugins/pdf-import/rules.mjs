@@ -710,7 +710,15 @@ function convert(raw, excludedPages = [], profileName) {
       if(!groups.length) groups.push([]);
       return groups.map(tokens=>{
         const text=tokens.length ? tokens.reduce((s,t)=>t.newLine&&s?joinText(s,t.text.trim()):s+t.text,'').trim() : c.text;
-        return {kind:"para",text,page:b.page,tableNote:true,boxes:[bounds],lines:[{page:b.page,box:{...bounds},text,...(!c.graphic&&tokens.length?{tokens}:{})}]};
+        const rows=[];
+        for(const t of tokens) { if(!rows.length||t.newLine) rows.push([]); rows.at(-1).push(t); }
+        const lines=rows.map(row=>{
+          const coords=row.map(t=>t.box);
+          const q={page:b.page,x0:Math.min(...coords.map(x=>x[0])),top:Math.min(...coords.map(x=>x[1])),x1:Math.max(...coords.map(x=>x[2])),bottom:Math.max(...coords.map(x=>x[3]))};
+          return {page:b.page,box:q,text:row.map(t=>t.text).join('').trim(),...(!c.graphic?{tokens:row}:{})};
+        });
+        const boxes=lines.length?[{page:b.page,x0:Math.min(...lines.map(l=>l.box.x0)),top:Math.min(...lines.map(l=>l.box.top)),x1:Math.max(...lines.map(l=>l.box.x1)),bottom:Math.max(...lines.map(l=>l.box.bottom))}]:[bounds];
+        return {kind:"para",text,page:b.page,tableNote:true,boxes,lines:lines.length?lines:[{page:b.page,box:{...bounds},text}]};
       });
     });
     blocks.splice(i+1,0,...notes);i+=notes.length;
@@ -760,7 +768,7 @@ function convert(raw, excludedPages = [], profileName) {
     if(labels.size) {
       markTableLabels(table.grid,pages[table.page].words||[],labels,footnoteLabels);
       const tokens=captionTokens(capWords,labels);
-      if(cap && tokens.at(-1)?.superscript) { cap.tableNoteCaption=true; cap.lines=[{page:cap.page,box:{...cap.boxes[0]},text:cap.text,tokens}]; }
+      if(cap && tokens.at(-1)?.script==='superscript' && labels.has(tokens.at(-1).text.trim())) { const label=tokens.at(-1).text.trim(); cap.text=cap.text.replace(/\[\^\s*([a-z*†‡])\]$/, (whole, marker)=>marker===label?marker:whole); cap.tableNoteCaption=true; cap.lines=[{page:cap.page,box:{...cap.boxes[0]},text:cap.text,tokens}]; }
     }
   }
   // A NOTE paragraph becomes a note box; table notes stay table-note paragraphs.
