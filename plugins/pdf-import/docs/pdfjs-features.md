@@ -23,7 +23,7 @@ PDF 가져오기가 쓰는 pdf.js(`pdfjs-dist` 6.5.438)의 기능과, 쓰지 않
 | 기능(API) | 상태 | 어디에 쓰나 / 왜 안 쓰나 |
 | --- | --- | --- |
 | `getDocument`, `getPage`, `getViewport` | 사용 | 문서와 쪽 열기, 좌표 변환 |
-| `getTextContent` | 사용 | 글자 층(줄·글자 위치·글꼴 이름). 글꼴 이름으로 굵기·위첨자를 판단한다 |
+| `getTextContent` | 사용 | 글자 층(줄·글자 위치·글꼴 이름). 글꼴 이름으로 굵기와 기울임을 읽는다. 이웃 조각의 크기·기준선·수평 간격으로 위첨자·아래첨자 후보를 찾는다 |
 | `getOperatorList` | 사용 | 선·사각형으로 표 격자를 찾고, 그림이 그려진 영역을 찾는다 |
 | `getOutline`, `getDestination`, `getPageIndex` | 사용 | 책갈피로 번호 제목을 확인하고 쪽 고르기 화면에 첫 제목을 보인다 |
 | `getMetadata` | 사용 | 문서 형식 프로필 선택(제목 칸) |

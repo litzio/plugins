@@ -172,7 +172,7 @@ export function activate() {
               kind: b.kind,
               ...(b.formula ? {formula:true} : {}),
               documentKind: n.type,
-              lines: b.lines || [],
+              lines: (b.lines || []).map(({page,box,text})=>({page,box,text})),
               ...(b.level ? { level: b.level } : {}),
               boxes: b.boxes,
               ...(b.grid ? {grid:b.grid, tableRecord:b.table.record} : {}),

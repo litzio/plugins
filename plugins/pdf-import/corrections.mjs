@@ -18,13 +18,28 @@ export function references(value) {
   return [...(value.kind === 'footnote' ? [value.label] : []),
     ...Object.values(value).flatMap(v => typeof v === 'object' ? references(v) : [])];
 }
-function splitContent(content, offset) {
+const mark = c => ["strong","emphasis","subscript","superscript"].includes(c.kind);
+export const inlineLength = c => c.kind === "text" ? c.text.length :
+  mark(c) ? c.children.reduce((n,child)=>n+inlineLength(child),0) : 1;
+export function splitContent(content, offset) {
   const left = [], right = []; let pos = 0;
   for (const c of content) {
-    const length = c.kind === 'text' ? c.text.length : 1;
+    const length = inlineLength(c);
     if (pos + length <= offset) left.push(c);
     else if (pos >= offset) right.push(c);
-    else {
+    else if (mark(c)) {
+      const [a,b]=splitContent(c.children,offset-pos);
+      const tail=a.at(-1), head=b[0];
+      const trailing=tail?.text?.match(/\s+$/)?.[0] || "";
+      const leading=head?.text?.match(/^\s+/)?.[0] || "";
+      if(trailing) a[a.length-1]={...tail,text:tail.text.trimEnd()};
+      if(leading) b[0]={...head,text:head.text.trimStart()};
+      const nonempty=n=>n.kind!=="text" || n.text;
+      if(a.some(nonempty)) left.push({...c,children:a.filter(nonempty)});
+      if(trailing) left.push({kind:"text",text:trailing});
+      if(leading) right.push({kind:"text",text:leading});
+      if(b.some(nonempty)) right.push({...c,children:b.filter(nonempty)});
+    } else {
       if (c.kind !== 'text') throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
       left.push({...c,text:c.text.slice(0,offset-pos)});
       right.push({...c,text:c.text.slice(offset-pos)});
@@ -131,17 +146,21 @@ export function splitOffset(lines, lineIndex, content) {
   if (lineIndex < 1 || lineIndex >= lines.length) throw Error('둘째 줄부터 고르세요.');
   const chars = [], positions = []; let offset = 0;
   const add = (s, position) => { for (const c of s) if (!/\s/u.test(c)) {chars.push(c);positions.push(position);} };
-  for (const c of content) {
+  const visit = c => {
+    if (mark(c)) {c.children.forEach(visit);return;}
     if (c.kind === 'text') {
       for (let i=0;i<c.text.length;i++) { add(c.text[i],offset); offset++; }
     } else if (c.kind === 'footnote') { add('[^'+c.label+']', offset); offset++; }
     else if (c.kind === 'reference' && referenceText(c.label)) { add(referenceText(c.label), offset); offset++; }
-    else throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
+    else if (c.kind === "math" && /^[A-Za-z\p{Script=Greek}][_^](?:[a-zA-Z0-9]|\{[a-zA-Z0-9]+\}|\{\\mathrm\{[a-zA-Z]+\}\})$/u.test(c.value)) {
+      add(c.value.replace(/\\mathrm|[{}_^]/g,""), offset++);
+    } else throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
   }
+  content.forEach(visit);
   const normalized = lines.map(l => l.text.replace(/\s/gu,''));
   if (normalized.join('') !== chars.join('')) throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
   const index = normalized.slice(0,lineIndex).join('').length;
   const result = positions[index];
-  if (!result || result >= offset) throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
+  if (!result || result >= offset || positions[index-1]===result) throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
   return result;
 }
