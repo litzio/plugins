@@ -23,7 +23,4 @@ export function blockActions(blocks, allBlocks, nodes=[]) {
   ];
 }
 
-// Title sources remain in the persisted exclusion array but are displayed separately.
-export function sourceOverlays(entries) {
-  return { titles: entries.filter(e => e.kind === 'title'), excluded: entries.filter(e => e.kind !== 'title') };
-}
+export { sourceOverlays } from "../shared/linked-items.mjs";

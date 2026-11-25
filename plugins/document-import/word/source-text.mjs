@@ -2,8 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-// The text layer of the PDF Word exported, page by page, without headers and footers (Word marks
-// them as artifacts), and the heading bookmarks with where they point.
+// The text layer of the PDF Word exported, page by page: `items` without headers and footers (Word
+// marks them as artifacts) and those apart in `artifacts`, and the heading bookmarks with where
+// they point.
 export async function readPdfText(file) {
   const dir = path.dirname(fileURLToPath(import.meta.resolve("pdfjs-dist/package.json")));
   const pdfjs = await import(pathToFileURL(path.join(dir, "legacy/build/pdf.mjs")).href);
@@ -21,20 +22,20 @@ export async function readPdfText(file) {
       const viewport = page.getViewport({ scale: 1 });
       viewports.push(viewport);
       const content = await page.getTextContent({ includeMarkedContent: true });
-      const items = [], marks = [];
+      const items = [], artifacts = [], marks = [];
       for (const it of content.items) {
         if (it.type === "beginMarkedContent" || it.type === "beginMarkedContentProps") { marks.push(it.tag === "Artifact"); continue; }
         if (it.type === "endMarkedContent") { marks.pop(); continue; }
-        if (!it.str || marks.includes(true)) continue;
+        if (!it.str) continue;
         const [a, b, c, d, e, f] = it.transform;
         const size = Math.hypot(c, d) || Math.hypot(a, b);
         if (!size) continue;
         // Upright text only; the box runs from the ascent to the descent of the font size.
         const [x0, top] = viewport.convertToViewportPoint(e, f + size * 0.85);
         const [x1, bottom] = viewport.convertToViewportPoint(e + it.width, f - size * 0.2);
-        items.push({ str: it.str, x0: Math.min(x0, x1), x1: Math.max(x0, x1), top: Math.min(top, bottom), bottom: Math.max(top, bottom) });
+        (marks.includes(true) ? artifacts : items).push({ str: it.str, x0: Math.min(x0, x1), x1: Math.max(x0, x1), top: Math.min(top, bottom), bottom: Math.max(top, bottom) });
       }
-      pages.push({ width: viewport.width, height: viewport.height, items });
+      pages.push({ width: viewport.width, height: viewport.height, items, artifacts });
       page.cleanup();
     }
     const outline = [];

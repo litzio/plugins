@@ -95,7 +95,7 @@ export default function Screen(props) {
         pdf ? "PDF" : "워드",
         recentDate(row.convertedAt, now),
         pdf ? `${row.pages}쪽` : null,
-        pdf ? (review !== "검토 완료" && row.warnings > 0 ? `변환 경고 ${row.warnings}개` : null) : `확인할 곳 ${row.warnings}`,
+        pdf ? (review !== "검토 완료" && row.warnings > 0 ? `확인할 곳 ${row.warnings}` : null) : `확인할 곳 ${row.warnings}`,
         row.state || null,
       ],
     };
