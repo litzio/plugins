@@ -8,7 +8,7 @@ export const sha = b => createHash("sha256").update(b).digest("hex");
 export function outputPaths(docx) {
   const name = path.basename(docx, path.extname(docx));
   const folder = path.join(path.dirname(docx), name);
-  return { folder, doc: path.join(folder, name + ".md"), side: path.join(folder, name + ".word-source.json") };
+  return { folder, doc: path.join(folder, name + ".md"), side: path.join(folder, name + ".word-source.json"), pdf: path.join(folder, name + ".source.pdf") };
 }
 
 async function optional(promise) {
@@ -62,12 +62,13 @@ export async function finishReplacement(s, data) {
 }
 
 // Saved top-level blocks, in order, against the authoring blocks. Figure captions are their own
-// nodes in the read model and are not authoring blocks.
-export function blockPaths(nodes, blocks) {
+// nodes in the read model and are not authoring blocks. With failedFigures, a figure may have been
+// saved as the paragraph that says its picture could not be moved.
+export function blockPaths(nodes, blocks, { failedFigures = false } = {}) {
   const top = nodes.filter(n => n.path.length === 1 && n.type !== "caption");
   if (top.length !== blocks.length) throw new Error("저장된 블록 수(" + top.length + ")가 변환 결과(" + blocks.length + ")와 다릅니다.");
   top.forEach((n, i) => {
-    if (n.type !== blocks[i].kind) throw new Error((i + 1) + "번째 블록의 종류가 변환 결과와 다릅니다.");
+    if (n.type !== blocks[i].kind && !(failedFigures && blocks[i].kind === "figure" && n.type === "paragraph")) throw new Error((i + 1) + "번째 블록의 종류가 변환 결과와 다릅니다.");
   });
   return top.map(n => n.path);
 }
