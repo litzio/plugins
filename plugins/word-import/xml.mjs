@@ -27,6 +27,3 @@ export function parseXml(text) {
 export const kids = (node, name) => (node?.children || []).filter(c => typeof c === "object" && (!name || c.name === name));
 export const kid = (node, name) => (node?.children || []).find(c => typeof c === "object" && c.name === name) || null;
 export const val = (node, name, attr = "w:val") => kid(node, name)?.attrs[attr];
-export function* walk(node) {
-  for (const c of node.children) if (typeof c === "object") { yield c; yield* walk(c); }
-}
