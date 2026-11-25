@@ -11,7 +11,7 @@ const t=text=>({kind:'text',text});
 const box=(page,top)=>({page,x0:0,x1:300,top,bottom:top+10});
 const line=(text,page,top)=>({page,text,box:box(page,top)});
 const block=(id,at,kind,documentKind,lines,page=0)=>({id,path:[at],kind,documentKind,lines,boxes:lines.length?boxesFor(lines):[box(page,200+at*20)]});
-const order=[['b1',1],['b2',2],['b3',3],['b4',4],['b5',5],['t1',6],['t2',7],['b8',8],['f9',9]];
+const order=[['b1',1],['b2',2],['b3',3],['b4',4],['b5',5],['t1',6],['n1',6],['t2',7],['n2',7],['b8',8],['f9',9]];
 // Two source lines of two columns each; the footnote call shows as a small 1 after Marlow.
 const fragments={0:[{text:'Alex Rowan',x0:0,x1:60,top:0,bottom:10},{text:'Indigo Reed',x0:150,x1:210,top:0,bottom:10},
   {text:'Casey Marlow',x0:0,x1:62,top:20,bottom:30},{text:'1',x0:62,x1:65,top:19,bottom:25},{text:'Jordan Wren',x0:150,x1:205,top:20,bottom:30}]};
@@ -24,8 +24,8 @@ async function sample(dir, run, inspectDocument) {
     {kind:'paragraph',text:'Body text that ends here.'},
     {kind:'paragraph',content:[t('[2] A page note '),{kind:'emphasis',children:[t('text')]},t('.')]},
     {kind:'admonition',variant:'note',content:[t('NOTE—A '),{kind:'strong',children:[t('remark')]},t('.')]},
-    {kind:'table',label:'tab-1',enumerator:'1',caption:'Readings',rows:[['A','B'],['1','2']]},
-    {kind:'table',enumerated:false,caption:'',rows:[['A','B'],['3','4']]},
+    {kind:'table',label:'tab-1',enumerator:'1',caption:'Readings',rows:[['A','B'],['1','2']],notes:['First table note.']},
+    {kind:'table',enumerated:false,caption:'',rows:[['A','B'],['3','4']],notes:['Second table note.']},
     {kind:'paragraph',content:[t('See '),{kind:'reference',role:'numref',label:'tab-1'},t('.')]},
     {kind:'footnote',label:'1',text:'First note.'}]}]}}));
   await run(['create',doc,'--input',input,'--format','json']);
@@ -36,13 +36,14 @@ async function sample(dir, run, inspectDocument) {
     block('b3',3,'paragraph','paragraph',[line('Body text that ends here.',1,0)]),
     block('b4',4,'footnote','paragraph',[line('[2] A page note text.',1,300)]),
     block('b5',5,'note','admonition',[line('NOTE—A remark.',1,320)]),
-    block('t1',6,'table','table',[],2),block('t2',7,'table','table',[],2),
+    block('t1',6,'table','table',[],2),{...block('n1',6,'footnote','table',[line('First table note.',2,340)]),noteIndex:0},
+    block('t2',7,'table','table',[],2),{...block('n2',7,'footnote','table',[line('Second table note.',2,360)]),noteIndex:0},
     block('b8',8,'paragraph','paragraph',[line('See Table 1.',2,400)]),block('f9',9,'footnote','footnote',[line('1 First note.',2,700)])]};
   await writeFile(side,JSON.stringify(mapping));
   return {doc,side,initial:await readFile(doc,'utf8')};
 }
 
-test('SDK integration: L-04 F-08 P-07 T-07 lists, tables, endnotes, note boxes and joined tables come back on undo', {skip:!args},async()=>{
+test('SDK integration: L-04 F-08 P-07 T-07 T-15 table notes and other corrections restore the original bytes on undo', {skip:!args},async()=>{
   const {inspectDocument}=await import('../document-io.mjs');
   const {correctionHandler}=await import('../correct-host.mjs');
   const cli={bin:process.execPath,args:JSON.parse(args)}, exec=promisify(execFile);
@@ -106,12 +107,28 @@ test('SDK integration: L-04 F-08 P-07 T-07 lists, tables, endnotes, note boxes a
     await act('kind',{ids:['b5'],kind:'paragraph'});
     assert.deepEqual([top()[4].type,top()[4].content],['paragraph',[t('NOTE—A '),{kind:'strong',children:[t('remark')]},t('.')]]);await back('b5');
     await act('remove',{ids:['b5']});assert.equal(top().length,8);await back('b5');
+    // T-08: move a paragraph with inline formatting to the preceding table and put it back.
+    const paragraph=top()[7];
+    await act('table-note',{ids:['b8']});
+    assert.deepEqual(top()[6].notes,[[t('Second table note.')],paragraph.content]);
+    assert.deepEqual(m.blocks.filter(b=>b.path[0]===7).map(b=>[b.id,b.noteIndex]),[['t2',undefined],['n2',0],['b8',1]]);
+    await valid();await back('b8');
+    await act('table-note-to-body',{ids:['n2']});
+    assert.deepEqual(top()[7].content,[t('Second table note.')]);
+    assert.deepEqual(m.blocks.filter(b=>b.path[0]===8).map(b=>[b.id,b.kind,b.noteIndex]),[['n2','paragraph',undefined]]);
+    await act('table-note',{ids:['n2','b8']});
+    assert.deepEqual(top()[6].notes,[[t('Second table note.')],paragraph.content]);
+    assert.deepEqual(m.blocks.filter(b=>b.path[0]===7).map(b=>[b.id,b.noteIndex]),[['t2',undefined],['n2',0],['b8',1]]);
+    await valid();
+    await act('undo',{ids:['n2']});await back('n2');
     // T-07: adjacent tables join; the repeated header row goes and the first table's caption and label stay.
     const joined=await act('merge',{ids:['t1','t2']});
     const table=top()[5];
     assert.deepEqual([table.label,table.caption,table.enumerator],['tab-1',[t('Readings')],'1']);
     assert.deepEqual(inspectDocument(doc).nodes.filter(n=>n.type==='cell'&&n.path[0]===6).map(n=>n.text),['A','B','1','2','3','4']);
-    assert.deepEqual(m.blocks.filter(b=>b.path[0]===6).map(b=>b.id),['t1','t2']);
+    assert.deepEqual(table.notes,[[t('First table note.')],[t('Second table note.')]]);
+    assert.deepEqual(m.blocks.filter(b=>b.path[0]===6).map(b=>[b.id,b.noteIndex]),
+      [['t1',undefined],['n1',0],['t2',undefined],['n2',1]]);
     assert.equal(joined.undoCount,1);await valid();await back('t1');
   } finally {await rm(dir,{recursive:true,force:true});}
 });

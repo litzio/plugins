@@ -111,10 +111,10 @@ function Screen({
       .map(a=>item(a,blocks,focusSource));
   }
   // The toolbar keeps its width: merging and splitting are buttons, the other structure changes join
-  // the kind select as 목록·표·미주. The context menu lists every group in full.
-  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.visible&&(a.group==='kind'||['list','table','footnote'].includes(a.id)));
+  // the kind select. The context menu lists every group in full.
+  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.visible&&(a.group==='kind'||['list','table','table-note','footnote'].includes(a.id)));
   const kindDisabled=kindTools.every(a=>a.disabled);
-  const kindNames={title:'문서 제목',list:'목록',table:'표',footnote:'미주'};
+  const kindNames={title:'문서 제목',list:'목록',table:'표','table-note':'표 주석',footnote:'미주'};
   const kindHelp=kindDisabled?kindTools[0]?.disabledReason
     :kindTools.filter(a=>a.disabled&&kindNames[a.id]).map(a=>kindNames[a.id]+': '+a.disabledReason).join(' ')||null;
   const actionTipStyle={position:'absolute',top:'100%',left:0,zIndex:3,background:'var(--id-color-surface)',padding:'var(--space-2)',width:240};
@@ -636,7 +636,7 @@ function Screen({
                 {kindTools.length>0&&<span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
                   onFocus={()=>setActionHelp('kind')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('kind')} onMouseLeave={()=>setActionHelp(null)}>
                   <ui.Select label="종류" hideLabel placeholder="종류" disabled={kindDisabled} value={chosen.length===1&&['paragraph','heading','admonition'].includes(chosen[0].documentKind)&&chosen[0].kind!=='heading_unnumbered'?(chosen[0].documentKind==='heading'?'h'+chosen[0].level:chosen[0].documentKind==='admonition'?'note':'paragraph'):''}
-                    options={kindTools.map(a=>({value:a.id,label:{paragraph:'본문',title:'문서 제목',note:'참고',list:'목록',table:'표',footnote:'미주'}[a.id]||'제목 '+a.extra.level}))}
+                    options={kindTools.map(a=>({value:a.id,label:{paragraph:'본문',title:'문서 제목',note:'참고',list:'목록',table:'표','table-note':'표 주석',footnote:'미주'}[a.id]||'제목 '+a.extra.level}))}
                     onValueChange={v=>{const a=kindTools.find(a=>a.id===v);if(a?.disabled)setError(a.disabledReason);else if(a)a.run();}}/>
                   {kindHelp&&actionHelp==='kind'&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{kindHelp}</span>}
                 </span>}

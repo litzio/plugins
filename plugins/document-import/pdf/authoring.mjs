@@ -3,6 +3,7 @@ import { imageKeys } from "./output.mjs";
 import { footnoteContent, BULLET, reconcileFootnotes } from "./rules.mjs";
 import { profiles } from "./profiles/index.mjs";
 import { captionTargets, figureTableLabels, referenceText, refsFor, cellReferences } from "./references.mjs";
+import { references } from "./corrections.mjs";
 function authoring(result) {
   reconcileFootnotes(result);
   const profile = profiles[result.profile] ?? profiles.generic;
@@ -37,6 +38,20 @@ function authoring(result) {
   };
   let listRun = [],
     lastList = null;
+  const tables = new Set(blocks.filter(b => b.kind === "table" && b.table).map(b => b.id));
+  const notesByTable = new Map(), keptNotes = new Set();
+  for (const b of blocks) {
+    if (!tables.has(b.tableNoteFor) || consumed.has(b.id)) continue;
+    const content = b.bold ? [{kind:"strong",children:inline(b,b.text)}] : inline(b,b.text);
+    if (references(content).length) {
+      keptNotes.add(b.id);
+    } else {
+      const notes = notesByTable.get(b.tableNoteFor) || [];
+      notes.push({id:b.id, content});
+      notesByTable.set(b.tableNoteFor, notes);
+      consumed.add(b.id);
+    }
+  }
   for (const b of blocks) {
     if (consumed.has(b.id)) continue;
     // Footnotes sit between pages; a list crosses a page only when rules say it continues.
@@ -49,6 +64,7 @@ function authoring(result) {
     }
     let block;
     const sources = [b.id];
+    let tableNotes;
     if (b.kind === "heading")
       block = { kind: "heading", level: b.level, content: inline(b,b.text) };
     else if (b.kind === "note")
@@ -153,6 +169,12 @@ function authoring(result) {
         ...(ci?[{kind:"text",text:" / "}]:[]), ...decorate(cellReferences(tableContent(c,stats),c.refs,profile,live),c.graphic ? [] : c.tokens,display)
       ]))),caption};
       if(cap) sources.push(cap.id);
+      const notes = notesByTable.get(b.id);
+      if (notes?.length) {
+        block.notes = notes.map(n => n.content);
+        tableNotes = notes.map(n => n.id);
+        sources.push(...tableNotes);
+      }
     } else if (["table", "figure"].includes(b.kind)) {
       const cap = captionFor.get(b.id), { caption, ...number } = captionOf(b);
       block = {
@@ -165,7 +187,8 @@ function authoring(result) {
       if (cap) sources.push(cap.id);
     } else block = { kind: "paragraph", content: b.bold ? [{kind:"strong",children:inline(b,b.text)}] : inline(b,b.text) };
     if (b.sectionLabel) units.push({block:{kind:"target",label:b.sectionLabel},sources:[]});
-    units.push({ block, sources });
+    units.push({ block, sources, ...(tableNotes ? {tableNotes} : {}),
+      ...(keptNotes.has(b.id) ? {keptTableNote:true} : {}) });
   }
   const defs = units.filter((u) => u.block.kind === "footnote"),
     body = units.filter((u) => u.block.kind !== "footnote"),
@@ -192,7 +215,7 @@ function authoring(result) {
   validateFootnoteInput(input);
   return {
     authoring: input,
-    units: sorted.map((u) => ({ kind: u.block.kind, sources: u.sources })),
+    units: sorted.map(({block, ...unit}) => ({ kind: block.kind, ...unit })),
   };
 }
 // Check the completed input, including references in nested lists and captions.

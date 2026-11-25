@@ -40,17 +40,33 @@ test("a two-level list keeps its levels and number styles", () => {
     { ordered: true, style: "lower-alpha", delimiter: ")", start: 1, items: ["둘째 단계 첫 항목", "둘째 단계 둘째 항목"] });
 });
 
-test("merged cells are repeated, cell paragraphs are joined, and the table gets its numbered caption", () => {
+test("merged cells are repeated, cell paragraphs get breaks, and the table gets its numbered caption", () => {
   const table = blocks.find(b => b.kind === "table");
   assert.deepEqual(table.rows.map(r => r.map(c => typeof c === "string" ? c : textOf(c))), [
     ["항목", "값과 설명", "값과 설명"],
-    ["전압", "12 V", "첫 문단 / 둘째 문단"],
+    ["전압", "12 V", "첫 문단 둘째 문단"],
     ["전압", "24 V", "한 문단"],
   ]);
+  assert.deepEqual(table.rows[1][2].map(n=>n.kind), ["text", "break", "text"]);
+  assert.ok(!warnings.some(w=>w.kind==="joined"));
   assert.equal(table.enumerator, "1");
   assert.equal(textOf(table.caption), "합성 표");
   const figures = blocks.filter(b => b.kind === "figure");
   assert.deepEqual(figures.map(f => [f.enumerator, textOf(f.caption), f.imageAlt]), [["1", "PNG 그림", "막대 그림"], ["2", "EMF 그림, Table 1 참고", "도형 그림"]]);
+});
+
+test("table cells keep manual breaks and put numbered and bulleted items on separate lines", () => {
+  const p = (text, number) => ({type:"p",runs:[{text}],number,textboxes:[],bookmarks:[]});
+  const result = convert({items:[{type:"table",bookmarks:[],rows:[[
+    {items:[p("First\nSecond"),p("Third")]},
+    {items:[p("One",{fmt:"decimal",marker:"1."}),p("Two",{fmt:"bullet",marker:"\uF0A7",font:"Wingdings"})]},
+  ]]}]});
+  const t = text => ({kind:"text",text}), br = {kind:"break"};
+  assert.deepEqual(result.blocks[0].rows[0],[
+    [t("First"),br,t("Second"),br,t("Third")],
+    [t("1. One"),br,t("▪ Two")],
+  ]);
+  assert.deepEqual(result.warnings.map(w=>[w.kind,w.detail]),[["joined","칸 1개"]]);
 });
 
 test("one-row Note tables become note boxes and keep a numbered label, formatting, and links", () => {
@@ -87,7 +103,7 @@ test("plain Note labels are omitted, and other labels, extra rows or columns, an
   const r = convert({ items });
   assert.deepEqual(r.blocks.map(b => b.kind), [...Array(3).fill("admonition"), ...Array(5).fill("table")]);
   assert.deepEqual(r.blocks.slice(0, 3).map(text), ["Body", "Body", "Body"]);
-  assert.deepEqual(r.warnings.map(w => [w.kind, w.block]), [["joined", 7]]);
+  assert.deepEqual(r.warnings.map(w => [w.kind, w.block]), []);
 });
 
 test("only a caption repeated on the following table can be dropped from a note box", () => {
@@ -134,7 +150,7 @@ test("REF fields inside headings and captions stay their result text", () => {
 test("the list of places to check has exactly the expected kinds", () => {
   const count = {};
   for (const w of warnings) count[w.kind] = (count[w.kind] || 0) + 1;
-  assert.deepEqual(count, { merged: 1, joined: 1, "ref-missing": 1, math: 1, textbox: 1, other: 1 });
+  assert.deepEqual(count, { merged: 1, "ref-missing": 1, math: 1, textbox: 1, other: 1 });
   for (const w of warnings) assert.ok(Number.isInteger(w.block) && blocks[w.block], w.kind + " points at a block");
   assert.equal(blocks[warnings.find(w => w.kind === "textbox").block].content[0].text, "글상자 안의 문장.");
   assert.equal(blocks.filter(b => text(b) === "글상자 안의 문장.").length, 1, "the fallback copy of a text box is not moved twice");

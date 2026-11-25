@@ -48,6 +48,7 @@ function readNumbering(root) {
     fmt: val(l, "w:numFmt") || "decimal", text: val(l, "w:lvlText") ?? "",
     legal: !!kid(l, "w:isLgl") && on(kid(l, "w:isLgl")), restart: val(l, "w:lvlRestart"),
     suffix: val(l, "w:suff") || "tab", style: val(l, "w:pStyle"),
+    font: kid(kid(l, "w:rPr"), "w:rFonts")?.attrs["w:ascii"],
   });
   for (const a of kids(root, "w:abstractNum")) {
     const levels = [];
@@ -127,7 +128,7 @@ function numberer(numbering, styleInfo) {
         const i = +d - 1;
         return formatNumber(s.counts[i] ?? lvl(i).start, here.legal ? "decimal" : lvl(i).fmt);
       });
-      return { numId, ilvl, fmt: here.fmt, text: here.text, marker, count: s.counts[ilvl], suffix: here.suffix };
+      return { numId, ilvl, fmt: here.fmt, text: here.text, marker, count: s.counts[ilvl], suffix: here.suffix, font: here.font };
     },
   };
 }

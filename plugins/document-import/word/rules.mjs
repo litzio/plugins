@@ -1,7 +1,7 @@
 // Word structure (docx.mjs) → Litzio authoring blocks and the list of places to check.
 export const WARNING_KINDS = [
   ["merged", "병합을 푼 표"],
-  ["joined", "칸 안 문단을 이어 적은 표"],
+  ["joined", "칸 안 목록을 줄로 적은 표"],
   ["image-failed", "그림을 옮기지 못함"],
   ["image-moved", "표 밖으로 뺀 그림"],
   ["ref-missing", "대상을 찾지 못한 참조"],
@@ -56,7 +56,7 @@ function dropChars(runs, n) {
 
 // Runs → Core InlineContent. Formatting marks never begin or end with spaces.
 // Headings and captions take links = false: a REF inside them stays its result text.
-function inline(runs, { breaks = false, links = true, resolve, missing } = {}) {
+function inline(runs, { breaks = false, cell = false, links = true, resolve, missing } = {}) {
   const out = [];
   const textNodes = (text, f) => {
     if (!text) return;
@@ -81,17 +81,17 @@ function inline(runs, { breaks = false, links = true, resolve, missing } = {}) {
     else if (r.link && !links) out.push(...inline(r.runs, { breaks }));
     else if (r.link) {
       const url = r.link.bookmark ? resolve?.(r.link.bookmark) : /^(https?:|mailto:)/i.test(r.link.url || "") ? r.link.url : null;
-      const children = tidy(inline(r.runs, {}));
+      const children = inline(r.runs, { breaks: cell, cell });
       if (r.link.bookmark && !url && plain(r.runs).trim()) missing?.(r.link.bookmark, plain(r.runs));
       if (url && children.length) out.push({ kind: "link", url: url.startsWith("#") || !r.link.bookmark ? url : "#" + url, children });
       else out.push(...children);
     }
   }
-  return tidy(out);
+  return tidy(out, cell);
 }
 
 const same = (a, b) => a.kind === b.kind && ["strong", "emphasis", "superscript", "subscript"].includes(a.kind);
-function tidy(nodes) {
+function tidy(nodes, keepBreaks = false) {
   const out = [];
   for (const n of nodes) {
     const last = out.at(-1);
@@ -104,8 +104,10 @@ function tidy(nodes) {
     }
     else out.push(n.children ? { ...n, children: [...n.children] } : { ...n });
   }
-  while (out[0]?.kind === "break") out.shift();
-  while (out.at(-1)?.kind === "break") out.pop();
+  if (!keepBreaks) {
+    while (out[0]?.kind === "break") out.shift();
+    while (out.at(-1)?.kind === "break") out.pop();
+  }
   if (out[0]?.kind === "text") out[0].text = out[0].text.trimStart();
   if (out.at(-1)?.kind === "text") out.at(-1).text = out.at(-1).text.trimEnd();
   return out.filter(n => n.kind !== "text" || n.text);
@@ -239,7 +241,7 @@ export function convert(doc, { noteAdmonitions = true, limits } = {}) {
     unit.hiddenBefore = 0;
     return blocks.length - 1;
   };
-  const content = (runs, breaks) => inline(runs, { breaks, resolve, missing });
+  const content = (runs, breaks, cell = false) => inline(runs, { breaks, cell, resolve, missing });
   const title = (runs, breaks = false) => inline(runs, { breaks, links: false });
   const afterBlock = (index, unit) => {
     if (missingHere.length) warn("ref-missing", index, unit.caption ? plain(unit.caption.item.runs) : unit.heading, missingHere.map(t => "‘" + short(t, 24) + "’").join(", "));
@@ -352,6 +354,7 @@ export function convert(doc, { noteAdmonitions = true, limits } = {}) {
   function cellContent(cell, moved, flags) {
     if (cell.content) return cell.content;
     const parts = [];
+    let list = false;
     const visit = items => {
       for (const it of items) {
         if (it.type === "table") {
@@ -363,16 +366,23 @@ export function convert(doc, { noteAdmonitions = true, limits } = {}) {
         moved.push(...imagesOf(it.runs));
         if (it.math) flags.math += it.math;
         if (it.hidden) flags.hidden += it.hidden;
-        let body = content(it.runs, false);
+        let body = content(it.runs, true, true);
         const n = it.number;
-        if (n && n.fmt !== "bullet" && n.fmt !== "none" && n.marker) body = tidy([{ kind: "text", text: n.marker + separator(n) }, ...body]);
+        if (n && n.fmt !== "none" && n.marker) {
+          list = true;
+          let marker = n.marker;
+          if (n.fmt === "bullet" && /^[\uF000-\uF0FF]$/u.test(marker))
+            marker = symbolChar(n.font || "Symbol", marker.codePointAt(0) - 0xf000) || "•";
+          body = tidy([{ kind: "text", text: marker + separator(n) }, ...body], true);
+        }
         if (body.length) parts.push(body);
         it.textboxes.forEach(box => { flags.textbox++; visit(box); });
       }
     };
     visit(cell.items);
-    if (parts.length > 1) flags.joined++;
-    cell.content = tidy(parts.flatMap((p, i) => i ? [{ kind: "text", text: " / " }, ...p] : p));
+    if (list) flags.joined++;
+    if (parts.length > 1) flags.multiline = true;
+    cell.content = tidy(parts.flatMap((p, i) => i ? [{ kind: "break" }, ...p] : p), true);
     return cell.content;
   }
 
@@ -390,7 +400,7 @@ export function convert(doc, { noteAdmonitions = true, limits } = {}) {
       return nextCap.enumerator === cap.enumerator && JSON.stringify(nextCap.caption) === JSON.stringify(cap.caption);
     };
     // Public authoring supports one inline paragraph and has no caption or label for a note.
-    if (note && (!unit.caption || duplicateCaption()) && !unit.record.label && !flags.joined && !flags.nested &&
+    if (note && (!unit.caption || duplicateCaption()) && !unit.record.label && !flags.multiline && !flags.joined && !flags.nested &&
         !flags.textbox && !moved.length) {
       const [label, body] = rows[0];
       const index = emit(unit, { kind: "admonition", variant: "note", content: note[1]
@@ -409,7 +419,7 @@ export function convert(doc, { noteAdmonitions = true, limits } = {}) {
     if (!limits) throw Error("표 한도를 받지 못했습니다.");
     const wide = width > limits.tableColumns;
     if (wide) {
-      rows = rows.map(r => [...r.slice(0, limits.tableColumns - 1), tidy(r.slice(limits.tableColumns - 1).flatMap((c, i) => i ? [{ kind: "text", text: " / " }, ...c] : c))]);
+      rows = rows.map(r => [...r.slice(0, limits.tableColumns - 1), tidy(r.slice(limits.tableColumns - 1).flatMap((c, i) => i ? [{ kind: "text", text: " / " }, ...c] : c), true)]);
       width = limits.tableColumns;
     }
     // Each part repeats the header row and stays within both the row and the cell limit.
@@ -497,13 +507,13 @@ export function withImages(result, failed) {
     const number = b.enumerator ? "Figure " + b.enumerator + " " : "";
     return { kind: "paragraph", content: tidy([{ kind: "text", text: "[그림을 옮기지 못함] " + number }, ...caption]) };
   });
-  const unlink = nodes => tidy(nodes.flatMap(n => n.kind === "link" && gone.has(n.url) ? n.children : n.children ? [{ ...n, children: unlink(n.children) }] : [n]));
+  const unlink = (nodes, keepBreaks = false) => tidy(nodes.flatMap(n => n.kind === "link" && gone.has(n.url) ? n.children : n.children ? [{ ...n, children: unlink(n.children, keepBreaks) }] : [n]), keepBreaks);
   const visit = x => {
     if (Array.isArray(x)) return x.map(visit);
     if (!x || typeof x !== "object") return x;
     const out = {};
     for (const [k, v] of Object.entries(x)) out[k] = (k === "content" || k === "caption") && Array.isArray(v) ? unlink(v) : Array.isArray(v) || (v && typeof v === "object") ? visit(v) : v;
-    if (Array.isArray(x.rows)) out.rows = x.rows.map(r => r.map(c => Array.isArray(c) ? unlink(c) : c));
+    if (Array.isArray(x.rows)) out.rows = x.rows.map(r => r.map(c => Array.isArray(c) ? unlink(c, true) : c));
     return out;
   };
   warnings.sort((a, b) => a.block - b.block);

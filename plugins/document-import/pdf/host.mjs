@@ -196,17 +196,23 @@ export function activate(context = {}) {
                 "pdf_import_failed",
                 "변환 블록을 찾을 수 없습니다.",
               );
+            const noteIndex = units[i].tableNotes?.indexOf(source) ?? -1;
+            const warning = units[i].keptTableNote ? {
+              code: "table-note-endnote",
+              reason: ["미주 호출이 있어 표 주석을 본문에 둠", b.warning?.reason].filter(Boolean).join(" · "),
+            } : b.warning;
             mapped.push({
               id: b.id,
               path: n.path,
-              kind: b.kind,
+              kind: noteIndex >= 0 ? "footnote" : b.kind,
+              ...(noteIndex >= 0 ? {noteIndex} : {}),
               ...(b.formula ? {formula:true} : {}),
               documentKind: n.type,
               lines: (b.lines || []).map(({page,box,text})=>({page,box,text})),
               ...(b.level ? { level: b.level } : {}),
               boxes: b.boxes,
               ...(b.grid ? {grid:b.grid, tableRecord:b.table.record} : {}),
-              ...(b.warning ? { warning: b.warning } : {}),
+              ...(warning ? { warning } : {}),
             });
           }
         });

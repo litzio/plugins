@@ -740,6 +740,7 @@ function convert(raw, excludedPages = [], profileName) {
   // evidence before treating their initial letter as a local table marker.
   blocks.forEach((b,i)=>b.id='b'+i);
   const captions=captionTargets(blocks,profile);
+  const noteOwners = new Map();
   for (let i=0;i<blocks.length;i++) {
     const table=blocks[i]; if (!table.table) continue;
     const cap=captions.get(table.id);
@@ -776,6 +777,7 @@ function convert(raw, excludedPages = [], profileName) {
     }
     const labels=new Set();
     for(let j=i+1;blocks[j]?.tableNote && blocks[j].page===table.page;j++) {
+      noteOwners.set(blocks[j], table);
       const m=blocks[j].text.match(/^([a-z*†‡])\s/); if(m) labels.add(m[1]);
     }
     if(labels.size) {
@@ -820,6 +822,7 @@ function convert(raw, excludedPages = [], profileName) {
     blocks=joinSheetHeadings(blocks.sort((a,b)=>a.page-b.page));
   }
   blocks.forEach((b, i) => (b.id = "b" + i));
+  for (const [note, table] of noteOwners) note.tableNoteFor = table.id;
   let listIndents = [];
   for (const b of blocks) {
     if (b.kind !== "list") {

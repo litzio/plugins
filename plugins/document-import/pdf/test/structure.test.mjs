@@ -168,8 +168,8 @@ test('the menu shows what fits the chosen kinds, in kind, structure and removal 
   const nodes = [{path: [1], type: 'paragraph', content: [t('a')]}, {path: [2], type: 'paragraph', content: [t('b')]}, {path: [3], type: 'table'}, {path: [4], type: 'table'},
     {path: [5], type: 'admonition', variant: 'note', content: [t('n')]}, {path: [6], type: 'list', items: [{content: [t('i')]}]}];
   const shown = (bs, extra) => blockActions(bs, all, nodes, {limits, fragments: {0: []}, ...extra}).filter(a => a.visible).map(a => a.id + (a.disabled && a.id !== 'keep' ? '-' : ''));
-  assert.deepEqual(blockActions([all[0]], all, nodes).map(a => a.group), [...Array(9).fill('kind'), ...Array(5).fill('structure'), 'remove', 'remove']);
-  assert.deepEqual(shown([all[0], all[1]]), ['paragraph-', 'h1-', 'h2-', 'h3-', 'h4-', 'h5-', 'h6-', 'note-', 'title-', 'merge', 'split-', 'list', 'table-', 'footnote-', 'remove', 'keep']);
+  assert.deepEqual(blockActions([all[0]], all, nodes).map(a => a.group), [...Array(9).fill('kind'), ...Array(6).fill('structure'), 'remove', 'remove']);
+  assert.deepEqual(shown([all[0], all[1]]), ['paragraph-', 'h1-', 'h2-', 'h3-', 'h4-', 'h5-', 'h6-', 'note-', 'title-', 'merge', 'split-', 'list', 'table-', 'table-note-', 'footnote-', 'remove', 'keep']);
   // Two tables: joining only, as long as their column counts match.
   assert.deepEqual(shown([all[2], all[3]], {tables: {3: 4, 4: 4}}), ['merge', 'remove-', 'keep']);
   const narrow = blockActions([all[2], all[3]], all, nodes, {tables: {3: 4, 4: 3}}).find(a => a.id === 'merge');
