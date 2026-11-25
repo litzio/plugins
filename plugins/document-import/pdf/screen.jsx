@@ -3,7 +3,8 @@ import { statusLabel, statusAction } from './document-status.mjs';
 import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import PagePicker from "./page-picker.jsx";
-import {blockActions} from "./block-actions.mjs";
+import {blockActions, keepAction, keptNote} from "./block-actions.mjs";
+import { selectionKind } from "../shared/block-kind.mjs";
 import Flow, { FlowToggle } from "../shared/flow.jsx";
 import Compare from "../shared/compare.jsx";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
@@ -43,7 +44,7 @@ function Screen({
   const compare = useRef(null);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
-    [actionHelp, setActionHelp] = useState(null);
+    [actionHelp, setActionHelp] = useState(null), [note, setNote] = useState("");
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
   const [documentStatus,setDocumentStatus]=useState(undefined);
   const [status, setStatus] = useState(""),
@@ -76,16 +77,21 @@ function Screen({
   const checks = useMemo(() => warnings.map(b => ({flowId: b.id, blockId: b.id, reason: b.warning.reason})), [mapping]);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
   const canEdit = !!mapping && !stale;
-  function actionItems(blocks,focusSource=false) {
-    return blockActions(blocks,mapping?.blocks||[],mapping?.snapshotNodes||[]).map(a=>({...a,icon:null,
+  function item(a,blocks,focusSource) {
+    return {...a,icon:null,
       disabled:a.disabled||busy||stale,
       disabledReason:a.action==='merge'&&a.disabled
         ? a.disabledReason+' 원본 상자 하나를 누른 뒤 Shift를 누른 채 다른 상자를 눌러 범위를 고르세요. 키보드로는 Enter나 Space로 첫 상자를 고르고, 다른 상자에 초점을 옮겨 Shift+Enter 또는 Shift+Space를 누르세요.'
         : a.disabledReason,
       run:()=>{
         if(a.action==='split') {setSelection(blocks.map(b=>b.id));compare.current?.pick(blocks[0]);setSplitting(true);}
+        // Keeping the chosen blocks removes the rest of their page in one action; the choice stays.
+        else if(a.action==='keep') return correct('remove',{},mapping.blocks.filter(b=>a.extra.ids.includes(b.id)),focusSource,{note:keptNote(a.extra.kept)});
         else return correct(a.action,a.extra,blocks,focusSource);
-      }}));
+      }};
+  }
+  function actionItems(blocks,focusSource=false) {
+    return blockActions(blocks,mapping?.blocks||[],mapping?.snapshotNodes||[]).map(a=>item(a,blocks,focusSource));
   }
   const tools=actionItems(chosen),kindTools=tools.filter(a=>a.action==='kind'||a.action==='title');
   const kindDisabled=kindTools.every(a=>a.disabled), titleTool=kindTools.find(a=>a.action==='title');
@@ -116,11 +122,12 @@ function Screen({
       await new Promise(resolve=>setTimeout(resolve,150));
     }
   }
-  async function correct(action, extra = {}, blocks = chosen, focusSource = false) {
+  // keep: {note} when the chosen blocks stay chosen and the rest of their page went.
+  async function correct(action, extra = {}, blocks = chosen, focusSource = false, keep = null) {
     if (editing.current) return;
     const before=mapping, oldSelection=selection, oldSelected=compare.current?.selected();
     compare.current?.stopFollow();
-    editing.current=true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
+    editing.current=true; setBusy(true); setError(''); setNote(''); setStatus('고치는 중'); setSplitting(false);
     let started=performance.now();
     try {
       const input={document:file.document,revision:before.revision,ids:blocks.map(b=>b.id),action,
@@ -141,8 +148,14 @@ function Screen({
       }
       if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
       setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
-      const b=r.mapping.blocks.find(b=>b.id===r.targetId);
-      setSelection(b?[b.id]:[]);compare.current?.show(b,focusSource);
+      if(keep) {
+        setSelection(oldSelection);setNote(keep.note);
+        if(oldSelected?.documentTitle) compare.current?.pick(oldSelected);
+        else compare.current?.show(r.mapping.blocks.find(b=>b.id===oldSelected?.id)||r.mapping.blocks.find(b=>oldSelection.includes(b.id)),focusSource);
+      } else {
+        const b=r.mapping.blocks.find(b=>b.id===r.targetId);
+        setSelection(b?[b.id]:[]);compare.current?.show(b,focusSource);
+      }
       metrics.current.correction={started,timings:r.timings,action};
       setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':r.brokenLinks?'고침 완료 · 이 제목을 가리키는 링크 '+r.brokenLinks+'개가 끊깁니다.':'고침 완료');
     } catch(e) {
@@ -429,7 +442,7 @@ function Screen({
 
   // Selecting in the comparison: Shift extends the range from the last single selection.
   function selectBlock(b, shift) {
-    setSplitting(false);
+    setSplitting(false); setNote('');
     if (b.documentTitle) {setSelection([b.id]);selectionAnchor.current=null;return;}
     // The error box has no close button; the next successful action clears it.
     setError("");
@@ -440,7 +453,14 @@ function Screen({
       setSelection(mapping.blocks.slice(Math.min(a,z),Math.max(a,z)+1).map(x=>x.id));
     } else {selectionAnchor.current=b.id;setSelection([b.id]);}
   }
-  const clearSelection = () => {setSplitting(false);setSelection([]);selectionAnchor.current=null;};
+  const clearSelection = () => {setSplitting(false);setNote('');setSelection([]);selectionAnchor.current=null;};
+  // A dragged rectangle: its blocks, or those added to the current choice with Shift.
+  function selectMany(ids, add) {
+    setSplitting(false); setError(''); setNote('');
+    const next = mapping.blocks.map(b=>b.id).filter(id=>ids.includes(id) || (add && selection.includes(id)));
+    setSelection(next);
+    if (!add || !selectionAnchor.current) selectionAnchor.current = ids[0];
+  }
   const viewState = React.useCallback(
     (s) => {
       if(s.state === 'ready' && metrics.current.correction) {
@@ -564,15 +584,19 @@ function Screen({
           excluded={mapping.excluded || result?.excluded || none} excludedPages={frontPages}
           document={file.document} revision={mapping.revision} reloadKey={reloadKey}
           checks={checks} legend={legend} sourceLabel="원본 PDF" busy={busy} stale={stale}
-          guide={splitting ? "새 문단이 시작될 줄을 고르세요." : undefined}
+          guide={splitting ? "새 문단이 시작될 줄을 고르세요." : note || undefined}
           onViewState={viewState}
           edit={{
-            selection, editing, onSelect: selectBlock, onClear: clearSelection,
+            selection, editing, onSelect: selectBlock, onSelectMany: selectMany, onClear: clearSelection,
             menu: b => canEdit && ['paragraph','heading','list'].includes(b.documentKind) ? actionItems(selection.includes(b.id)?chosen:[b],true) : null,
+            // The document title's box keeps its page's other blocks out in one action.
+            titleMenu: e => canEdit ? [item(keepAction(e.page,[],mapping.blocks),[],true)] : null,
+            onDelete: () => { const a=actionItems(chosen,true).find(a=>a.action==='remove'); if(!a.disabled) a.run(); },
             splitLines: splitting && chosen.length===1 ? chosen[0].lines : null,
             onSplit: line => correct('split',{line}),
             tools: canEdit && selection.length>0 ? <>
                 <span>{selection.length}개 선택</span>
+                <span className="type-helper">{chosen.length ? selectionKind(chosen) : '문서 제목'}</span>
                 {tools.filter(a=>a.action==='merge'||a.action==='split').map(a=>toolButton(a))}
                 <span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
                   onFocus={()=>setActionHelp('kind')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('kind')} onMouseLeave={()=>setActionHelp(null)}>

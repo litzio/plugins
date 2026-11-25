@@ -25,6 +25,17 @@ function applyWithCli(cli, doc, ops, revision) {
     child.stdin.end(JSON.stringify(ops));
   });
 }
+// Links to a heading's target in the nodes that stay. Inspect exposes table cell content on
+// separate paths; other supported containers carry their inline children on the top-level node.
+function linksTo(snapshot, label, stays) {
+  const count = value => value && typeof value === "object"
+    ? Number(value.kind === "link" && value.url === "#"+label) +
+      Object.values(value).reduce((sum,child)=>sum+count(child),0) : 0;
+  return snapshot.nodes
+    .filter(n => n.type === "cell" || (n.path.length === 1 && n.type !== "caption"))
+    .filter(stays)
+    .reduce((sum,n) => sum + count(n), 0);
+}
 export function correctionHandler({cli} = {}) {
   const histories = new Map(), locks = new Set();
   const persist = async (side, m) => {
@@ -117,12 +128,17 @@ export function correctionHandler({cli} = {}) {
           ops = same ? [{command:'format'}] : [{command:'convert-block',path:String(at),to:kind,...(kind==='heading'?{level}:{})}];
           inverse = same ? [{command:'format'}] : [{command:'convert-block',path:String(at),to:first.type,...(first.type==='heading'?{level:first.level}:{})}];
         } else if (action === 'remove') {
-          if (nodes.length !== 1 || !['paragraph','heading','list'].includes(first.type))
-            throw Error('본문·제목·목록 블록 하나를 골라야 합니다.');
-          const restore = insert(first,at);
-          irreversible = references(first).length > 0;
+          if (nodes.length !== selectedPaths.length || nodes.some(n => !['paragraph','heading','list'].includes(n.type)))
+            throw Error('본문·제목·목록 블록만 뺄 수 있습니다.');
+          irreversible = nodes.some(n => references(n).length > 0);
           if (irreversible && !confirmed) return {requiresConfirm:true};
-          ops = [{command:'remove-block',at}]; inverse = restore ? [restore] : [];
+          // Blocks and the link targets of removed headings go from the last, and come back from the first.
+          const all = topNodes(current), targets = nodes.map(n => detachedTarget(all,n,action)).filter(Boolean);
+          const gone = [...nodes,...targets].sort((a,b)=>a.path[0]-b.path[0]);
+          ops = gone.map(n => ({command:'remove-block',at:n.path[0]})).reverse();
+          inverse = gone.map(n => n.type === 'target' ? {command:'insert-target',at:n.path[0],label:n.label} : insert(n,n.path[0]));
+          const removed = new Set(gone.map(n => n.path[0]));
+          brokenLinks = targets.reduce((sum,target) => sum + linksTo(current,target.label,n => !removed.has(n.path[0])),0);
           newCount = 0;
         } else if (action === 'title') {
           if (nodes.length !== 1 || !['paragraph','heading'].includes(first.type)) throw Error('본문이나 제목 하나를 골라야 합니다.');
@@ -134,20 +150,12 @@ export function correctionHandler({cli} = {}) {
           inverse = [insert(first,at), current.title === null ? {command:'update-title',remove:true} : {command:'update-title',text:current.title}];
           newCount = 0;
         } else throw Error('지원하지 않는 고치기입니다.');
-        const target = detachedTarget(topNodes(current),first,action,kind);
+        const target = action !== 'remove' && detachedTarget(topNodes(current),first,action,kind);
         if (target) {
           const index = target.path[0];
           ops.push({command:"remove-block",at:index});
           inverse.unshift({command:"insert-target",at:index,label:target.label});
-          const count = value => value && typeof value === "object"
-            ? Number(value.kind === "link" && value.url === "#"+target.label) +
-              Object.values(value).reduce((sum,child)=>sum+count(child),0) : 0;
-          // Inspect exposes table cell content on separate paths. Other supported
-          // containers carry their inline children on the top-level node.
-          brokenLinks = current.nodes
-            .filter(n => n.type === "cell" || (n.path.length === 1 && n.type !== "caption"))
-            .filter(n => action === "kind" || n.path[0] !== at)
-            .reduce((sum,n) => sum + count(n), 0);
+          brokenLinks = linksTo(current,target.label,n => action === "kind" || n.path[0] !== at);
         }
         next = previewCorrection(before,{action,ids,line,kind,level,time});
         targetId = next.blocks.find(x=>x.id===b.id)?.id || next.blocks.find(x=>x.path[0]>=at)?.id || next.blocks.at(-1)?.id;
