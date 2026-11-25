@@ -151,11 +151,13 @@ test('SDK integration: 7 the remembered document is used only while the file kee
     // Undo uses it too and gives back the original bytes.
     await act('undo');await act('undo');
     assert.equal(await readFile(doc,'utf8'),initial);
-    // Removing the only call of an endnote: the write drops the definition, so the file is read
-    // again and checked; the mapping stays in step.
+    // Removing the only call of an endnote: the write drops the definition. The document the write
+    // read back has it gone too, so the file is not read again and the mapping stays in step.
     const dropped=await correct({document:doc,revision:m.revision,historyId:'screen',action:'remove',ids:['b2'],confirmed:true});
-    assert.equal(dropped.mapping.stale,false,JSON.stringify(dropped));assert.equal(dropped.timings.reread,true);
+    assert.equal(dropped.mapping.stale,false,JSON.stringify(dropped));assert.equal(dropped.timings.reread,undefined);
     assert.ok(!inspectDocument(doc).nodes.some(n=>n.type==='footnote'));
+    m=JSON.parse(await readFile(side,'utf8'));
+    assert.equal((await act('kind',{kind:'heading',level:2})).timings.remembered,true);
     await writeFile(doc,initial);await writeFile(side,initialSide);m=JSON.parse(initialSide);
     // Another document forgets it; so does the screen closing.
     correct.forget();
@@ -171,6 +173,11 @@ test('SDK integration: 7 the remembered document is used only while the file kee
     const original=inspectDocument(doc);
     m.revision=original.revision;m.blocks=m.blocks.map(b=>b.id==='b3'?{...b,kind:'paragraph',documentKind:'paragraph',level:undefined}:b);
     await writeFile(side,JSON.stringify(m));
+    // A write that gives no document back: the file is read again and checked.
+    correct=correctionHandler({cli,write:(...a)=>({revision:writeDocument(...a).revision})});
+    assert.equal((await act('kind',{kind:'heading',level:2})).timings.reread,true);
+    await act('undo');
+    assert.equal(await readFile(doc,'utf8'),initial);
     // A write that leaves other content than the document made in memory stops the mapping and
     // the next correction reads the file again.
     const other=(file,document,revision)=>writeDocument(file,applyCorrections(document,[{command:'remove-block',at:8}]),revision);

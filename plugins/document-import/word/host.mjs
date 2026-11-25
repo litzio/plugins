@@ -197,9 +197,13 @@ export function activate() {
           }
           if (side?.revision !== revision || !side.structure) return { stale: true, message: STALE, timings };
           let started = performance.now();
+          // The view's save tells only its revisions: the saved file is read and parsed once (readMs),
+          // then projected to its nodes (nodesMs).
           const snapshot = readDocument(s.doc);
-          const structure = structureOf(nodesOf(snapshot));
           timings.readMs = performance.now() - started;
+          started = performance.now();
+          const structure = structureOf(nodesOf(snapshot));
+          timings.nodesMs = performance.now() - started;
           if (!sameStructure(side.structure, structure)) {
             s.refused = { revision: snapshot.revision, from: revision };
             return { stale: true, message: STALE, timings };
