@@ -182,6 +182,7 @@ export function convert(doc) {
       || (!u.kind ? options.find(o => (o.type === "table") === (o === units[i + 1])) : null);
     if (!pick) { u.type = "paragraph"; return; }
     pick.caption = u;
+    u.above = pick === units[i + 1];
     u.type = "consumed";
     if (u.hiddenBefore) pick.hiddenBefore = (pick.hiddenBefore || 0) + u.hiddenBefore;
     u.item.bookmarks.forEach(b => records.set(b, pick.record));
@@ -338,7 +339,7 @@ export function convert(doc) {
   function figure(unit, image, fields, label) {
     const key = "figure-" + String(images.length + 1).padStart(3, "0");
     const index = emit(unit, { kind: "figure", imageAsset: key, imageAlt: (image.alt || "").trim() || "그림", ...fields });
-    images.push({ key, part: image.part, block: index, label: short(label || "문서 처음") });
+    images.push({ key, part: image.part, block: index, label: short(label || "문서 처음"), captionAbove: !!unit.caption?.above });
     stats.images.total++;
     const type = image.part ? image.part.split(".").pop().toLowerCase() : "shape";
     stats.images.byType[type] = (stats.images.byType[type] || 0) + 1;

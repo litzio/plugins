@@ -8,6 +8,7 @@ import { convert, withImages } from "./rules.mjs";
 import { startImages, imageResult, disposeImages } from "./images.mjs";
 import { outputPaths, backupOutput, recordImages, finishReplacement, blockPaths, documentExists, sha } from "./output.mjs";
 import { listConverted } from "./recent.mjs";
+import { prepareSource } from "./source.mjs";
 
 const fail = message => new PluginPublicError("word_import_failed", message);
 const optional = async promise => { try { return await promise; } catch (e) { if (e.code === "ENOENT") return null; throw e; } };
@@ -20,6 +21,19 @@ export function activate() {
     return s;
   };
   const drop = async s => { await disposeImages(s.job); s.job = null; };
+  // Source pages are prepared per result folder and keep going when the screen goes back to the
+  // list. A new conversion of the same document stops the one before.
+  const sources = new Map();
+  const stopSource = async side => {
+    const job = sources.get(side);
+    sources.delete(side);
+    if (job) { job.controller.abort(); await job.promise; }
+  };
+  const pathsFor = doc => (blocks, revision) => {
+    const snapshot = readDocument(doc);
+    if (snapshot.revision !== revision) throw new Error("revision");
+    return blockPaths(machineNodes(getEditableDocument(snapshot.document)), blocks, { failedFigures: true });
+  };
   return {
     status: () => ({ available: true, message: "준비됨" }),
     operations: {
@@ -30,7 +44,7 @@ export function activate() {
       // Chosen file → its output place and, if it was converted before, the saved list.
       load: async ({ path: file }) => {
         if (path.extname(file).toLowerCase() !== ".docx") throw fail("워드 문서(.docx)를 골라 주세요.");
-        const { folder, doc, side } = outputPaths(file);
+        const { folder, doc, side, pdf } = outputPaths(file);
         const bytes = await optional(readFile(file));
         const saved = JSON.parse(await optional(readFile(side, "utf8")) ?? "null");
         const hasDocument = await documentExists(doc);
@@ -38,7 +52,9 @@ export function activate() {
         const id = createHash("sha256").update(file).digest("hex");
         for (const old of sessions.values()) await drop(old);
         sessions.clear();
-        sessions.set(id, { file, doc, side, digest: bytes && sha(bytes) });
+        sessions.set(id, { file, doc, side, pdf, digest: bytes && sha(bytes) });
+        // Opening again tries a source that could not be prepared before.
+        if (sources.get(side)?.state !== "preparing") sources.delete(side);
         return {
           id, name: path.basename(file), folder: path.dirname(file), outputFolder: folder, document: doc,
           saved: saved && hasDocument ? { ...saved, sourceMissing: !bytes, sourceChanged: !!bytes && saved.word?.sha256 !== sha(bytes) } : null,
@@ -49,6 +65,8 @@ export function activate() {
       convert: async ({ id }) => {
         const s = session(id);
         await drop(s);
+        await stopSource(s.side);
+        s.converted = null;
         const started = performance.now();
         let word;
         try {
@@ -114,6 +132,9 @@ export function activate() {
           stats: s.final.stats,
           ownedImages: await recordImages(s, s.pngs),
         };
+        // The source PDF of the same Word document is used again; only the places are made anew.
+        const before = s.previous?.data?.source?.pdf;
+        if (before?.wordSha256 === s.digest) data.source = { pdf: before };
         const pending = s.side + ".pending-" + randomUUID();
         try {
           await writeFile(pending, JSON.stringify(data), { flag: "wx" });
@@ -124,12 +145,35 @@ export function activate() {
         }
         let cleanupError;
         try { await finishReplacement(s, data); } catch { cleanupError = "이전 변환 결과를 정리하지 못했습니다."; }
+        s.converted = { revision: snapshot.revision, blocks: s.result.blocks, images: s.result.images, paths };
         await drop(s);
         s.pngs = null;
         return { ...data, cleanupError, readMs: s.readMs };
       },
+      // Starts preparing the source pages if needed; called again, tells how far it is.
+      source: async ({ id }) => {
+        const s = session(id);
+        let job = sources.get(s.side);
+        if (!job) {
+          const controller = new AbortController();
+          job = { state: "preparing", controller };
+          job.promise = prepareSource(s, { converted: s.converted, pathsFor: pathsFor(s.doc), signal: controller.signal })
+            .catch(() => ({ state: "failed", reason: "원본 쪽을 준비하지 못했습니다." }))
+            .then(r => { Object.assign(job, r); });
+          sources.set(s.side, job);
+        }
+        return job.state === "ready" ? { state: "ready", source: job.source } : { state: job.state, reason: job.reason };
+      },
+      sourcePdf: async ({ id }) => {
+        const s = session(id);
+        if (sources.get(s.side)?.state !== "ready") throw fail("원본 쪽이 아직 준비되지 않았습니다.");
+        const bytes = await optional(readFile(s.pdf));
+        if (!bytes) throw fail("원본 PDF를 찾을 수 없습니다.");
+        return { base64: bytes.toString("base64") };
+      },
     },
     async dispose() {
+      for (const side of [...sources.keys()]) await stopSource(side);
       for (const s of sessions.values()) await drop(s);
       sessions.clear();
     },

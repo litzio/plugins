@@ -1,5 +1,9 @@
 import { WARNING_KINDS } from "./rules.mjs";
 import { recentDate } from "./time.mjs";
+import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
+import workerSource from "./worker-source.js";
+import Compare from "./compare.jsx";
+pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
 
 const STEPS = ["구조 읽기", "그림 만들기", "문서 저장"];
 const GROUPS = WARNING_KINDS.map(([id, title]) => ({ id, title, tone: "warning" }));
@@ -21,11 +25,41 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const [error, setError] = useState("");
   const [target, setTarget] = useState(null);
   const [viewState, setViewState] = useState(null);
+  const [source, setSource] = useState(null); // {state, reason, source} from the host
+  const [pdf, setPdf] = useState(null);
   const metrics = useRef({});
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
   const busy = !!run && !run.failed;
   const atHome = !file && !run;
+  const done = !!file && !run && !!saved;
+
+  // After conversion, or on opening a converted document: the source pages come when ready.
+  useEffect(() => {
+    if (!done) return;
+    let gone = false, task = null;
+    (async () => {
+      let r;
+      for (;;) {
+        r = await invoke("source", { id: file.id });
+        if (gone) return;
+        setSource(r);
+        if (r.state !== "preparing") break;
+        await wait(1000);
+        if (gone) return;
+      }
+      if (r.state !== "ready") return;
+      const { base64 } = await invoke("sourcePdf", { id: file.id });
+      if (gone) return;
+      const binary = atob(base64), bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      task = pdfjs.getDocument({ data: bytes, verbosity: 0, enableScripting: false });
+      const doc = await task.promise;
+      if (gone) return;
+      setPdf(doc);
+    })().catch(() => { if (!gone) setSource({ state: "failed", reason: "원본 쪽을 불러오지 못했습니다." }); });
+    return () => { gone = true; task?.destroy(); setPdf(null); setSource(null); };
+  }, [done, file?.id, saved?.revision]);
 
   useEffect(() => {
     if (!atHome) return;
@@ -65,7 +99,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     catch (e) { setError(e.message || "워드 문서를 읽을 수 없습니다."); return; }
     try { localStorage.setItem(RECENT, JSON.stringify([...new Set([f.folder, ...readFolders()])].slice(0, 10))); } catch {}
     setFile(f);
-    metrics.current = { opened: performance.now() };
+    metrics.current = { opened: performance.now(), compareFrom: performance.now() };
     if (f.saved || f.documentOnly) { setSaved(f.saved); setRun(null); return; }
     await convert(f, false);
   }
@@ -102,7 +136,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       setFile({ ...f, documentOnly: false });
       setSaved(data);
       setRun(null);
-      metrics.current = { opened: performance.now() };
+      metrics.current = { opened: performance.now(), compareFrom: performance.now() };
       if (data.cleanupError) setError(data.cleanupError);
     } catch (e) {
       if (!alive.current) return;
@@ -172,6 +206,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   }
 
   const warnings = saved?.warnings || [];
+  const comparing = !!pdf && source?.state === "ready";
   const items = warnings.map((w, i) => ({ id: String(i), label: w.label, details: [w.detail], group: w.kind }));
   const notice = !saved ? "확인할 곳 목록이 없습니다. 다시 변환하면 목록을 만듭니다."
     : saved.sourceMissing ? "원본 워드 문서가 없습니다. 저장된 문서와 확인할 곳만 볼 수 있습니다."
@@ -194,6 +229,15 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
 `}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {notice && <ui.Notice tone="warning">{notice}</ui.Notice>}
+      {comparing ? <Compare React={React} ui={ui} pdf={pdf} source={source.source} saved={saved} file={file}
+        onViewState={s => setViewState(s.state)}
+        onReady={() => {
+          if (!metrics.current.compareFrom) return;
+          performance.measure("word-import-compare-ready", { start: metrics.current.compareFrom });
+          metrics.current.compareFrom = null;
+        }} /> : <>
+      {(source?.state === "preparing" || source?.state === "ready") && <div><ui.Status tone="progress" label="원본 쪽 준비 중" /></div>}
+      {source?.state === "failed" && <ui.Notice tone="warning">{source.reason}</ui.Notice>}
       <div className="word-import-pair">
         <section className="word-import-checks" aria-label="확인할 곳">
           <h2 className="type-section-title">확인할 곳</h2>
@@ -220,6 +264,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
             }} />
         </div>
       </div>
+      </>}
     </ui.ScreenLayout>
   );
 }
