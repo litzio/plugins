@@ -58,6 +58,8 @@ function piecesOf(block, previous) {
   if (block.kind === "heading" || block.kind === "paragraph") return pieces(normalize(textOf(block.content)), GAP.text);
   if (block.kind === "list") return listItems(block).flatMap(t => pieces(normalize(t), GAP.item));
   if (block.kind === "table") {
+    // Word paints cell paragraphs and manual breaks on separate lines. Normalization joins
+    // their letters in source order, just as it ignores the grid and punctuation.
     const rows = block.rows.map(r => r.map(c => normalize(inlineText(c))));
     const repeatedHeader = previous?.kind === "table" && !inlineText(block.caption) &&
       JSON.stringify(previous.rows[0]) === JSON.stringify(block.rows[0]);

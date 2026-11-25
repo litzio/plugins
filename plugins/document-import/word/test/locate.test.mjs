@@ -37,7 +37,7 @@ test("a paragraph that runs onto the next page has a box on each page", () => {
 test("a table is one box with its caption; repeated merged values and joined cell paragraphs still match", () => {
   const table = {
     kind: "table", enumerator: "3", caption: t("Supply limits"),
-    rows: [[t("Item"), t("Value and note"), t("Value and note")], [t("Voltage"), t("12 V"), t("First line / Second line")], [t("Voltage"), t("24 V"), t("One line")]],
+    rows: [[t("Item"), t("Value and note"), t("Value and note")], [t("Voltage"), t("12 V"), [...t("First line"), {kind:"break"}, ...t("Second line")]], [t("Voltage"), t("24 V"), t("One line")]],
   };
   const pdf = { pages: [page(["Table 3 – Supply limits", 100], ["Item", 115], ["Value and note", 115, 200], ["Voltage", 130], ["12 V", 130, 200], ["First line", 130, 300], ["Second line", 142, 300], ["24 V", 157, 200], ["One line", 157, 300], ["After the table.", 190])] };
   const places = locate([table, para("After the table.")], pdf);

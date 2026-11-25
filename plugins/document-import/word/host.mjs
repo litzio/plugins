@@ -159,7 +159,7 @@ export function activate() {
         if (!job) {
           const controller = new AbortController();
           job = { state: "preparing", controller };
-          job.promise = prepareSource(s, { converted: s.converted, pathsFor: pathsFor(s.doc), signal: controller.signal })
+          job.promise = prepareSource(s, { converted: s.converted, pathsFor: pathsFor(s.doc), signal: controller.signal, limits: DOCUMENT_AUTHORING_LIMITS })
             .catch(() => ({ state: "failed", reason: "원본 쪽을 준비하지 못했습니다." }))
             .then(r => { Object.assign(job, r); });
           sources.set(s.side, job);

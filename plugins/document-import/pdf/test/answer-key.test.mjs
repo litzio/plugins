@@ -18,6 +18,18 @@ test('answer key: correct counts never fall below the recorded baseline', async 
   for(const [metric,minimum] of Object.entries(baseline.tables)) assert.ok(report.tableSummary[metric]>=minimum,metric);
 });
 
+test('T-15 the answer key counts a note only when it belongs to its expected text table', () => {
+  const report = score(result, oracle);
+  const tableNotes = report.relations.filter(r => r.type === 'table_note_for');
+  assert.deepEqual(tableNotes.map(r => r.status), [...Array(5).fill('correct'), 'unchecked', 'unchecked']);
+  const wrong = structuredClone(result);
+  const note = wrong.blocks.find(b => b.tableNoteFor);
+  note.tableNoteFor = wrong.blocks.find(b => b.table && b.id !== note.tableNoteFor).id;
+  const changed = score(wrong, oracle);
+  assert.equal(changed.relations.find(r => r.from === tableNotes[0].from).status, 'incorrect');
+  assert.equal(changed.summary.footnote.correct, 9);
+});
+
 test('F-06 large gap ends the note; a wrapped continuation stays in the definition', () => {
   for (const page of [6, 7]) {
     const original = raw.pages[page].raw.find((l) => l.bbox[1] > 600 && /^\d+ /.test(l.spans[0].text));

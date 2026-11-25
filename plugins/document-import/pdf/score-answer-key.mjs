@@ -20,6 +20,9 @@ export function score(result, reference) {
   const formulas = [], formulaSummary = { own_image: 0, merged: 0, fragmented_text: 0, missing: 0 }, tables = [], tableSummary = {text:0,same_grid:0,matched_spans:0,matched_text:0,math:0,cells:0}, summary = {}, elements = [], used = new Set(), matches = new Map();
   const byId = new Map(reference.elements.map((e) => [e.id, e]));
   const continuations = reference.relations.filter((r) => r.type === 'paragraph_continues');
+  const tableNoteTargets = new Map(reference.relations.filter(r=>r.type==='table_note_for').map(r=>[r.from,r.to]));
+  const units = authoring(structuredClone(result)).units;
+  const authoredNotes = new Map(units.flatMap(u=>(u.tableNotes || []).map(id=>[id,u])));
   for (const e of reference.elements) {
     const row = summary[e.role] ||= { correct: 0, structure_differs: 0, missing: 0, as_image: 0, excluded_page: 0 };
     let status, reason = '', hits = [];
@@ -63,6 +66,10 @@ export function score(result, reference) {
     } else {
       hits = near.filter((b) => key && textOf(b) && (textOf(b).includes(key) || key.includes(textOf(b))));
       const exact = hits.find((b) => {
+        if (tableNoteTargets.has(e.id)) {
+          const target=byId.get(tableNoteTargets.get(e.id)), unit=authoredNotes.get(b.id);
+          return textOf(b)===key && unit && result.blocks.some(t=>t.grid && unit.sources.includes(t.id) && nearby(target,t));
+        }
         if (!(kinds[e.role] || []).includes(b.kind)) return false;
         if (e.heading_level !== undefined && b.level !== e.heading_level) return false;
         if (textOf(b) === key) return true;
@@ -84,8 +91,6 @@ export function score(result, reference) {
     matches.set(e.id, hits);
     elements.push({ id: e.id, role: e.role, page: e.page, status, reason, blocks: hits.map((b) => b.id) });
   }
-  // Use the actual authoring plan for caption attachment, not geometric guesses.
-  const units = authoring(structuredClone(result)).units;
   const relations = reference.relations.map((r) => {
     const a = matches.get(r.from) || [], b = matches.get(r.to) || [];
     let status = 'unchecked', reason = '출력으로 관계를 확인할 수 없음';
@@ -98,9 +103,7 @@ export function score(result, reference) {
         status = units.some((u) => u.sources.includes(a[0].id) && u.sources.includes(b[0].id)) ? 'correct' : 'incorrect';
         reason = '실제 작성 계획의 캡션 연결';
       } else if(r.type==='table_note_for') {
-        const ni=result.blocks.indexOf(a[0]),ti=result.blocks.indexOf(b[0]);
-        const peers=reference.relations.filter(x=>x.type==='table_note_for'&&x.to===r.to).flatMap(x=>(matches.get(x.from)||[]).map(b=>b.id));
-        if(b[0].grid) {status=a[0].kind==='paragraph'&&ni>ti&&result.blocks.slice(ti+1,ni).every(b=>peers.includes(b.id))?'correct':'incorrect';reason='표 바로 뒤의 연속 주석 본문';} else reason='그림 영역에서 개별 표의 주석 관계는 확인 안 함';
+        if(b[0].grid) {status=authoredNotes.get(a[0].id)?.sources.includes(b[0].id)?'correct':'incorrect';reason='실제 작성 계획의 표 주석 연결';} else reason='그림 영역에서 개별 표의 주석 관계는 확인 안 함';
       } else if (r.type === 'note_reference') {
         const marker = byId.get(r.to)?.note_marker;
         if (marker && b[0].kind === 'footnote') {

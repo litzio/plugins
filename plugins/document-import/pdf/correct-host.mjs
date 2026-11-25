@@ -1,9 +1,11 @@
-import { updateDocumentStatus, DOCUMENT_AUTHORING_LIMITS } from '@litzio/plugin-sdk';
+import { updateDocumentStatus, DOCUMENT_AUTHORING_LIMITS, parse, serialize } from '@litzio/plugin-sdk';
 import { koreanTime } from "../shared/time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
+import { statSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import { detachedTarget, assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText } from './corrections.mjs';
+import { detachedTarget, assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText, tableNotePlan } from './corrections.mjs';
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections, fileRevision, documentRevision, snapshotOf } from './document-io.mjs';
 import { listPlan, tablePlan, unlistPlan, joinPlan, relabel, footnotePlan, tableRows, tableShapes } from './structure.mjs';
@@ -15,26 +17,46 @@ const insert = (n, at) => n.type === 'paragraph'
   : n.type === 'list' ? {command:'insert-list',at,list:listOf(n)}
   : n.type === 'admonition' ? {command:'insert-admonition',at,variant:n.variant,content:n.content} : null;
 // A table with its caption, label and numbering, at a top-level index.
+const insertNotes = (path, index, contents) => contents.map((content,i)=>({command:'insert-table-note',path,at:index+i,content}));
 const tableOps = (t, cells, at) => [{command:'insert-table',at,cells},
   ...(t.caption?.length ? [{command:'update-table-caption',path:String(at),content:t.caption}] : []),
   ...(t.label ? [{command:'update-label',path:String(at),label:t.label}] : []),
   ...(t.enumerator ? [{command:'update-enumerator',path:String(at),enumerator:t.enumerator}] : []),
-  ...(t.numbers ? [] : [{command:'update-enumeration',path:String(at),enumerated:false}])];
+  ...(t.numbers ? [] : [{command:'update-enumeration',path:String(at),enumerated:false}]),
+  ...insertNotes(String(at),0,t.notes || [])];
 const contentUpdate = (n, content) => ({command:{paragraph:'update-paragraph',heading:'update-heading-content',admonition:'update-admonition-content'}[n.type],path:String(n.path[0]),content});
 const cellsOf = (nodes, p) => tableRows(nodes, p).map(r => r.map(c => c?.content || []));
-// The SDK has no endnote or link-target insertion, so a step that inserts or removes an endnote or
-// puts back a heading's target goes through one official CLI apply-batch, revision-checked.
-const CLI_ONLY = ['insert-target','insert-footnote','remove-footnote'];
-function applyWithCli(cli, doc, ops, revision) {
+// Operations missing from the SDK use one official, revision-checked CLI batch.
+const CLI_ONLY = ['insert-target','insert-footnote','remove-footnote','insert-table-note','remove-table-note'];
+const needsCli = ops => ops.some(op => CLI_ONLY.includes(op.command));
+function applyWithCli(cli, doc, ops, revision, dryRun = false) {
   return new Promise((resolve, reject) => {
-    const child = execFile(cli.bin, [...cli.args, 'apply-batch', doc, '--operations', '-', '--if-revision', revision, '--format', 'json'],
-      {windowsHide:true}, (error, stdout) => {
-        if (!error) return resolve({revision:JSON.parse(stdout).revision});
+    const child = execFile(cli.bin, [...cli.args, 'apply-batch', doc, '--operations', '-', '--if-revision', revision, '--format', 'json',
+      ...(dryRun ? ['--dry-run'] : [])],
+      {windowsHide:true,maxBuffer:dryRun ? 6 * statSync(doc).size + 1024 * 1024 : 1024 * 1024}, (error, stdout) => {
+        if (!error) {
+          try { return resolve(JSON.parse(stdout)); } catch (e) { return reject(e); }
+        }
         try { if (fileRevision(doc) !== revision) return reject(new FileChangedError(doc)); } catch {}
         reject(error);
       });
     child.stdin.end(JSON.stringify(ops));
   });
+}
+// Table joins use SDK-only numbering edits and CLI-only note edits. Preview the latter
+// on an exclusive sibling so relative resources resolve, then commit once to the original.
+async function joinWithNotes(cli, doc, document, ops) {
+  const noteOps = ops.filter(op=>op.command==='insert-table-note');
+  const staged = applyCorrections(document,ops.filter(op=>op.command!=='insert-table-note'));
+  if (!noteOps.length) return staged;
+  const scratch = path.join(path.dirname(doc), '.table-notes-' + randomUUID() + '.md');
+  await writeFile(scratch,serialize(staged),{flag:'wx'});
+  try {
+    const {markdown} = await applyWithCli(cli,scratch,noteOps,fileRevision(scratch),true);
+    return parse(markdown);
+  } finally {
+    await rm(scratch,{force:true});
+  }
 }
 // Links to a heading's target in the nodes that stay. Inspect exposes table cell content on
 // separate paths; other supported containers carry their inline children on the top-level node.
@@ -133,7 +155,10 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
         const selectedPaths = [...new Set(selected.map(b => b.path[0]))].sort((a,b)=>a-b);
         const nodes = topNodes(current).filter(n => selectedPaths.includes(n.path[0]));
         const at = selectedPaths[0], first = nodes[0], b = selected[0];
-        if (before.blocks.some(x => selectedPaths.includes(x.path[0]) && !ids.includes(x.id)))
+        const joiningTables = action === 'merge' && nodes.every(n=>n.type==='table');
+        if (joiningTables)
+          ids = [...ids, ...before.blocks.filter(x=>x.noteIndex !== undefined && selectedPaths.includes(x.path[0]) && !ids.includes(x.id)).map(x=>x.id)];
+        if (action !== 'table-note-to-body' && before.blocks.some(x => selectedPaths.includes(x.path[0]) && !ids.includes(x.id)))
           throw Error('같은 문서 블록에 속한 원본 상자를 모두 골라 주세요.');
         const neighbours = type => nodes.length === selected.length && nodes.every((n,i)=>n.type === type && n.path[0] === at+i);
         let newCount = 1, plan;
@@ -147,13 +172,20 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
           // References to a later table move to the first table, whose label stays.
           const holders = join.relabel.length ? topNodes(current).filter(n => ['paragraph','heading','admonition'].includes(n.type) && hasLabel(n.content, join.relabel)) : [];
           ops = [...holders.map(n=>contentUpdate(n,relabel(n.content,join.relabel,first.label))),
-            ...nodes.map(n=>({command:'remove-block',at:n.path[0]})).reverse(), ...tableOps(first,join.rows,at)];
+            ...nodes.map(n=>({command:'remove-block',at:n.path[0]})).reverse(), ...tableOps({...first,notes:nodes.flatMap(n=>n.notes || [])},join.rows,at)];
           inverse = [{command:'remove-block',at}, ...nodes.flatMap((n,i)=>tableOps(n,cellsOf(current.nodes,n.path[0]),at+i)),
             ...holders.map(n=>contentUpdate(n,n.content))];
           // Table alignment and some numbering are not in the inspected nodes; undo must give back
           // exactly the saved bytes, or the join asks first and clears the undo history.
-          forward = applyCorrections(current.document,ops);
-          try { irreversible = documentRevision(applyCorrections(forward,inverse)) !== current.revision; } catch { irreversible = true; }
+          if (needsCli(ops)) {
+            if (!cli) throw Error('공식 CLI를 찾지 못해 표 주석을 고칠 수 없습니다.');
+            forward = await joinWithNotes(cli,doc,current.document,ops);
+            try { irreversible = documentRevision(await joinWithNotes(cli,doc,forward,inverse)) !== current.revision; }
+            catch { irreversible = true; }
+          } else {
+            forward = applyCorrections(current.document,ops);
+            try { irreversible = documentRevision(applyCorrections(forward,inverse)) !== current.revision; } catch { irreversible = true; }
+          }
           if ((join.captions.length || join.broken || irreversible) && !confirmed)
             return {requiresConfirm:true,captions:join.captions,broken:join.broken,moved:join.moved,irreversible};
           brokenLinks = join.broken;
@@ -189,6 +221,18 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
               // A table without a caption shows no number, like the tables conversion makes.
               : [{command:'insert-table',at,cells:plan.rows},{command:'update-enumeration',path:String(at),enumerated:false}])];
           inverse = [{command:'remove-block',at}, ...nodes.map((n,i)=>insert(n,at+i))];
+        } else if (action === 'table-note' || action === 'table-note-to-body') {
+          const {table,index,contents,reason} = tableNotePlan(action,selected,topNodes(current));
+          if (reason) throw Error(reason);
+          const path = String(table.path[0]);
+          const removeNotes = contents.map((_,i)=>({command:'remove-table-note',path,at:index+i})).reverse();
+          if (action === 'table-note') {
+            ops = [...nodes.map(n=>({command:'remove-block',at:n.path[0]})).reverse(), ...insertNotes(path,index,contents)];
+            inverse = [...removeNotes, ...nodes.map(n=>insert(n,n.path[0]))];
+          } else {
+            ops = [...removeNotes,{command:'insert-block',at:at+1,content:contents[0]}];
+            inverse = [{command:'remove-block',at:at+1},...insertNotes(path,index,contents)];
+          }
         } else if (action === 'footnote') {
           const note = footnotePlan(selected,before.blocks,topNodes(current));
           if (note.reason) throw Error(note.reason);
@@ -266,8 +310,9 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
           targetId = next.blocks.find(x=>x.id===b.id)?.id || next.blocks.find(x=>x.path[0]>=at)?.id || next.blocks.at(-1)?.id;
         }
       }
-      const viaCli = ops.some(op => CLI_ONLY.includes(op.command));
-      if (viaCli && !cli) throw Error('공식 CLI를 찾지 못해 미주나 이름표를 고칠 수 없습니다.');
+      const noteJoin = needsCli(ops) && ops.some(op=>op.command==='insert-table');
+      const viaCli = needsCli(ops) && !noteJoin;
+      if ((viaCli || noteJoin) && !cli) throw Error('공식 CLI를 찾지 못해 표 주석·미주·이름표를 고칠 수 없습니다.');
       let receipt, snapshot, written;
       try {
         const started = performance.now();
@@ -280,7 +325,7 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
           timings.inspectMs = performance.now()-checked;
           written = snapshot.revision === receipt.revision;
         } else {
-          const document = forward || applyCorrections(current.document,ops);
+          const document = forward || (noteJoin ? await joinWithNotes(cli,doc,current.document,ops) : applyCorrections(current.document,ops));
           timings.coreMs = performance.now()-started;
           ({receipt, snapshot, written} = commit(doc,document,before.revision,timings));
         }

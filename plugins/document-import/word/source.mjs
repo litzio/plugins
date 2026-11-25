@@ -39,7 +39,7 @@ async function store(out, revision, source) {
 // out: {file, side, pdf}; converted: {revision, blocks, images, paths} kept from this conversion,
 // or null to read them again; pathsFor(blocks) reads the saved document's block paths.
 // Resolves {state: "ready", source} | {state: "failed", reason} | {state: "none"}.
-export async function prepareSource(out, { converted, pathsFor, signal, exporter = exportPdf }) {
+export async function prepareSource(out, { converted, pathsFor, signal, limits, exporter = exportPdf }) {
   const side = JSON.parse(await optional(readFile(out.side, "utf8")) ?? "null");
   if (!side) return { state: "none" };
   let pdfBytes = await optional(readFile(out.pdf));
@@ -67,7 +67,7 @@ export async function prepareSource(out, { converted, pathsFor, signal, exporter
   let blocks, images, noteTables, paths;
   if (converted?.revision === side.revision) ({ blocks, images, noteTables, paths } = converted);
   else {
-    ({ blocks, images, noteTables } = convert(readDocx(docx), { noteAdmonitions: side.noteAdmonitions === true }));
+    ({ blocks, images, noteTables } = convert(readDocx(docx), { noteAdmonitions: side.noteAdmonitions === true, limits }));
     try { paths = await pathsFor(blocks, side.revision); }
     catch { return { state: "failed", reason: "변환한 뒤 문서가 바뀌어 원본 위치를 연결하지 못했습니다." }; }
   }

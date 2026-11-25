@@ -1,4 +1,4 @@
-import { titleText } from './corrections.mjs';
+import { tableNotePlan, titleText } from './corrections.mjs';
 import { listPlan, tablePlan, unlistPlan, footnotePlan } from './structure.mjs';
 import { LABELS } from '../shared/block-kind.mjs';
 const removable = ['paragraph','heading','list','admonition'];
@@ -53,6 +53,8 @@ export function blockActions(blocks, allBlocks, nodes=[], {fragments, limits, ta
   const adjacent=paths.every((p,i)=>p===paths[0]+i);
   const lists=paths.length>=2&&blocks.every(b=>b.documentKind==='list')&&adjacent&&paths.every(p=>ordered(p)===ordered(paths[0]));
   const joined=paths.length>=2&&blocks.every(b=>b.documentKind==='table')&&adjacent;
+  const joinedComplete=joined&&allBlocks.filter(x=>paths.includes(x.path[0])&&x.noteIndex===undefined)
+    .every(x=>blocks.some(y=>y.id===x.id));
   const sameWidth=joined&&paths.every(p=>tables[p]&&tables[p]===tables[paths[0]]);
   // One mapping block per paragraph, next to each other.
   const paragraphs=only('paragraph')&&adjacent&&paths.length===blocks.length;
@@ -65,6 +67,8 @@ export function blockActions(blocks, allBlocks, nodes=[], {fragments, limits, ta
   const listing=only('paragraph')?plan(listPlan,blocks,nodes,fragments):notText;
   const tabling=only('paragraph')?(limits?plan(tablePlan,blocks,nodes,fragments,limits):{reason:'표 한도를 읽지 못했습니다.'}):notText;
   const noting=only('paragraph')&&complete?footnotePlan(blocks,allBlocks,nodes):notText;
+  const tableNoting=only('paragraph')&&complete?tableNotePlan('table-note',blocks,nodes):notText;
+  const fromTable=single&&first.noteIndex!==undefined;
   const listNode=single&&first.documentKind==='list'&&node(first.path?.[0]);
   const unlisting=listNode?unlistPlan(listNode,allBlocks.filter(x=>x.path[0]===first.path[0])):{};
   const toParagraph=text||single&&first.documentKind==='admonition'||listNode&&!unlisting.reason;
@@ -73,17 +77,20 @@ export function blockActions(blocks, allBlocks, nodes=[], {fragments, limits, ta
     ...[{kind:'paragraph',label:'본문으로'},...Array.from({length:6},(_,i)=>({kind:'heading',level:i+1,label:'제목 '+(i+1)+'로'}))].map(({kind,level,label})=>{
       const same=text&&first.documentKind===kind&&(kind!=='heading'||first.level===level);
       return kind==='paragraph'
-        ? make('kind','paragraph',label,only('paragraph','heading','admonition','list'),complete&&toParagraph&&!same,same?'이미 같은 종류입니다.':paragraphReason,'kind',{kind})
+        ? fromTable
+          ? make('kind','paragraph',label,true,!tableNotePlan('table-note-to-body',blocks,nodes).reason,'표 주석을 찾지 못했습니다.','table-note-to-body')
+          : make('kind','paragraph',label,only('paragraph','heading','admonition','list'),complete&&toParagraph&&!same,same?'이미 같은 종류입니다.':paragraphReason,'kind',{kind})
         : make('kind','h'+level,label,only('paragraph','heading'),complete&&text&&!same,same?'이미 같은 종류입니다.':'본문이나 제목 하나를 골라야 합니다.','kind',{kind,level});
     }),
     make('kind','note','참고로',only('paragraph','heading','admonition'),complete&&single&&first.documentKind==='paragraph',
       single&&first.documentKind==='admonition'?'이미 같은 종류입니다.':'본문 하나를 골라야 합니다.','kind',{kind:'note'}),
     make('kind','title','문서 제목으로',only('paragraph','heading'),complete&&text&&!title.reason,text?title.reason:'본문이나 제목 하나를 골라야 합니다.','title'),
-    make('structure','merge','합치기',only('paragraph')||only('list')||only('table'),complete&&(lists||sameWidth||blocks.length>=2&&blocks.every((b,i)=>b.documentKind==='paragraph'&&b.path[0]===first.path[0]+i)),
+    make('structure','merge','합치기',only('paragraph')||only('list')||only('table'),joinedComplete&&sameWidth||complete&&(lists||blocks.length>=2&&blocks.every((b,i)=>b.documentKind==='paragraph'&&b.path[0]===first.path[0]+i)),
       joined?'열 수가 같은 표만 이을 수 있습니다.':only('table')?'이웃한 표를 둘 이상 골라야 합니다.':'이웃한 문단이나 같은 종류의 목록을 둘 이상 골라야 합니다.','merge'),
     make('structure','split','나누기',only('paragraph'),complete&&single&&first.documentKind==='paragraph'&&first.lines?.length>1,'원본 줄이 둘 이상인 문단 하나를 골라야 합니다.','split'),
     make('structure','list','목록으로',only('paragraph'),!listing.reason,listing.reason,'list'),
     make('structure','table','표로',only('paragraph'),!tabling.reason,tabling.reason,'table'),
+    make('structure','table-note','표 주석으로',only('paragraph'),!tableNoting.reason,tableNoting.reason,'table-note'),
     make('structure','footnote','미주로',only('paragraph'),!noting.reason,noting.reason,'footnote'),
     {...make('remove','remove','문서에서 빼기',true,complete&&blocks.length>0&&!fixed.length,
       fixed.length?'고른 것에 '+fixed.join('·')+' 블록이 있어 뺄 수 없습니다. 본문·제목·목록·참고 상자만 뺄 수 있습니다.':'본문·제목·목록·참고 블록을 골라야 합니다.','remove'),danger:true},

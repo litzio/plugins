@@ -67,6 +67,57 @@ export function detachedTarget(snapshot, heading, action, kind) {
   if (heading?.type !== "heading" || !(action === "title" || action === "remove" || (action === "kind" && kind === "paragraph"))) return;
   return snapshot.find(n => n.type === "target" && n.path[0] === heading.path[0]-1);
 }
+
+export function tableNotePlan(action, selected, nodes) {
+  const paths = [...new Set(selected.map(b => b.path[0]))].sort((a,b) => a-b);
+  const at = paths[0], extracting = action === 'table-note-to-body';
+  const table = nodes.find(n => n.path[0] === (extracting ? at : at-1));
+  if (extracting) {
+    const index = selected[0]?.noteIndex;
+    if (selected.length !== 1 || !Number.isInteger(index) || !table?.notes?.[index])
+      return {reason:'표 주석 원본 상자 하나를 골라야 합니다.'};
+    return {table, index, contents:[table.notes[index]]};
+  }
+  const paragraphs = nodes.filter(n => paths.includes(n.path[0]));
+  if (table?.type !== 'table' || !paths.length || paragraphs.length !== paths.length ||
+      paragraphs.some((n,i) => n.type !== 'paragraph' || n.path[0] !== at+i))
+    return {reason:'표 바로 뒤의 이웃한 본문을 골라야 합니다.'};
+  if (paragraphs.some(n => references(n).length))
+    return {reason:'미주 호출이 든 본문은 표 주석으로 만들 수 없습니다.'};
+  if (paragraphs.some(n => !n.content?.length))
+    return {reason:'글자가 없는 본문은 표 주석으로 만들 수 없습니다.'};
+  return {table, index:table.notes?.length || 0, contents:paragraphs.map(n=>n.content)};
+}
+
+// Preserve the selected source boxes as independent entries while changing their shared document path.
+function moveTableNote(mapping, selected, action, time) {
+  const m = structuredClone(mapping);
+  const {table,index,contents,reason} = tableNotePlan(action, selected, m.snapshotNodes);
+  if (reason) throw Error(reason);
+  const at=table.path[0], ids=new Set(selected.map(b=>b.id)), edited={action,at:time,who:'user'};
+  const extracting=action==='table-note-to-body';
+  const notes=[...(table.notes || [])];
+  notes.splice(index, extracting ? 1 : 0, ...(extracting ? [] : contents));
+  table.notes=notes;
+  for (const b of m.blocks) {
+    const p=b.path[0];
+    if (extracting ? p===at && b.noteIndex===index : ids.has(b.id)) {
+      Object.assign(b, extracting ? {path:[at+1],kind:'paragraph',documentKind:'paragraph',edited}
+        : {path:[at],kind:'footnote',documentKind:'table',noteIndex:index+p-at-1,edited});
+      if (extracting) delete b.noteIndex;
+      else if (b.warning?.code==='table-note-endnote') delete b.warning;
+    } else if (p>at) b.path[0] += extracting ? 1 : -contents.length;
+    else if (extracting && p===at && b.noteIndex>index) b.noteIndex--;
+  }
+  m.blocks.sort((a,b)=>a.path[0]-b.path[0]);
+  const start=m.snapshotNodes.indexOf(table)+1;
+  m.snapshotNodes.splice(start, extracting ? 0 : contents.length,
+    ...(extracting ? [{type:'paragraph',content:contents[0]}] : []));
+  m.snapshotNodes.forEach((n,i)=>{n.path=[i+1];});
+  m.history=[...(m.history || []),edited];
+  return m;
+}
+
 export function previewCorrection(mapping, input, undoBefore) {
   const {action,ids=[],line,kind,level,plan,time = koreanTime()} = input;
   if (action === 'undo') {
@@ -75,6 +126,8 @@ export function previewCorrection(mapping, input, undoBefore) {
   }
   if (!mapping.snapshotNodes) throw Error('저장된 문서를 다시 열어 주세요.');
   const selected = mapping.blocks.filter(b=>ids.includes(b.id));
+  if (action === 'table-note' || action === 'table-note-to-body')
+    return moveTableNote(mapping, selected, action, time);
   const paths = [...new Set(selected.map(b=>b.path[0]))];
   // Several blocks go as one action: the same as removing them one by one from the last,
   // recorded once in the history.
@@ -91,7 +144,7 @@ export function previewCorrection(mapping, input, undoBefore) {
   if(plan?.items) replacement=[{type:'list',ordered:false,items:plan.items.map(content=>({content}))}];
   else if(plan?.rows) replacement=[{type:'table'}];
   else if(plan?.contents) replacement=plan.contents.map(content=>({type:'paragraph',content}));
-  else if(action === 'merge' && first.type === 'table') replacement=[first];
+  else if(action === 'merge' && first.type === 'table') replacement=[{...first,notes:nodes.flatMap(n=>n.notes || [])}];
   else if(action === 'kind' && kind === 'note') replacement=[{...first,type:'admonition',variant:'note'}];
   else if(action === 'merge' && first.type === 'list') replacement=[{...first,items:nodes.flatMap(n=>n.items)}];
   else if(action === 'merge') replacement=[{...first,content:nodes.flatMap((n,i)=>i?[{kind:'text',text:' '},...n.content]:n.content)}];
@@ -99,7 +152,8 @@ export function previewCorrection(mapping, input, undoBefore) {
   else if(action === 'kind') replacement=[{...first,type:kind,level:kind==='heading'?level:undefined}];
   else if(action === 'remove' || action === 'title') replacement=[];
   else throw Error('지원하지 않는 고치기입니다.');
-  const next = transformMapping(mapping,{...input,at,removeCount:nodes.length,newCount:replacement.length,time});
+  const next = transformMapping(mapping,{...input,at,removeCount:nodes.length,newCount:replacement.length,time,
+    tables:action === 'merge' && first.type === 'table' ? nodes : undefined});
   let predicted = structuredClone(mapping.snapshotNodes);
   const start = predicted.findIndex(n=>n.path[0]===at);
   predicted.splice(start,nodes.length,...replacement);
@@ -143,8 +197,12 @@ export function assertMapping(mapping, snapshot) {
   }
   if (nodes.length !== groups.size || nodes.some(n => groups.get(n.path.join('.')) !== n.type))
     throw Error('블록 수나 종류가 대응 자료와 다릅니다.');
+  const tables = new Map(nodes.filter(n=>n.type==='table').map(n=>[n.path[0],n.notes?.length || 0]));
+  if (mapping.blocks.some(b=>b.noteIndex !== undefined &&
+    (!Number.isInteger(b.noteIndex) || b.noteIndex < 0 || b.noteIndex >= (tables.get(b.path[0]) ?? 0))))
+    throw Error('표 주석 위치가 대응 자료와 다릅니다.');
 }
-export function transformMapping(mapping, { action, ids, line, kind, level, plan, at, removeCount, newCount, time }) {
+export function transformMapping(mapping, { action, ids, line, kind, level, plan, at, removeCount, newCount, time, tables }) {
   const m = structuredClone(mapping), selected = m.blocks.filter(b => ids.includes(b.id));
   if (!selected.length) throw Error('고칠 블록을 찾지 못했습니다.');
   const first = selected[0], edited = { action, at: time, who: 'user' };
@@ -154,7 +212,11 @@ export function transformMapping(mapping, { action, ids, line, kind, level, plan
     replacements = plan.blocks.map(b => ({ ...b, edited }));
   } else if (action === 'merge' && ['list','table'].includes(first.documentKind)) {
     // Every source item or table keeps its own boxes; they now share the first one's path.
-    replacements = selected.map(b => ({ ...b, path:[at], edited }));
+    replacements = selected.map(b => ({ ...b, path:[at], edited,
+      ...(b.noteIndex !== undefined && tables ? {
+        noteIndex:b.noteIndex + tables.filter(t=>t.path[0]<b.path[0]).reduce((sum,t)=>sum+(t.notes?.length || 0),0),
+      } : {}),
+    }));
   } else if (action === 'merge') {
     const lines = selected.flatMap(b => b.lines);
     replacements = [{ ...first, kind:'paragraph', documentKind:'paragraph', lines, boxes:boxesFor(lines), edited }];

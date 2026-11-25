@@ -60,7 +60,7 @@ test('F-03 table note marker is superscript without changing ordinary paragraphs
  assert.deepEqual(blocks[2].content,[{kind:'text',text:'NOTE— Explanation'}]);
 });
 
-test('F-03 LSR local table notes retain individual paragraphs and superscript labels',async()=>{
+test('F-03 T-15 LSR local table notes share the table path and retain individual boxes and superscript labels',async()=>{
  const {authoring}=await import('../authoring.mjs');
  const notes=result.blocks.filter(b=>b.tableNote);
  assert.deepEqual(notes.map(b=>b.page+1),[4,4,5,6,7]);
@@ -70,11 +70,26 @@ test('F-03 LSR local table notes retain individual paragraphs and superscript la
  assert.ok(pair[0].boxes[0].bottom<=pair[1].boxes[0].top);
  for(const n of notes) {
    const index=output.units.findIndex(u=>u.sources.includes(n.id));
-   assert.equal(output.authoring.inputs[0].blocks[index].content[0].kind,'superscript');
+   const unit=output.units[index], authored=output.authoring.inputs[0].blocks[index];
+   assert.equal(unit.kind,'table');
+   assert.ok(unit.sources.includes(n.tableNoteFor));
+   assert.equal(authored.notes[unit.tableNotes.indexOf(n.id)][0].kind,'superscript');
    assert.equal(output.units.filter(u=>u.sources.includes(n.id)).length,1);
    assert.ok(n.lines.every(l=>l.box.top>=n.boxes[0].top && l.box.bottom<=n.boxes[0].bottom));
  }
  assert.equal(result.stats.chars_unaccounted,0);
+});
+
+test('F-03 T-15 a recognized table note containing a body endnote stays in the body',async()=>{
+ const {authoring}=await import('../authoring.mjs');
+ const sample=structuredClone(result);
+ const note=sample.blocks.find(b=>b.tableNoteFor);
+ note.text+=' [^999]';
+ sample.blocks.push({id:'endnote',kind:'footnote',text:'[^999]: Definition.',page:note.page});
+ const {units,authoring:input}=authoring(sample);
+ const at=units.findIndex(u=>u.sources.includes(note.id));
+ assert.deepEqual(units[at],{kind:'paragraph',sources:[note.id],keptTableNote:true});
+ assert.deepEqual(input.inputs[0].blocks[at].content.at(-1),{kind:'footnote',label:'999'});
 });
 
 test('F-03 F-05 local labels require raised small glyphs and leave ordinary values alone',async()=>{
