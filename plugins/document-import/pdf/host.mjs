@@ -79,15 +79,16 @@ export function activate(context = {}) {
           if (s.pdf.sha256 === digest) {
             const current = await inspect(doc);
             documentStatus = current.status;
-            cached = { ...s, stale: current.revision !== s.revision };
+            // A document whose content changed elsewhere while closed keeps its correspondence
+            // when its blocks keep their number and kinds.
+            cached = { ...s, stale: false };
+            try { assertMapping(s,current); } catch { cached.stale=true; }
             if (!cached.stale) {
-              try { assertMapping(s,current); } catch { cached.stale=true; }
-              if (!cached.stale) {
-                cached.snapshotNodes=snapshotNodes(current);
-                cached.verificationPending=false;
-                await writeFile(side,JSON.stringify(cached));
-                cached.tables=tableShapes(current.nodes);
-              }
+              cached.revision = current.revision;
+              cached.snapshotNodes=snapshotNodes(current);
+              cached.verificationPending=false;
+              await writeFile(side,JSON.stringify(cached));
+              cached.tables=tableShapes(current.nodes);
             }
           }
         } catch (e) {
@@ -117,6 +118,11 @@ export function activate(context = {}) {
       },
       // The screen closed: the handler forgets the document it remembered.
       forget: () => { correct.forget(); return {ok:true}; },
+      // The comparison view saved content edits, or the file may have changed elsewhere.
+      follow: async (input) => {
+        try { return await correct.follow(input); }
+        catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
+      },
       suggest: async ({ id }) => {
         const s = sessions.get(id);
         if (!s)

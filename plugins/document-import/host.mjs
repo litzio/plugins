@@ -16,6 +16,7 @@ export function activate(context) {
       "pdf-correct": input => pdf.operations.correct(input),
       "pdf-correctionResult": input => pdf.operations.correctionResult(input),
       "pdf-forget": input => pdf.operations.forget(input),
+      "pdf-follow": input => pdf.operations.follow(input),
       "word-load": input => word.operations.load(input),
       "word-convert": input => word.operations.convert(input),
       "word-progress": input => word.operations.progress(input),
@@ -25,6 +26,7 @@ export function activate(context) {
       "word-mapping": input => word.operations.mapping(input),
       "word-source": input => word.operations.source(input),
       "word-sourcePdf": input => word.operations.sourcePdf(input),
+      "word-follow": input => word.operations.follow(input),
       async recent({ folders = [] }) {
         const [pdfList, wordList] = await Promise.allSettled([
           pdf.operations.recent({ folders }),
