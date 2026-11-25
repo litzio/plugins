@@ -1,6 +1,7 @@
 import { WARNING_KINDS } from "./rules.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
+import Flow, { FlowToggle } from "../shared/flow.jsx";
 import Compare from "../shared/compare.jsx";
 
 const STEPS = ["구조 읽기", "그림 만들기", "문서 저장"];
@@ -16,6 +17,10 @@ const key = path => path.join(".");
 
 function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, onHome }) {
   const { useState, useEffect, useRef, useMemo, useCallback } = React;
+  const [seen, setSeen] = useState(new Set());
+  const markSeen = React.useCallback(id => setSeen(old => old.has(id) ? old : new Set([...old, id])), []);
+  const [expanded,setExpanded] = useState(false);
+  const flowId = React.useId();
   const [file, setFile] = useState(null);
   const [saved, setSaved] = useState(null);
   const [run, setRun] = useState(null); // {step, progress, failed}
@@ -38,7 +43,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   }, [source, saved]);
   const checks = useMemo(() => {
     const ids = new Set(blocks.map(b => b.id));
-    return warnings.map(w => ({ blockId: w.path && ids.has(key(w.path)) ? key(w.path) : null, path: w.path, reason: w.label + " · " + w.detail }));
+    return warnings.map((w,flowId) => ({ flowId, blockId: w.path && ids.has(key(w.path)) ? key(w.path) : null, path: w.path, reason: w.label + " · " + w.detail }));
   }, [blocks]);
   const compareState = useCallback(s => {
     setViewState(s.state);
@@ -101,6 +106,8 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       return;
     }
     try { rememberFolder(f.folder); } catch {}
+    setExpanded(false);
+    setSeen(new Set());
     setFile(f);
     metrics.current = { opened: performance.now(), compareFrom: performance.now() };
     if (f.saved || f.documentOnly) { setSaved(f.saved); setRun(null); return; }
@@ -108,6 +115,8 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   }
 
   async function convert(f, replacing) {
+    setExpanded(false);
+    setSeen(new Set());
     setSaved(null); setTarget(null); setViewState(null); setError("");
     let step = 0;
     const stage = (index, progress) => { step = index; setRun({ step: index, progress }); };
@@ -177,9 +186,10 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
 
   if (run) {
     return (
-      <ui.ScreenLayout width="narrow" back={{ label: "변환한 문서", onBack: home, disabled: busy }} description={file.name}
+      <ui.ScreenLayout width="full" back={{ label: "변환한 문서", onBack: home, disabled: busy }} description={file.name}
         status={<ui.Status tone={run.failed ? "error" : "progress"} label={run.failed ? STEPS[run.step] + " 실패" : STEPS[run.step] + " 중"} />}
         actions={run.failed ? chooseButton(true) : undefined}>
+        <Flow React={React} ui={ui} mode="run" kind="word" phase={STEPS[run.step]} failed={run.failed} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", margin: "var(--space-8) 0" }}>
           <ui.Steps steps={STEPS} current={run.step} />
           {run.failed ? <ui.Notice tone="error">{error}</ui.Notice> : <ui.Progress value={run.progress?.value} label={run.progress?.label || STEPS[run.step]} />}
@@ -188,6 +198,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     );
   }
 
+  const flow = {kind:"word", documentOnly:!saved, source:source?.state === "ready" && !pdf ? "preparing" : source?.state, viewed:seen.size > 0, remaining:warnings.filter((_,i)=>!seen.has(i)).length};
   const comparing = !!pdf && source?.state === "ready";
   const items = warnings.map((w, i) => ({ id: String(i), label: w.label, details: [w.detail], group: w.kind }));
   const notice = !saved ? "확인할 곳 목록이 없습니다. 다시 변환하면 목록을 만듭니다."
@@ -199,6 +210,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     <ui.ScreenLayout fillHeight back={{ label: "변환한 문서", onBack: home }} description={file.name}
       status={<ui.Status tone={saved ? (warnings.length ? "warning" : "ok") : "neutral"} label={saved ? "변환 완료 · 확인할 곳 " + warnings.length : "확인할 곳 목록 없음"} />}
       actions={<>
+        <FlowToggle React={React} ui={ui} state={flow} open={expanded} controls={flowId} toggle={()=>setExpanded(!expanded)} />
         <ui.Button onClick={openSaved}>문서 열기</ui.Button>
         <ui.Button variant="destructive" disabled={!!saved?.sourceMissing} onClick={reconvert}>다시 변환</ui.Button>
         {chooseButton(false)}
@@ -209,9 +221,10 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
 .word-import-doc{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column}
 @media (max-width:800px){.word-import-pair{flex-direction:column}.word-import-checks{flex:0 0 auto;max-height:40%}}
 `}</style>
+      <Flow React={React} ui={ui} mode="compare" {...flow} expanded={expanded} controls={flowId} />
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {notice && <ui.Notice tone="warning">{notice}</ui.Notice>}
-      {comparing ? <Compare React={React} ui={ui} pdf={pdf} pages={source.source.pages} blocks={blocks}
+      {comparing ? <Compare onCheckViewed={markSeen} React={React} ui={ui} pdf={pdf} pages={source.source.pages} blocks={blocks}
         excluded={source.source.excluded} document={file.document} revision={source.source.revision}
         checks={checks} legend={LEGEND} sourceLabel="원본 쪽" onViewState={compareState} /> : <>
       {(source?.state === "preparing" || source?.state === "ready") && <div><ui.Status tone="progress" label="원본 쪽 준비 중" /></div>}
@@ -220,7 +233,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
         <section className="word-import-checks" aria-label="확인할 곳">
           <h2 className="type-section-title">확인할 곳</h2>
           {saved && (items.length
-            ? <ui.ItemList items={items} groups={GROUPS} onOpen={item => show(warnings[+item.id])} />
+            ? <ui.ItemList items={items} groups={GROUPS} onOpen={item => { markSeen(+item.id); show(warnings[+item.id]); }} />
             : <ui.EmptyState title="확인할 곳이 없습니다" description="워드 문서의 모든 내용을 그대로 옮겼습니다." />)}
         </section>
         <div className="word-import-doc">

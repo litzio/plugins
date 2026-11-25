@@ -1,4 +1,5 @@
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
+import Flow from "./shared/flow.jsx";
 import PdfScreen from "./pdf/screen.jsx";
 import WordScreen from "./word/screen.jsx";
 import workerSource from "./shared/worker-source.js";
@@ -102,9 +103,10 @@ export default function Screen(props) {
   });
   const chooseButton = <ui.Button variant="default" disabled={choosing} onClick={choose}>문서 고르기</ui.Button>;
   return (
-    <ui.ScreenLayout width="narrow"
+    <ui.ScreenLayout width="full"
       status={recent === null ? <ui.Status tone="progress" label="변환한 문서 목록 읽는 중" /> : undefined}
       actions={items.length > 0 ? chooseButton : undefined}>
+      <Flow React={React} ui={ui} />
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {recent !== null && (
         <section ref={content} aria-label="변환한 문서">

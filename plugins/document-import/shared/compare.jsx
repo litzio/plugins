@@ -47,7 +47,7 @@ const helpStyle = { position: "absolute", top: "100%", left: 0, width: 300, padd
 // handle (optional ref): gets {selected(), stopFollow(), show(block, focus), pick(block)}.
 export default function Compare({
   React, ui, pdf, pages, blocks, excluded = [], excludedPages, document, revision, reloadKey,
-  checks = [], legend, sourceLabel, busy = false, stale = false, guide, edit, handle, onViewState,
+  checks = [], legend, sourceLabel, busy = false, stale = false, guide, edit, handle, onViewState, onCheckViewed,
 }) {
   const { useState, useRef, useEffect, useMemo, useLayoutEffect, useCallback } = React;
   const [browseScale, setBrowseScale] = useState(() => { try { const value = Number(localStorage.getItem(SCALE_KEY)); return browseScales.includes(value) ? value : 0.75; } catch { return 0.75; } });
@@ -217,6 +217,8 @@ export default function Compare({
   // Two checks may share a block; the one moved to stays current while its block is selected.
   const atCheck = checkAt >= 0 && checks[checkAt] && (checks[checkAt].blockId ? checks[checkAt].blockId === selected?.id : !selected);
   const checkIndex = atCheck ? checkAt : selected ? checks.findIndex(c => c.blockId && c.blockId === selected.id) : -1;
+  const visibleCheck = checks[checkIndex];
+  useEffect(() => { if (visibleCheck) onCheckViewed?.(visibleCheck.flowId); }, [visibleCheck, onCheckViewed]);
   function moveToCheck(index) {
     const c = checks[index];
     if (!c || stale || busy) return;
