@@ -173,12 +173,14 @@ function bodyArea(s, pageCount) {
 // blocks: the authoring blocks in order (figures as figures, even if their picture failed).
 // images: the conversion's picture list, which tells on which side of a figure its caption was.
 // Returns one entry per block: {page, boxes} or null when it has no place in the PDF.
-export function locate(blocks, pdf, images = []) {
+export function locate(blocks, pdf, images = [], noteTables = new Map()) {
+  if (noteTables.size) blocks = blocks.map((block, i) => noteTables.get(i) ?? block);
   const s = textStream(pdf.pages), text = s.text;
   const anchors = headingAnchors(blocks, pdf.outline || [], s);
   const nextAnchor = [];
   for (let i = blocks.length - 1, next = text.length; i >= 0; i--) { nextAnchor[i] = next; if (anchors.has(i)) next = anchors.get(i); }
   const spans = new Array(blocks.length).fill(null), captions = new Array(blocks.length).fill(null);
+  const noteSpans = new Map();
   let cursor = 0;
   blocks.forEach((b, i) => {
     const limit = anchors.size ? nextAnchor[i] : Math.min(text.length, cursor + 20000);
@@ -209,6 +211,7 @@ export function locate(blocks, pdf, images = []) {
     if (!m) return;
     let [first, end] = [m.first, m.end];
     if (b.kind === "table") {
+      if (noteTables.has(i)) noteSpans.set(i, [first, end]);
       // The caption above or below the table belongs to its box.
       const cap = captionText(b);
       if (cap) {
@@ -246,6 +249,7 @@ export function locate(blocks, pdf, images = []) {
     }
     if (region) out[i] = [region];
   });
+  for (const [i, [first, end]] of noteSpans) out[i] = boxesOf(s, first, end);
 
   return out.map(boxes => boxes?.length
     ? { page: boxes[0].page, boxes: boxes.map(x => ({ page: x.page, x0: round(x.x0), top: round(x.top), x1: round(x.x1), bottom: round(x.bottom) })) }
@@ -261,4 +265,41 @@ export function locateStats(blocks, places) {
     if (places[i]) k.found++; else k.missing++;
   });
   return stats;
+}
+
+// Fill a missing figure only when its measured size identifies a single PDF draw between the
+// two text anchors. Allow a two-page window when Word pushed the picture across a page break.
+export async function fillFigurePlaces(blocks, places, images, readGraphics) {
+  const anchors = (i, step) => {
+    for (let j = i + step; j >= 0 && j < blocks.length; j += step) {
+      if (blocks[j].kind === "target") continue;
+      if (blocks[j].kind === "figure") return;
+      return step < 0 ? places[j]?.boxes.at(-1) : places[j]?.boxes[0];
+    }
+  };
+  const windows = images.flatMap(({ block, part, extent }) => {
+    if (places[block] || !extent || !part) return [];
+    const before = anchors(block, -1), after = anchors(block, 1);
+    if (!before || !after || after.page < before.page || after.page > before.page + 1) return [];
+    const kind = /\.(emf|wmf)$/i.test(part) ? "metafile" : "raster";
+    return [{ block, extent, kind, before, after }];
+  });
+  if (!windows.length) return;
+  const pages = new Set(windows.flatMap(({ before, after }) => [before.page, after.page]));
+  const graphics = await readGraphics([...pages]);
+  const tolerance = 0.75; // Word and PDF round to different units.
+  const used = new Map();
+  const matches = windows.map(({ block, extent: [width, height], kind, before, after }) => {
+    const candidates = graphics.filter(g => g.kind === kind && g.page >= before.page && g.page <= after.page &&
+      (g.page !== before.page || g.top >= before.bottom - tolerance) &&
+      (g.page !== after.page || g.bottom <= after.top + tolerance) &&
+      Math.abs(g.x1 - g.x0 - width) <= tolerance && Math.abs(g.bottom - g.top - height) <= tolerance);
+    for (const g of candidates) used.set(g, (used.get(g) || 0) + 1);
+    return { block, candidates };
+  });
+  for (const { block, candidates } of matches) {
+    if (candidates.length !== 1 || used.get(candidates[0]) !== 1) continue;
+    const { page, x0, top, x1, bottom } = candidates[0];
+    places[block] = { page, boxes: [{ page, x0: round(x0), top: round(top), x1: round(x1), bottom: round(bottom) }] };
+  }
 }

@@ -13,6 +13,7 @@ const REPLACE = {
 };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const LEGEND = ["heading", "paragraph", "list", "table", "figure", "margin"];
+const NOTE_LEGEND = ["heading", "paragraph", "list", "note", "table", "figure", "margin"];
 const key = path => path.join(".");
 
 function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, onHome }) {
@@ -39,7 +40,8 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const blocks = useMemo(() => {
     const first = new Map();
     for (const w of warnings) if (w.path && !first.has(key(w.path))) first.set(key(w.path), w);
-    return (source?.source?.blocks || []).map(b => ({ ...b, id: key(b.path), warning: first.has(key(b.path)) ? { reason: first.get(key(b.path)).detail } : undefined }));
+    return (source?.source?.blocks || []).map(b => ({ ...b, kind: b.kind === "admonition" ? "note" : b.kind,
+      id: key(b.path), warning: first.has(key(b.path)) ? { reason: first.get(key(b.path)).detail } : undefined }));
   }, [source, saved]);
   const checks = useMemo(() => {
     const ids = new Set(blocks.map(b => b.id));
@@ -226,7 +228,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       {notice && <ui.Notice tone="warning">{notice}</ui.Notice>}
       {comparing ? <Compare onCheckViewed={markSeen} React={React} ui={ui} pdf={pdf} pages={source.source.pages} blocks={blocks}
         excluded={source.source.excluded} document={file.document} revision={source.source.revision}
-        checks={checks} legend={LEGEND} sourceLabel="원본 쪽" onViewState={compareState} /> : <>
+        checks={checks} legend={blocks.some(b => b.kind === "note") ? NOTE_LEGEND : LEGEND} sourceLabel="원본 쪽" onViewState={compareState} /> : <>
       {(source?.state === "preparing" || source?.state === "ready") && <div><ui.Status tone="progress" label="원본 쪽 준비 중" /></div>}
       {source?.state === "failed" && <ui.Notice tone="warning">{source.reason}</ui.Notice>}
       <div className="word-import-pair">

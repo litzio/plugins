@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { mkdtemp, copyFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { locate, locateStats, normalize } from "../locate.mjs";
+import { fillFigurePlaces, locate, locateStats, normalize } from "../locate.mjs";
 import { readDocx } from "../docx.mjs";
 import { convert } from "../rules.mjs";
 
@@ -83,6 +83,35 @@ test("only letters and digits are compared", () => {
   assert.equal(normalize("Table 3 – Ｓupply, ﬁlter (A/B)"), "table3supplyfilterab");
 });
 
+test("a missing inline picture across a page break needs one size-matched PDF draw inside the text anchors", async () => {
+  const blocks = [para("Before the figure"), { kind: "figure" }, para("After the figure")];
+  const pdf = { pages: [page(["Before the figure", 700]), page(["After the figure", 300])] };
+  const places = locate(blocks, pdf);
+  const before = structuredClone(places);
+  const images = [{ block: 1, part: "media/pic.emf", extent: [120, 90] }];
+  const match = { kind: "metafile", page: 1, x0: 72, top: 150, x1: 192, bottom: 240 };
+  const late = { ...match, top: 310, bottom: 400 };
+  const tooWide = { ...match, x1: 199 };
+  await fillFigurePlaces(blocks, places, images, async () => [match, { ...match, top: 40, bottom: 130 }]);
+  assert.deepEqual(places, before);
+  await fillFigurePlaces(blocks, places, images, async pages => {
+    assert.deepEqual(pages, [0, 1]);
+    return [match, late, tooWide, { ...match, kind: "raster" }];
+  });
+  assert.deepEqual(places[1], { page: 1, boxes: [{ page: 1, x0: 72, top: 150, x1: 192, bottom: 240 }] });
+  assert.deepEqual([places[0], places[2]], [before[0], before[2]]);
+});
+
+test("a note points at both original cells without a repeated caption", () => {
+  const note = { kind: "admonition", content: t("Settings are retained") };
+  const sourceTable = { kind: "table", caption: t("Readings"), enumerator: "4",
+    rows: [[t("Note:"), t("Settings are retained")]] };
+  const pdf = { pages: [page(["Note:", 80], ["Settings are retained", 80, 160], ["Table 4 Readings", 100], ["After the table", 125])] };
+  const places = locate([note, para("After the table")], pdf, [], new Map([[0, sourceTable]]));
+  assert.deepEqual(places[0], { page: 0, boxes: [{ page: 0, x0: 72, top: 80, x1: 265, bottom: 90 }] });
+  assert.equal(places[1].boxes[0].top, 125);
+});
+
 // Needs Word on Windows; skipped elsewhere and when Word is not installed.
 test("Word exports the sample and most of its blocks are found (Windows with Word only)", { skip: process.platform !== "win32" }, async t => {
   const { exportPdf } = await import("../source-pdf.mjs");
@@ -94,10 +123,11 @@ test("Word exports the sample and most of its blocks are found (Windows with Wor
     const r = await exportPdf(docx, pdf);
     if (/Word를 찾을 수 없어/.test(r.error || "")) return t.skip("Word is not installed");
     assert.equal(r.error, undefined);
-    const { blocks, images } = convert(readDocx(readFileSync(docx)));
-    const places = locate(blocks, await readPdfText(pdf), images);
+    const { blocks, images, noteTables } = convert(readDocx(readFileSync(docx)));
+    const places = locate(blocks, await readPdfText(pdf), images, noteTables);
     const stats = locateStats(blocks, places);
     assert.equal(stats.table.found, 1);
+    assert.equal(stats.admonition.found, 1);
     assert.equal(stats.figure.found, 2);
     assert.ok(stats.heading.found >= 4, JSON.stringify(stats));
   } finally {
