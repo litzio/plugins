@@ -1,4 +1,4 @@
-import { PluginPublicError } from "@litzio/plugin-sdk";
+import { PluginPublicError, DOCUMENT_AUTHORING_LIMITS } from "@litzio/plugin-sdk";
 import { readFile, writeFile, rename, stat, readdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { backupOutput, documentWithoutMapping, recordImages, finishReplacement } from "./output-files.mjs";
@@ -11,6 +11,7 @@ import { convert, suggestExcludedPages } from "./rules.mjs";
 import { listConverted } from "./recent.mjs";
 import { correctionHandler } from "./correct-host.mjs";
 import { snapshotNodes, assertMapping } from "./corrections.mjs";
+import { tableShapes } from "./structure.mjs";
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 export function activate(context = {}) {
   const correct = correctionHandler({cli:context.cli});
@@ -61,6 +62,7 @@ export function activate(context = {}) {
         }
       },
       load: async ({ path: p, cachedOnly = false }) => {
+        correct.forget();
         if (path.extname(p).toLowerCase() !== ".pdf")
           throw new PluginPublicError(
             "pdf_import_failed",
@@ -84,6 +86,7 @@ export function activate(context = {}) {
                 cached.snapshotNodes=snapshotNodes(current);
                 cached.verificationPending=false;
                 await writeFile(side,JSON.stringify(cached));
+                cached.tables=tableShapes(current.nodes);
               }
             }
           }
@@ -109,8 +112,11 @@ export function activate(context = {}) {
           cached,
           missingMapping: !cached && await documentWithoutMapping({doc, side}),
           documentStatus,
+          limits: DOCUMENT_AUTHORING_LIMITS,
         };
       },
+      // The screen closed: the handler forgets the document it remembered.
+      forget: () => { correct.forget(); return {ok:true}; },
       suggest: async ({ id }) => {
         const s = sessions.get(id);
         if (!s)
@@ -122,6 +128,7 @@ export function activate(context = {}) {
         return { excludedPages: suggestExcludedPages(raw) };
       },
       convert: async ({ id, excludedPages = [] }) => {
+        correct.forget();
         const s = sessions.get(id);
         if (!s)
           throw new PluginPublicError(
@@ -228,7 +235,7 @@ export function activate(context = {}) {
         let cleanupError;
         try { await finishReplacement(s, data); }
         catch { cleanupError = "이전 변환 결과를 정리하지 못했습니다."; }
-        return { ...data, documentStatus:current.status, documentBytes: info.size, cleanupError };
+        return { ...data, tables: tableShapes(current.nodes), documentStatus:current.status, documentBytes: info.size, cleanupError };
       },
     },
     dispose() {

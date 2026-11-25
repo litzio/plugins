@@ -185,7 +185,7 @@ test('SDK integration: S-02 figure/table references survive split, merge, kind, 
     await act('undo',{ids:['b0']});assert.equal(await readFile(doc,'utf8'),initial);
   } finally {await rm(dir,{recursive:true,force:true});}
 });
-test('SDK integration: H-01 document title through the official CLI, replacement, undo and later edits', {skip:!args},async()=>{
+test('SDK integration: H-01 document title through the SDK, replacement, undo and later edits', {skip:!args},async()=>{
   const {inspectDocument}=await import('../document-io.mjs');
   const {correctionHandler}=await import('../correct-host.mjs');
   const cli={bin:process.execPath,args:JSON.parse(args)}, exec=promisify(execFile);

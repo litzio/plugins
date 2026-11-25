@@ -15,6 +15,7 @@ export function activate(context) {
       "pdf-mapping": input => pdf.operations.mapping(input),
       "pdf-correct": input => pdf.operations.correct(input),
       "pdf-correctionResult": input => pdf.operations.correctionResult(input),
+      "pdf-forget": input => pdf.operations.forget(input),
       "word-load": input => word.operations.load(input),
       "word-convert": input => word.operations.convert(input),
       "word-progress": input => word.operations.progress(input),

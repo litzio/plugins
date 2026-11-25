@@ -9,7 +9,7 @@ export const WARNING_KINDS = [
   ["textbox", "글상자"],
   ["other", "바꿔 적은 그 밖의 것"],
 ];
-export const LIMITS = { tableRows: 100, tableColumns: 32, listItems: 100 };
+const LIST_ITEMS = 100;
 
 const SYMBOL = {
   0x22: "∀", 0x24: "∃", 0x27: "∋", 0x2a: "∗", 0x2d: "−", 0x40: "≅", 0x5c: "∴", 0x5e: "⊥", 0x7e: "∼",
@@ -112,7 +112,8 @@ function tidy(nodes) {
 }
 const textOf = nodes => nodes.map(n => n.text ?? (n.children ? textOf(n.children) : n.kind === "break" ? " " : "")).join("");
 
-export function convert(doc, { noteAdmonitions = true } = {}) {
+// limits: the table limits of the document authoring the SDK exports (DOCUMENT_AUTHORING_LIMITS).
+export function convert(doc, { noteAdmonitions = true, limits } = {}) {
   const units = [], warnings = [], records = new Map(), toc = [];
   let heading = "";
   const warn = (kind, unit, label, detail) => warnings.push({ kind, unit, label: short(label || heading || "문서 처음"), detail });
@@ -302,7 +303,7 @@ export function convert(doc, { noteAdmonitions = true } = {}) {
       while (listRun.length && listRun.at(-1).level > level) listRun.pop();
       const top = listRun.at(-1);
       const fits = l => l.list.ordered === info.ordered && l.list.style === info.style && l.list.delimiter === info.delimiter &&
-        (!info.ordered || info.start === (l.list.start ?? 1) + l.list.items.length) && l.list.items.length < LIMITS.listItems;
+        (!info.ordered || info.start === (l.list.start ?? 1) + l.list.items.length) && l.list.items.length < LIST_ITEMS;
       let index;
       if (top && top.level === level && fits(top)) {
         top.list.items.push(item);
@@ -405,13 +406,15 @@ export function convert(doc, { noteAdmonitions = true } = {}) {
     if (!rows.length) rows = [[[]]];
     rows = rows.map(r => { const copy = [...r]; while (copy.length < width) copy.push([]); return copy; });
     const label = cap.caption ? plain(unit.caption.item.runs) : unit.heading + " 아래 표";
-    const wide = width > LIMITS.tableColumns;
+    if (!limits) throw Error("표 한도를 받지 못했습니다.");
+    const wide = width > limits.tableColumns;
     if (wide) {
-      rows = rows.map(r => [...r.slice(0, LIMITS.tableColumns - 1), tidy(r.slice(LIMITS.tableColumns - 1).flatMap((c, i) => i ? [{ kind: "text", text: " / " }, ...c] : c))]);
-      width = LIMITS.tableColumns;
+      rows = rows.map(r => [...r.slice(0, limits.tableColumns - 1), tidy(r.slice(limits.tableColumns - 1).flatMap((c, i) => i ? [{ kind: "text", text: " / " }, ...c] : c))]);
+      width = limits.tableColumns;
     }
-    const [header, ...body] = rows, chunks = [];
-    for (let i = 0; i < Math.max(1, body.length); i += LIMITS.tableRows - 1) chunks.push([header, ...body.slice(i, i + LIMITS.tableRows - 1)]);
+    // Each part repeats the header row and stays within both the row and the cell limit.
+    const [header, ...body] = rows, chunks = [], perPart = Math.min(limits.tableRows, Math.floor(limits.tableCells / width)) - 1;
+    for (let i = 0; i < Math.max(1, body.length); i += perPart) chunks.push([header, ...body.slice(i, i + perPart)]);
     let first;
     chunks.forEach((chunk, n) => {
       const index = emit(unit, { kind: "table", rows: chunk.map(r => r.map(c => c.length ? c : "")),
@@ -424,8 +427,8 @@ export function convert(doc, { noteAdmonitions = true } = {}) {
     if (flags.textbox) warn("textbox", first, label, "표 안의 글상자 " + flags.textbox + "개");
     if (flags.hidden) warn("other", first, label, "숨긴 글자 " + flags.hidden + "곳을 옮기지 않았습니다.");
     if (flags.nested) warn("other", first, label, "표 안의 표를 칸의 글자로 이어 적었습니다.");
-    if (wide) warn("other", first, label, "열이 " + LIMITS.tableColumns + "개를 넘어 남은 열을 마지막 열에 이어 적었습니다.");
-    if (chunks.length > 1) warn("other", first, label, "행이 " + LIMITS.tableRows + "개를 넘어 표 " + chunks.length + "개로 나눴습니다.");
+    if (wide) warn("other", first, label, "열이 " + limits.tableColumns + "개를 넘어 남은 열을 마지막 열에 이어 적었습니다.");
+    if (chunks.length > 1) warn("other", first, label, "행이 " + (perPart + 1) + "개를 넘어 표 " + chunks.length + "개로 나눴습니다.");
     moved.forEach((image, n) => {
       const index = figure(unit, image, { enumerated: false, caption: "" }, label);
       if (n === 0) warn("image-moved", index, label, "그림 " + moved.length + "개");

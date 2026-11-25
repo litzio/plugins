@@ -2,7 +2,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { readDocx } from "../docx.mjs";
-import { convert, withImages, textOf } from "../rules.mjs";
+import { convert as convertWith, withImages, textOf } from "../rules.mjs";
+// The SDK's DOCUMENT_AUTHORING_LIMITS; the Host passes the real value.
+const limits = { tableRows: 500, tableColumns: 32, tableCells: 8000 };
+const convert = (doc, options = {}) => convertWith(doc, { limits, ...options });
 import { blockPaths } from "../output.mjs";
 import { readZip } from "../zip.mjs";
 
@@ -171,4 +174,20 @@ test("block paths come from the saved read model in order, and a different count
   nodes.splice(3, 0, { path: [3, 1], type: "caption" });
   assert.deepEqual(blockPaths(nodes, blocks), blocks.map((b, i) => [i + 1]));
   assert.throws(() => blockPaths(nodes.slice(1), blocks), /블록 수/);
+});
+
+test("a long Word table stays one table up to the SDK's table limits and splits only beyond them", () => {
+  const p = text => ({ type: "p", runs: [{ text }], textboxes: [], bookmarks: [] });
+  const table = (rows, cols) => ({ type: "table", bookmarks: [], rows: Array.from({ length: rows }, (_, r) => Array.from({ length: cols }, (_, c) => ({ items: [p(r + ":" + c)] }))) });
+  const tables = r => r.blocks.filter(b => b.kind === "table");
+  // 120 rows was cut at 100 before; it is one table now.
+  assert.deepEqual(tables(convert({ items: [table(120, 3)] })).map(b => b.rows.length), [120]);
+  // Beyond 500 rows the header repeats on each part.
+  const long = convert({ items: [table(600, 2)] });
+  assert.deepEqual(tables(long).map(b => b.rows.length), [500, 101]);
+  assert.deepEqual(tables(long)[1].rows[0], tables(long)[0].rows[0]);
+  assert.match(long.warnings.at(-1).detail, /행이 500개를 넘어 표 2개로/);
+  // 32 columns stay within 8,000 cells: 250 rows to a part.
+  assert.deepEqual(tables(convert({ items: [table(300, 32)] })).map(b => b.rows.length), [250, 51]);
+  assert.deepEqual(tables(convertWith({ items: [table(30, 2)] }, { limits: { tableRows: 10, tableColumns: 32, tableCells: 8000 } })).map(b => b.rows.length), [10, 10, 10, 3]);
 });

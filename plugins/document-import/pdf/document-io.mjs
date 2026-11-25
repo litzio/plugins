@@ -1,12 +1,25 @@
-import { machineNodes, getEditableDocument, mergeParagraphWithPrevious, splitParagraph,
-  convertBlock, updateHeadingLevel, removeBlock, insertParagraph, insertHeading, insertList, updateList } from '@litzio/plugin-sdk';
+import { machineNodes, getEditableDocument, mergeParagraphWithPrevious, splitParagraph, serialize,
+  convertBlock, updateHeadingLevel, removeBlock, insertParagraph, insertHeading, insertList, updateList,
+  insertAdmonition, insertTable, updateTableCaption, updateLabel, updateEnumerator, updateEnumeration,
+  updateDocumentTitle, updateParagraphInlineContent, updateHeadingInlineContent, updateAdmonitionInlineContent } from '@litzio/plugin-sdk';
 import { readDocument } from '@litzio/plugin-sdk/node';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 export const documentNodes = document => machineNodes(getEditableDocument(document));
-export function inspectDocument(file) {
-  const snapshot = readDocument(file), editable = getEditableDocument(snapshot.document);
-  return {...snapshot, status:editable.status, title:editable.title ?? null, nodes:machineNodes(editable)};
+// A saved document's revision is the SHA-256 of its bytes; reading it does not parse the document.
+export const fileRevision = file => createHash('sha256').update(readFileSync(file)).digest('hex');
+// The revision the official write gives a document held in memory.
+export const documentRevision = document => createHash('sha256').update(serialize(document), 'utf8').digest('hex');
+export function snapshotOf(revision, document) {
+  const editable = getEditableDocument(document);
+  return {revision, document, status:editable.status, title:editable.title ?? null, nodes:machineNodes(editable)};
 }
+export function inspectDocument(file) {
+  const {revision, document} = readDocument(file);
+  return snapshotOf(revision, document);
+}
+const at = path => path.split('.').map(Number);
 // These descriptors are private correction history, not a second document model.
 export function applyCorrections(document, operations) {
   for (const op of operations) {
@@ -26,6 +39,16 @@ export function applyCorrections(document, operations) {
       case 'insert-heading': document=insertHeading(document,op.at,op.level,op.content); break;
       case 'insert-list': document=insertList(document,op.at,op.list); break;
       case 'update-list': document=updateList(document,blockPath,op.list); break;
+      case 'insert-admonition': document=insertAdmonition(document,op.at,op.variant,op.content); break;
+      case 'insert-table': document=insertTable(document,op.at,op.cells); break;
+      case 'update-table-caption': document=updateTableCaption(document,blockPath,op.content); break;
+      case 'update-label': document=updateLabel(document,blockPath,op.label); break;
+      case 'update-enumerator': document=updateEnumerator(document,blockPath,op.enumerator); break;
+      case 'update-enumeration': document=updateEnumeration(document,blockPath,op.enumerated); break;
+      case 'update-paragraph': document=updateParagraphInlineContent(document,at(op.path),op.content); break;
+      case 'update-heading-content': document=updateHeadingInlineContent(document,at(op.path),op.content); break;
+      case 'update-admonition-content': document=updateAdmonitionInlineContent(document,at(op.path),op.content); break;
+      case 'update-title': document=updateDocumentTitle(document,op.remove?null:op.text); break;
       case 'format': break;
       default: throw Error('지원하지 않는 고치기입니다.');
     }
