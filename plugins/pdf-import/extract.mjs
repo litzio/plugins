@@ -1,3 +1,6 @@
+import { hasSheetSignals } from "./profiles/sheet.mjs";
+import { removeFrames } from "./frames.mjs";
+import { taggedMembership } from "./tagged-sheet.mjs";
 import { scriptPosition, sourceToken } from "./inline-styles.mjs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -55,6 +58,17 @@ async function extract(pdfPath) {
     }
     return out;
   }
+  function regions(shapes,images) {
+    const tables = [], figures = [...images];
+    if (shapes.length <= 6e3) {
+      for (const c of cluster(shapes)) {
+        const w = c.box[2] - c.box[0], h = c.box[3] - c.box[1];
+        if (c.n >= 6 && c.thin >= 4 && w > 80 && h > 15) tables.push(c.box);
+        else if (w > 60 && h > 40) figures.push(c.box);
+      }
+    }
+    return { tables, figures };
+  }
   const pages = [];
   for (let pno = 1; pno <= doc.numPages; pno++) {
     const page = await doc.getPage(pno);
@@ -63,7 +77,8 @@ async function extract(pdfPath) {
     const top = (y) => H - (y - vy0);
     const ops = await page.getOperatorList();
     let ctm = [1, 0, 0, 1, 0, 0];
-    const stack = [];
+    const stack = [], colors = [];
+    let stroke = "";
     const shapes = [], images = [], rulings = [], graphics = [];
     const rule = (x0, y0, x1, y1) => {
       if (Math.abs(y1-y0) < 0.8 && Math.abs(x1-x0) > 4) rulings.push({axis:"h", pos:(y0+y1)/2, a:Math.min(x0,x1), b:Math.max(x0,x1)});
@@ -71,13 +86,14 @@ async function extract(pdfPath) {
     };
     for (let i = 0; i < ops.fnArray.length; i++) {
       const fn = ops.fnArray[i], args = ops.argsArray[i];
-      if (fn === OPS.save) stack.push(ctm);
-      else if (fn === OPS.restore) ctm = stack.pop() ?? ctm;
+      if (fn === OPS.save) {stack.push(ctm);colors.push(stroke); }
+      else if (fn === OPS.restore) {ctm=stack.pop() ?? ctm; stroke=colors.pop() ?? "";}
+      else if (fn === OPS.setStrokeRGBColor) stroke=String(args[0]);
       else if (fn === OPS.transform) ctm = mul(ctm, args);
       else if (fn === OPS.paintFormXObjectBegin) {
-        stack.push(ctm);
+        stack.push(ctm); colors.push(stroke);
         if (args[0]) ctm = mul(ctm, args[0]);
-      } else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() ?? ctm;
+      } else if (fn === OPS.paintFormXObjectEnd) {ctm=stack.pop() ?? ctm;stroke=colors.pop() ?? "";}
       else if (fn === OPS.constructPath) {
         const [paintOp, , minMax] = args;
         if (paintOp === OPS.endPath || !minMax) continue;
@@ -85,6 +101,8 @@ async function extract(pdfPath) {
         const box = [b[0] - vx0, top(b[3]), b[2] - vx0, top(b[1])];
         const w = box[2] - box[0], h = box[3] - box[1];
         if (w * h > W * H * 0.8) continue;
+        let curved=false, closed=false;
+        const firstRule = rulings.length;
         shapes.push({ box, thin: w < 1.5 || h < 1.5 });
         const [l,t,r,bottom] = box;
         if (h < 1.5) rule(l,(t+bottom)/2,r,(t+bottom)/2);
@@ -97,9 +115,9 @@ async function extract(pdfPath) {
               const op=path[at++];
               if(op===0) current=start=point();
               else if(op===1) {const next=point();if(current) rule(...current,...next);current=next;}
-              else if(op===2) {point();point();current=point();}
-              else if(op===3) {point();current=point();}
-              else if(op===4) {if(current&&start)rule(...current,...start);current=start;}
+              else if(op===2) {curved=true;point();point();current=point();}
+              else if(op===3) {curved=true;point();current=point();}
+              else if(op===4) {closed=true;if(current&&start)rule(...current,...start);current=start;}
               else break;
             }
           }
@@ -107,106 +125,108 @@ async function extract(pdfPath) {
           const rectangles=(args[1]||[]).every(p=>p.length===13&&p[0]===0&&p[3]===1&&p[6]===1&&p[9]===1&&p[12]===4&&((p[1]===p[4]&&p[5]===p[8]&&p[7]===p[10]&&p[11]===p[2])||(p[2]===p[5]&&p[4]===p[7]&&p[8]===p[11]&&p[10]===p[1])));
           graphics.push({box, filled:true, rectangle:rectangles});
         }
+
+        shapes.at(-1).revision = /^#(?:ff|e[0-9a-f])(?:[0-4][0-9a-f]){2}$/i.test(stroke) && curved && closed && w>60 && h>20;
+        shapes.at(-1).rules = rulings.slice(firstRule);
       } else if (fn === OPS.paintImageXObject || fn === OPS.paintInlineImageXObject || fn === OPS.paintImageMaskXObject) {
         const b = boxOf(ctm, 0, 0, 1, 1);
         images.push([b[0] - vx0, top(b[3]), b[2] - vx0, top(b[1])]);
       }
     }
-    const tables = [], figures = [...images];
-    if (shapes.length <= 6e3) {
-      for (const c of cluster(shapes)) {
-        const w = c.box[2] - c.box[0], h = c.box[3] - c.box[1];
-        if (c.n >= 6 && c.thin >= 4 && w > 80 && h > 15) tables.push(c.box);
-        else if (w > 60 && h > 40) figures.push(c.box);
-      }
-    }
-    const tc = await page.getTextContent({ disableNormalization: false });
-    const fontName = (id) => {
-      try {
-        return page.commonObjs.get(id)?.name ?? id;
-      } catch {
-        return id;
-      }
-    };
-    const words = [];
-    let nchars = 0;
-    for (const it of tc.items) {
-      if (it.str === void 0) continue;
-      nchars += it.str.replace(/\s/g, "").length;
-      if (!it.str.trim()) continue;
-      const t = it.transform;
-      const size = Math.hypot(t[2], t[3]) || Math.hypot(t[0], t[1]);
-      const lead = it.str.length - it.str.trimStart().length;
-      const x0 = t[4] - vx0 + (lead ? it.width * lead / it.str.length : 0);
-      words.push({
-        text: it.str,
-        x0,
-        x1: t[4] - vx0 + it.width,
-        base: top(t[5]),
-        top: top(t[5]) - size * 0.8,
-        bottom: top(t[5]) + size * 0.2,
-        size,
-        font: fontName(it.fontName),
-        upright: Math.abs(t[1]) < 0.01 && Math.abs(t[2]) < 0.01
-      });
-    }
-    words.sort((a, b) => a.top - b.top || a.x0 - b.x0);
-    const rows = [];
-    for (const w of words) {
-      const mid = (w.top + w.bottom) / 2;
-      let row = null;
-      for (let i = rows.length - 1; i >= Math.max(0, rows.length - 6); i--) {
-        if (rows[i].top - 0.5 <= mid && mid <= rows[i].bottom + 0.5) {
-          row = rows[i];
-          break;
+    const original = regions(shapes,images);
+    const covered = [...original.tables,...original.figures].some(([l,t,r,b])=>(r-l)*(b-t)>.65*W*H);
+    function textLayout(tc,tagged) {
+      const fontName = (id) => {
+        try {
+          return page.commonObjs.get(id)?.name ?? id;
+        } catch {
+          return id;
         }
-      }
-      if (row) {
-        row.words.push(w);
-        if (w.size >= row.size) {
-          row.top = Math.min(row.top, w.top);
-          row.bottom = Math.max(row.bottom, w.bottom);
-          row.size = w.size;
-        }
-      } else rows.push({ top: w.top, bottom: w.bottom, size: w.size, words: [w] });
-    }
-    const raw = [];
-    for (const r of rows) {
-      const ws = r.words.sort((a, b) => a.x0 - b.x0);
-      const segs = [[ws[0]]];
-      for (const w of ws.slice(1)) {
-        const cur = segs[segs.length - 1];
-        if (w.x0 - cur[cur.length - 1].x1 > 14) segs.push([w]);
-        else cur.push(w);
-      }
-      for (const seg of segs) {
-        const main = Math.max(...seg.map((w) => w.size));
-        const base = Math.max(...seg.filter((w) => w.size === main).map((w) => w.base));
-        const spans = [];
-        const tokens = [];
-        seg.forEach((w, i) => {
-          let flags = /bold/i.test(w.font) ? 16 : 0;
-          if (w.size < main * 0.8 && w.base < base - 1) flags |= 1;
-          const script = scriptPosition(seg[i-1],w);
-          if (script === "power" && (flags & 1)) flags |= 32;
-          if (script) flags &= ~1;
-          w.superscript = !!(flags & 1);
-          tokens.push(sourceToken(w,script));
-          const prev = seg[i - 1];
-          const gap = prev ? w.x0 - prev.x1 : 0;
-          const needSpace = prev && gap > 0.12 * main && !/\s$/.test(prev.text) && !/^\s/.test(w.text);
-          const text = (needSpace ? " " : "") + w.text;
-          const last = spans[spans.length - 1];
-          if (last && last.flags === flags && Math.abs(last.size - w.size) < 0.3) last.text += text;
-          else spans.push({ text, size: w.size, flags, font: w.font });
-        });
-        raw.push({
-          bbox: [seg[0].x0, Math.min(...seg.map((w) => w.top)), seg[seg.length - 1].x1, Math.max(...seg.map((w) => w.bottom))],
-          spans, tokens,
-          metrics: seg.map(({text, x0, x1, base, size}) => ({text, x0, x1, base, size}))
+      };
+      const words = [];
+      let nchars = 0;
+      for (const [index,it] of tc.items.entries()) {
+        if (it.str === void 0) continue;
+        nchars += it.str.replace(/\s/g, "").length;
+        if (!it.str.trim()) continue;
+        const t = it.transform;
+        const size = Math.hypot(t[2], t[3]) || Math.hypot(t[0], t[1]);
+        const lead = it.str.length - it.str.trimStart().length;
+        const x0 = t[4] - vx0 + (lead ? it.width * lead / it.str.length : 0);
+        words.push({
+          ...(tagged ? {tag:tagged.owners[index]} : {}),
+          text: it.str,
+          x0,
+          x1: t[4] - vx0 + it.width,
+          base: top(t[5]),
+          top: top(t[5]) - size * 0.8,
+          bottom: top(t[5]) + size * 0.2,
+          size,
+          font: fontName(it.fontName),
+          upright: Math.abs(t[1]) < 0.01 && Math.abs(t[2]) < 0.01
         });
       }
+      words.sort((a, b) => a.top - b.top || a.x0 - b.x0);
+      const rows = [];
+      for (const w of words) {
+        const mid = (w.top + w.bottom) / 2;
+        let row = null;
+        for (let i = rows.length - 1; i >= Math.max(0, rows.length - 6); i--) {
+          if (rows[i].top - 0.5 <= mid && mid <= rows[i].bottom + 0.5) {
+            row = rows[i];
+            break;
+          }
+        }
+        if (row) {
+          row.words.push(w);
+          if (w.size >= row.size) {
+            row.top = Math.min(row.top, w.top);
+            row.bottom = Math.max(row.bottom, w.bottom);
+            row.size = w.size;
+          }
+        } else rows.push({ top: w.top, bottom: w.bottom, size: w.size, words: [w] });
+      }
+      const raw = [];
+      for (const r of rows) {
+        const ws = r.words.sort((a, b) => a.x0 - b.x0);
+        const segs = [[ws[0]]];
+        for (const w of ws.slice(1)) {
+          const cur = segs[segs.length - 1];
+          if (w.tag?.paragraph !== cur.at(-1).tag?.paragraph || w.tag?.cell !== cur.at(-1).tag?.cell || w.x0 - cur[cur.length - 1].x1 > 14) segs.push([w]);
+          else cur.push(w);
+        }
+        for (const seg of segs) {
+          const main = Math.max(...seg.map((w) => w.size));
+          const base = Math.max(...seg.filter((w) => w.size === main).map((w) => w.base));
+          const spans = [];
+          const tokens = [];
+          seg.forEach((w, i) => {
+            let flags = /bold/i.test(w.font) ? 16 : 0;
+            if (w.size < main * 0.8 && w.base < base - 1) flags |= 1;
+            const script = scriptPosition(seg[i-1],w);
+            if (script === "power" && (flags & 1)) flags |= 32;
+            if (script) flags &= ~1;
+            w.superscript = !!(flags & 1);
+            tokens.push(sourceToken(w,script));
+            const prev = seg[i - 1];
+            const gap = prev ? w.x0 - prev.x1 : 0;
+            const needSpace = prev && gap > 0.12 * main && !/\s$/.test(prev.text) && !/^\s/.test(w.text);
+            const text = (needSpace ? " " : "") + w.text;
+            const last = spans[spans.length - 1];
+            if (last && last.flags === flags && Math.abs(last.size - w.size) < 0.3) last.text += text;
+            else spans.push({ text, size: w.size, flags, font: w.font });
+          });
+          raw.push({
+            bbox: [seg[0].x0, Math.min(...seg.map((w) => w.top)), seg[seg.length - 1].x1, Math.max(...seg.map((w) => w.bottom))],
+            ...(tagged ? {tag:seg[0].tag} : {}),
+            spans, tokens,
+            metrics: seg.map(({text, x0, x1, base, size}) => ({text, x0, x1, base, size}))
+          });
+        }
+      }
+      return {raw,nchars,words};
     }
+    const plain=textLayout(await page.getTextContent({disableNormalization:false}));
     // Internal links: the source rectangle and the destination point (page, top).
     const links = [];
     for (const a of await page.getAnnotations()) {
@@ -227,8 +247,27 @@ async function extract(pdfPath) {
         // A broken destination is not a link we can follow.
       }
     }
-    pages.push({ width: W, height: H, raw, tables, figures, nchars, words, rulings, links, graphics: [...graphics, ...images.map(box => ({box, image:true}))] });
+    pages.push({ width: W, height: H, ...plain, shapes, images, ...original, rulings, links, graphics: [...graphics, ...images.map(box => ({box, image:true}))] });
+    const data=pages.at(-1);
+    if (covered) data.readTags=async()=>{
+      const tagged=await taggedMembership(page);
+      if (tagged) Object.assign(data,textLayout(tagged.content,tagged),{tagRows:tagged.rows});
+      page.cleanup();
+    };
     page.cleanup();
+  }
+  removeFrames(pages);
+  const sheetSignals=hasSheetSignals(pages);
+  for (const p of pages) {
+    if (sheetSignals && p.footerTop != null) await p.readTags?.();
+    delete p.readTags;
+    if (p.footerTop != null) {
+      const tagged = p.raw.some(l=>l.tag);
+      const shapes = tagged ? p.shapes.filter(s=>!s.revision) : p.shapes;
+      Object.assign(p,regions(shapes,p.images));
+    }
+    delete p.shapes;
+    delete p.images;
   }
   const toc = [];
   const walk = (items, level) => {
