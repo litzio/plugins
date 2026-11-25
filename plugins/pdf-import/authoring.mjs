@@ -163,7 +163,7 @@ function authoring(result) {
         caption,
       };
       if (cap) sources.push(cap.id);
-    } else block = { kind: "paragraph", content: inline(b,b.text) };
+    } else block = { kind: "paragraph", content: b.bold ? [{kind:"strong",children:inline(b,b.text)}] : inline(b,b.text) };
     if (b.sectionLabel) units.push({block:{kind:"target",label:b.sectionLabel},sources:[]});
     units.push({ block, sources });
   }

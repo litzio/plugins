@@ -1,3 +1,4 @@
+import { assembleSheet, joinSheetHeadings, linkRequirements } from "./sheet-blocks.mjs";
 import { formulaRegions } from "./formula-regions.mjs";
 import { buildGrid, flattenGrid, joinText, markTableLabels, captionTokens, splitNoteTokens } from "./table-grid.mjs";
 export const tableNoteMarker = text => /^a\s+value\s+of\b/i.test(text||'') ? null : text?.match(/^([a-z*†‡])\s+/)?.[1] || null;
@@ -61,6 +62,7 @@ function line(raw, page) {
     main_size = main ? round(main.size * 10) / 10 : 0;
   return {
     page,
+    tag: raw.tag,
     tokens: raw.tokens,
     metrics: raw.metrics,
     bbox: raw.bbox,
@@ -107,13 +109,14 @@ const inside = (l, r) => {
 // Page numbers at this boundary are one-based, like the page picker.
 function suggestExcludedPages(raw, profileName) {
   const profile = profileOf(raw, profileName);
+  if (profile.name === "sheet") return [];
   const { all } = classifyLines(raw.pages, profile);
   const start = all.findIndex((ls) =>
     ls.some((l) => l.kind === "heading" && profile.bodyStart.test(l.text())),
   );
   return Array.from({ length: Math.max(0, start) }, (_, i) => i + 1);
 }
-function classifyLines(pages, profile) {
+function classifyLines(pages, profile, sheetPages = new Map()) {
   pages = pages.map((p) => ({ ...p }));
   const all = pages.map((p, i) =>
     p.raw
@@ -122,8 +125,8 @@ function classifyLines(pages, profile) {
       .sort((a, b) => round(a.y0 / 3) - round(b.y0 / 3) || a.x0 - b.x0),
   );
   const sizes = /* @__PURE__ */ new Map();
-  for (const lines of all)
-    for (const l of lines)
+  for (const [index, lines] of all.entries())
+    for (const l of sheetPages.get(index)?.lines ?? lines)
       sizes.set(l.main_size, (sizes.get(l.main_size) || 0) + l.plain.length);
   const body = [...sizes].sort((a, b) => b[1] - a[1])[0]?.[0] || 0;
   const seen = /* @__PURE__ */ new Map(),
@@ -137,8 +140,8 @@ function classifyLines(pages, profile) {
   all.forEach((ls, i) => {
     for (const l of ls)
       if (
-        margin(l, i) &&
-        ((seen.get(key(l)) || 0) >= pages.length * 0.3 ||
+        (pages[i].footerTop != null ? l.y0 >= pages[i].footerTop : margin(l, i)) &&
+        (pages[i].footerTop != null || (seen.get(key(l)) || 0) >= pages.length * 0.3 ||
           /^[ivxlc\d]+$/.test(l.plain))
       )
         l.kind = "margin";
@@ -287,7 +290,16 @@ function convert(raw, excludedPages = [], profileName) {
   )
     throw new Error("제외할 쪽 번호가 올바르지 않습니다.");
   const omitted = new Set(excludedPages);
-  const classified = classifyLines(pages, profile);
+  const sheetPages = new Map();
+  if (profile.name === "sheet") {
+    pages.forEach((p,i)=>{
+      if (p.footerTop == null || !p.raw.some(l=>l.tag) || omitted.has(i+1)) return;
+      const lines = p.raw.map(l=>line(l,i)).filter(l=>l.plain);
+      for (const l of lines) l.kind = l.y0 >= p.footerTop ? "margin" : "body";
+      sheetPages.set(i,{lines,...assembleSheet(p,lines)});
+    });
+  }
+  const classified = classifyLines(pages.map((p,i)=>sheetPages.has(i) ? {...p,raw:[],tables:[],figures:[],graphics:[]} : p), profile.name === "sheet" ? profiles.generic : profile, sheetPages);
   pages = classified.pages;
   let { all } = classified;
   const { body } = classified;
@@ -409,8 +421,8 @@ function convert(raw, excludedPages = [], profileName) {
   const boundary = (b, reason) => {
     b.warning = { code: "paragraph-boundary", reason };
   };
-  const blocks = [],
-    excluded = [];
+  let blocks = [];
+  const excluded = [];
   let joins = 0,
     listJoins = 0;
   const push = (kind, text, l, level) => {
@@ -798,6 +810,14 @@ function convert(raw, excludedPages = [], profileName) {
     blocks.splice(i, 1);
     i--;
   }
+  if (sheetPages.size) {
+    for (const [i,part] of sheetPages) {
+      all[i]=part.lines;
+      for(const l of part.lines.filter(l=>l.kind==="margin")) excluded.push({page:i,kind:"margin",box:box(i,l.bbox)});
+      blocks.push(...part.blocks);
+    }
+    blocks=joinSheetHeadings(blocks.sort((a,b)=>a.page-b.page));
+  }
   blocks.forEach((b, i) => (b.id = "b" + i));
   let listIndents = [];
   for (const b of blocks) {
@@ -825,6 +845,7 @@ function convert(raw, excludedPages = [], profileName) {
   for (const b of blocks) if(b.formula) b.warning={code:"formula-as-image",reason:"수식을 그림으로 둠"};
   for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
   stats.references = findReferences(raw, blocks, profile);
+  if(sheetPages.size) stats.sheet={pages:sheetPages.size,layoutTables:[...sheetPages.values()].reduce((n,s)=>n+s.layoutCount,0),links:linkRequirements(blocks)};
   return {
     pages: pages.map((p) => ({ width: p.width, height: p.height })),
     blocks,

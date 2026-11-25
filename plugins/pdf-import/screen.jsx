@@ -1,3 +1,4 @@
+import { checkSaveSize } from "./save-size.mjs";
 import { statusLabel, statusAction } from './document-status.mjs';
 import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
@@ -450,12 +451,14 @@ function Screen({
     stage("문서 저장 중", "문서를 저장하지 못했습니다.");
     const plan = authoring(r);
     at = performance.now();
-    const saved = await saveDocument({
+    const request = {
       name: f.name.replace(/\.pdf$/i, ".md"),
       folder: f.outputFolder,
       authoring: {...plan.authoring,status:"draft"},
       images,
-    });
+    };
+    checkSaveSize(request);
+    const saved = await saveDocument(request);
     metrics.current.saveMs = performance.now() - at;
     setMissingMapping(true);
     stage("원본 연결 만드는 중", "문서는 저장됐지만 원본 연결을 만들지 못했습니다.");
