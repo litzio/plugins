@@ -1,0 +1,1 @@
+{"id":"local.document-import","name":"문서 가져오기","version":"0.1.0","repository":"https://github.com/litzio/plugins","description":"PDF와 워드 문서(.docx)를 리치오 문서로 옮기고 원본과 결과를 나란히 확인합니다.","icon":"FileText","entry":"host.mjs","screen":"screen.jsx"}

@@ -25,14 +25,14 @@
 
 ## 저장소 구성
 
-현재 `plugins/pdf-import/`에서 PDF 가져오기 플러그인을 만든다. 첫 시도는 2026-11-16에 지웠고 태그 `archive/2026-11-16-first-attempt`에 있다.
+현재 PDF와 워드 문서는 문서 가져오기 플러그인에서 처리한다. 첫 시도는 2026-11-16에 지웠고 태그 `archive/2026-11-16-first-attempt`에 있다.
 
 - `docs/lessons.md` — 첫 시도의 교훈. 다시 만들기 전에 먼저 읽는다.
 - `docs/platform-gaps.md` — 리치오에 모자란 것의 장부. 플러그인 작업 중 리치오의 한계 때문에 돌아가거나 포기한 것이 생기면 그 PR에서 한 줄을 더한다. 리치오에 올릴지는 소유자가 정한다.
 - `plugins/<이름>/` — 다시 만드는 플러그인이 들어갈 자리.
-- `plugins/word-import/` — 워드 문서(.docx)를 리치오 문서로 옮기는 워드 가져오기 플러그인.
+- `plugins/document-import/` — PDF와 워드 문서(.docx)를 리치오 문서로 옮기는 문서 가져오기 플러그인.
 - `plugins/mail-viewer/` — 메일 파일(.eml)을 열어 보는 메일 열람 플러그인(파일럿).
-- `plugins/pdf-import/cases.md` — PDF 변환이 틀리는 모양을 유형별로 모은 사례집. 소유자가 써 보다 찾은 것과 작업자가 검증하다 찾은 것을 그 PR에서 더한다. 틀린 곳 하나하나가 아니라 유형을 적고, 고쳐진 뒤에도 줄을 지우지 않는다. 사례를 고치는 PR의 단위 검사는 이름에 사례 번호를 넣는다.
+- `plugins/document-import/pdf/cases.md` — PDF 변환이 틀리는 모양을 유형별로 모은 사례집. 소유자가 써 보다 찾은 것과 작업자가 검증하다 찾은 것을 그 PR에서 더한다. 틀린 곳 하나하나가 아니라 유형을 적고, 고쳐진 뒤에도 줄을 지우지 않는다. 사례를 고치는 PR의 단위 검사는 이름에 사례 번호를 넣는다.
 
 ## 만드는 방식
 
@@ -44,12 +44,12 @@
 - **설정에는 환경만 둔다.** 연결 주소는 설정 창에서 넣고 그 자리에서 시험한다. 이번에 처리할 대상은 작업 화면에서 고른다.
 - **결함을 막으려고 사용자가 밟을 단계를 늘리지 않는다.** 단계를 늘려야 한다면 멈추고 소유자에게 묻는다.
 - 화면은 리치오의 `DESIGN.md`와 플러그인 화면 계약을 따른다.
-- **PDF 처리는 pdf.js 기능 장부를 먼저 본다.** [`plugins/pdf-import/docs/pdfjs-features.md`](plugins/pdf-import/docs/pdfjs-features.md)에 쓰는 기능과 쓰지 않는 기능의 판단이 있다. 새 문서군은 `node pdfjs-probe.mjs <PDF>`로 어떤 신호(태그 구조, 링크, 쪽 표시 번호 등)가 있는지부터 잰다. pdf.js 버전을 올리는 PR은 릴리스 노트를 보고 장부를 함께 고친다.
+- **PDF 처리는 pdf.js 기능 장부를 먼저 본다.** [`plugins/document-import/pdf/docs/pdfjs-features.md`](plugins/document-import/pdf/docs/pdfjs-features.md)에 쓰는 기능과 쓰지 않는 기능의 판단이 있다. 새 문서군은 `node pdfjs-probe.mjs <PDF>`로 어떤 신호(태그 구조, 링크, 쪽 표시 번호 등)가 있는지부터 잰다. pdf.js 버전을 올리는 PR은 릴리스 노트를 보고 장부를 함께 고친다.
 
 ## 검증
 
 - 플러그인의 처리 코드는 리치오 없이 돌릴 수 있는 단위 검사를 플러그인 폴더 안에 둔다. 고정된 표본으로 검사하고, 변환 서버나 외부 서비스가 필요한 검사는 따로 구분한다.
-- PR CI는 `test` 스크립트가 있는 플러그인의 검사와 PDF 가져오기 SDK 통합 검사를 실행한다. 채점 하한을 올리는 PR은 [PDF 가져오기 README의 정답 채점 규칙](plugins/pdf-import/README.md#합성-표본의-정답-자료-채점)에 따라 `answer-key-baseline.json`도 함께 고친다.
+- PR CI는 `test` 스크립트가 있는 플러그인의 검사와 PDF 가져오기 SDK 통합 검사를 실행한다. 채점 하한을 올리는 PR은 [PDF 가져오기 README의 정답 채점 규칙](plugins/document-import/README.md#합성-표본의-정답-자료-채점)에 따라 `answer-key-baseline.json`도 함께 고친다.
 - 실제 리치오에 설치해 화면까지 확인한 것과 단위 검사만 통과한 것을 구분해 기록한다. 확인하지 못한 조건을 적는다.
 - 실제 AI 호출로 응답만 확인할 때는 가장 저렴한 모델을 쓴다. 비서가 플러그인을 만드는 능력을 시험할 때는 Codex `gpt-6.1-terra`, 추론 강도 `high`를 쓴다.
 - 사용자의 설치된 리치오, 실행 중인 daemon, 사용자 자료를 건드리지 않는다. 시험은 격리된 Host와 임시 폴더에서 한다. 직접 시작한 프로세스는 끝내고 보고한다.
