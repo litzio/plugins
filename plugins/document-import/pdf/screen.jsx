@@ -12,6 +12,7 @@ import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 import { pageFragments } from "./source-cells.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
+import { useContentEdit } from "../shared/content-edit.mjs";
 const legend = ["heading", "paragraph", "list", "table", "figure", "footnote", "margin"];
 const none = [];
 function exclusionSummary(pages) {
@@ -77,6 +78,27 @@ function Screen({
     },
     [pdf],
   );
+  const mappingRef = useRef(null), staleRef = useRef(false);
+  mappingRef.current = mapping; staleRef.current = stale;
+  // Content edits in the document view. The view saves them itself; the handler then checks the
+  // saved file and moves the correspondence. The same check follows the file changed elsewhere.
+  const content = useContentEdit(React, {
+    revision: mapping?.revision,
+    enabled: !!mapping && !stale && !missingMapping && !picking,
+    paused: () => editing.current,
+    follow: (revision, trigger) => invoke('follow', {document:file.document, revision, historyId:historyId.current}),
+    apply(outcome, r, trigger) {
+      if (outcome.kind === 'error') { setError(outcome.message); return; }
+      if (outcome.kind === 'stale') {
+        setStale(true); setStatus('문서가 바뀜');
+        return;
+      }
+      mappingRef.current = r.mapping;
+      setMapping(r.mapping); setUndoCount(r.undoCount); setDocumentStatus(r.status);
+      if (outcome.reload) { setReloadKey(k=>k+1); compare.current?.keepPlace(); }
+      setStatus(trigger === 'save' ? '저장됨' : '밖에서 고친 내용을 반영함');
+    },
+  });
   const warnings = mapping?.blocks.filter(b=>b.warning) || [];
   const checks = useMemo(() => warnings.map(b => ({flowId: b.id, blockId: b.id, reason: b.warning.reason})), [mapping]);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
@@ -95,8 +117,8 @@ function Screen({
   }, [pdf, chosenPages]);
   function item(a,blocks,focusSource) {
     return {...a,icon:null,
-      disabled:a.disabled||busy||stale,
-      disabledReason:a.action==='merge'&&a.disabled
+      disabled:a.disabled||busy||stale||content.held,
+      disabledReason:content.held?content.reason:a.action==='merge'&&a.disabled
         ? a.disabledReason+' 원본 상자 하나를 누른 뒤 Shift를 누른 채 다른 상자를 눌러 범위를 고르세요. 키보드로는 Enter나 Space로 첫 상자를 고르고, 다른 상자에 초점을 옮겨 Shift+Enter 또는 Shift+Space를 누르세요.'
         : a.disabledReason,
       run:()=>{
@@ -127,10 +149,12 @@ function Screen({
     </span>;
   }
   async function changeDocumentStatus() {
-    if(editing.current||busy||stale)return;
+    if(editing.current||busy||stale||content.held)return;
     editing.current=true;setBusy(true);setError('');setStatus('검토 상태 바꾸는 중');
     try {
-      const r=await invoke('correct',{document:file.document,revision:mapping.revision,action:'status',status:statusAction(documentStatus).value,historyId:historyId.current});
+      await content.settled();
+      if(staleRef.current) {setStatus('문서가 바뀜');return;}
+      const r=await invoke('correct',{document:file.document,revision:mappingRef.current.revision,action:'status',status:statusAction(documentStatus).value,historyId:historyId.current});
       if(r.stale){setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
       setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 확인할 곳 '+r.mapping.blocks.filter(b=>b.warning).length);
     } catch(e){setError(e.message);setStatus('검토 상태 변경 실패');} finally{editing.current=false;setBusy(false);}
@@ -153,10 +177,14 @@ function Screen({
   }
   // keep: {note} when the chosen blocks stay chosen and the rest of their page went.
   async function correct(action, extra = {}, blocks = chosen, focusSource = false, keep = null) {
-    if (editing.current) return;
-    const before=mapping, oldSelection=selection, oldSelected=compare.current?.selected();
+    if (editing.current || content.held) return;
+    editing.current=true;
+    // A check of the saved file still in flight goes first; the correction starts from its mapping.
+    await content.settled();
+    if (staleRef.current) {editing.current=false;return;}
+    const before=mappingRef.current, oldSelection=selection, oldSelected=compare.current?.selected();
     compare.current?.stopFollow();
-    editing.current=true; setBusy(true); setError(''); setNote(''); setStatus('고치는 중'); setSplitting(false);
+    setBusy(true); setError(''); setNote(''); setStatus('고치는 중'); setSplitting(false);
     let started=performance.now();
     try {
       const input={document:file.document,revision:before.revision,ids:blocks.map(b=>b.id),action,
@@ -472,7 +500,7 @@ function Screen({
   }
   function returnHome() {
     if (busy || editing.current) return;
-    onHome();
+    content.afterSave(() => onHome());
   }
 
   // Selecting in the comparison: Shift extends the range from the last single selection.
@@ -515,12 +543,13 @@ function Screen({
           detail: metrics.current.readyMs,
         });
       }
-      if (s.revision && mapping && s.revision !== mapping.revision)
+      // Another revision than the mapping's is checked: content changed in place keeps the mapping.
+      if (s.revision && mapping && s.revision !== mapping.revision && !content.onRead(s))
         setStale(true);
-      if (s.state === "stale-target") setStale(true);
+      if (s.state === "stale-target" && !(s.revision && content.onRead(s))) setStale(true);
       if (s.state === "error") setError("변환된 문서를 표시하지 못했습니다.");
     },
-    [mapping],
+    [mapping, content.onRead],
   );
   const flow = {kind:"pdf", profile:mapping?.profile ?? result?.profile, phase:conversion?.key,
     failed:!!conversion && !!error, approved:documentStatus === "approved",
@@ -543,7 +572,9 @@ function Screen({
           onMouseEnter={()=>setPickerHelp(true)} onMouseLeave={()=>setPickerHelp(false)}
           onFocus={()=>setPickerHelp(true)} onBlur={()=>setPickerHelp(false)}
           aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex',gap:'var(--space-2)',alignItems:'center'}}>
-          <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":missingMapping&&!picking?"warning":mapping?"ok":"neutral"} label={status}/>
+          {mapping&&!picking&&!error&&content.status
+            ? <ui.Status tone={content.status.tone} label={content.status.label}/>
+            : <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":missingMapping&&!picking?"warning":mapping?"ok":"neutral"} label={status}/>}
           {mapping&&!picking&&statusLabel(documentStatus)&&<ui.Status tone={documentStatus==='approved'?'ok':'neutral'} label={statusLabel(documentStatus)}/>}
           {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
         </span>
@@ -554,7 +585,7 @@ function Screen({
           {!picking && <ui.Button
             variant={file ? "outline" : "default"}
             disabled={busy}
-            onClick={choose}
+            onClick={() => content.afterSave(choose)}
           >
             PDF 고르기
           </ui.Button>}
@@ -571,12 +602,12 @@ function Screen({
             </>
           )}
           {(cached || missingMapping) && !picking && (
-            <ui.Button variant="destructive" disabled={busy} onClick={rewrite}>
+            <ui.Button variant="destructive" disabled={busy} onClick={() => content.afterSave(rewrite)}>
               다시 변환
             </ui.Button>
           )}
           {mapping && !picking && toolButton({id:'document-status',label:statusAction(documentStatus).label,
-            disabled:busy||stale,disabledReason:stale?'문서가 바뀌어 대응을 표시할 수 없음':'문서를 고치는 중입니다.',
+            disabled:busy||stale||content.held,disabledReason:content.held?content.reason:stale?'문서가 바뀌어 대응을 표시할 수 없음':'문서를 고치는 중입니다.',
             help:warnings.length?'확인할 곳이 '+warnings.length+'곳 남아 있습니다':null,run:changeDocumentStatus})}
           {(mapping || missingMapping) && !picking && (
             <ui.Button
@@ -620,7 +651,7 @@ function Screen({
           document={file.document} revision={mapping.revision} reloadKey={reloadKey}
           checks={checks} legend={legend} sourceLabel="원본 PDF" busy={busy} stale={stale}
           guide={splitting ? "새 문단이 시작될 줄을 고르세요." : note || undefined}
-          onViewState={viewState}
+          onViewState={viewState} contentEdit={content}
           edit={{
             selection, editing, onSelect: selectBlock, onSelectMany: selectMany, onClear: clearSelection,
             menu: b => canEdit && ['paragraph','heading','list','admonition','table'].includes(b.documentKind) ? actionItems(selection.includes(b.id)?chosen:[b],true) : null,
@@ -642,7 +673,8 @@ function Screen({
                 </span>}
                 {toolButton(tools.find(a=>a.action==='remove'))}
               </> : null,
-            extraTools: undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>,
+            extraTools: undoCount>0&&toolButton({id:'undo',label:'되돌리기',disabled:busy||content.held,
+              disabledReason:content.held?content.reason:'문서를 고치는 중입니다.',run:()=>correct('undo')}),
           }} />
       )}
     </ui.ScreenLayout>

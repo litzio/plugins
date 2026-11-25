@@ -9,6 +9,8 @@ import { detachedTarget, assertMapping, previewCorrection, restoreMapping, split
 import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections, fileRevision, documentRevision, snapshotOf } from './document-io.mjs';
 import { listPlan, tablePlan, unlistPlan, joinPlan, relabel, footnotePlan, tableRows, tableShapes } from './structure.mjs';
+import { changedRange, editedBlocks, keepHistory } from '../shared/follow.mjs';
+const STALE = '문서가 바뀌어 대응을 표시할 수 없음';
 const topNodes = snapshotNodes;
 const listOf = (n, items = n.items) => ({ordered:n.ordered,...(n.checklist?{checklist:true}:{}),...(n.ordered?{start:n.start,style:n.style,delimiter:n.delimiter}:{}),items});
 const insert = (n, at) => n.type === 'paragraph'
@@ -76,7 +78,7 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
   const histories = new Map(), locks = new Set();
   // The document as this handler last wrote it, for one document at a time. It stands in for
   // reading the file again only while the file on disk still has exactly that revision.
-  let memory = null;
+  let memory = null, refused = null;
   const persist = async (side, m) => {
     const tmp = side + '.pending';
     try {await writeFile(tmp,JSON.stringify(m));await rename(tmp,side);}
@@ -362,14 +364,67 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
       catch { memory = null; return {stale:true,message:'문서는 고쳤지만 대응 자료를 기록하지 못했습니다. 문서를 다시 열어 주세요.'}; }
       if (undo) {stack.pop(); if(stack.length) stack.at(-1).revision = receipt.revision;}
       else if (irreversible || (endnote && !inverse.length)) stack.length = 0;
-      else stack.push({before,forward:ops,inverse,revision:receipt.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id});
+      else stack.push({before,forward:ops,inverse,revision:receipt.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id,
+        range:changedRange(current.nodes,snapshot.nodes)});
       histories.set(key,stack);
       timings.totalMs = performance.now()-t;
       return {mapping:{...next,tables:tableShapes(snapshot.nodes)},targetId,undoCount:stack.length,timings,brokenLinks,
         message:invalid?'저장 뒤 대응이 문서와 달라 대응 표시를 멈췄습니다. 되돌리기는 사용할 수 있습니다.':''};
     } finally {locks.delete(doc);}
   };
+  // The file on disk is no longer the mapping's revision: the comparison view saved its content
+  // edits, or a document tab or the assistant changed the file. The correspondence moves to the
+  // file when its blocks keep their number and kinds; otherwise it stops. revision: the revision
+  // the mapping is at, for a save of the view the one the save started from. A file refused once
+  // is not read again while it stays the same.
+  correct.follow = async ({document:doc,revision,historyId}) => {
+    if (!doc || path.extname(doc) !== '.md') throw Error('저장된 문서를 찾지 못했습니다.');
+    const t = performance.now(), timings = {};
+    const disk = fileRevision(doc);
+    timings.hashMs = performance.now()-t;
+    if (disk === revision) return {unchanged:true,timings};
+    if (refused?.doc === doc && refused.revision === disk && refused.from === revision) return {stale:true,message:STALE,timings};
+    if (locks.has(doc)) return {busy:true};
+    locks.add(doc);
+    try {
+      const side = doc.replace(/\.md$/,'.pdf-source.json');
+      let started = performance.now();
+      const before = JSON.parse(await readFile(side,'utf8'));
+      timings.sideMs = performance.now()-started;
+      if (before.revision !== revision) return {stale:true,message:STALE,timings};
+      // The content before the change, when this handler still holds it, tells which blocks changed.
+      const old = memory?.doc === doc && memory.snapshot.revision === revision ? memory.snapshot : null;
+      memory = null;
+      started = performance.now();
+      const snapshot = inspectDocument(doc);
+      timings.readMs = performance.now()-started;
+      started = performance.now();
+      try { assertMapping(before,snapshot); }
+      catch {
+        refused = {doc,revision:snapshot.revision,from:revision};
+        timings.checkMs = performance.now()-started;
+        return {stale:true,message:STALE,timings};
+      }
+      timings.checkMs = performance.now()-started;
+      started = performance.now();
+      const next = {...before,revision:snapshot.revision,snapshotNodes:snapshotNodes(snapshot)};
+      await persist(side,next);
+      timings.writeMs = performance.now()-started;
+      memory = {doc,snapshot};
+      started = performance.now();
+      for (const [key,stack] of histories) {
+        if (!key.startsWith(doc+':') || !stack.length) continue;
+        const kept = old ? keepHistory(stack,editedBlocks(old.nodes,snapshot.nodes)) : [];
+        if (kept.at(-1)?.revision === revision) kept.at(-1).revision = snapshot.revision;
+        histories.set(key,kept);
+      }
+      timings.historyMs = performance.now()-started;
+      timings.totalMs = performance.now()-t;
+      return {revision:snapshot.revision,status:snapshot.status,mapping:{...next,tables:tableShapes(snapshot.nodes)},
+        undoCount:histories.get(doc+':'+historyId)?.length ?? 0,timings};
+    } finally {locks.delete(doc);}
+  };
   // Another document opened, or the screen closed: what was remembered goes.
-  correct.forget = () => { memory = null; };
+  correct.forget = () => { memory = null; refused = null; };
   return correct;
 }

@@ -4,6 +4,7 @@ import { sourceForPath, sourceLocations, blockAtSource, sourceScrollTop, sourceV
 import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
 import { LABELS, kindName } from "./block-kind.mjs";
 import { blocksInRect, dragStarted } from "./marquee.mjs";
+import { POLL_MS } from "./content-edit.mjs";
 
 // One comparison screen for PDF and Word: source pages on the left, the converted document on the
 // right, joined by ui.LinkedDocumentView. Correcting (PDF only) comes in through `edit`.
@@ -35,10 +36,12 @@ const helpStyle = { position: "absolute", top: "100%", left: 0, width: 300, padd
 // edit (optional): {selection, menu(block) → actions | null, titleMenu(title box) → actions | null, tools,
 //   extraTools, splitLines, onSplit(line), onSelect(block, shift), onSelectMany(ids, add), onDelete(),
 //   onClear(), editing}. Without it the screen is read-only.
-// handle (optional ref): gets {selected(), stopFollow(), show(block, focus), pick(block)}.
+// handle (optional ref): gets {selected(), stopFollow(), show(block, focus), pick(block), keepPlace()}.
+// contentEdit (optional): the document view's content editing from useContentEdit; its poll runs every
+//   POLL_MS while this screen is shown.
 export default function Compare({
   React, ui, pdf, pages, blocks, excluded = [], excludedPages, document, revision, reloadKey,
-  checks = [], legend, sourceLabel, busy = false, stale = false, guide, edit, handle, onViewState, onCheckViewed,
+  checks = [], legend, sourceLabel, busy = false, stale = false, guide, edit, handle, onViewState, onCheckViewed, contentEdit,
 }) {
   const { useState, useRef, useEffect, useMemo, useLayoutEffect, useCallback } = React;
   const [browseScale, setBrowseScale] = useState(() => { try { const value = Number(localStorage.getItem(SCALE_KEY)); return browseScales.includes(value) ? value : 0.75; } catch { return 0.75; } });
@@ -64,6 +67,15 @@ export default function Compare({
   const editRef = useRef(edit);
   editRef.current = edit;
   useEffect(() => () => clearTimeout(scrollTimer.current), []);
+  // The saved file is checked for changes made elsewhere while this screen is shown.
+  const poll = contentEdit?.poll;
+  useEffect(() => {
+    if (!poll) return;
+    const timer = setInterval(() => {
+      if (window.document.visibilityState === "visible" && !hidden.current && pane.current?.clientHeight) poll();
+    }, POLL_MS);
+    return () => clearInterval(timer);
+  }, [poll]);
   useEffect(() => {
     const pair = comparisonPair.current; if (!pair) return;
     const wheel = e => { if (!e.ctrlKey || !e.deltaY) return; e.preventDefault(); scaleChange.current?.(steppedScale(scaleValue.current, e.deltaY)); };
@@ -301,6 +313,14 @@ export default function Compare({
     selected: () => selected,
     stopFollow: () => clearTimeout(scrollTimer.current),
     pick: b => setSelected(b),
+    // The document is read again: the block at the top of the document view stays where it is.
+    keepPlace() {
+      const blocks = documentLayout.current?.blocks || [], b = blocks.find(x => x.top >= 0) || blocks[0];
+      if (!b) return;
+      clearTimeout(scrollTimer.current);
+      setFollowed(null);
+      setTarget({ id: null, path: b.path, highlight: false, top: Math.max(0, b.top), request: ++alignRequest.current });
+    },
     // After a correction: the given block is selected and its document pair comes to its height.
     show(b, focus = false) {
       clearTimeout(scrollTimer.current);
@@ -530,6 +550,7 @@ export default function Compare({
           onStateChange: viewState,
           onVisibleBlockChange: documentVisible,
           onVisibleBlockLayoutChange: layout => { documentLayout.current = layout; },
+          ...contentEdit?.documentProps,
         }}
         revision={revision}
         source={sourcePages}

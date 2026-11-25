@@ -3,6 +3,7 @@ import { rememberFolder } from "../shared/recent-folders.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import Flow, { FlowToggle } from "../shared/flow.jsx";
 import Compare from "../shared/compare.jsx";
+import { useContentEdit } from "../shared/content-edit.mjs";
 
 const STEPS = ["구조 읽기", "그림 만들기", "문서 저장"];
 const GROUPS = WARNING_KINDS.map(([id, title]) => ({ id, title, tone: "warning" }));
@@ -31,6 +32,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const [source, setSource] = useState(null); // {state, reason, source} from the host
   const [pdf, setPdf] = useState(null);
   const metrics = useRef({});
+  const compare = useRef(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [followStale, setFollowStale] = useState(false), [followNote, setFollowNote] = useState("");
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
   const busy = !!run && !run.failed;
@@ -47,7 +51,22 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     const ids = new Set(blocks.map(b => b.id));
     return warnings.map((w,flowId) => ({ flowId, blockId: w.path && ids.has(key(w.path)) ? key(w.path) : null, path: w.path, reason: w.label + " · " + w.detail }));
   }, [blocks]);
+  // Content edits in the compared document. The view saves them; the handler checks the saved file
+  // and moves the places to its revision. The same check follows the file changed elsewhere.
+  const content = useContentEdit(React, {
+    revision: source?.source?.revision,
+    enabled: !!pdf && source?.state === "ready" && !followStale,
+    follow: revision => invoke("follow", { id: file.id, revision }),
+    apply(outcome, r, trigger) {
+      if (outcome.kind === "error") { setError(outcome.message); return; }
+      if (outcome.kind === "stale") { setFollowStale(true); setFollowNote(""); return; }
+      setSource(old => old?.source ? { ...old, source: { ...old.source, revision: r.revision } } : old);
+      if (outcome.reload) { setReloadKey(k => k + 1); compare.current?.keepPlace(); }
+      setFollowNote(trigger === "save" ? "저장됨" : "밖에서 고친 내용을 반영함");
+    },
+  });
   const compareState = useCallback(s => {
+    content.onRead(s);
     setViewState(s.state);
     if (s.state !== "ready" || !metrics.current.compareFrom) return;
     performance.measure("word-import-compare-ready", { start: metrics.current.compareFrom });
@@ -84,7 +103,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   useEffect(() => { open(request.path); }, []);
 
   function home() {
-    if (!busy) onHome();
+    if (!busy) content.afterSave(() => onHome());
   }
 
   async function choose() {
@@ -99,7 +118,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   }
 
   async function open(path) {
-    setError(""); setTarget(null); setViewState(null);
+    setError(""); setTarget(null); setViewState(null); setFollowStale(false); setFollowNote("");
     let f;
     try { f = await invoke("load", { path }); }
     catch (e) {
@@ -119,7 +138,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   async function convert(f, replacing) {
     setExpanded(false);
     setSeen(new Set());
-    setSaved(null); setTarget(null); setViewState(null); setError("");
+    setSaved(null); setTarget(null); setViewState(null); setError(""); setFollowStale(false); setFollowNote("");
     let step = 0;
     const stage = (index, progress) => { step = index; setRun({ step: index, progress }); };
     const started = performance.now();
@@ -182,7 +201,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     } else setTarget(next);
   }
 
-  const chooseButton = (primary) => <ui.Button variant={primary ? "default" : "outline"} disabled={busy} onClick={choose}>워드 문서 고르기</ui.Button>;
+  const chooseButton = (primary) => <ui.Button variant={primary ? "default" : "outline"} disabled={busy} onClick={() => content.afterSave(choose)}>워드 문서 고르기</ui.Button>;
 
   if (!file) return null;
 
@@ -206,15 +225,18 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const notice = !saved ? "확인할 곳 목록이 없습니다. 다시 변환하면 목록을 만듭니다."
     : saved.sourceMissing ? "원본 워드 문서가 없습니다. 저장된 문서와 확인할 곳만 볼 수 있습니다."
       : saved.sourceChanged ? "변환한 뒤 원본 워드 문서가 바뀌었습니다. 다시 변환하면 새 내용으로 만듭니다."
-        : viewState === "stale-target" ? "변환한 뒤 문서가 바뀌어 확인할 곳으로 이동할 수 없습니다. 다시 변환하면 새로 연결합니다."
+        : followStale || (viewState === "stale-target" && !content.pending()) ? "변환한 뒤 문서가 바뀌어 확인할 곳으로 이동할 수 없습니다. 다시 변환하면 새로 연결합니다."
           : viewState === "target-not-found" ? "문서에서 이 블록을 찾을 수 없습니다." : "";
   return (
     <ui.ScreenLayout fillHeight back={{ label: "변환한 문서", onBack: home }} description={file.name}
-      status={<ui.Status tone={saved ? (warnings.length ? "warning" : "ok") : "neutral"} label={saved ? "변환 완료 · 확인할 곳 " + warnings.length : "확인할 곳 목록 없음"} />}
+      status={<span style={{ display: "inline-flex", gap: "var(--space-2)", alignItems: "center" }}>
+        <ui.Status tone={saved ? (warnings.length ? "warning" : "ok") : "neutral"} label={saved ? "변환 완료 · 확인할 곳 " + warnings.length : "확인할 곳 목록 없음"} />
+        {comparing && (content.status ? <ui.Status tone={content.status.tone} label={content.status.label} /> : followNote && <ui.Status tone="ok" label={followNote} />)}
+      </span>}
       actions={<>
         <FlowToggle React={React} ui={ui} state={flow} open={expanded} controls={flowId} toggle={()=>setExpanded(!expanded)} />
         <ui.Button onClick={openSaved}>문서 열기</ui.Button>
-        <ui.Button variant="destructive" disabled={!!saved?.sourceMissing} onClick={reconvert}>다시 변환</ui.Button>
+        <ui.Button variant="destructive" disabled={!!saved?.sourceMissing} onClick={() => content.afterSave(reconvert)}>다시 변환</ui.Button>
         {chooseButton(false)}
       </>}>
       <style>{`
@@ -227,7 +249,8 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {notice && <ui.Notice tone="warning">{notice}</ui.Notice>}
       {comparing ? <Compare onCheckViewed={markSeen} React={React} ui={ui} pdf={pdf} pages={source.source.pages} blocks={blocks}
-        excluded={source.source.excluded} document={file.document} revision={source.source.revision}
+        excluded={source.source.excluded} document={file.document} revision={source.source.revision} reloadKey={reloadKey}
+        handle={compare} contentEdit={content} stale={followStale}
         checks={checks} legend={blocks.some(b => b.kind === "note") ? NOTE_LEGEND : LEGEND} sourceLabel="원본 쪽" onViewState={compareState} /> : <>
       {(source?.state === "preparing" || source?.state === "ready") && <div><ui.Status tone="progress" label="원본 쪽 준비 중" /></div>}
       {source?.state === "failed" && <ui.Notice tone="warning">{source.reason}</ui.Notice>}

@@ -9,8 +9,21 @@ import { startImages, imageResult, disposeImages } from "./images.mjs";
 import { outputPaths, backupOutput, recordImages, finishReplacement, blockPaths, documentExists, sha } from "./output.mjs";
 import { listConverted } from "./recent.mjs";
 import { prepareSource } from "./source.mjs";
+import { structureOf, sameStructure } from "../shared/follow.mjs";
 
 const fail = message => new PluginPublicError("word_import_failed", message);
+const STALE = "변환한 뒤 문서가 바뀌어 확인할 곳으로 이동할 수 없습니다. 다시 변환하면 새로 연결합니다.";
+const nodesOf = snapshot => machineNodes(getEditableDocument(snapshot.document));
+const writeSide = async (side, data) => {
+  const pending = side + ".pending-" + randomUUID();
+  try {
+    await writeFile(pending, JSON.stringify(data), { flag: "wx" });
+    await rename(pending, side);
+  } catch (e) {
+    await unlink(pending).catch(() => {});
+    throw e;
+  }
+};
 const optional = async promise => { try { return await promise; } catch (e) { if (e.code === "ENOENT") return null; throw e; } };
 
 export function activate() {
@@ -122,11 +135,13 @@ export function activate() {
         const snapshot = readDocument(s.doc);
         if (revision && snapshot.revision !== revision) throw fail("저장 뒤 문서가 바뀌어 확인할 곳을 연결하지 못했습니다.");
         let paths;
-        try { paths = blockPaths(machineNodes(getEditableDocument(snapshot.document)), s.final.blocks); }
+        const nodes = nodesOf(snapshot);
+        try { paths = blockPaths(nodes, s.final.blocks); }
         catch (e) { throw fail(e.message + " 확인할 곳을 연결하지 못했습니다."); }
         const data = {
           word: { name: path.basename(s.file), sha256: s.digest },
           revision: snapshot.revision,
+          structure: structureOf(nodes),
           convertedAt: new Date().toISOString(),
           warnings: s.final.warnings.map(w => ({ kind: w.kind, label: w.label, detail: w.detail, path: paths[w.block] })),
           ...(s.result.noteTables.size ? { noteAdmonitions: true } : {}),
@@ -136,14 +151,8 @@ export function activate() {
         // The source PDF of the same Word document is used again; only the places are made anew.
         const before = s.previous?.data?.source?.pdf;
         if (before?.wordSha256 === s.digest) data.source = { pdf: before };
-        const pending = s.side + ".pending-" + randomUUID();
-        try {
-          await writeFile(pending, JSON.stringify(data), { flag: "wx" });
-          await rename(pending, s.side);
-        } catch {
-          await unlink(pending).catch(() => {});
-          throw fail("확인할 곳 목록을 저장하지 못했습니다.");
-        }
+        try { await writeSide(s.side, data); }
+        catch { throw fail("확인할 곳 목록을 저장하지 못했습니다."); }
         let cleanupError;
         try { await finishReplacement(s, data); } catch { cleanupError = "이전 변환 결과를 정리하지 못했습니다."; }
         const { blocks, images, noteTables } = s.result;
@@ -165,6 +174,47 @@ export function activate() {
           sources.set(s.side, job);
         }
         return job.state === "ready" ? { state: "ready", source: job.source } : { state: job.state, reason: job.reason };
+      },
+      // The comparison view saved content edits, or the file may have changed elsewhere. The places
+      // to check and the source places stay with the file when its blocks keep their number and
+      // kinds. revision: the one the places are at, for a save of the view the one it started from.
+      follow: async ({ id, revision }) => {
+        const s = session(id);
+        const t = performance.now(), timings = {};
+        const disk = sha(await readFile(s.doc));
+        timings.hashMs = performance.now() - t;
+        if (disk === revision && s.structureKnown) return { unchanged: true, timings };
+        if (s.refused?.revision === disk && s.refused.from === revision) return { stale: true, message: STALE, timings };
+        if (s.following) return { busy: true };
+        s.following = true;
+        try {
+          const side = JSON.parse(await optional(readFile(s.side, "utf8")) ?? "null");
+          // Places written before the kinds were kept: they are kept now, while the file is theirs.
+          if (disk === revision) {
+            if (side?.revision === disk && !side.structure) await writeSide(s.side, { ...side, structure: structureOf(nodesOf(readDocument(s.doc))) });
+            s.structureKnown = true;
+            return { unchanged: true, timings };
+          }
+          if (side?.revision !== revision || !side.structure) return { stale: true, message: STALE, timings };
+          let started = performance.now();
+          const snapshot = readDocument(s.doc);
+          const structure = structureOf(nodesOf(snapshot));
+          timings.readMs = performance.now() - started;
+          if (!sameStructure(side.structure, structure)) {
+            s.refused = { revision: snapshot.revision, from: revision };
+            return { stale: true, message: STALE, timings };
+          }
+          started = performance.now();
+          const next = { ...side, revision: snapshot.revision, ...(side.source ? { source: { ...side.source, revision: snapshot.revision } } : {}) };
+          await writeSide(s.side, next);
+          timings.writeMs = performance.now() - started;
+          const job = sources.get(s.side);
+          if (job?.source) job.source = next.source;
+          if (s.converted) s.converted.revision = snapshot.revision;
+          s.structureKnown = true;
+          timings.totalMs = performance.now() - t;
+          return { revision: snapshot.revision, timings };
+        } finally { s.following = false; }
       },
       sourcePdf: async ({ id }) => {
         const s = session(id);
