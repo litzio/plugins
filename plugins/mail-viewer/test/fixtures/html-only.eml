@@ -1,0 +1,18 @@
+From: Example Shop <shop@example.com>
+To: customer@example.com
+Subject: Your order has shipped
+Date: Wed, 19 Nov 2026 09:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<html><head><title>Ignored</title><style>p{color:red}</style>
+<script>alert("hello")</script></head><body>
+<p>Dear customer,</p>
+<p>Your order has <b>shipped</b>.<br>It should arrive soon.</p>
+<img src=3D"https://tracker.example.net/pixel.gif" width=3D"1" height=3D"1">
+<ul><li>Item one</li><li>Item two &amp; three</li></ul>
+<p>Track it <a href=3D"https://shop.example.com/track?id=3D42">here</a>.</p>
+<script type=3D"text/javascript">document.write("x")</script>
+<p onclick=3D"steal()">Thanks,<br>Example Shop</p>
+</body></html>

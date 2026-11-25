@@ -1,0 +1,1 @@
+{"id":"local.mail-viewer","name":"메일 열람","version":"0.1.0","repository":"https://github.com/litzio/plugins","description":"메일 파일(.eml)을 열어 제목, 보낸 사람, 본문과 첨부 목록을 보여 줍니다.","icon":"FileText","entry":"host.mjs","screen":"screen.jsx"}

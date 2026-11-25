@@ -6,4 +6,6 @@
 
 [워드 가져오기](plugins/word-import/README.md)는 워드 문서(.docx)를 리치오 문서로 옮기고 옮기지 못했거나 바꿔 적은 곳을 목록으로 보여 준다.
 
+[메일 열람](plugins/mail-viewer/README.md)은 메일 파일(.eml)을 열어 제목, 사람, 날짜, 본문과 첨부 목록을 보여 주는 파일럿이다.
+
 작업 규칙은 [AGENTS.md](AGENTS.md)에 있다.
