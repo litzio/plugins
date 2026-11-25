@@ -56,7 +56,7 @@ jobs:
         working-directory: litzio
         run: pnpm install --frozen-lockfile
       - name: Run all four SDK integration tests
-        working-directory: plugins/pdf-import
+        working-directory: plugins/document-import
         shell: bash
         run: |
           litzio="$GITHUB_WORKSPACE/litzio"
@@ -66,7 +66,7 @@ jobs:
           export PDF_IMPORT_TEST_CLI_ARGS
           PDF_IMPORT_TEST_CLI_ARGS=$(node -p 'JSON.stringify(process.argv.slice(1))' -- --import "$loader" "$litzio/packages/cli/src/cli.ts")
           report="$RUNNER_TEMP/pdf-import-sdk.tap"
-          node --import "$loader" --test --test-reporter=tap test/corrections-host.test.mjs | tee "$report"
+          node --import "$loader" --test --test-reporter=tap pdf/test/corrections-host.test.mjs | tee "$report"
           grep -Fx '# tests 4' "$report"
           grep -Fx '# pass 4' "$report"
           grep -Fx '# skipped 0' "$report"
