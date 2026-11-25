@@ -30,6 +30,8 @@ const body = [
   p(t("둘째 단계 첫 항목"), '<w:numPr><w:ilvl w:val="1"/><w:numId w:val="2"/></w:numPr>'),
   p(t("둘째 단계 둘째 항목"), '<w:numPr><w:ilvl w:val="1"/><w:numId w:val="2"/></w:numPr>'),
   p(t("첫째 단계 다음 항목"), '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="2"/></w:numPr>'),
+  // An empty numbered paragraph with a hidden mark: Word hides it but counts its number (1.2).
+  p("", '<w:pStyle w:val="Normal"/><w:numPr><w:ilvl w:val="1"/><w:numId w:val="1"/></w:numPr><w:outlineLvl w:val="1"/><w:rPr><w:vanish/></w:rPr>'),
   p(t("표"), style("Heading2")),
   p(`${mark(4, "_RefTable")}${t("Table ")}${field("SEQ Table \\* ARABIC", t("1"))}${markEnd(4)}${t(" – 합성 표")}`, style("Caption")),
   `<w:tbl><w:tblPr><w:tblW w:w="6000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid>` +
@@ -40,11 +42,12 @@ const body = [
   p(picture("rIdPng", 1, "막대 그림", 1905000, 952500)),
   p(`${mark(6, "_RefFigure")}${t("Figure ")}${field("SEQ Figure \\* ARABIC", t("1"))}${markEnd(6)}${t(" – PNG 그림")}`, style("Caption")),
   p(picture("rIdEmf", 2, "도형 그림", 1905000, 952500)),
-  p(`${t("Figure ")}${field("SEQ Figure \\* ARABIC", t("2"))}${t(" – EMF 그림")}`, style("Caption")),
+  p(`${t("Figure ")}${field("SEQ Figure \\* ARABIC", t("2"))}${t(" – EMF 그림, ")}${field("REF _RefTable \\h", t("Table 1"))}${t(" 참고")}`, style("Caption")),
   p(`${t("참조: ")}${field("REF _RefScope \\r \\h", t("1.1"))}${t(" 절, ")}${field("REF _RefTable \\h", t("Table 1"))}${t(", ")}<w:fldSimple w:instr=" REF _RefFigure \\h ">${t("Figure 1")}</w:fldSimple>${t(", 없는 대상 ")}${field("REF _RefNowhere \\h", t("Clause 9"))}${t(", 바깥 ")}<w:hyperlink r:id="rIdLink">${t("주소")}</w:hyperlink>${t(".")}`),
   p(`${t("수식: ")}<m:oMath><m:r><m:t>a</m:t></m:r><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup><m:r><m:t>+b=0</m:t></m:r></m:oMath>`),
   p(`${t("글상자 앞 글자.")}<w:r><mc:AlternateContent><mc:Choice Requires="wps"><w:drawing><wp:anchor><wp:docPr id="3" name="Text Box 3"/><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:txbx><w:txbxContent>${p(t("글상자 안의 문장."))}</w:txbxContent></wps:txbx><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></mc:Choice><mc:Fallback><w:pict><v:shape><v:textbox><w:txbxContent>${p(t("글상자 안의 문장."))}</w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback></mc:AlternateContent></w:r>`),
-  p(t("부록"), style("Heading1")),
+  // REF fields inside a heading and a caption stay their result text.
+  p(`${t("부록 ")}${field("REF _RefScope \\r \\h", t("1.1"))}${t(" 참고")}`, style("Heading1")),
   p(t("끝 문단.")),
   '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>',
 ].join("");

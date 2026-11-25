@@ -185,6 +185,8 @@ export function readDocx(buffer) {
     const item = {
       type: "p", style: st?.name || style || "", level, caption: !!styleName, toc: inField("TOC"),
       runs: [], bookmarks: pendingBookmarks, images: [], textboxes: [], math: 0, notes: 0, hidden: 0, anchors: [], context,
+      // A hidden paragraph mark hides an empty paragraph, number included.
+      markHidden: on(kid(kid(pPr, "w:rPr"), "w:vanish")),
     };
     pendingBookmarks = [];
     let numId = val(numPr, "w:numId"), ilvl = val(numPr, "w:ilvl");

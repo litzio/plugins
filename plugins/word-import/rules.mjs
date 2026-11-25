@@ -54,7 +54,8 @@ function dropChars(runs, n) {
 }
 
 // Runs → Core InlineContent. Formatting marks never begin or end with spaces.
-function inline(runs, { breaks = false, resolve, missing } = {}) {
+// Headings and captions take links = false: a REF inside them stays its result text.
+function inline(runs, { breaks = false, links = true, resolve, missing } = {}) {
   const out = [];
   const textNodes = (text, f) => {
     if (!text) return;
@@ -76,6 +77,7 @@ function inline(runs, { breaks = false, resolve, missing } = {}) {
   };
   for (const r of runs) {
     if (r.text !== undefined) textNodes(r.text, r);
+    else if (r.link && !links) out.push(...inline(r.runs, { breaks }));
     else if (r.link) {
       const url = r.link.bookmark ? resolve?.(r.link.bookmark) : /^(https?:|mailto:)/i.test(r.link.url || "") ? r.link.url : null;
       const children = tidy(inline(r.runs, {}));
@@ -128,6 +130,13 @@ export function convert(doc) {
       if (it.toc) { toc.push(it); continue; }
       const images = imagesOf(it.runs), text = plain(it.runs).trim();
       if (!text && !images.length && it.hidden) { hiddenOnly++; continue; }
+      // Word shows nothing of an empty paragraph whose mark is hidden, not even its number; the
+      // number still counts, so the next heading keeps the number Word shows.
+      if (!text && !images.length && !it.textboxes.length && it.markHidden && it.number) {
+        hiddenNumbers.count++;
+        hiddenNumbers.next ??= units.length;
+        continue;
+      }
       // The title line of a table of contents goes with it.
       if (!it.number && !images.length) {
         let j = i + 1;
@@ -161,6 +170,7 @@ export function convert(doc) {
     }
   }
   let hiddenOnly = 0;
+  const hiddenNumbers = { count: 0, next: undefined };
   structure(doc.items, "body");
 
   // Captions go to the neighbouring table or figure, preferring the kind their number names.
@@ -183,7 +193,11 @@ export function convert(doc) {
   const visitItems = items => {
     for (const it of items) {
       if (it.type === "table") for (const row of it.rows) for (const c of row) visitItems(c.items);
-      else if (!it.toc) { collectLinks(it.runs); it.textboxes.forEach(visitItems); }
+      else if (!it.toc) {
+        // Links inside headings and captions stay text, so they label nothing.
+        if (!it.caption && !(it.level && it.level <= 6 && it.context !== "cell")) collectLinks(it.runs);
+        it.textboxes.forEach(visitItems);
+      }
     }
   };
   visitItems(doc.items);
@@ -217,11 +231,13 @@ export function convert(doc) {
   let listRun = [];
   const emit = (unit, block) => {
     blocks.push(block);
+    unit.block ??= blocks.length - 1;
     if (unit.hiddenBefore) warn("other", blocks.length - 1, unit.heading, "바로 앞의 숨긴 글자만 있는 문단 " + unit.hiddenBefore + "개를 옮기지 않았습니다.");
     unit.hiddenBefore = 0;
     return blocks.length - 1;
   };
   const content = (runs, breaks) => inline(runs, { breaks, resolve, missing });
+  const title = (runs, breaks = false) => inline(runs, { breaks, links: false });
   const afterBlock = (index, unit) => {
     if (missingHere.length) warn("ref-missing", index, unit.caption ? plain(unit.caption.item.runs) : unit.heading, missingHere.map(t => "‘" + short(t, 24) + "’").join(", "));
     missingHere = [];
@@ -239,10 +255,10 @@ export function convert(doc) {
     if (m && captionKind(text) === unit.type) {
       const enumerator = m[2];
       if (unit.record.wanted) labelFor(unit.record, enumerator);
-      return { enumerator, caption: content(dropChars(runs, m[0].length)) };
+      return { enumerator, caption: title(dropChars(runs, m[0].length)) };
     }
     if (unit.record.wanted) labelFor(unit.record, "");
-    return { enumerated: false, caption: content(runs) };
+    return { enumerated: false, caption: title(runs) };
   };
   // Labels must exist before any block links to them, including earlier blocks.
   for (const u of units) {
@@ -268,11 +284,11 @@ export function convert(doc) {
     if (unit.type === "heading") {
       if (unit.record.label) emit(unit, { kind: "target", label: unit.record.label });
       const number = it.number?.marker ? it.number.marker + separator(it.number) : "";
-      const index = emit(unit, { kind: "heading", level: it.level, content: tidy([{ kind: "text", text: number }, ...content(it.runs, false)]) });
+      const index = emit(unit, { kind: "heading", level: it.level, content: tidy([{ kind: "text", text: number }, ...title(it.runs)]) });
       itemWarnings(index, unit);
       afterBlock(index, unit);
     } else if (unit.type === "paragraph" || unit.type === "caption") {
-      const index = emit(unit, { kind: "paragraph", content: content(it.runs, true) });
+      const index = emit(unit, { kind: "paragraph", content: it.caption ? title(it.runs, true) : content(it.runs, true) });
       if (it.level > 6) warn("other", index, unit.heading, "개요 수준 " + it.level + " 제목을 문단으로 옮겼습니다.");
       if (unit.textbox) warn("textbox", index, unit.heading, short(plain(it.runs), 32));
       itemWarnings(index, unit);
@@ -390,6 +406,14 @@ export function convert(doc) {
       if (n === 0) warn("image-moved", index, label, "그림 " + moved.length + "개");
     });
     return first;
+  }
+
+  if (hiddenNumbers.count) {
+    const unit = units.slice(hiddenNumbers.next).find(u => u.block !== undefined);
+    let at = unit?.block ?? blocks.length - 1;
+    if (blocks[at]?.kind === "target") at++;
+    warn("other", at, blocks[at]?.content ? textOf(blocks[at].content) : unit?.heading,
+      "숨긴 번호 문단 " + hiddenNumbers.count + "개를 옮기지 않았습니다. 뒤따르는 제목의 번호는 원본과 같습니다.");
   }
 
   // Heading numbers against the numbers the table of contents still shows.

@@ -14,7 +14,7 @@ const headings = blocks.filter(b => b.kind === "heading");
 
 test("heading numbers are computed from the numbering definitions and agree with the table of contents", () => {
   assert.deepEqual(headings.map(h => [h.level, text(h)]), [
-    [1, "1. 개요"], [2, "1.1 범위"], [3, "1.1.1 세부 범위"], [2, "1.2 표"], [1, "2. 그림"], [1, "3. 부록"],
+    [1, "1. 개요"], [2, "1.1 범위"], [3, "1.1.1 세부 범위"], [2, "1.3 표"], [1, "2. 그림"], [1, "3. 부록 1.1 참고"],
   ]);
   assert.deepEqual({ ...result.stats.toc }, { entries: 3, compared: 3, matched: 3, mismatches: {}, other: {} });
   assert.ok(!blocks.some(b => /목차/.test(text(b))), "the table of contents and its title are not moved");
@@ -47,7 +47,7 @@ test("merged cells are repeated, cell paragraphs are joined, and the table gets 
   assert.equal(table.enumerator, "1");
   assert.equal(textOf(table.caption), "합성 표");
   const figures = blocks.filter(b => b.kind === "figure");
-  assert.deepEqual(figures.map(f => [f.enumerator, textOf(f.caption), f.imageAlt]), [["1", "PNG 그림", "막대 그림"], ["2", "EMF 그림", "도형 그림"]]);
+  assert.deepEqual(figures.map(f => [f.enumerator, textOf(f.caption), f.imageAlt]), [["1", "PNG 그림", "막대 그림"], ["2", "EMF 그림, Table 1 참고", "도형 그림"]]);
 });
 
 test("REF fields become in-document links to labelled targets; a missing target stays text", () => {
@@ -62,10 +62,24 @@ test("REF fields become in-document links to labelled targets; a missing target 
   assert.deepEqual(blocks.filter(b => b.kind === "figure").map(f => f.label), ["fig-1", undefined]);
 });
 
+test("an empty numbered paragraph with a hidden mark is not moved, but its number still counts", () => {
+  assert.ok(!headings.some(h => /^1\.2(\s|$)/.test(text(h))), "no number-only heading");
+  const notice = warnings.filter(w => w.kind === "other");
+  assert.deepEqual(notice.map(w => [w.detail, text(blocks[w.block])]),
+    [["숨긴 번호 문단 1개를 옮기지 않았습니다. 뒤따르는 제목의 번호는 원본과 같습니다.", "1.3 표"]]);
+});
+
+test("REF fields inside headings and captions stay their result text", () => {
+  const hasLink = nodes => nodes.some(n => n.kind === "link" || (n.children && hasLink(n.children)));
+  for (const h of headings) assert.ok(!hasLink(h.content), textOf(h.content));
+  for (const b of blocks.filter(b => Array.isArray(b.caption))) assert.ok(!hasLink(b.caption), textOf(b.caption));
+  assert.equal(text(headings.at(-1)), "3. 부록 1.1 참고");
+});
+
 test("the list of places to check has exactly the expected kinds", () => {
   const count = {};
   for (const w of warnings) count[w.kind] = (count[w.kind] || 0) + 1;
-  assert.deepEqual(count, { merged: 1, joined: 1, "ref-missing": 1, math: 1, textbox: 1 });
+  assert.deepEqual(count, { merged: 1, joined: 1, "ref-missing": 1, math: 1, textbox: 1, other: 1 });
   for (const w of warnings) assert.ok(Number.isInteger(w.block) && blocks[w.block], w.kind + " points at a block");
   assert.equal(blocks[warnings.find(w => w.kind === "textbox").block].content[0].text, "글상자 안의 문장.");
   assert.equal(blocks.filter(b => text(b) === "글상자 안의 문장.").length, 1, "the fallback copy of a text box is not moved twice");
