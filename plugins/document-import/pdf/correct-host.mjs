@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { detachedTarget, assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText, tableNotePlan } from './corrections.mjs';
-import { writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
+import { readDocument, writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections, fileRevision, documentRevision, snapshotOf } from './document-io.mjs';
 import { listPlan, tablePlan, unlistPlan, joinPlan, relabel, footnotePlan, tableRows, tableShapes } from './structure.mjs';
 import { changedRange, editedBlocks, keepHistory } from '../shared/follow.mjs';
@@ -95,20 +95,17 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
     timings.readMs = performance.now()-started; timings.remembered = false;
     return snapshot;
   }
-  // The written result is checked on the document just made in memory: the receipt must carry the
-  // revision of that document's official serialization, and the file must still hold it. When the
-  // write left something else (it drops an endnote definition whose last call went, which the plain
-  // serialization refuses), the file is read again and checked as before.
+  // The written result is the document the official write read back from the bytes it wrote
+  // (SDK 0.15.0), as long as the file still holds them. A write that gives no document back, or a
+  // file changed since, is read again and checked as before.
   function commit(doc, document, revision, timings) {
     const writing = performance.now();
     const receipt = write(doc, document, revision);
     timings.writeMs = performance.now()-writing;
     const checking = performance.now();
-    let expected = null;
-    try { expected = documentRevision(document); } catch {}
     let snapshot, written;
-    if (expected === receipt.revision && fileRevision(doc) === receipt.revision) {
-      snapshot = snapshotOf(receipt.revision, document); written = true;
+    if (receipt.document && fileRevision(doc) === receipt.revision) {
+      snapshot = snapshotOf(receipt.revision, receipt.document); written = true;
     } else {
       snapshot = inspectDocument(doc); written = snapshot.revision === receipt.revision; timings.reread = true;
     }
@@ -395,9 +392,14 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
       // The content before the change, when this handler still holds it, tells which blocks changed.
       const old = memory?.doc === doc && memory.snapshot.revision === revision ? memory.snapshot : null;
       memory = null;
+      // The view's save tells only its revisions: the saved file is read and parsed once (readMs),
+      // then projected to its nodes (nodesMs).
       started = performance.now();
-      const snapshot = inspectDocument(doc);
+      const read = readDocument(doc);
       timings.readMs = performance.now()-started;
+      started = performance.now();
+      const snapshot = snapshotOf(read.revision, read.document);
+      timings.nodesMs = performance.now()-started;
       started = performance.now();
       try { assertMapping(before,snapshot); }
       catch {
