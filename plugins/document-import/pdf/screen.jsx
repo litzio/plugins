@@ -3,41 +3,14 @@ import { statusLabel, statusAction } from './document-status.mjs';
 import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import PagePicker from "./page-picker.jsx";
-import { linkedItems, sourcePagePositions } from "../shared/linked-items.mjs";
-import {browseScales,steppedScale} from "../shared/browse-scale.mjs";
-import {blockActions, sourceOverlays} from "./block-actions.mjs";
-import {sourceForPath, sourceLocations, blockAtSource, sourceScrollTop, sourceVisibleTop, sourceAlignScrollTop} from "../shared/scroll-sync.mjs";
+import {blockActions} from "./block-actions.mjs";
+import Compare from "../shared/compare.jsx";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
-import { renderPage, cancelRender, renderFailed } from "../shared/page-render.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
-const labels = {
-  heading: "제목",
-  heading_unnumbered: "제목",
-  paragraph: "본문",
-  note: "참고",
-  caption: "캡션",
-  list: "목록",
-  table: "표",
-  figure: "그림",
-  footnote: "각주",
-  margin: "제외",
-  front: "제외",
-};
-const colors = {
-  heading: "accent",
-  heading_unnumbered: "accent",
-  paragraph: "info",
-  note: "info",
-  caption: "info",
-  list: "success",
-  table: "border-focus",
-  figure: "text",
-  footnote: "text-muted",
-  margin: "border",
-  front: "border",
-};
+const legend = ["heading", "paragraph", "list", "table", "figure", "footnote", "margin"];
+const none = [];
 function exclusionSummary(pages) {
   const ranges = [];
   for (const p of [...pages].sort((a, b) => a - b)) {
@@ -50,11 +23,6 @@ function exclusionSummary(pages) {
     : ranges.map(([a, b]) => (a === b ? a : a + "–" + b)).join(", ") +
         "쪽 제외";
 }
-const excludedLabel = e => e.kind==='title' ? '문서 제목으로 쓰임' : e.kind==='removed' ? '제외 · 문서에서 뺌' : '제외 · 머리글·바닥글';
-function SourceBlock({ui,canEdit,busy,stale,block,actions,trigger}) {
-  if(!['paragraph','heading','list'].includes(block.documentKind)||!canEdit)return trigger;
-  return <ui.ContextMenu disabled={busy||stale} trigger={trigger} actions={actions}/>;
-}
 function Screen({
   React,
   ui,
@@ -66,13 +34,8 @@ function Screen({
   request,
   onHome,
 }) {
-  const { useState, useRef, useEffect, useMemo, useLayoutEffect } = React;
-  const [browseScale,setBrowseScale]=useState(()=>{try{const value=Number(localStorage.getItem('document-import-browse-scale'));return browseScales.includes(value)?value:0.75;}catch{return 0.75;}});
-  const scaleValue=useRef(browseScale),scaleChange=useRef(null),scaleAnchor=useRef(null);
-  const comparisonPair = useRef(null);
-  const [viewport, setViewport] = useState(null);
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const [pageLast,setPageLast]=useState(1);
+  const { useState, useRef, useEffect, useMemo } = React;
+  const compare = useRef(null);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
     [actionHelp, setActionHelp] = useState(null);
@@ -86,54 +49,18 @@ function Screen({
     [pdf, setPdf] = useState(null),
     [result, setResult] = useState(null),
     [mapping, setMapping] = useState(null),
-    [selected, setSelected] = useState(null),
     [stale, setStale] = useState(false),
     [cached, setCached] = useState(false),
-    [missingMapping, setMissingMapping] = useState(false),
-    [pageNo, setPageNo] = useState(1),
-    [width, setWidth] = useState(600),
-    [tip, setTip] = useState(null);
+    [missingMapping, setMissingMapping] = useState(false);
   useEffect(() => { load(request.path, request.cachedOnly); }, []);
   const [pageTitles, setPageTitles] = useState([]);
   const replacementApproved = useRef(false), pickerSession = useRef(null);
   const [pickerHelp, setPickerHelp] = useState(false);
   useEffect(()=>()=>{if(pickerSession.current)pickerSession.current.active=false;},[]);
   const [picking, setPicking] = useState(false),
-    [excludedPages, setExcludedPages] = useState(new Set()),
-    [follow, setFollow] = useState(true),
-    [followed, setFollowed] = useState(null),
-    [target, setTarget] = useState(null);
-  useEffect(()=>{
-    const pair=comparisonPair.current;if(!pair)return;
-    const wheel=e=>{if(!e.ctrlKey||!e.deltaY)return;e.preventDefault();scaleChange.current?.(steppedScale(scaleValue.current,e.deltaY));};
-    pair.addEventListener('wheel',wheel,{capture:true,passive:false});return ()=>pair.removeEventListener('wheel',wheel,true);
-  },[viewport]);
+    [excludedPages, setExcludedPages] = useState(new Set());
   const anchor = useRef(null),
-    scrollTimer = useRef(null),
-    scrollOwner = useRef(null), sourceAuto = useRef(null),
-    documentLayout = useRef(null), alignRequest = useRef(0), pairHeld = useRef(false);
-  useEffect(() => () => clearTimeout(scrollTimer.current), []);
-  const pane = useRef(null),
     metrics = useRef({});
-  const [pageGap, setPageGap] = useState(0);
-  const measurePageGap = React.useCallback(element => {
-    if (element) setPageGap(parseFloat(getComputedStyle(element).rowGap) || 0);
-  }, []);
-  const sourceRef = React.useCallback(element => {
-    pane.current = element;
-    setViewport(element);
-  }, []);
-  useLayoutEffect(() => {
-    if (!viewport) return;
-    const measure = () => {
-      setWidth(Math.max(1, viewport.clientWidth - 16));
-      setViewportHeight(viewport.clientHeight);
-    };
-    const observer = new ResizeObserver(measure);
-    measure();
-    observer.observe(viewport);
-    return () => observer.disconnect();
-  }, [viewport]);
   useEffect(
     () => () => {
       pdf?.loadingTask.destroy();
@@ -141,7 +68,7 @@ function Screen({
     [pdf],
   );
   const warnings = mapping?.blocks.filter(b=>b.warning) || [];
-  const warningIndex = warnings.findIndex((b) => b.id === selected?.id);
+  const checks = useMemo(() => warnings.map(b => ({blockId: b.id, reason: b.warning.reason})), [mapping]);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
   const canEdit = !!mapping && !stale;
   function actionItems(blocks,focusSource=false) {
@@ -151,16 +78,13 @@ function Screen({
         ? a.disabledReason+' 원본 상자 하나를 누른 뒤 Shift를 누른 채 다른 상자를 눌러 범위를 고르세요. 키보드로는 Enter나 Space로 첫 상자를 고르고, 다른 상자에 초점을 옮겨 Shift+Enter 또는 Shift+Space를 누르세요.'
         : a.disabledReason,
       run:()=>{
-        if(a.action==='split') {setSelection(blocks.map(b=>b.id));setSelected(blocks[0]);setSplitting(true);}
+        if(a.action==='split') {setSelection(blocks.map(b=>b.id));compare.current?.pick(blocks[0]);setSplitting(true);}
         else return correct(a.action,a.extra,blocks,focusSource);
       }}));
   }
   const tools=actionItems(chosen),kindTools=tools.filter(a=>a.action==='kind'||a.action==='title');
   const kindDisabled=kindTools.every(a=>a.disabled), titleTool=kindTools.find(a=>a.action==='title');
   const kindHelp=kindDisabled?kindTools[0].disabledReason:titleTool.disabled?'문서 제목: '+titleTool.disabledReason:null;
-  function prepareContext(b) {
-    if(!busy&&!stale&&!editing.current&&!selection.includes(b.id))select(b);
-  }
   const actionTipStyle={position:'absolute',top:'100%',left:0,zIndex:3,background:'var(--id-color-surface)',padding:'var(--space-2)',width:240};
   function toolButton(a) {
     return <span key={a.id} tabIndex={a.disabled?0:undefined} style={{position:'relative'}}
@@ -176,7 +100,7 @@ function Screen({
     try {
       const r=await invoke('correct',{document:file.document,revision:mapping.revision,action:'status',status:statusAction(documentStatus).value,historyId:historyId.current});
       if(r.stale){setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
-      setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 변환 경고 '+r.mapping.blocks.filter(b=>b.warning).length+'개');
+      setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 확인할 곳 '+r.mapping.blocks.filter(b=>b.warning).length);
     } catch(e){setError(e.message);setStatus('검토 상태 변경 실패');} finally{editing.current=false;setBusy(false);}
   }
   async function runCorrection(input) {
@@ -189,8 +113,8 @@ function Screen({
   }
   async function correct(action, extra = {}, blocks = chosen, focusSource = false) {
     if (editing.current) return;
-    const before=mapping, oldSelection=selection, oldSelected=selected;
-    clearTimeout(scrollTimer.current);
+    const before=mapping, oldSelection=selection, oldSelected=compare.current?.selected();
+    compare.current?.stopFollow();
     editing.current=true; setBusy(true); setError(''); setStatus('고치는 중'); setSplitting(false);
     let started=performance.now();
     try {
@@ -212,27 +136,16 @@ function Screen({
       }
       if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
       setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
-      clearTimeout(scrollTimer.current); setFollowed(null);
       const b=r.mapping.blocks.find(b=>b.id===r.targetId);
-      setSelection(b?[b.id]:[]);setSelected(b||null);setTarget(b?sourceTarget(b):null);
-      if(focusSource&&b)requestAnimationFrame(()=>pane.current?.querySelector('[data-linked-item="'+b.id+'"]')?.focus({preventScroll:true}));
+      setSelection(b?[b.id]:[]);compare.current?.show(b,focusSource);
       metrics.current.correction={started,timings:r.timings,action};
       setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':r.brokenLinks?'고침 완료 · 이 제목을 가리키는 링크 '+r.brokenLinks+'개가 끊깁니다.':'고침 완료');
     } catch(e) {
-      setMapping(before);setSelection(oldSelection);setSelected(oldSelected);
+      setMapping(before);setSelection(oldSelection);compare.current?.pick(oldSelected);
       setError(e.message);setStatus('고치기 실패');
     } finally {editing.current=false;setBusy(false);}
   }
-  useEffect(() => {
-    const cancel = e => {if(e.key==='Escape'&&!e.defaultPrevented&&!e.target.closest?.('[role=menu],[role=listbox],[role=dialog]')) {setSplitting(false);setSelection([]);setSelected(null);setTarget(null);selectionAnchor.current=null;}};
-    window.addEventListener('keydown',cancel); return ()=>window.removeEventListener('keydown',cancel);
-  },[]);
   const frontPages = new Set([...excludedPages].map((p) => p - 1));
-  const positions = useMemo(
-    () => sourcePagePositions(mapping?.pages || result?.pages || pdf?.pageSizes || [],
-      width * browseScale, pageGap),
-    [mapping, result, pdf, width, browseScale, pageGap],
-  );
   async function choose() {
     try {
       const f = await pickPath({ kind: "pdf" });
@@ -246,26 +159,18 @@ function Screen({
     setConversion(null);
     if(pickerSession.current) pickerSession.current.active=false;
     pickerSession.current = null;
-    scrollOwner.current=null; sourceAuto.current=null; scaleAnchor.current=null;
-    documentLayout.current = null; pairHeld.current = false;
     selectionAnchor.current = null;
     replacementApproved.current=false;
     setPickerHelp(false);
     setPageTitles([]);
     setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
-    clearTimeout(scrollTimer.current);
     anchor.current = null;
-    setPageNo(1);
-    setTip(null);
     setExcludedPages(new Set());
     setPicking(false);
-    setFollowed(null);
-    setTarget(null);
 
     setError("");
     setMapping(null);
     setResult(null);
-    setSelected(null);
     setStale(false);
     setCached(false);
     setMissingMapping(false);
@@ -330,8 +235,8 @@ function Screen({
         setStale(f.cached.stale);
         setCached(true);
         if(cachedOnly) setStatus(
-          "변환 완료 · 변환 경고 " +
-            f.cached.blocks.filter((b) => b.warning).length + "개",
+          "변환 완료 · 확인할 곳 " +
+            f.cached.blocks.filter((b) => b.warning).length,
         );
       } else if (f.missingMapping) {
         setPdf(doc);
@@ -439,7 +344,7 @@ function Screen({
     setMissingMapping(false);
     if (m.cleanupError) setError(m.cleanupError);
     setStatus(
-      "변환 완료 · 변환 경고 " + m.blocks.filter((b) => b.warning).length + "개",
+      "변환 완료 · 확인할 곳 " + m.blocks.filter((b) => b.warning).length,
     );
   }
   async function rewrite() {
@@ -449,15 +354,11 @@ function Screen({
     setError("");
     setUndoCount(0);historyId.current=crypto.randomUUID();
     setSelection([]);setSplitting(false);
-    clearTimeout(scrollTimer.current);
     anchor.current = null;
     setPicking(true);
     setMapping(null);
     setResult(null);
-    setSelected(null);
     selectionAnchor.current = null;
-    setTarget(null);
-    setFollowed(null);
     setStatus("뺄 쪽을 고른 뒤 변환하세요.");
   }
   async function convertSelected() {
@@ -517,165 +418,20 @@ function Screen({
     onHome();
   }
 
-  const locations = useMemo(()=>sourceLocations(mapping?.blocks || [], positions),[mapping,positions]);
-  function updateSourceViewport(){
-    if(!pane.current)return;
-    const top=pane.current.scrollTop,bottom=top+pane.current.clientHeight;
-    setPageNo(Math.max(1,positions.findIndex(p=>p.top+p.height>top+1)+1));
-    const last=positions.findIndex(p=>p.top>=bottom);setPageLast(last<0?positions.length:last);
+  // Selecting in the comparison: Shift extends the range from the last single selection.
+  function selectBlock(b, shift) {
+    setSplitting(false);
+    if (b.documentTitle) {setSelection([b.id]);selectionAnchor.current=null;return;}
+    // The error box has no close button; the next successful action clears it.
+    setError("");
+    if (shift && selectionAnchor.current) {
+      const z = mapping.blocks.findIndex(x=>x.id===b.id);
+      const anchor = mapping.blocks.findIndex(x=>x.id===selectionAnchor.current);
+      const a = anchor < 0 ? z : anchor;
+      setSelection(mapping.blocks.slice(Math.min(a,z),Math.max(a,z)+1).map(x=>x.id));
+    } else {selectionAnchor.current=b.id;setSelection([b.id]);}
   }
-  function changeScale(value){
-    if(value===scaleValue.current||!browseScales.includes(value))return;
-    clearTimeout(scrollTimer.current);
-    if(pane.current){
-      const top=pane.current.scrollTop,y=top+pane.current.clientHeight/3;
-      // A clicked pair nobody has scrolled away from stays the anchor and is aligned again after the change.
-      const held=pairHeld.current&&target?.top!=null&&locations.find(x=>x.b.id===target.id&&x.bottom>top&&x.top<top+pane.current.clientHeight);
-      const hit=held||locations.find(x=>x.top<=y&&x.bottom>=y)||locations.find(x=>x.top>=y)||locations.at(-1);
-      if(hit)scaleAnchor.current={index:locations.indexOf(hit),id:hit.b.id,offset:hit.top-top,realign:!!held};
-    }
-    scaleValue.current=value;setBrowseScale(value);setError('');
-    try{localStorage.setItem('document-import-browse-scale',String(value));}catch{setError('배율을 기억하지 못했습니다.');}
-  }
-  scaleChange.current=changeScale;
-  useLayoutEffect(()=>{
-    if(!pane.current)return;
-    const anchor=scaleAnchor.current,hit=anchor&&locations[anchor.index];
-    if(hit&&hit.b.id===anchor.id){
-      pane.current.scrollTop=Math.max(0,hit.top-anchor.offset);sourceAuto.current=pane.current.scrollTop;scaleAnchor.current=null;
-      if(anchor.realign)setTarget(t=>t?.id===anchor.id?sourceTarget(t,t.highlight):t);
-    }
-    updateSourceViewport();
-  },[locations,viewport,viewportHeight]);
-  function ownScroll(side, event) {
-    if(event?.type==='keydown' && (!['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key) || event.ctrlKey || event.altKey || event.metaKey))return;
-    // Ctrl+wheel changes the scale; it is not a scroll.
-    if(event?.type==='wheel' && event.ctrlKey)return;
-    scrollOwner.current=side;
-    pairHeld.current=false;
-    sourceAuto.current=null;
-    clearTimeout(scrollTimer.current);
-  }
-  function moveSource(b) {
-    if(!pane.current || !b.boxes.length)return;
-    pane.current.scrollTop=Math.max(0,sourceScrollTop(b,positions,pane.current.clientHeight));
-    // Remember the clamped position, including no-op moves. Only fresh input clears it.
-    sourceAuto.current=pane.current.scrollTop;
-  }
-  // The document pair of a source box comes to the box's visible height. A new request realigns
-  // the same block after the document alone was scrolled.
-  function sourceTarget(b, highlight = true) {
-    const el = pane.current, top = el && sourceVisibleTop(b, positions, el.scrollTop, el.clientHeight);
-    pairHeld.current = top != null;
-    return top == null ? {...b, highlight} : {...b, highlight, top, request: ++alignRequest.current};
-  }
-  // The source box comes to the clicked document block's visible height. True when it got there,
-  // false at a scroll limit or without a reported block position.
-  function alignSource(b) {
-    const el = pane.current, layout = documentLayout.current;
-    if (!el || !b.boxes.length) return false;
-    const hit = layout?.revision === mapping?.revision && layout.blocks.find(x => x.path[0] === b.path?.[0]);
-    if (!hit) {moveSource(b); return false;}
-    const next = sourceAlignScrollTop(b, positions, hit.top, el.scrollTop, el.scrollHeight - el.clientHeight);
-    if (next !== null) el.scrollTop = next;
-    sourceAuto.current = el.scrollTop;
-    const top = sourceVisibleTop(b, positions, el.scrollTop, el.clientHeight);
-    return top != null && Math.abs(top - hit.top) <= 8;
-  }
-  function sourceScroll() {
-    const scrollAt=performance.now();
-    clearTimeout(scrollTimer.current);
-    if(scrollOwner.current!=='source' || sourceAuto.current!==null || !follow || stale || !mapping || picking || busy)return;
-    scrollTimer.current=setTimeout(()=>{
-      if(scrollOwner.current!=='source')return;
-      const b=blockAtSource(locations,pane.current.scrollTop+pane.current.clientHeight/3);
-      if(b){
-        setFollowed(b);
-        setTarget(old=>old?.id===b.id && old.highlight===false?old:{...b,highlight:false});
-        performance.measure('pdf-import-follow',{start:scrollAt,detail:{id:b.id,direction:'source'}});
-      }
-    },150);
-  }
-  function documentVisible(report) {
-    if(scrollOwner.current!=='document' || !follow || stale || busy || editing.current || !mapping || report.revision!==mapping.revision)return;
-    const b=sourceForPath(mapping.blocks,report.path,true);
-    if(!b)return;
-    clearTimeout(scrollTimer.current);
-    setFollowed(b);
-    // Clear a previous click highlight without navigating back into the user's scroll.
-    setTarget(null);
-    moveSource(b);
-  }
-  function selectLinkedBlock(id) {
-    if (editing.current) return;
-    const block = mapping?.blocks.find(item => item.id === id);
-    if (block) select(block, scrollOwner.current === 'source' ? false : 'document');
-  }
-  async function select(b, scroll = false, shift = false) {
-    if (stale || busy) return;
-    try {
-      const t = performance.now();
-      clearTimeout(scrollTimer.current);
-      // The error box has no close button; the next successful action clears it.
-      setError("");
-      setFollowed(null);
-      // A document click keeps the document still and moves the source to it.
-      // Once the source has reached it, the pair is held like a source click (the document stays
-      // within 8px and does not move); at a source limit the document keeps its place.
-      const reached = scroll === 'document' && alignSource(b);
-      if (scroll === true) moveSource(b);
-      if (scroll === 'document' && !reached) pairHeld.current = false;
-      setTarget(scroll === 'document' && !reached ? {...b,highlight:true} : sourceTarget(b));
-      setSelected(b);
-      setSplitting(false);
-      if (shift && selectionAnchor.current) {
-        const z = mapping.blocks.findIndex(x=>x.id===b.id);
-        const anchor = mapping.blocks.findIndex(x=>x.id===selectionAnchor.current);
-        const a = anchor < 0 ? z : anchor;
-        setSelection(mapping.blocks.slice(Math.min(a,z),Math.max(a,z)+1).map(x=>x.id));
-      } else {selectionAnchor.current=b.id;setSelection([b.id]);}
-      metrics.current.lastSelection = {
-        id: b.id,
-        start: t,
-        targetAt: performance.now(),
-      };
-    } catch (e) {
-      setError("문서 대응을 확인하지 못했습니다.");
-    }
-  }
-  const Page = useMemo(
-    () =>
-      function Page2({ index, scale }) {
-        const ref = useRef(null);
-        const [failed, setFailed] = useState(false), [attempt, setAttempt] = useState(0);
-        useEffect(() => {
-          let gone = false, canvas = null;
-          (async () => {
-            const p = await pdf.getPage(index + 1);
-            canvas = ref.current;
-            // The page may have left the visible range (canvas detached) before getPage resolved.
-            if (gone || !canvas) return;
-            if (await renderPage(canvas, p, p.getViewport({ scale }), () => gone) && !gone) setFailed(false);
-          })().catch((e) => {
-            // A failure stays on this page only; it never becomes the screen's error.
-            if (renderFailed(e, gone)) setFailed(true);
-          });
-          return () => {
-            gone = true;
-            cancelRender(canvas);
-          };
-        }, [index, scale, attempt]);
-        return <>
-          <canvas ref={ref} style={{ display: "block", width: "100%" }} />
-          {failed && <div data-page-render-failed style={{ position: "absolute", top: "var(--space-4)", left: "var(--space-4)", right: "var(--space-4)", zIndex: 1 }}>
-            <ui.Notice tone="error">
-              이 쪽을 그리지 못했습니다. <ui.Button onClick={() => setAttempt((n) => n + 1)}>다시 그리기</ui.Button>
-            </ui.Notice>
-          </div>}
-        </>;
-      },
-    [pdf],
-  );
+  const clearSelection = () => {setSplitting(false);setSelection([]);selectionAnchor.current=null;};
   const viewState = React.useCallback(
     (s) => {
       if(s.state === 'ready' && metrics.current.correction) {
@@ -697,206 +453,10 @@ function Screen({
       }
       if (s.revision && mapping && s.revision !== mapping.revision)
         setStale(true);
-      if (s.state === "stale-target") {
-        setStale(true);
-        setSelected(null);
-      }
+      if (s.state === "stale-target") setStale(true);
       if (s.state === "error") setError("변환된 문서를 표시하지 못했습니다.");
     },
     [mapping],
-  );
-  const linkedSelection = stale || selected?.documentTitle ? undefined : selected?.id;
-  const items = useMemo(
-    () => linkedItems(mapping?.blocks ?? [], positions, width * browseScale, width + 16, labels, colors),
-    [mapping, positions, width, browseScale],
-  );
-  function ownComparisonScroll(event) {
-    const side = pane.current?.contains(event.target) ? 'source' : 'document';
-    ownScroll(side, event.type === 'keydown' && event.key === 'Enter' ? undefined : event);
-  }
-  const lastPage = positions.at(-1);
-  const sourcePages = pdf && !picking && !missingMapping && (
-    <div ref={measurePageGap} style={{
-      position: "relative",
-      rowGap: "var(--space-2)",
-      minHeight: "100%",
-      height: lastPage ? lastPage.top + lastPage.height : 0,
-      background: "var(--id-color-canvas)",
-    }}>
-      {positions.map((pos, i) => (
-        <div
-          data-source-page={i + 1}
-          key={i}
-          style={{
-            height: pos.height,
-            position: "absolute",
-            top: pos.top,
-            width:width*browseScale,
-            left: Math.max(0, width + 16 - width * browseScale),
-            background: "var(--id-color-paper)",
-            boxShadow: "var(--shadow-paper)",
-          }}
-        >
-          {i+1>=pageNo-2 && i+1<=pageLast+2 && (
-            <div
-              style={{
-                position: "relative",
-                outline: frontPages.has(i)
-                  ? "3px solid var(--id-color-danger)"
-                  : undefined,
-                outlineOffset: -3,
-              }}
-            >
-              <div
-                style={{ opacity: frontPages.has(i) ? 0.4 : 1 }}
-              >
-                <Page index={i} scale={pos.scale} />
-              </div>
-              {frontPages.has(i) && (
-                <svg
-                  aria-label="제외"
-                  viewBox="0 0 400 500"
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    width: "100%",
-                    height: "100%",
-                    pointerEvents: "none",
-                    color: "var(--id-color-danger)",
-                    opacity: 0.55,
-                  }}
-                >
-                  <g transform="translate(200 250) rotate(-35) scale(5)">
-                    <text
-                      x="0"
-                      y="0"
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fill="currentColor"
-                      style={{ color: "var(--id-color-danger)" }}
-                      className="type-screen-title"
-                    >
-                      제외
-                    </text>
-                  </g>
-                </svg>
-              )}
-              <div style={{position:"absolute",inset:0,mixBlendMode:"multiply",pointerEvents:"none"}}>
-              {(mapping?.blocks || result?.blocks || []).flatMap(
-                (b) =>
-                  b.boxes
-                    .filter((x) => x.page === i)
-                    .map((x, j) => (
-                      <SourceBlock key={b.id+'-'+j} ui={ui} canEdit={canEdit} busy={busy} stale={stale} block={b} actions={actionItems(selection.includes(b.id)?chosen:[b],true)} trigger={<ui.Button
-                        className="pdf-import-box"
-                        data-selected={selection.includes(b.id) && b.id !== linkedSelection}
-                        data-linked-item={mapping && b.path ? b.id : undefined}
-                        aria-pressed={b.id === linkedSelection}
-                        aria-label={
-                          labels[b.kind] +
-                          (b.warning ? " · " + b.warning.reason : "")
-                        }
-                        onMouseEnter={() => setTip({
-                            text:
-                              labels[b.kind] +
-                              (b.warning
-                                ? " · " + b.warning.reason
-                                : ""),
-                            page: i,
-                            top: x.bottom * pos.scale,
-                          })
-                        }
-                        onMouseLeave={() => setTip(null)}
-                        onFocus={() =>
-                          setTip({
-                            text:
-                              labels[b.kind] +
-                              (b.warning
-                                ? " · " + b.warning.reason
-                                : ""),
-                            page: i,
-                            top: x.bottom * pos.scale,
-                          })
-                        }
-                        onBlur={() => setTip(null)}
-                        onContextMenu={e=>{if(canEdit&&['paragraph','heading','list'].includes(b.documentKind))prepareContext(b);else e.preventDefault();}}
-                        onClick={e => {
-                          ownScroll('source');
-                          if (e.shiftKey && mapping) {
-                            e.stopPropagation();
-                            select(b, false, true);
-                          }
-                        }}
-                        style={{
-                          pointerEvents: "auto",
-                          left: x.x0 * pos.scale,
-                          top: x.top * pos.scale,
-                          width: Math.max(
-                            1,
-                            (x.x1 - x.x0) * pos.scale,
-                          ),
-                          height: Math.max(
-                            1,
-                            (x.bottom - x.top) * pos.scale,
-                          ),
-                          "--block-color": "var(--id-color-" + colors[b.kind] + ")",
-                          "--strip-color": "var(--id-color-" + (b.warning ? "warning" : followed?.id === b.id ? "accent" : colors[b.kind]) + ")",
-                        }}
-                      >
-                        <span className="type-helper" style={{position:'absolute',left:-x.x0*pos.scale,top:0,width:Math.max(0,x.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',gap:0,overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>
-                          {b.level && (["heading","heading_unnumbered"].includes(b.kind) || (b.kind==='list' && b.level>=2)) && <span>{browseScale===.4?'·':b.kind==='list'?b.level:'H'+Math.min(6,b.level)}</span>}
-                          {b.warning && <span style={{color:'var(--id-color-warning)'}}>!</span>}
-                          {b.edited && <span>{browseScale===.4?'·':'고침'}</span>}
-                        </span>
-                      </ui.Button>}/>
-
-                    )),
-              )}
-              {splitting && chosen.length===1 && chosen[0].lines.map((l,j)=>l.page===i && <ui.Button
-                key={'line'+j} className="pdf-import-box pdf-import-line" data-source-line={j} disabled={j===0 || busy}
-                aria-label={j===0?'첫째 줄은 나눌 수 없습니다.':(j+1)+'번째 줄 앞에서 나누기'}
-                onClick={()=>correct('split',{line:j})}
-                style={{pointerEvents:'auto',left:l.box.x0*pos.scale,top:l.box.top*pos.scale,width:(l.box.x1-l.box.x0)*pos.scale,
-                  height:Math.max(1,(l.box.bottom-l.box.top)*pos.scale),outline:'1px solid var(--id-color-accent)',outlineOffset:2}} />)}
-              {sourceOverlays(mapping?.excluded || result?.excluded || []).titles.map((e,j) => e.page === i && <ui.Button
-                key={'title'+j} className="pdf-import-box" data-selected={selected?.id === 'title-'+j}
-                aria-label="문서 제목으로 쓰임" aria-pressed={selected?.id === 'title-'+j}
-                onMouseEnter={()=>setTip({page:i,top:0,text:'문서 제목으로 쓰임'})} onMouseLeave={()=>setTip(null)}
-                onFocus={()=>setTip({page:i,top:0,text:'문서 제목으로 쓰임'})} onBlur={()=>setTip(null)}
-                onClick={()=>{if(stale||busy)return; ownScroll('source'); setSelected({id:'title-'+j,documentTitle:true}); setSelection(['title-'+j]); selectionAnchor.current=null; setSplitting(false); setTarget(null);}}
-                style={{pointerEvents:'auto',left:e.box.x0*pos.scale,top:e.box.top*pos.scale,width:Math.max(1,(e.box.x1-e.box.x0)*pos.scale),height:Math.max(1,(e.box.bottom-e.box.top)*pos.scale),'--block-color':'var(--id-color-accent)'}}>
-                <span className="type-helper" style={{position:'absolute',left:-e.box.x0*pos.scale,top:0,width:Math.max(0,e.box.x0*pos.scale-4),display:'flex',justifyContent:'flex-end',overflow:'hidden',whiteSpace:'nowrap',pointerEvents:'none',background:'var(--id-color-surface)',color:'var(--id-color-text)'}}>제목</span>
-              </ui.Button>)}
-              {sourceOverlays(mapping?.excluded || result?.excluded || []).excluded
-                .filter((x) => x.page === i)
-                .map((e, j) => (
-                  <div
-                    key={"e" + j}
-                    className="pdf-import-excluded"
-                    onContextMenu={e=>e.preventDefault()}
-                    tabIndex={0}
-                    aria-label={excludedLabel(e)}
-                    onMouseEnter={()=>setTip({page:i,top:0,text:excludedLabel(e)})}
-                    onMouseLeave={()=>setTip(null)}
-                    onFocus={()=>setTip({page:i,top:0,text:excludedLabel(e)})}
-                    onBlur={()=>setTip(null)}
-                    style={{
-                      position: "absolute",
-                      pointerEvents: "auto",
-                      left: e.box.x0 * pos.scale - 3,
-                      top: e.box.top * pos.scale - 3,
-                      width: (e.box.x1 - e.box.x0) * pos.scale + 6,
-                      height: (e.box.bottom - e.box.top) * pos.scale + 6,
-                    }}
-                   />
-                ))}
-              </div>
-
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
   );
   if (!file && !busy) return null;
   return (
@@ -949,7 +509,7 @@ function Screen({
           )}
           {mapping && !picking && toolButton({id:'document-status',label:statusAction(documentStatus).label,
             disabled:busy||stale,disabledReason:stale?'문서가 바뀌어 대응을 표시할 수 없음':'문서를 고치는 중입니다.',
-            help:warnings.length?'변환 경고 '+warnings.length+'개가 남아 있습니다':null,run:changeDocumentStatus})}
+            help:warnings.length?'확인할 곳이 '+warnings.length+'곳 남아 있습니다':null,run:changeDocumentStatus})}
           {(mapping || missingMapping) && !picking && (
             <ui.Button
               disabled={busy}
@@ -969,26 +529,8 @@ function Screen({
       }
     >
       <style>{`
-@container pdf-tools (max-width:940px){[data-comparison-navigation]{flex-basis:100%;justify-content:flex-end}}
-.pdf-import-pane-labels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-.pdf-import-narrow{display:none}
 .pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
-.pdf-import-box{position:absolute!important;min-height:0!important;padding:0!important;border-radius:0!important;border:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
-.pdf-import-box::before{content:"";position:absolute;inset:0;background:color-mix(in srgb,var(--block-color) 12%,transparent);pointer-events:none}
-.pdf-import-box::after{content:"";position:absolute;inset:0 auto 0 -3px;width:2px;background:var(--strip-color,var(--block-color));pointer-events:none}
-.pdf-import-box:hover::before,.pdf-import-box:focus-visible::before{background:color-mix(in srgb,var(--block-color) 18%,transparent)}
-.pdf-import-box[data-selected=true]::before{background:color-mix(in srgb,var(--block-color) 22%,transparent)}
-.pdf-import-box[data-selected=true]{outline:1px solid var(--block-color);outline-offset:4px}
-.pdf-import-box:not([data-linked-item]):focus-visible{outline:2px solid var(--id-color-border-focus)!important;outline-offset:6px}
-.pdf-import-line::before,.pdf-import-line::after{display:none}
-.pdf-import-line{outline:1px solid var(--id-color-accent);outline-offset:2px}
-.pdf-import-excluded{position:absolute;--excluded-ink:color-mix(in srgb,var(--id-color-text-muted) 70%,var(--id-color-surface));--excluded-face:repeating-linear-gradient(135deg,color-mix(in srgb,var(--excluded-ink) 80%,transparent) 0 2px,transparent 2px 7px),color-mix(in srgb,var(--excluded-ink) 35%,transparent);background:var(--excluded-face);mix-blend-mode:multiply}
-.pdf-import-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
-.pdf-import-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
-.pdf-import-key.pdf-import-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
-@media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}.pdf-import-pane-labels{display:none}
-.pdf-import-narrow{display:block}
-}
+@media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}}
 `}</style>
       {!conversion && error && <ui.Notice tone="error">{error}</ui.Notice>}
       {conversion && <div style={{width:'min(100%, 560px)',margin:'var(--space-8) auto',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
@@ -1001,14 +543,20 @@ function Screen({
         </ui.Notice>
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
-      {pdf && !picking && !missingMapping && !conversion && (
-        <>
-          <div className="pdf-import-narrow">
-            <ui.Notice>넓은 창에서 보기</ui.Notice>
-          </div>
-          <ui.Toolbar><div data-comparison-tools style={{containerType:'inline-size',containerName:'pdf-tools',display:'flex',alignItems:'center',flexWrap:'wrap',gap:'var(--space-2)',width:'100%'}}>
-            <div data-block-tools style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:'var(--space-2)',minHeight:32}}>
-              {canEdit && selection.length>0 ? <>
+      {pdf && mapping && !picking && !missingMapping && !conversion && (
+        <Compare React={React} ui={ui} pdf={pdf} handle={compare}
+          pages={mapping.pages || result?.pages || pdf.pageSizes} blocks={mapping.blocks}
+          excluded={mapping.excluded || result?.excluded || none} excludedPages={frontPages}
+          document={file.document} revision={mapping.revision} reloadKey={reloadKey}
+          checks={checks} legend={legend} sourceLabel="원본 PDF" busy={busy} stale={stale}
+          guide={splitting ? "새 문단이 시작될 줄을 고르세요." : undefined}
+          onViewState={viewState}
+          edit={{
+            selection, editing, onSelect: selectBlock, onClear: clearSelection,
+            menu: b => canEdit && ['paragraph','heading','list'].includes(b.documentKind) ? actionItems(selection.includes(b.id)?chosen:[b],true) : null,
+            splitLines: splitting && chosen.length===1 ? chosen[0].lines : null,
+            onSplit: line => correct('split',{line}),
+            tools: canEdit && selection.length>0 ? <>
                 <span>{selection.length}개 선택</span>
                 {tools.filter(a=>a.action==='merge'||a.action==='split').map(a=>toolButton(a))}
                 <span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
@@ -1019,112 +567,9 @@ function Screen({
                   {kindHelp&&actionHelp==='kind'&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{kindHelp}</span>}
                 </span>
                 {toolButton(tools.find(a=>a.action==='remove'))}
-              </> : <>{['heading','paragraph','list','table','figure','footnote','margin'].map(k=><span key={k} className="type-helper"><span aria-hidden="true" className={'pdf-import-key'+(k==='margin'?' pdf-import-excluded':'')} style={{'--block-color':'var(--id-color-'+colors[k]+')'}}/>{labels[k]}</span>)}<span className="type-helper">고침</span></>}
-            </div>
-            <div data-comparison-navigation style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:'var(--space-2)',minHeight:32,flexShrink:0}}>
-              {warnings.length>0&&<><span className="type-helper">변환 경고 {warningIndex<0?0:warningIndex+1} / {warnings.length}</span>
-                <ui.Button disabled={busy||stale||warningIndex===0} onClick={()=>select(warnings[Math.max(0,warningIndex-1)],true)}>이전</ui.Button>
-                <ui.Button disabled={busy||stale||warningIndex===warnings.length-1} onClick={()=>select(warnings[warningIndex+1],true)}>다음</ui.Button></>}
-            <label
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "var(--space-2)",
-                position: "relative",
-              }}
-              onMouseEnter={() => setTip({ page: -2 })}
-              onMouseLeave={() => setTip(null)}
-              onFocus={() => setTip({ page: -2 })}
-              onBlur={() => setTip(null)}
-              aria-describedby={
-                tip?.page === -2 ? "pdf-follow-help" : undefined
-              }
-              title="한쪽을 스크롤하면 다른 쪽이 따라옵니다."
-              tabIndex={0}
-            >
-              <input
-                type="checkbox"
-                checked={follow}
-                onChange={(e) => {
-                  clearTimeout(scrollTimer.current);
-                  setFollow(e.target.checked);
-                }}
-              />{" "}
-              함께 스크롤
-              {tip?.page === -2 && (
-                <span
-                  id="pdf-follow-help"
-                  role="tooltip"
-                  className="type-helper"
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    width: 300,
-                    padding: "var(--space-2)",
-                    background: "var(--id-color-surface)",
-                    border: "1px solid var(--id-color-border)",
-                    zIndex: 1,
-                  }}
-                >
-                  한쪽을 스크롤하면 다른 쪽이 따라옵니다.
-                </span>
-              )}
-            </label>
-              <ui.Select label="훑어보기 배율" hideLabel value={String(browseScale)} options={browseScales.map(value=>({value:String(value),label:Math.round(value*100)+'%'}))} onValueChange={value=>changeScale(Number(value))}/>
-              {undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>}
-            </div>
-          </div></ui.Toolbar>
-          <div data-comparison-guide className="type-helper" style={{height:24,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',textAlign:!splitting&&warningIndex>=0?'right':undefined}}>
-            {splitting ? <span role="status">새 문단이 시작될 줄을 고르세요.</span> : warningIndex>=0 ? <span title={warnings[warningIndex].warning.reason}>{warnings[warningIndex].warning.reason}</span> : tip?.page>=0&&<span role="tooltip">{tip.text}</span>}
-          </div>
-          <div className="pdf-import-pane-labels">
-            <div className="type-item-name">원본 · {pageNo} / {pdf.numPages}쪽</div>
-            <div className="type-item-name">변환된 문서</div>
-          </div>
-          <div style={{display:'contents'}} ref={comparisonPair}
-            onWheelCapture={ownComparisonScroll}
-            onPointerDownCapture={ownComparisonScroll}
-            onKeyDownCapture={ownComparisonScroll}
-            onScrollCapture={event => {
-              if (event.target !== pane.current) return;
-              updateSourceViewport();
-              setTip(null);
-              sourceScroll();
-            }}>
-            {mapping ? (
-              <ui.LinkedDocumentView
-                document={{
-                  reloadKey,
-                  path: file.document,
-                  target: target && !stale
-                    ? {revision: mapping.revision, path: target.path, highlight: target.highlight !== false,
-                       ...(target.top == null ? {} : {top: target.top, request: target.request})}
-                    : undefined,
-                  height: "fill",
-                  label: "변환된 문서",
-                  scale: browseScale,
-                  onStateChange: viewState,
-                  onVisibleBlockChange: documentVisible,
-                  onVisibleBlockLayoutChange: layout => {documentLayout.current = layout;},
-                }}
-                revision={mapping.revision}
-                source={sourcePages}
-                sourceLabel="원본 PDF"
-                sourceRef={sourceRef}
-                sourceScale={browseScale}
-                items={items}
-                selectedId={linkedSelection}
-                onSelect={selectLinkedBlock}
-              />
-            ) : (
-              <div ref={sourceRef} tabIndex={0} aria-label="원본 PDF"
-                style={{flex:1,minHeight:0,overflow:'auto',background:'var(--id-color-canvas)'}}>
-                {sourcePages}
-              </div>
-            )}
-          </div>
-        </>
+              </> : null,
+            extraTools: undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>,
+          }} />
       )}
     </ui.ScreenLayout>
   );

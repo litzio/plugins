@@ -49,7 +49,8 @@ const body = [
   // REF fields inside a heading and a caption stay their result text.
   p(`${t("부록 ")}${field("REF _RefScope \\r \\h", t("1.1"))}${t(" 참고")}`, style("Heading1")),
   p(t("끝 문단.")),
-  '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>',
+  // The header and the footer's page number come back on every page; they are not moved.
+  '<w:sectPr><w:headerReference w:type="default" r:id="rIdHeader"/><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>',
 ].join("");
 
 const heading = (id, name, lvl) => `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:numPr><w:numId w:val="1"/></w:numPr><w:outlineLvl w:val="${lvl}"/></w:pPr><w:rPr><w:b/></w:rPr></w:style>`;
@@ -66,11 +67,15 @@ const numbering = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:num
   `<w:abstractNum w:abstractNumId="1">${lvl(0, "decimal", "%1.")}${lvl(1, "lowerLetter", "%2)")}</w:abstractNum>` +
   '<w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>';
 const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}</w:body></w:document>`;
+const header = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr ${NS}>${p(t("합성 표본 머리글"))}</w:hdr>`;
+const footer = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ${NS}>${p(t("쪽 ") + field("PAGE", t("1")), '<w:jc w:val="center"/>')}</w:ftr>`;
 const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
   '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
   '<Relationship Id="rIdNumbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>' +
   '<Relationship Id="rIdPng" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>' +
   '<Relationship Id="rIdEmf" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image2.emf"/>' +
+  '<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>' +
+  '<Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>' +
   '<Relationship Id="rIdLink" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.com/" TargetMode="External"/></Relationships>';
 const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
   '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
@@ -81,6 +86,8 @@ const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Ty
   '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
   '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
   '<Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>' +
+  '<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>' +
+  '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>' +
   '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>';
 const core = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>합성 표본 문서</dc:title></cp:coreProperties>`;
 
@@ -155,5 +162,6 @@ function zip(files) {
 writeFileSync(new URL("./sample.docx", import.meta.url), zip([
   ["[Content_Types].xml", contentTypes], ["_rels/.rels", rootRels], ["docProps/core.xml", core],
   ["word/document.xml", documentXml], ["word/_rels/document.xml.rels", rels], ["word/styles.xml", styles],
-  ["word/numbering.xml", numbering], ["word/media/image1.png", png(120, 60)], ["word/media/image2.emf", emf()],
+  ["word/numbering.xml", numbering], ["word/header1.xml", header], ["word/footer1.xml", footer],
+  ["word/media/image1.png", png(120, 60)], ["word/media/image2.emf", emf()],
 ]));

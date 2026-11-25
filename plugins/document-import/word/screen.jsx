@@ -1,7 +1,7 @@
 import { WARNING_KINDS } from "./rules.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
-import Compare from "./compare.jsx";
+import Compare from "../shared/compare.jsx";
 
 const STEPS = ["구조 읽기", "그림 만들기", "문서 저장"];
 const GROUPS = WARNING_KINDS.map(([id, title]) => ({ id, title, tone: "warning" }));
@@ -11,9 +11,11 @@ const REPLACE = {
   confirmLabel: "다시 변환",
 };
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+const LEGEND = ["heading", "paragraph", "list", "table", "figure", "margin"];
+const key = path => path.join(".");
 
 function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, onHome }) {
-  const { useState, useEffect, useRef } = React;
+  const { useState, useEffect, useRef, useMemo, useCallback } = React;
   const [file, setFile] = useState(null);
   const [saved, setSaved] = useState(null);
   const [run, setRun] = useState(null); // {step, progress, failed}
@@ -27,6 +29,23 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   useEffect(() => () => { alive.current = false; }, []);
   const busy = !!run && !run.failed;
   const done = !!file && !run && !!saved;
+  const warnings = saved?.warnings || [];
+  // Source boxes carry the first place to check of their block; every place stays in the order.
+  const blocks = useMemo(() => {
+    const first = new Map();
+    for (const w of warnings) if (w.path && !first.has(key(w.path))) first.set(key(w.path), w);
+    return (source?.source?.blocks || []).map(b => ({ ...b, id: key(b.path), warning: first.has(key(b.path)) ? { reason: first.get(key(b.path)).detail } : undefined }));
+  }, [source, saved]);
+  const checks = useMemo(() => {
+    const ids = new Set(blocks.map(b => b.id));
+    return warnings.map(w => ({ blockId: w.path && ids.has(key(w.path)) ? key(w.path) : null, path: w.path, reason: w.label + " · " + w.detail }));
+  }, [blocks]);
+  const compareState = useCallback(s => {
+    setViewState(s.state);
+    if (s.state !== "ready" || !metrics.current.compareFrom) return;
+    performance.measure("word-import-compare-ready", { start: metrics.current.compareFrom });
+    metrics.current.compareFrom = null;
+  }, []);
 
   // After conversion, or on opening a converted document: the source pages come when ready.
   useEffect(() => {
@@ -169,7 +188,6 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     );
   }
 
-  const warnings = saved?.warnings || [];
   const comparing = !!pdf && source?.state === "ready";
   const items = warnings.map((w, i) => ({ id: String(i), label: w.label, details: [w.detail], group: w.kind }));
   const notice = !saved ? "확인할 곳 목록이 없습니다. 다시 변환하면 목록을 만듭니다."
@@ -193,13 +211,9 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
 `}</style>
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {notice && <ui.Notice tone="warning">{notice}</ui.Notice>}
-      {comparing ? <Compare React={React} ui={ui} pdf={pdf} source={source.source} saved={saved} file={file}
-        onViewState={s => setViewState(s.state)}
-        onReady={() => {
-          if (!metrics.current.compareFrom) return;
-          performance.measure("word-import-compare-ready", { start: metrics.current.compareFrom });
-          metrics.current.compareFrom = null;
-        }} /> : <>
+      {comparing ? <Compare React={React} ui={ui} pdf={pdf} pages={source.source.pages} blocks={blocks}
+        excluded={source.source.excluded} document={file.document} revision={source.source.revision}
+        checks={checks} legend={LEGEND} sourceLabel="원본 쪽" onViewState={compareState} /> : <>
       {(source?.state === "preparing" || source?.state === "ready") && <div><ui.Status tone="progress" label="원본 쪽 준비 중" /></div>}
       {source?.state === "failed" && <ui.Notice tone="warning">{source.reason}</ui.Notice>}
       <div className="word-import-pair">
