@@ -1,1 +1,1 @@
-{"name":"document-import","private":true,"type":"module","scripts":{"test":"node --test pdf/test/*.test.mjs word/test/*.test.mjs shared/test/recent.test.mjs"},"dependencies":{"pdfjs-dist":"6.5.438"}}
+{"name":"document-import","private":true,"type":"module","scripts":{"test":"node --test pdf/test/*.test.mjs word/test/*.test.mjs shared/test/*.test.mjs"},"dependencies":{"pdfjs-dist":"6.5.438"}}

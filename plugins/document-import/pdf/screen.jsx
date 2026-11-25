@@ -4,6 +4,7 @@ import { imageKeys, imageReceipt } from "./output.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import PagePicker from "./page-picker.jsx";
 import {blockActions} from "./block-actions.mjs";
+import Flow, { FlowToggle } from "../shared/flow.jsx";
 import Compare from "../shared/compare.jsx";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
@@ -35,6 +36,10 @@ function Screen({
   onHome,
 }) {
   const { useState, useRef, useEffect, useMemo } = React;
+  const [seen, setSeen] = useState(new Set());
+  const markSeen = React.useCallback(id => setSeen(old => old.has(id) ? old : new Set([...old, id])), []);
+  const [expanded,setExpanded] = useState(false);
+  const flowId = React.useId();
   const compare = useRef(null);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
@@ -68,7 +73,7 @@ function Screen({
     [pdf],
   );
   const warnings = mapping?.blocks.filter(b=>b.warning) || [];
-  const checks = useMemo(() => warnings.map(b => ({blockId: b.id, reason: b.warning.reason})), [mapping]);
+  const checks = useMemo(() => warnings.map(b => ({flowId: b.id, blockId: b.id, reason: b.warning.reason})), [mapping]);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
   const canEdit = !!mapping && !stale;
   function actionItems(blocks,focusSource=false) {
@@ -174,6 +179,8 @@ function Screen({
     setStale(false);
     setCached(false);
     setMissingMapping(false);
+    setExpanded(false);
+    setSeen(new Set());
     setFile(null);
     setPdf(null);
     setDocumentStatus(undefined);
@@ -350,6 +357,8 @@ function Screen({
   async function rewrite() {
     if(!await confirm({title:"다시 변환",message:"새로 변환한 문서는 초안이 됩니다. 새 변환이 끝나면 이전 문서와 쓰지 않는 그림을 정리합니다. 실패하면 복구용 사본을 남깁니다.",confirmLabel:"뺄 쪽 고르기"})) return;
     replacementApproved.current=true;
+    setExpanded(false);
+    setSeen(new Set());
     setConversion(null);
     setError("");
     setUndoCount(0);historyId.current=crypto.randomUUID();
@@ -458,6 +467,9 @@ function Screen({
     },
     [mapping],
   );
+  const flow = {kind:"pdf", profile:mapping?.profile ?? result?.profile, phase:conversion?.key,
+    failed:!!conversion && !!error, approved:documentStatus === "approved",
+    viewed:seen.size > 0, remaining:checks.filter(c => !seen.has(c.flowId)).length};
   if (!file && !busy) return null;
   return (
     <ui.ScreenLayout
@@ -483,6 +495,7 @@ function Screen({
       }
       actions={
         <>
+          {mapping && !picking && !conversion && <FlowToggle React={React} ui={ui} state={flow} open={expanded} controls={flowId} toggle={()=>setExpanded(!expanded)} />}
           {!picking && <ui.Button
             variant={file ? "outline" : "default"}
             disabled={busy}
@@ -532,6 +545,8 @@ function Screen({
 .pdf-picker-status:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:2px}
 @media(max-width:800px){.pdf-picker-status [role=tooltip]{left:0!important;transform:none!important}}
 `}</style>
+      {(conversion || (mapping && !picking)) && <Flow key={conversion ? "run" : "compare"} React={React} ui={ui}
+        mode={conversion ? "run" : "compare"} {...flow} controls={flowId} expanded={conversion ? undefined : expanded} />}
       {!conversion && error && <ui.Notice tone="error">{error}</ui.Notice>}
       {conversion && <div style={{width:'min(100%, 560px)',margin:'var(--space-8) auto',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <ui.Steps steps={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결']} current={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결'].indexOf(conversion.key)}/>
@@ -544,7 +559,7 @@ function Screen({
       )}
       {pdf && picking && <PagePicker React={React} ui={ui} pdf={pdf} titles={pageTitles} excluded={excludedPages} toggle={togglePage} busy={busy}/> }
       {pdf && mapping && !picking && !missingMapping && !conversion && (
-        <Compare React={React} ui={ui} pdf={pdf} handle={compare}
+        <Compare onCheckViewed={markSeen} React={React} ui={ui} pdf={pdf} handle={compare}
           pages={mapping.pages || result?.pages || pdf.pageSizes} blocks={mapping.blocks}
           excluded={mapping.excluded || result?.excluded || none} excludedPages={frontPages}
           document={file.document} revision={mapping.revision} reloadKey={reloadKey}
