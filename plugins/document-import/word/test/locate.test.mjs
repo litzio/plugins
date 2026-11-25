@@ -123,7 +123,7 @@ test("Word exports the sample and most of its blocks are found (Windows with Wor
     const r = await exportPdf(docx, pdf);
     if (/Word를 찾을 수 없어/.test(r.error || "")) return t.skip("Word is not installed");
     assert.equal(r.error, undefined);
-    const { blocks, images, noteTables } = convert(readDocx(readFileSync(docx)));
+    const { blocks, images, noteTables } = convert(readDocx(readFileSync(docx)), { limits: { tableRows: 500, tableColumns: 32, tableCells: 8000 } });
     const places = locate(blocks, await readPdfText(pdf), images, noteTables);
     const stats = locateStats(blocks, places);
     assert.equal(stats.table.found, 1);

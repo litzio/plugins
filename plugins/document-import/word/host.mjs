@@ -1,4 +1,4 @@
-import { PluginPublicError, machineNodes, getEditableDocument } from "@litzio/plugin-sdk";
+import { PluginPublicError, machineNodes, getEditableDocument, DOCUMENT_AUTHORING_LIMITS } from "@litzio/plugin-sdk";
 import { readDocument } from "@litzio/plugin-sdk/node";
 import { readFile, writeFile, rename, readdir, unlink } from "node:fs/promises";
 import path from "node:path";
@@ -76,7 +76,7 @@ export function activate() {
         } catch (e) {
           throw fail(e.code ? "워드 문서를 읽을 수 없습니다." : "워드 문서의 구조를 읽지 못했습니다. 파일이 .docx 형식인지 확인해 주세요.");
         }
-        s.result = convert(word);
+        s.result = convert(word, { limits: DOCUMENT_AUTHORING_LIMITS });
         s.readMs = performance.now() - started;
         s.job = startImages(s.result.images, word.media);
         s.assetsBefore = new Set(await readdir(path.join(path.dirname(s.doc), "assets")).catch(e => { if (e.code === "ENOENT") return []; throw e; }));

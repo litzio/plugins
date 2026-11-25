@@ -10,6 +10,7 @@ import Compare from "../shared/compare.jsx";
 import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-selection.mjs";
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
+import { pageFragments } from "./source-cells.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
 const legend = ["heading", "paragraph", "list", "table", "figure", "footnote", "margin"];
 const none = [];
@@ -44,7 +45,8 @@ function Screen({
   const compare = useRef(null);
   const [selection, setSelection] = useState([]), [splitting, setSplitting] = useState(false),
     [undoCount, setUndoCount] = useState(0), [reloadKey, setReloadKey] = useState(0),
-    [actionHelp, setActionHelp] = useState(null), [note, setNote] = useState("");
+    [actionHelp, setActionHelp] = useState(null), [note, setNote] = useState(""),
+    [fragments, setFragments] = useState({});
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
   const [documentStatus,setDocumentStatus]=useState(undefined);
   const [status, setStatus] = useState(""),
@@ -59,6 +61,8 @@ function Screen({
     [cached, setCached] = useState(false),
     [missingMapping, setMissingMapping] = useState(false);
   useEffect(() => { load(request.path, request.cachedOnly); }, []);
+  // The handler remembers the last corrected document only while this screen shows it.
+  useEffect(() => () => { invoke("forget", {}).catch(() => {}); }, []);
   const [pageTitles, setPageTitles] = useState([]);
   const replacementApproved = useRef(false), pickerSession = useRef(null);
   const [pickerHelp, setPickerHelp] = useState(false);
@@ -77,6 +81,18 @@ function Screen({
   const checks = useMemo(() => warnings.map(b => ({flowId: b.id, blockId: b.id, reason: b.warning.reason})), [mapping]);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
   const canEdit = !!mapping && !stale;
+  // Text fragments of the chosen blocks' pages: lists and tables split source lines by their columns.
+  const chosenPages = [...new Set(chosen.flatMap(b => (b.lines || []).map(l => l.page)))].join(",");
+  useEffect(() => {
+    if (!pdf || !chosenPages) return;
+    let gone = false;
+    for (const p of chosenPages.split(",").map(Number)) {
+      if (fragments[p]) continue;
+      pdf.getPage(p + 1).then(page => page.getTextContent().then(t => pageFragments(t.items, page.view)))
+        .catch(() => []).then(list => { if (!gone) setFragments(old => old[p] ? old : {...old, [p]: list}); });
+    }
+    return () => { gone = true; };
+  }, [pdf, chosenPages]);
   function item(a,blocks,focusSource) {
     return {...a,icon:null,
       disabled:a.disabled||busy||stale,
@@ -91,11 +107,16 @@ function Screen({
       }};
   }
   function actionItems(blocks,focusSource=false) {
-    return blockActions(blocks,mapping?.blocks||[],mapping?.snapshotNodes||[]).map(a=>item(a,blocks,focusSource));
+    return blockActions(blocks,mapping?.blocks||[],mapping?.snapshotNodes||[],{fragments,limits:file?.limits,tables:mapping?.tables})
+      .map(a=>item(a,blocks,focusSource));
   }
-  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.action==='kind'||a.action==='title');
-  const kindDisabled=kindTools.every(a=>a.disabled), titleTool=kindTools.find(a=>a.action==='title');
-  const kindHelp=kindDisabled?kindTools[0].disabledReason:titleTool.disabled?'문서 제목: '+titleTool.disabledReason:null;
+  // The toolbar keeps its width: merging and splitting are buttons, the other structure changes join
+  // the kind select as 목록·표·미주. The context menu lists every group in full.
+  const tools=actionItems(chosen),kindTools=tools.filter(a=>a.visible&&(a.group==='kind'||['list','table','footnote'].includes(a.id)));
+  const kindDisabled=kindTools.every(a=>a.disabled);
+  const kindNames={title:'문서 제목',list:'목록',table:'표',footnote:'미주'};
+  const kindHelp=kindDisabled?kindTools[0]?.disabledReason
+    :kindTools.filter(a=>a.disabled&&kindNames[a.id]).map(a=>kindNames[a.id]+': '+a.disabledReason).join(' ')||null;
   const actionTipStyle={position:'absolute',top:'100%',left:0,zIndex:3,background:'var(--id-color-surface)',padding:'var(--space-2)',width:240};
   function toolButton(a) {
     return <span key={a.id} tabIndex={a.disabled?0:undefined} style={{position:'relative'}}
@@ -122,6 +143,14 @@ function Screen({
       await new Promise(resolve=>setTimeout(resolve,150));
     }
   }
+  // Joining tables asks first when a later table's caption goes, a reference breaks or undo cannot
+  // give back the saved document exactly.
+  function joinMessage(r) {
+    return [r.captions.length?'뒤 표의 캡션 “'+r.captions.join('”, “')+'”은 남지 않고 첫 표의 캡션과 번호를 씁니다.':'',
+      r.moved?'뒤 표를 가리키던 참조 '+r.moved+'개는 첫 표를 가리킵니다.':'',
+      r.broken?'뒤 표를 가리키던 참조 '+r.broken+'개는 첫 표로 옮길 수 없어 끊깁니다.':'',
+      r.irreversible?'이 표 잇기는 되돌릴 수 없습니다.':'','표를 이을까요?'].filter(Boolean).join(' ');
+  }
   // keep: {note} when the chosen blocks stay chosen and the rest of their page went.
   async function correct(action, extra = {}, blocks = chosen, focusSource = false, keep = null) {
     if (editing.current) return;
@@ -132,6 +161,8 @@ function Screen({
     try {
       const input={document:file.document,revision:before.revision,ids:blocks.map(b=>b.id),action,
         historyId:historyId.current,...extra};
+      // Lists and tables take the columns of the source lines from the fragments of their pages.
+      if(action==='list'||action==='table') input.fragments=Object.fromEntries(blocks.flatMap(b=>(b.lines||[]).map(l=>[l.page,fragments[l.page]])));
       const irreversible=action==='remove' && before.snapshotNodes?.some(n=>blocks.some(b=>b.path[0]===n.path[0]) && references(n).length);
       if(irreversible) {
         if(!await confirm({title:'문서에서 빼기',message:'각주 호출이 들어 있어 이 동작은 되돌릴 수 없습니다. 문서에서 뺄까요?',confirmLabel:'문서에서 빼기'})) {
@@ -140,6 +171,10 @@ function Screen({
         input.confirmed=true;started=performance.now();
       }
       let r=await runCorrection(input);
+      if(r.requiresConfirm&&action==='merge') {
+        if(!await confirm({title:'표 잇기',message:joinMessage(r),confirmLabel:'표 잇기'})) {setStatus('취소됨');return;}
+        started=performance.now();r=await runCorrection({...input,confirmed:true});
+      }
       if(r.requiresConfirm&&action==='title') {
         if(!await confirm({title:'문서 제목 바꾸기',message:'이 문서에는 이미 제목 “'+r.title+'”이 있습니다. 고른 블록의 글자로 바꿀까요? 이전 제목은 본문으로 돌아오지 않습니다.',confirmLabel:'제목 바꾸기'})) {
           setStatus('취소됨');return;
@@ -181,7 +216,7 @@ function Screen({
     replacementApproved.current=false;
     setPickerHelp(false);
     setPageTitles([]);
-    setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID();
+    setSelection([]); setSplitting(false); setUndoCount(0); historyId.current=crypto.randomUUID(); setFragments({});
     anchor.current = null;
     setExcludedPages(new Set());
     setPicking(false);
@@ -588,7 +623,7 @@ function Screen({
           onViewState={viewState}
           edit={{
             selection, editing, onSelect: selectBlock, onSelectMany: selectMany, onClear: clearSelection,
-            menu: b => canEdit && ['paragraph','heading','list'].includes(b.documentKind) ? actionItems(selection.includes(b.id)?chosen:[b],true) : null,
+            menu: b => canEdit && ['paragraph','heading','list','admonition','table'].includes(b.documentKind) ? actionItems(selection.includes(b.id)?chosen:[b],true) : null,
             // The document title's box keeps its page's other blocks out in one action.
             titleMenu: e => canEdit ? [item(keepAction(e.page,[],mapping.blocks),[],true)] : null,
             onDelete: () => { const a=actionItems(chosen,true).find(a=>a.action==='remove'); if(!a.disabled) a.run(); },
@@ -597,14 +632,14 @@ function Screen({
             tools: canEdit && selection.length>0 ? <>
                 <span>{selection.length}개 선택</span>
                 <span className="type-helper">{chosen.length ? selectionKind(chosen) : '문서 제목'}</span>
-                {tools.filter(a=>a.action==='merge'||a.action==='split').map(a=>toolButton(a))}
-                <span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
+                {tools.filter(a=>['merge','split'].includes(a.id)&&a.visible).map(a=>toolButton(a))}
+                {kindTools.length>0&&<span tabIndex={kindDisabled?0:undefined} style={{position:'relative'}}
                   onFocus={()=>setActionHelp('kind')} onBlur={()=>setActionHelp(null)} onMouseEnter={()=>setActionHelp('kind')} onMouseLeave={()=>setActionHelp(null)}>
-                  <ui.Select label="종류" hideLabel placeholder="종류" disabled={kindDisabled} value={chosen.length===1&&['paragraph','heading'].includes(chosen[0].documentKind)&&chosen[0].kind!=='heading_unnumbered'?(chosen[0].documentKind==='heading'?'h'+chosen[0].level:'paragraph'):''}
-                    options={kindTools.map(a=>({value:a.id,label:a.id==='paragraph'?'본문':a.id==='title'?'문서 제목':'제목 '+a.extra.level}))}
+                  <ui.Select label="종류" hideLabel placeholder="종류" disabled={kindDisabled} value={chosen.length===1&&['paragraph','heading','admonition'].includes(chosen[0].documentKind)&&chosen[0].kind!=='heading_unnumbered'?(chosen[0].documentKind==='heading'?'h'+chosen[0].level:chosen[0].documentKind==='admonition'?'note':'paragraph'):''}
+                    options={kindTools.map(a=>({value:a.id,label:{paragraph:'본문',title:'문서 제목',note:'참고',list:'목록',table:'표',footnote:'미주'}[a.id]||'제목 '+a.extra.level}))}
                     onValueChange={v=>{const a=kindTools.find(a=>a.id===v);if(a?.disabled)setError(a.disabledReason);else if(a)a.run();}}/>
                   {kindHelp&&actionHelp==='kind'&&<span role="tooltip" className="type-helper" style={actionTipStyle}>{kindHelp}</span>}
-                </span>
+                </span>}
                 {toolButton(tools.find(a=>a.action==='remove'))}
               </> : null,
             extraTools: undoCount>0&&<ui.Button disabled={busy} onClick={()=>correct('undo')}>되돌리기</ui.Button>,

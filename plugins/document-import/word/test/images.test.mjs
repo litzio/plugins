@@ -6,7 +6,7 @@ import { convert } from "../rules.mjs";
 import { startImages, imageResult, disposeImages } from "../images.mjs";
 
 const word = readDocx(readFileSync(new URL("./fixtures/sample.docx", import.meta.url)));
-const { images } = convert(word);
+const { images } = convert(word, { limits: { tableRows: 500, tableColumns: 32, tableCells: 8000 } });
 
 test("PNG pictures are used as they are; EMF waits for Windows", async () => {
   const job = startImages(images, word.media, { platform: "linux" });

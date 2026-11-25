@@ -68,7 +68,7 @@ export function detachedTarget(snapshot, heading, action, kind) {
   return snapshot.find(n => n.type === "target" && n.path[0] === heading.path[0]-1);
 }
 export function previewCorrection(mapping, input, undoBefore) {
-  const {action,ids=[],line,kind,level,time = koreanTime()} = input;
+  const {action,ids=[],line,kind,level,plan,time = koreanTime()} = input;
   if (action === 'undo') {
     if (!undoBefore) throw Error('되돌릴 동작이 없습니다.');
     return restoreMapping(undoBefore,mapping,undoBefore.blocks.find(b=>ids.includes(b.id))?.id,time);
@@ -88,7 +88,12 @@ export function previewCorrection(mapping, input, undoBefore) {
   if (!nodes.length) throw Error('고칠 블록을 찾지 못했습니다.');
   const at = paths[0], first = nodes[0];
   let replacement;
-  if(action === 'merge' && first.type === 'list') replacement=[{...first,items:nodes.flatMap(n=>n.items)}];
+  if(plan?.items) replacement=[{type:'list',ordered:false,items:plan.items.map(content=>({content}))}];
+  else if(plan?.rows) replacement=[{type:'table'}];
+  else if(plan?.contents) replacement=plan.contents.map(content=>({type:'paragraph',content}));
+  else if(action === 'merge' && first.type === 'table') replacement=[first];
+  else if(action === 'kind' && kind === 'note') replacement=[{...first,type:'admonition',variant:'note'}];
+  else if(action === 'merge' && first.type === 'list') replacement=[{...first,items:nodes.flatMap(n=>n.items)}];
   else if(action === 'merge') replacement=[{...first,content:nodes.flatMap((n,i)=>i?[{kind:'text',text:' '},...n.content]:n.content)}];
   else if(action === 'split') replacement=splitContent(first.content,splitOffset(selected[0].lines,line,first.content)).map(content=>({...first,content}));
   else if(action === 'kind') replacement=[{...first,type:kind,level:kind==='heading'?level:undefined}];
@@ -139,13 +144,16 @@ export function assertMapping(mapping, snapshot) {
   if (nodes.length !== groups.size || nodes.some(n => groups.get(n.path.join('.')) !== n.type))
     throw Error('블록 수나 종류가 대응 자료와 다릅니다.');
 }
-export function transformMapping(mapping, { action, ids, line, kind, level, at, removeCount, newCount, time }) {
+export function transformMapping(mapping, { action, ids, line, kind, level, plan, at, removeCount, newCount, time }) {
   const m = structuredClone(mapping), selected = m.blocks.filter(b => ids.includes(b.id));
   if (!selected.length) throw Error('고칠 블록을 찾지 못했습니다.');
   const first = selected[0], edited = { action, at: time, who: 'user' };
   let replacements;
-  if (action === 'merge' && first.documentKind === 'list') {
-    // Every source item keeps its own boxes; the items now share the first list's path.
+  if (plan?.blocks) {
+    // A structure change brings its own source blocks: list items, table rows or paragraphs.
+    replacements = plan.blocks.map(b => ({ ...b, edited }));
+  } else if (action === 'merge' && ['list','table'].includes(first.documentKind)) {
+    // Every source item or table keeps its own boxes; they now share the first one's path.
     replacements = selected.map(b => ({ ...b, path:[at], edited }));
   } else if (action === 'merge') {
     const lines = selected.flatMap(b => b.lines);
@@ -156,7 +164,7 @@ export function transformMapping(mapping, { action, ids, line, kind, level, at, 
     replacements = [a,b].map((lines,i) => ({ ...first, id: i ? first.id + ':' + time : first.id,
       path:[at+i], lines, boxes:boxesFor(lines), edited }));
   } else if (action === 'kind') {
-    replacements = [{ ...first, kind, documentKind:kind, level: kind === 'heading' ? level : undefined, edited }];
+    replacements = [{ ...first, kind, documentKind:kind === 'note' ? 'admonition' : kind, level: kind === 'heading' ? level : undefined, edited }];
   } else if (action === 'remove' || action === 'title') {
     // A block used as the document title leaves the body like a removed one, marked apart.
     replacements = [];
@@ -175,7 +183,13 @@ export function transformMapping(mapping, { action, ids, line, kind, level, at, 
 // stands for its original words. Never guess around unsupported atoms.
 export function splitOffset(lines, lineIndex, content) {
   if (lineIndex < 1 || lineIndex >= lines.length) throw Error('둘째 줄부터 고르세요.');
+  const normalized = lines.map(l => l.text.replace(/\s/gu,''));
+  return contentCuts(lines, content, [normalized.slice(0,lineIndex).join('').length])[0];
+}
+// The content offset of each non-blank character of the lines' words, as one sequence.
+function contentPositions(lines, content) {
   const chars = [], positions = []; let offset = 0;
+  const unsure = () => Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
   const add = (s, position) => { for (const c of s) if (!/\s/u.test(c)) {chars.push(c);positions.push(position);} };
   const visit = c => {
     if (mark(c)) {c.children.forEach(visit);return;}
@@ -185,13 +199,47 @@ export function splitOffset(lines, lineIndex, content) {
     else if (c.kind === 'reference' && referenceText(c.label)) { add(referenceText(c.label), offset); offset++; }
     else if (c.kind === "math" && /^[A-Za-z\p{Script=Greek}][_^](?:[a-zA-Z0-9]|\{[a-zA-Z0-9]+\}|\{\\mathrm\{[a-zA-Z]+\}\})$/u.test(c.value)) {
       add(c.value.replace(/\\mathrm|[{}_^]/g,""), offset++);
-    } else throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
-  }
+    } else throw unsure();
+  };
   content.forEach(visit);
-  const normalized = lines.map(l => l.text.replace(/\s/gu,''));
-  if (normalized.join('') !== chars.join('')) throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
-  const index = normalized.slice(0,lineIndex).join('').length;
-  const result = positions[index];
-  if (!result || result >= offset || positions[index-1]===result) throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
-  return result;
+  if (lines.map(l => l.text.replace(/\s/gu,'')).join('') !== chars.join('')) throw unsure();
+  return {positions, length: offset};
+}
+// Content offsets where the given characters (indexes into the lines' non-blank characters) start.
+// A cut must fall between two atoms and leave something on both sides.
+export function contentCuts(lines, content, indexes) {
+  const {positions, length} = contentPositions(lines, content);
+  return indexes.map(index => {
+    const result = positions[index];
+    if (!result || result >= length || positions[index-1]===result) throw Error('줄의 시작 위치를 확실히 정할 수 없어 나누지 않았습니다.');
+    return result;
+  });
+}
+// Content cut at increasing offsets into pieces without blanks at either end.
+export function cutContent(content, offsets) {
+  const pieces = []; let rest = content;
+  for (const offset of [...offsets].sort((a,b)=>b-a)) { const [left,right] = splitContent(rest,offset); pieces.unshift(right); rest = left; }
+  pieces.unshift(rest);
+  return pieces.map(trimInline);
+}
+// Inline content without blank text at its ends; line breaks become spaces.
+export function trimInline(content) {
+  const flat = c => c.kind === 'break' ? {kind:'text',text:' '} : c.children ? {...c,children:c.children.map(flat)} : c;
+  const edge = (list, end) => {
+    const out = [...list];
+    for (;;) {
+      const i = end ? out.length-1 : 0, c = out[i];
+      if (!c) return out;
+      if (c.kind === 'text') {
+        const text = end ? c.text.trimEnd() : c.text.trimStart();
+        if (text) { out[i] = {...c,text}; return out; }
+        out.splice(i,1);
+      } else if (mark(c) && c.children.length) {
+        const children = edge(c.children,end);
+        if (children.length) { out[i] = {...c,children}; return out; }
+        out.splice(i,1);
+      } else return out;
+    }
+  };
+  return edge(edge(content.map(flat),false),true);
 }
