@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // The text layer of the PDF Word exported, page by page: `items` without headers and footers (Word
 // marks them as artifacts) and those apart in `artifacts`, and the heading bookmarks with where
 // they point.
-export async function readPdfText(file) {
+async function openPdf(file) {
   const dir = path.dirname(fileURLToPath(import.meta.resolve("pdfjs-dist/package.json")));
   const pdfjs = await import(pathToFileURL(path.join(dir, "legacy/build/pdf.mjs")).href);
   const task = pdfjs.getDocument({
@@ -14,6 +14,11 @@ export async function readPdfText(file) {
     cMapUrl: dir.replaceAll("\\", "/") + "/cmaps/",
     cMapPacked: true, verbosity: 0, enableScripting: false, isEvalSupported: false,
   });
+  return { pdfjs, task };
+}
+
+export async function readPdfText(file) {
+  const { task } = await openPdf(file);
   try {
     const doc = await task.promise;
     const pages = [], viewports = [];
@@ -55,6 +60,68 @@ export async function readPdfText(file) {
     };
     await walk(await doc.getOutline());
     return { pages, outline };
+  } finally {
+    await task.destroy();
+  }
+}
+
+// Real image draws and the form bounds Word writes for inline metafiles. Inspect only the
+// pages around an unplaced picture; a PDF may contain many images elsewhere.
+export async function readPdfGraphics(file, pages) {
+  const { task, pdfjs: { OPS, Util } } = await openPdf(file);
+  const graphics = [];
+  try {
+    const doc = await task.promise;
+    for (const index of pages) {
+      const page = await doc.getPage(index + 1);
+      const viewport = page.getViewport({ scale: 1 });
+      const figureMarks = new Set();
+      const walk = (node, figure = false) => {
+        figure ||= node?.role === "Figure";
+        const id = figure && node?.id?.match(/_mc(\d+)$/);
+        if (id) figureMarks.add(Number(id[1]));
+        for (const child of node?.children || []) walk(child, figure);
+      };
+      walk(await page.getStructTree());
+      const ops = await page.getOperatorList();
+      const stack = [], marks = [];
+      let matrix = viewport.transform;
+      const add = (rect, kind) => {
+        const box = [Infinity, Infinity, -Infinity, -Infinity];
+        Util.axialAlignedBoundingBox(rect, matrix, box);
+        const [x0, top, x1, bottom] = box;
+        if (x0 < 0 || top < 0 || x1 > viewport.width || bottom > viewport.height || x1 <= x0 || bottom <= top) return;
+        graphics.push({ kind, page: index, x0, top, x1, bottom });
+      };
+      for (let i = 0; i < ops.fnArray.length; i++) {
+        const args = ops.argsArray[i];
+        switch (ops.fnArray[i]) {
+          case OPS.save: stack.push(matrix); break;
+          case OPS.restore: matrix = stack.pop() ?? matrix; break;
+          case OPS.transform: matrix = Util.transform(matrix, args); break;
+          case OPS.beginMarkedContent:
+          case OPS.beginMarkedContentProps: marks.push(args); break;
+          case OPS.endMarkedContent: marks.pop(); break;
+          case OPS.paintFormXObjectBegin: {
+            stack.push(matrix);
+            const [transform, rect] = args;
+            if (transform) matrix = Util.transform(matrix, transform);
+            // Word's inline EMF/WMF export uses a 72pt square scaled to the display size.
+            if (rect && transform && marks.at(-1)?.[0] === "Span" && !marks.some(mark => mark[0] === "Artifact") &&
+                Math.abs((rect[2] - rect[0]) * transform[0] - 72) < 0.1 &&
+                Math.abs((rect[3] - rect[1]) * transform[3] - 72) < 0.1) add(rect, "metafile");
+            break;
+          }
+          case OPS.paintFormXObjectEnd: matrix = stack.pop() ?? matrix; break;
+          case OPS.paintImageXObject:
+          case OPS.paintInlineImageXObject:
+            if (marks.some(mark => figureMarks.has(mark[1])) && !marks.some(mark => mark[0] === "Artifact")) add([0, 0, 1, 1], "raster");
+            break;
+        }
+      }
+      page.cleanup();
+    }
+    return graphics;
   } finally {
     await task.destroy();
   }

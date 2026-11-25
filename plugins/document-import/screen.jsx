@@ -91,7 +91,7 @@ export default function Screen(props) {
     return {
       id: row.id,
       label: names.get(row.name) > 1 ? `${row.name} (${row.folder})` : row.name,
-      status: pdf ? { tone: reviewTones[review] ?? "neutral", label: review } : undefined,
+      status: pdf ? { tone: reviewTones[review] ?? "neutral", label: review } : { tone: "neutral", label: "변환 완료" },
       details: [
         pdf ? "PDF" : "워드",
         recentDate(row.convertedAt, now),

@@ -4,8 +4,8 @@ import path from "node:path";
 import { readDocx } from "./docx.mjs";
 import { convert } from "./rules.mjs";
 import { exportPdf } from "./source-pdf.mjs";
-import { readPdfText } from "./source-text.mjs";
-import { locate, locateStats } from "./locate.mjs";
+import { readPdfGraphics, readPdfText } from "./source-text.mjs";
+import { fillFigurePlaces, locate, locateStats } from "./locate.mjs";
 import { pageFrames } from "./frames.mjs";
 import { sha } from "./output.mjs";
 
@@ -64,10 +64,10 @@ export async function prepareSource(out, { converted, pathsFor, signal, exporter
     timings.exportMs = Math.round(performance.now() - started);
     pdfBytes = await readFile(out.pdf);
   }
-  let blocks, images, paths;
-  if (converted?.revision === side.revision) ({ blocks, images, paths } = converted);
+  let blocks, images, noteTables, paths;
+  if (converted?.revision === side.revision) ({ blocks, images, noteTables, paths } = converted);
   else {
-    ({ blocks, images } = convert(readDocx(docx)));
+    ({ blocks, images, noteTables } = convert(readDocx(docx), { noteAdmonitions: side.noteAdmonitions === true }));
     try { paths = await pathsFor(blocks, side.revision); }
     catch { return { state: "failed", reason: "변환한 뒤 문서가 바뀌어 원본 위치를 연결하지 못했습니다." }; }
   }
@@ -77,7 +77,8 @@ export async function prepareSource(out, { converted, pathsFor, signal, exporter
   catch { return { state: "failed", reason: "원본 PDF의 글자를 읽지 못해 원본 쪽을 준비하지 못했습니다." }; }
   timings.readMs = Math.round(performance.now() - started);
   started = performance.now();
-  const places = locate(blocks, text, images);
+  const places = locate(blocks, text, images, noteTables);
+  await fillFigurePlaces(blocks, places, images, pages => readPdfGraphics(out.pdf, pages)).catch(() => {});
   timings.locateMs = Math.round(performance.now() - started);
   const placed = places.flatMap((p, i) => p ? [{ path: paths[i], kind: blocks[i].kind, ...p }] : []);
   const source = {

@@ -38,6 +38,9 @@ const body = [
     `<w:tr>${cell(p(t("항목")))}${cell(p(t("값과 설명")), '<w:gridSpan w:val="2"/>')}</w:tr>` +
     `<w:tr>${cell(p(t("전압")), '<w:vMerge w:val="restart"/>')}${cell(p(t("12 V")))}${cell(p(t("첫 문단")) + p(t("둘째 문단")))}</w:tr>` +
     `<w:tr>${cell(p(""), "<w:vMerge/>")}${cell(p(t("24 V")))}${cell(p(t("한 문단")))}</w:tr></w:tbl>`,
+  `<w:tbl><w:tblGrid><w:gridCol w:w="2000"/><w:gridCol w:w="2000"/></w:tblGrid><w:tr>` +
+    cell(p(t("NOTE 2 —", "<w:b/>"))) + cell(p(t("합성 참고의 ") + t("강조 글자", "<w:i/>") +
+      `<w:hyperlink r:id="rIdLink">${t("와 안내 링크")}</w:hyperlink>`)) + "</w:tr></w:tbl>",
   p(`${mark(5, "_Toc003")}${t("그림")}${markEnd(5)}`, style("Heading1")),
   p(picture("rIdPng", 1, "막대 그림", 1905000, 952500)),
   p(`${mark(6, "_RefFigure")}${t("Figure ")}${field("SEQ Figure \\* ARABIC", t("1"))}${markEnd(6)}${t(" – PNG 그림")}`, style("Caption")),

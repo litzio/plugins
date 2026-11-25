@@ -129,6 +129,7 @@ export function activate() {
           revision: snapshot.revision,
           convertedAt: new Date().toISOString(),
           warnings: s.final.warnings.map(w => ({ kind: w.kind, label: w.label, detail: w.detail, path: paths[w.block] })),
+          ...(s.result.noteTables.size ? { noteAdmonitions: true } : {}),
           stats: s.final.stats,
           ownedImages: await recordImages(s, s.pngs),
         };
@@ -145,7 +146,8 @@ export function activate() {
         }
         let cleanupError;
         try { await finishReplacement(s, data); } catch { cleanupError = "이전 변환 결과를 정리하지 못했습니다."; }
-        s.converted = { revision: snapshot.revision, blocks: s.result.blocks, images: s.result.images, paths };
+        const { blocks, images, noteTables } = s.result;
+        s.converted = { revision: snapshot.revision, blocks, images, noteTables, paths };
         await drop(s);
         s.pngs = null;
         return { ...data, cleanupError, readMs: s.readMs };

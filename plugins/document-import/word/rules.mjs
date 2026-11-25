@@ -30,6 +30,7 @@ const captionKind = text => {
   const m = text.match(CAPTION);
   return m ? (/^(table|표)$/i.test(m[1]) ? "table" : "figure") : null;
 };
+const NOTE_LABEL = /^note(?:\s+(\d+))?[\s\p{P}]*$/iu;
 
 const plain = runs => runs.map(r => r.text ?? (r.runs ? plain(r.runs) : "")).join("");
 const short = (text, n = 48) => { const t = text.replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
@@ -111,7 +112,7 @@ function tidy(nodes) {
 }
 const textOf = nodes => nodes.map(n => n.text ?? (n.children ? textOf(n.children) : n.kind === "break" ? " " : "")).join("");
 
-export function convert(doc) {
+export function convert(doc, { noteAdmonitions = true } = {}) {
   const units = [], warnings = [], records = new Map(), toc = [];
   let heading = "";
   const warn = (kind, unit, label, detail) => warnings.push({ kind, unit, label: short(label || heading || "문서 처음"), detail });
@@ -228,7 +229,7 @@ export function convert(doc) {
   for (const [b, r] of records) if (referenced.has(b) && !r.label) r.wanted = true;
 
   // Pass 2: blocks.
-  const blocks = [], images = [];
+  const blocks = [], images = [], noteTables = new Map();
   let listRun = [];
   const emit = (unit, block) => {
     blocks.push(block);
@@ -339,7 +340,8 @@ export function convert(doc) {
   function figure(unit, image, fields, label) {
     const key = "figure-" + String(images.length + 1).padStart(3, "0");
     const index = emit(unit, { kind: "figure", imageAsset: key, imageAlt: (image.alt || "").trim() || "그림", ...fields });
-    images.push({ key, part: image.part, block: index, label: short(label || "문서 처음"), captionAbove: !!unit.caption?.above });
+    images.push({ key, part: image.part, block: index, label: short(label || "문서 처음"), captionAbove: !!unit.caption?.above,
+      ...(image.extent ? { extent: image.extent } : {}) });
     stats.images.total++;
     const type = image.part ? image.part.split(".").pop().toLowerCase() : "shape";
     stats.images.byType[type] = (stats.images.byType[type] || 0) + 1;
@@ -377,6 +379,28 @@ export function convert(doc) {
     const t = unit.item, moved = [], flags = { joined: 0, nested: false, math: 0, hidden: 0, textbox: 0 };
     let rows = t.rows.map(row => row.map(cell => cellContent(cell, moved, flags)));
     const cap = caption(unit);
+    const note = noteAdmonitions && rows.length === 1 && rows[0].length === 2 && !t.horizontal &&
+      textOf(rows[0][0]).match(NOTE_LABEL);
+    // A numbered caption is sometimes repeated by the next part of a split table.
+    const duplicateCaption = () => {
+      const next = units.slice(units.indexOf(unit) + 1).find(u => u.type !== "consumed");
+      if (next?.type !== "table" || next.item.rows.length < 2 || !cap.enumerator) return false;
+      const nextCap = caption(next);
+      return nextCap.enumerator === cap.enumerator && JSON.stringify(nextCap.caption) === JSON.stringify(cap.caption);
+    };
+    // Public authoring supports one inline paragraph and has no caption or label for a note.
+    if (note && (!unit.caption || duplicateCaption()) && !unit.record.label && !flags.joined && !flags.nested &&
+        !flags.textbox && !moved.length) {
+      const [label, body] = rows[0];
+      const index = emit(unit, { kind: "admonition", variant: "note", content: note[1]
+        ? tidy([...label, { kind: "text", text: " " }, ...body])
+        : body });
+      // Match both cells as a table in the source PDF, including the label omitted from the body.
+      noteTables.set(index, { kind: "table", rows, ...cap });
+      if (flags.math) warn("math", index, "참고", "참고 안의 수식 " + flags.math + "개");
+      if (flags.hidden) warn("other", index, "참고", "숨긴 글자 " + flags.hidden + "곳을 옮기지 않았습니다.");
+      return index;
+    }
     let width = Math.max(1, ...rows.map(r => r.length));
     if (!rows.length) rows = [[[]]];
     rows = rows.map(r => { const copy = [...r]; while (copy.length < width) copy.push([]); return copy; });
@@ -447,6 +471,7 @@ export function convert(doc) {
     title: doc.title || undefined,
     blocks: outBlocks,
     images,
+    noteTables,
     warnings: warnings.map(w => ({ ...w, block: w.unit, unit: undefined })),
     stats: {
       ...stats, headings, toc: tocCheck,

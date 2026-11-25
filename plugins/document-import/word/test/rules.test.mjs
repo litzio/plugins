@@ -50,6 +50,58 @@ test("merged cells are repeated, cell paragraphs are joined, and the table gets 
   assert.deepEqual(figures.map(f => [f.enumerator, textOf(f.caption), f.imageAlt]), [["1", "PNG 그림", "막대 그림"], ["2", "EMF 그림, Table 1 참고", "도형 그림"]]);
 });
 
+test("one-row Note tables become note boxes and keep a numbered label, formatting, and links", () => {
+  const [index, sourceTable] = result.noteTables.entries().next().value;
+  assert.deepEqual(blocks[index], {
+    kind: "admonition", variant: "note",
+    content: [
+      { kind: "strong", children: [{ kind: "text", text: "NOTE 2 —" }] },
+      { kind: "text", text: " 합성 참고의 " },
+      { kind: "emphasis", children: [{ kind: "text", text: "강조 글자" }] },
+      { kind: "link", url: "https://example.com/", children: [{ kind: "text", text: "와 안내 링크" }] },
+    ],
+  });
+  assert.equal(textOf(sourceTable.rows[0][0]), "NOTE 2 —");
+  assert.ok(!warnings.some(w => w.block === index));
+  const legacy = convert(readDocx(bytes), { noteAdmonitions: false });
+  assert.equal(legacy.blocks[index].kind, "table");
+  assert.equal(legacy.noteTables.size, 0);
+});
+
+test("plain Note labels are omitted, and other labels, extra rows or columns, and multiple paragraphs stay as tables", () => {
+  const cell = (...texts) => ({ items: texts.map(text => ({
+    type: "p", runs: [{ text }], textboxes: [], bookmarks: [],
+  })) });
+  const table = rows => ({ type: "table", rows, bookmarks: [] });
+  const items = [
+    ...["Note", "NOTE", "Note:"].map(label => table([[cell(label), cell("Body")]])),
+    table([[cell("Warning:"), cell("Body")]]),
+    table([[cell("Note the setting"), cell("Body")]]),
+    table([[cell("Note:"), cell("Body"), cell("Extra")]]),
+    table([[cell("Note:"), cell("Body")], [cell("More"), cell("Content")]]),
+    table([[cell("Note:"), cell("First", "Second")]]),
+  ];
+  const r = convert({ items });
+  assert.deepEqual(r.blocks.map(b => b.kind), [...Array(3).fill("admonition"), ...Array(5).fill("table")]);
+  assert.deepEqual(r.blocks.slice(0, 3).map(text), ["Body", "Body", "Body"]);
+  assert.deepEqual(r.warnings.map(w => [w.kind, w.block]), [["joined", 7]]);
+});
+
+test("only a caption repeated on the following table can be dropped from a note box", () => {
+  const p = (text, caption = false) => ({ type: "p", runs: [{ text }], caption, textboxes: [], bookmarks: [] });
+  const row = (...cells) => cells.map(text => ({ items: [p(text)] }));
+  const table = (...rows) => ({ type: "table", rows, bookmarks: [] });
+  const items = () => [
+    p("Table 4 — Readings", true), table(row("Note", "Body")),
+    p("Table 4 — Readings", true), table(row("Item", "Value"), row("A", "42")),
+  ];
+  const r = convert({ items: items() });
+  assert.deepEqual(r.blocks.map(b => b.kind), ["admonition", "table"]);
+  assert.equal(r.blocks[1].enumerator, "4");
+  assert.equal(textOf(r.blocks[1].caption), "Readings");
+  assert.deepEqual(convert({ items: items().slice(0, 2) }).blocks.map(b => b.kind), ["table"]);
+});
+
 test("REF fields become in-document links to labelled targets; a missing target stays text", () => {
   const p = blocks.find(b => text(b).startsWith("참조:"));
   const links = p.content.filter(n => n.kind === "link").map(n => [n.url, textOf(n.children)]);

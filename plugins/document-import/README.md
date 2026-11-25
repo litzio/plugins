@@ -8,7 +8,7 @@ PDF와 워드 문서(.docx)를 리치오 문서로 옮기고 저장된 문서와
 - 로컬 폴더에서 설치하려면 Node 24 환경에서 이 폴더의 `npm ci --omit=optional`을 실행하고 `litzio plugins install <이 폴더> --host <Host 주소> --json`으로 설치합니다. 이 폴더는 Host가 허용한 범위 안에 있어야 합니다.
 - 기존 PDF·워드 가져오기를 교체할 때는 같은 Host에서 `litzio plugins unregister local.pdf-import --host <Host 주소> --json`과 `litzio plugins unregister local.word-import --host <Host 주소> --json`으로 기존 등록을 지운 뒤 문서 가져오기를 설치합니다.
 
-리치오에서 원본을 담은 폴더를 열고 **문서 고르기**로 PDF나 워드 문서(.docx)를 고릅니다. **변환한 문서** 목록에서 두 종류의 저장본을 최근 변환순으로 열 수 있습니다. 종류와 변환 시각에 더해 PDF는 쪽 수와 검토 상태, 워드는 확인할 곳 수를 보여 줍니다. 목록은 이 브라우저가 기억하는 최근 10개 폴더의 바로 아래 결과 폴더를 읽습니다. 처음에는 원본이 든 폴더에서 문서를 한 번 고르면 기존 저장본도 목록에 나타납니다.
+리치오에서 원본을 담은 폴더를 열고 **문서 고르기**로 PDF나 워드 문서(.docx)를 고릅니다. **변환한 문서** 목록에서 두 종류의 저장본을 최근 변환순으로 열 수 있습니다. PDF의 검토 상태와 워드의 **변환 완료**를 같은 열에 표시합니다. 종류, 변환 시각, PDF 쪽 수와 확인할 곳은 각각 같은 열을 씁니다. 목록은 이 브라우저가 기억하는 최근 10개 폴더의 바로 아래 결과 폴더를 읽습니다. 처음에는 원본이 든 폴더에서 문서를 한 번 고르면 기존 저장본도 목록에 나타납니다.
 
 **변환과 검수 흐름**은 처음 화면에서 목록 위에 보입니다. 접으면 다음에도 접힌 채 열립니다. 변환 중에는 현재 단계가 강조되고, 저장 뒤에는 머리 줄의 **흐름** 단추에서 현재 단계를 읽거나 그림을 펼칠 수 있습니다. 좁은 화면에서는 그림 안을 가로로 스크롤합니다. 점이 있는 칸은 사람이 하는 일이며 마우스를 올리거나 키보드 초점을 주면 한 문장 설명이 나타납니다. 비서 검수는 예정입니다.
 
@@ -21,6 +21,8 @@ PDF와 워드 문서의 대조 화면은 한 벌([`shared/compare.jsx`](shared/c
 직접 의존성은 Apache-2.0의 `pdfjs-dist` 6.5.438입니다. `node shared/prepare.mjs`로 고정된 worker 문자열을 다시 만들 수 있습니다. `npm test`는 PDF·워드 단위 검사와 두 종류의 목록 정렬 검사를 실행합니다.
 
 공개 표본 캡처는 [빈 화면](shared/test/captures/empty-1440.png), [1440px 목록](shared/test/captures/mixed-1440-light.png), [1920×1080 목록](shared/test/captures/mixed-1920-light.png), [어두운 테마](shared/test/captures/mixed-1440-dark.png), [640px 목록](shared/test/captures/mixed-640-light.png), [PDF 대조](shared/test/captures/pdf-after.png), [워드 대조](shared/test/captures/word-after.png)에서 볼 수 있습니다.
+
+공개 표본으로 찍은 목록 전후는 1440px [변경 전](shared/test/captures/word-followups/mixed-before-1440.png) · [변경 후](shared/test/captures/word-followups/mixed-after-1440.png), 1920×1080 [변경 전](shared/test/captures/word-followups/mixed-before-1920.png) · [변경 후](shared/test/captures/word-followups/mixed-after-1920.png)입니다. [참고 상자 원본 대조](shared/test/captures/word-followups/word-note.png)에는 합성 워드 표본의 두 칸과 그 변환 결과가 보입니다.
 
 대조 화면을 한 벌로 합친 뒤의 공개 표본 캡처: PDF [1440](shared/test/captures/compare/pdf-1440-light.png) · [1920×1080](shared/test/captures/compare/pdf-1920-light.png) · [어두운 테마](shared/test/captures/compare/pdf-1440-dark.png) · [상자 메뉴](shared/test/captures/compare/pdf-menu.png), 워드 [1440](shared/test/captures/compare/word-1440-light.png) · [1920×1080](shared/test/captures/compare/word-1920-light.png) · [어두운 테마](shared/test/captures/compare/word-1440-dark.png) · [머리글·바닥글 빗금](shared/test/captures/compare/word-hatch.png).
 
@@ -470,6 +472,8 @@ master의 PDF별 폴더 저장 변경을 병합한 뒤 litzio#1725 이후 Host�
 
 **원본 위치 잇기:** 블록의 글자를 알고 있으므로, PDF의 글자 층(머리글·바닥글은 Word가 artifact로 표시해 뺌)을 쪽 순서대로 따라가며 같은 글자를 순서대로 찾습니다. 글자와 숫자만 비교하고(공백·구두점·대소문자·목록 기호는 무시), 긴 블록은 24자 조각으로 나눠 60% 이상이 가까이 이어 나오면 찾은 것으로 봅니다. 제목은 PDF 책갈피를 닻으로 삼아 그 자리부터 찾고(목차의 같은 글자에 붙지 않음), 이 플러그인이 넣은 제목 번호가 Word가 그린 번호와 다르면 번호 없이 다시 찾습니다. 표는 칸 글자를 순서대로 찾되 병합을 풀며 반복한 값과 나눈 표가 반복한 머리 행은 바로 그 자리에서만 찾고, 캡션과 함께 표 전체를 쪽마다 상자 하나로 잡습니다. 그림은 캡션의 위치와 그림 쪽 이웃 블록 사이의 영역으로 잡고, 캡션이 없으면 앞뒤 블록이 같은 쪽에 있을 때만 그 사이로 잡습니다(표 밖으로 뺀 그림은 잡지 않음). 못 찾은 블록은 `원본 위치 없음`으로 두고 다음 블록은 마지막으로 찾은 블록 뒤에서 이어 찾습니다.
 
+기존 방법으로 찾지 못한 인라인 그림은 양쪽 이웃 블록이 같은 쪽이나 연속한 두 쪽에 있을 때 추가로 찾습니다. 이웃 위치 사이에 Word에 기록된 가로·세로 크기와 각각 0.75pt 이내로 일치하는 PDF 그림 객체가 하나일 때 그 객체의 상자를 연결합니다. 래스터는 PDF의 Figure 태그, EMF·WMF는 Word가 PDF에 내보낸 Form의 경계를 사용합니다. 근거가 부족한 경우 원본 위치는 비워 둡니다. 기존 저장본에 새 연결을 적용하려면 **다시 변환**을 사용합니다.
+
 **Windows 전용인 부분(그림):** EMF·WMF(와 JPEG·GIF·BMP·TIFF) 그림은 Windows PowerShell의 GDI+로 PNG를 만듭니다(원래 크기의 2배, 긴 변 최대 4,000px, 흰 바탕). 그림 전부를 PowerShell 한 번 실행으로 처리합니다. 다른 OS에서는 그 그림을 옮기지 못하고 "그림을 옮기지 못함"에 남깁니다. PNG는 어디서나 그대로 씁니다.
 
 ### 옮기는 규칙
@@ -480,6 +484,7 @@ master의 PDF별 폴더 저장 변경을 병합한 뒤 litzio#1725 이후 Host�
 | 본문 문단 | 문단. 굵게·기울임·위첨자·아래첨자는 직접 서식, 글자 스타일, 문단 스타일에서 읽습니다(제목·캡션은 문단 스타일의 서식을 옮기지 않음). 밑줄·색·형광펜은 버립니다. 탭은 빈칸 하나, 문단 안 줄바꿈은 줄바꿈(제목·표 칸·캡션에서는 빈칸) |
 | 글머리·번호 목록 | 목록(중첩 포함). `%1.`·`%1)` 모양의 숫자·영문자·로마 숫자 번호는 번호 목록으로, 그 밖의 번호 모양은 원문 표시를 글자에 두고 글머리 목록으로 옮기고 알립니다. 시작 번호는 워드의 계산값입니다 |
 | 표 | 리치오 표(첫 행이 머리글). 가로·세로 병합은 값을 반복해 풀고 알립니다. 100행을 넘으면 머리글을 반복해 나누고, 32열을 넘으면 남은 열을 마지막 열에 이어 적고 알립니다 |
+| 1행 2칸의 `Note` 표 | 왼쪽 칸이 `Note` 이름표이고 오른쪽 칸이 한 문단이면 **참고** 상자로 옮깁니다. 인라인 서식과 링크를 살리고, `NOTE 2 —`처럼 번호가 있는 이름표는 본문 앞에 둡니다. 원본에서는 표의 두 칸으로 연결됩니다. 여러 행·열, 칸 안 여러 문단, 그림·중첩 표·글상자, 고유 캡션 또는 참조 대상이 있는 경우 표로 보존합니다 |
 | 칸 안의 여러 문단·목록 | ` / `로 이어 한 줄로 적습니다. 번호 목록이면 번호를 앞에 둡니다. 알림은 표마다 하나입니다 |
 | 캡션 스타일 문단 | 바로 이웃한 표·그림의 캡션. `Table 3`, `Figure 6.6.4-II`, `표 2-1` 모양이면 고정 번호로 두고 번호와 구분자를 떼며, 아니면 번호 없는 캡션으로 원문 글자를 둡니다. 둘 다 이웃하면 번호의 종류(표·그림)가 맞는 쪽, 없으면 표는 아래·그림은 위의 것 |
 | 그림(PNG, EMF, WMF, 끼워 넣은 개체의 미리보기) | PNG 그림 블록. 글과 함께 있던 그림은 문단 뒤로, 표 칸 안의 그림은 표 바로 뒤로 빼고 알립니다. 그림 파일이 없는 도형·차트나 PNG로 바꾸지 못한 그림은 `[그림을 옮기지 못함]`과 캡션 글자를 담은 문단으로 두고 알립니다 |

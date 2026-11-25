@@ -213,19 +213,31 @@ export function readDocx(buffer) {
     const drawing = (node, alt) => {
       // Pictures and text boxes inside a drawing, VML shape or embedded object.
       let found = false;
-      const visit = n => {
+      const visit = (n, extent) => {
+        if (n.name === "wp:inline") {
+          const size = kid(n, "wp:extent")?.attrs;
+          extent = size && [+size.cx / 12700, +size.cy / 12700];
+        } else if (n.name === "v:shape") {
+          const style = n.attrs.style || "";
+          const pt = key => +style.match(new RegExp("(?:^|;)\\s*" + key + ":\\s*([\\d.]+)pt(?=\\s*(?:;|$))", "i"))?.[1];
+          // Only inline VML has a reliable order relative to the surrounding Word paragraphs.
+          if (!/(?:^|;)\s*position\s*:\s*absolute\b/i.test(style)) extent = [pt("width"), pt("height")];
+        }
         for (const c of kids(n)) {
           if (c.name === "w:txbxContent") { item.textboxes.push(blocks(c, "textbox")); found = true; continue; }
-          if (c.name === "mc:AlternateContent") { visit(kid(c, "mc:Choice") || kid(c, "mc:Fallback") || c); continue; }
+          if (c.name === "mc:AlternateContent") { visit(kid(c, "mc:Choice") || kid(c, "mc:Fallback") || c, extent); continue; }
           if (c.name === "wp:docPr") alt = c.attrs.descr || c.attrs.title || alt;
           const rid = c.name === "a:blip" ? c.attrs["r:embed"] || c.attrs["r:link"] : c.name === "v:imagedata" ? c.attrs["r:id"] : null;
           if (rid) {
             const rel = rels.get(rid);
-            if (!fields.some(x => x.phase === "code" || x.drop)) out().push({ image: { part: rel && !rel.external ? rel.target : null, alt } });
+            if (!fields.some(x => x.phase === "code" || x.drop)) out().push({ image: {
+              part: rel && !rel.external ? rel.target : null, alt,
+              ...(extent?.every(x => Number.isFinite(x) && x > 0) ? { extent } : {}),
+            } });
             found = true;
             continue;
           }
-          visit(c);
+          visit(c, extent);
         }
       };
       visit(node);
