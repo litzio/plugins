@@ -1,5 +1,6 @@
-export function sourcePagePositions(pages, pageWidth, gap) {
-  let top = 0;
+// start: the space above the first page.
+export function sourcePagePositions(pages, pageWidth, gap, start = 0) {
+  let top = start;
   return pages.map(page => {
     const scale = pageWidth / page.width;
     const height = page.height * scale;

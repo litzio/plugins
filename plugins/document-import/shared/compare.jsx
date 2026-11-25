@@ -2,22 +2,12 @@ import { linkedItems, sourcePagePositions, sourceOverlays } from "./linked-items
 import { browseScales, steppedScale } from "./browse-scale.mjs";
 import { sourceForPath, sourceLocations, blockAtSource, sourceScrollTop, sourceVisibleTop, sourceAlignScrollTop } from "./scroll-sync.mjs";
 import { renderPage, cancelRender, renderFailed } from "./page-render.mjs";
+import { LABELS, kindName } from "./block-kind.mjs";
+import { blocksInRect, dragStarted } from "./marquee.mjs";
 
 // One comparison screen for PDF and Word: source pages on the left, the converted document on the
 // right, joined by ui.LinkedDocumentView. Correcting (PDF only) comes in through `edit`.
-export const LABELS = {
-  heading: "제목",
-  heading_unnumbered: "제목",
-  paragraph: "본문",
-  note: "참고",
-  caption: "캡션",
-  list: "목록",
-  table: "표",
-  figure: "그림",
-  footnote: "각주",
-  margin: "제외",
-  front: "제외",
-};
+export { LABELS };
 export const COLORS = {
   heading: "accent",
   heading_unnumbered: "accent",
@@ -42,8 +32,9 @@ const helpStyle = { position: "absolute", top: "100%", left: 0, width: 300, padd
 // excludedPages: 0-based pages left out of the conversion. document, revision: the saved document.
 // checks: places to check in order, [{blockId?, path?, reason}]. legend: block kinds in the legend.
 // busy, stale: interactions wait. guide: a line that replaces the place-to-check line.
-// edit (optional): {selection, menu(block) → actions | null, tools, extraTools, splitLines,
-//   onSplit(line), onSelect(block, shift), onClear(), editing}. Without it the screen is read-only.
+// edit (optional): {selection, menu(block) → actions | null, titleMenu(title box) → actions | null, tools,
+//   extraTools, splitLines, onSplit(line), onSelect(block, shift), onSelectMany(ids, add), onDelete(),
+//   onClear(), editing}. Without it the screen is read-only.
 // handle (optional ref): gets {selected(), stopFollow(), show(block, focus), pick(block)}.
 export default function Compare({
   React, ui, pdf, pages, blocks, excluded = [], excludedPages, document, revision, reloadKey,
@@ -66,6 +57,9 @@ export default function Compare({
   const [checkAt, setCheckAt] = useState(-1);
   const pane = useRef(null), scrollTimer = useRef(null), scrollOwner = useRef(null), sourceAuto = useRef(null);
   const documentLayout = useRef(null), alignRequest = useRef(0), pairHeld = useRef(false);
+  const content = useRef(null), drag = useRef(null), [band, setBand] = useState(null);
+  // The tab that holds this screen hides it and drops the source scroll position; it comes back on showing.
+  const shown = useRef(null), hidden = useRef(false), reshow = useRef(null);
   const editing = () => !!edit?.editing?.current;
   const editRef = useRef(edit);
   editRef.current = edit;
@@ -75,11 +69,15 @@ export default function Compare({
     const wheel = e => { if (!e.ctrlKey || !e.deltaY) return; e.preventDefault(); scaleChange.current?.(steppedScale(scaleValue.current, e.deltaY)); };
     pair.addEventListener("wheel", wheel, { capture: true, passive: false }); return () => pair.removeEventListener("wheel", wheel, true);
   }, [viewport]);
-  const measurePageGap = useCallback(element => { if (element) setPageGap(parseFloat(getComputedStyle(element).rowGap) || 0); }, []);
+  const measurePageGap = useCallback(element => { content.current = element; if (element) setPageGap(parseFloat(getComputedStyle(element).rowGap) || 0); }, []);
   const sourceRef = useCallback(element => { pane.current = element; setViewport(element); }, []);
   useLayoutEffect(() => {
     if (!viewport) return;
-    const measure = () => { setWidth(Math.max(1, viewport.clientWidth - 16)); setViewportHeight(viewport.clientHeight); };
+    const measure = () => {
+      if (!viewport.clientHeight) { hidden.current = true; return; }
+      if (hidden.current) { hidden.current = false; reshow.current?.(); }
+      setWidth(Math.max(1, viewport.clientWidth - 16)); setViewportHeight(viewport.clientHeight);
+    };
     const observer = new ResizeObserver(measure);
     measure();
     observer.observe(viewport);
@@ -88,12 +86,15 @@ export default function Compare({
   useEffect(() => {
     const cancel = e => {
       if (e.key !== "Escape" || e.defaultPrevented || e.target.closest?.("[role=menu],[role=listbox],[role=dialog]")) return;
+      if (drag.current) { cancelAnimationFrame(drag.current.frame); drag.current = null; setBand(null); return; }
       setSelected(null); setTarget(null); setCheckAt(-1); editRef.current?.onClear?.();
     };
     window.addEventListener("keydown", cancel); return () => window.removeEventListener("keydown", cancel);
   }, []);
 
-  const positions = useMemo(() => sourcePagePositions(pages, width * browseScale, pageGap), [pages, width, browseScale, pageGap]);
+  // Pages keep a gap on every side so all four paper edges show; they stay next to the document.
+  const pageWidth = width * browseScale, pageLeft = Math.max(0, width + 16 - pageWidth - pageGap);
+  const positions = useMemo(() => sourcePagePositions(pages, pageWidth, pageGap, pageGap), [pages, pageWidth, pageGap]);
   const locations = useMemo(() => sourceLocations(blocks, positions), [blocks, positions]);
   const byId = useMemo(() => new Map(blocks.map(b => [b.id, b])), [blocks]);
   const overlays = useMemo(() => sourceOverlays(excluded), [excluded]);
@@ -116,6 +117,7 @@ export default function Compare({
       const hit = held || locations.find(x => x.top <= y && x.bottom >= y) || locations.find(x => x.top >= y) || locations.at(-1);
       if (hit) scaleAnchor.current = { index: locations.indexOf(hit), id: hit.b.id, offset: hit.top - top, realign: !!held };
     }
+    if (drag.current) { cancelAnimationFrame(drag.current.frame); drag.current = null; setBand(null); }
     scaleValue.current = value; setBrowseScale(value); setScaleError(false);
     try { localStorage.setItem(SCALE_KEY, String(value)); } catch { setScaleError(true); }
   }
@@ -235,6 +237,66 @@ export default function Compare({
   }
   const checkText = c => c.reason + (c.path && !c.blockId ? " · 원본 위치 없음" : "");
 
+  reshow.current = () => {
+    const el = pane.current, scrollTop = shown.current;
+    if (!el || scrollTop == null) return;
+    const started = performance.now();
+    el.scrollTop = scrollTop; sourceAuto.current = el.scrollTop; updateSourceViewport();
+    performance.measure("document-import-reshow", { start: started, detail: { scrollTop } });
+  };
+  // Dragging over the source pages picks every block whose box the rectangle crosses.
+  const point = (x, y) => { const r = content.current.getBoundingClientRect(); return { x: x - r.left, y: y - r.top }; };
+  function updateBand() {
+    const d = drag.current; if (!d?.started || !content.current) return;
+    const p = point(d.cx, d.cy); setBand({ x0: d.x0, y0: d.y0, x1: p.x, y1: p.y });
+  }
+  function dragStart(e) {
+    if (!edit?.onSelectMany || e.button !== 0 || e.pointerType === "touch" || busy || stale || editing() ||
+      e.target.closest(".compare-box,[data-page-render-failed]")) return;
+    const p = point(e.clientX, e.clientY);
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, cx: e.clientX, cy: e.clientY, x0: p.x, y0: p.y, add: e.shiftKey, started: false };
+  }
+  function dragMove(e) {
+    const d = drag.current; if (!d || e.pointerId !== d.id) return;
+    d.cx = e.clientX; d.cy = e.clientY;
+    if (!d.started) {
+      if (!dragStarted(e.clientX - d.x, e.clientY - d.y)) return;
+      d.started = true; setTip(null);
+      content.current.setPointerCapture?.(e.pointerId);
+      // Near the pane's top or bottom edge the pages scroll so a drag can cross pages.
+      const step = () => {
+        const el = pane.current; if (drag.current !== d || !el) return;
+        const r = el.getBoundingClientRect(), edge = 24;
+        const dy = d.cy < r.top + edge ? -Math.min(edge, r.top + edge - d.cy) : d.cy > r.bottom - edge ? Math.min(edge, d.cy - r.bottom + edge) : 0;
+        if (dy) { el.scrollTop += dy; sourceAuto.current = el.scrollTop; updateBand(); }
+        d.frame = requestAnimationFrame(step);
+      };
+      d.frame = requestAnimationFrame(step);
+    }
+    updateBand();
+  }
+  function dragEnd(e) {
+    const d = drag.current; if (!d || e.pointerId !== d.id) return;
+    drag.current = null; cancelAnimationFrame(d.frame); setBand(null);
+    if (!d.started || e.type === "pointercancel") return;
+    const p = point(e.clientX, e.clientY);
+    pickMany(blocksInRect(blocks, positions, pageLeft, { x0: d.x0, y0: d.y0, x1: p.x, y1: p.y }), d.add);
+  }
+  function pickMany(ids, add) {
+    if (stale || busy) return;
+    clearTimeout(scrollTimer.current);
+    setFollowed(null);
+    const first = byId.get(ids[0]);
+    if (!first) {
+      if (!add) { setSelected(null); setTarget(null); edit.onClear?.(); }
+      return;
+    }
+    setSelected(first); setTarget(sourceTarget(first));
+    edit.onSelectMany(ids, add);
+    // Delete works on what was picked: focus goes to the first picked box.
+    requestAnimationFrame(() => pane.current?.querySelector('[data-linked-item="' + first.id + '"]')?.focus({ preventScroll: true }));
+  }
+
   if (handle) handle.current = {
     selected: () => selected,
     stopFollow: () => clearTimeout(scrollTimer.current),
@@ -279,7 +341,7 @@ export default function Compare({
     onViewState?.(s);
   }, [onViewState]);
   const items = useMemo(() => linkedItems(blocks.map(b => b.warning ? { ...b, warning: { reason: "확인할 곳: " + b.warning.reason } } : b),
-    positions, width * browseScale, width + 16, LABELS, COLORS), [blocks, positions, width, browseScale]);
+    positions, pageWidth, pageLeft + pageWidth, LABELS, COLORS), [blocks, positions, pageWidth, pageLeft]);
   function ownComparisonScroll(event) {
     const side = pane.current?.contains(event.target) ? "source" : "document";
     ownScroll(side, event.type === "keydown" && event.key === "Enter" ? undefined : event);
@@ -287,9 +349,10 @@ export default function Compare({
   const showTip = (page, top, text) => setTip({ page, top, text });
   const lastPage = positions.at(-1);
   const sourcePages = (
-    <div ref={measurePageGap} style={{ position: "relative", rowGap: "var(--space-2)", minHeight: "100%", height: lastPage ? lastPage.top + lastPage.height : 0, background: "var(--id-color-canvas)" }}>
+    <div ref={measurePageGap} onPointerDown={dragStart} onPointerMove={dragMove} onPointerUp={dragEnd} onPointerCancel={dragEnd}
+      style={{ position: "relative", rowGap: "var(--space-2)", minHeight: "100%", height: lastPage ? lastPage.top + lastPage.height + pageGap : 0, background: "var(--id-color-surface-subtle)", userSelect: "none" }}>
       {positions.map((pos, i) => (
-        <div data-source-page={i + 1} key={i} style={{ height: pos.height, position: "absolute", top: pos.top, width: width * browseScale, left: Math.max(0, width + 16 - width * browseScale), background: "var(--id-color-paper)", boxShadow: "var(--shadow-paper)" }}>
+        <div data-source-page={i + 1} key={i} style={{ height: pos.height, position: "absolute", top: pos.top, width: pageWidth, left: pageLeft, background: "var(--id-color-pdf-paper)", boxShadow: "0 0 0 var(--border-width) var(--id-color-border)" }}>
           {i + 1 >= pageNo - 2 && i + 1 <= pageLast + 2 && (
             <div style={{ position: "relative", outline: excludedPages?.has(i) ? "3px solid var(--id-color-danger)" : undefined, outlineOffset: -3 }}>
               <div style={{ opacity: excludedPages?.has(i) ? 0.4 : 1 }}>
@@ -346,15 +409,24 @@ export default function Compare({
                   onClick={() => edit.onSplit(j)}
                   style={{ pointerEvents: "auto", left: l.box.x0 * pos.scale, top: l.box.top * pos.scale, width: (l.box.x1 - l.box.x0) * pos.scale,
                     height: Math.max(1, (l.box.bottom - l.box.top) * pos.scale), outline: "1px solid var(--id-color-accent)", outlineOffset: 2 }} />)}
-                {overlays.titles.map((e, j) => e.page === i && <ui.Button
-                  key={"title" + j} className="compare-box" data-selected={selected?.id === "title-" + j}
+                {overlays.titles.map((e, j) => {
+                  if (e.page !== i) return null;
+                  const menu = edit?.titleMenu?.(e);
+                  const trigger = <ui.Button
+                  className="compare-box" data-selected={selected?.id === "title-" + j}
                   aria-label="문서 제목으로 쓰임" aria-pressed={selected?.id === "title-" + j}
                   onMouseEnter={() => showTip(i, 0, "문서 제목으로 쓰임")} onMouseLeave={() => setTip(null)}
                   onFocus={() => showTip(i, 0, "문서 제목으로 쓰임")} onBlur={() => setTip(null)}
                   onClick={() => selectTitle("title-" + j)}
+                  onContextMenu={ev => {
+                    if (!menu) { ev.preventDefault(); return; }
+                    if (!busy && !stale && !editing() && selected?.id !== "title-" + j) selectTitle("title-" + j);
+                  }}
                   style={{ pointerEvents: "auto", left: e.box.x0 * pos.scale, top: e.box.top * pos.scale, width: Math.max(1, (e.box.x1 - e.box.x0) * pos.scale), height: Math.max(1, (e.box.bottom - e.box.top) * pos.scale), "--block-color": "var(--id-color-accent)" }}>
                   <span className="type-helper" style={{ position: "absolute", left: -e.box.x0 * pos.scale, top: 0, width: Math.max(0, e.box.x0 * pos.scale - 4), display: "flex", justifyContent: "flex-end", overflow: "hidden", whiteSpace: "nowrap", pointerEvents: "none", background: "var(--id-color-surface)", color: "var(--id-color-text)" }}>제목</span>
-                </ui.Button>)}
+                </ui.Button>;
+                  return menu ? <ui.ContextMenu key={"title" + j} disabled={busy || stale} trigger={trigger} actions={menu} /> : <React.Fragment key={"title" + j}>{trigger}</React.Fragment>;
+                })}
                 {overlays.excluded.filter(x => x.page === i).map((e, j) => (
                   <div key={"e" + j} className="compare-excluded" onContextMenu={e => e.preventDefault()} tabIndex={0}
                     aria-label={excludedLabel(e)}
@@ -367,6 +439,7 @@ export default function Compare({
           )}
         </div>
       ))}
+      {band && <div className="compare-marquee" style={{ left: Math.min(band.x0, band.x1), top: Math.min(band.y0, band.y1), width: Math.abs(band.x1 - band.x0), height: Math.abs(band.y1 - band.y0) }} />}
     </div>
   );
 
@@ -385,6 +458,7 @@ export default function Compare({
 .compare-line::before,.compare-line::after{display:none}
 .compare-line{outline:1px solid var(--id-color-accent);outline-offset:2px}
 .compare-excluded{position:absolute;--excluded-ink:color-mix(in srgb,var(--id-color-text-muted) 70%,var(--id-color-surface));--excluded-face:repeating-linear-gradient(135deg,color-mix(in srgb,var(--excluded-ink) 80%,transparent) 0 2px,transparent 2px 7px),color-mix(in srgb,var(--excluded-ink) 35%,transparent);background:var(--excluded-face);mix-blend-mode:multiply}
+.compare-marquee{position:absolute;pointer-events:none;border:var(--border-width) solid var(--id-color-interaction);background:color-mix(in srgb,var(--id-color-interaction) 8%,transparent)}
 .compare-excluded:focus-visible{outline:2px solid var(--id-color-border-focus);outline-offset:6px}
 .compare-key{display:inline-block;width:16px;height:12px;margin-right:var(--space-1);background:color-mix(in srgb,var(--block-color) 12%,transparent);border-left:2px solid var(--block-color)}
 .compare-key.compare-excluded{position:static;border:0;background:var(--excluded-face);mix-blend-mode:normal}
@@ -396,11 +470,11 @@ export default function Compare({
     </div>
     <ui.Toolbar><div data-comparison-tools style={{ containerType: "inline-size", containerName: "compare-tools", display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)", width: "100%" }}>
       <div data-block-tools style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--space-2)", minHeight: 32 }}>
-        {edit?.tools || <>
+        {edit?.tools || (!edit && selected ? <><span>1개 선택</span><span className="type-helper">{kindName(selected)}</span></> : <>
           {legend.map(k => <span key={k} className="type-helper"><span aria-hidden="true" className={"compare-key" + (k === "margin" ? " compare-excluded" : "")} style={{ "--block-color": "var(--id-color-" + COLORS[k] + ")" }} />{LABELS[k]}</span>)}
           {edit && <span className="type-helper">고침</span>}
           <span className="type-helper"><span aria-hidden="true" style={{ color: "var(--id-color-warning)", marginRight: "var(--space-1)" }}>!</span>확인할 곳</span>
-        </>}
+        </>)}
       </div>
       <div data-comparison-navigation style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "var(--space-2)", minHeight: 32, flexShrink: 0 }}>
         {checks.length > 0 && <><span className="type-helper">확인할 곳 {checkIndex < 0 ? 0 : checkIndex + 1} / {checks.length}</span>
@@ -430,8 +504,15 @@ export default function Compare({
       onWheelCapture={ownComparisonScroll}
       onPointerDownCapture={ownComparisonScroll}
       onKeyDownCapture={ownComparisonScroll}
+      onKeyDown={event => {
+        // Delete on the source pages removes what is picked, like the remove action.
+        if (event.key !== "Delete" || event.defaultPrevented || !edit?.onDelete || !pane.current?.contains(event.target) || busy || stale || editing()) return;
+        event.preventDefault(); edit.onDelete();
+      }}
       onScrollCapture={event => {
         if (event.target !== pane.current) return;
+        if (pane.current.clientHeight) shown.current = pane.current.scrollTop;
+        updateBand();
         updateSourceViewport();
         setTip(null);
         sourceScroll();

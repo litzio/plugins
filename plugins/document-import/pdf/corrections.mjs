@@ -76,6 +76,14 @@ export function previewCorrection(mapping, input, undoBefore) {
   if (!mapping.snapshotNodes) throw Error('저장된 문서를 다시 열어 주세요.');
   const selected = mapping.blocks.filter(b=>ids.includes(b.id));
   const paths = [...new Set(selected.map(b=>b.path[0]))];
+  // Several blocks go as one action: the same as removing them one by one from the last,
+  // recorded once in the history.
+  if (action === 'remove' && paths.length > 1) {
+    let next = mapping;
+    for (const p of [...paths].sort((a,b)=>b-a))
+      next = previewCorrection(next,{...input,time,ids:selected.filter(b=>b.path[0]===p).map(b=>b.id)});
+    return {...next,history:[...(mapping.history || []),{action,at:time,who:'user'}]};
+  }
   const nodes = mapping.snapshotNodes.filter(n=>paths.includes(n.path[0]));
   if (!nodes.length) throw Error('고칠 블록을 찾지 못했습니다.');
   const at = paths[0], first = nodes[0];

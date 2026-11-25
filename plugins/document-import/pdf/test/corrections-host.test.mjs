@@ -57,6 +57,16 @@ test('SDK integration: corrections, repeated undo, saved-only reopening and revi
     await act('kind',{kind:'heading',level:3});await act('kind',{kind:'heading',level:2});
     await act('undo');await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
     await act('remove');await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
+    // V-06: two blocks that are not next to each other go in one write and come back with one undo,
+    // leaving the same document and mapping as removing them one by one.
+    const kept=x=>({text:x.text,blocks:x.m.blocks,nodes:x.m.snapshotNodes,excluded:x.m.excluded.map(e=>JSON.stringify({...e,edited:null})).sort()});
+    const both=await act('remove',{ids:['b0','b2']});
+    assert.equal(both.undoCount,1);assert.equal(inspectDocument(doc).nodes.filter(n=>n.path.length===1).length,1);
+    const together=kept({text:await readFile(doc,'utf8'),m});
+    await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
+    await act('remove',{ids:['b0']});await act('remove',{ids:['b2']});
+    assert.deepEqual(kept({text:await readFile(doc,'utf8'),m}),together);
+    await act('undo');await act('undo');assert.equal(await readFile(doc,'utf8'),initial);
     correct=correctionHandler();await act('kind',{kind:'heading',level:3});await act('undo');
     assert.equal(await readFile(doc,'utf8'),initial);
     const stale=await correct({document:doc,revision:'0'.repeat(64),historyId:'screen',action:'remove',ids:['b0']});
@@ -154,6 +164,12 @@ test('SDK integration: S-02 figure/table references survive split, merge, kind, 
       await act('undo',{ids:['h']});
       assert.equal(await readFile(doc,'utf8'),initial);
     }
+    // V-06: a paragraph and a heading together; the heading's target goes too and one undo restores all.
+    const both=await act('remove',{ids:['b1','h']});
+    assert.equal(both.brokenLinks,1);assert.equal(both.undoCount,1);
+    assert.ok(!inspectDocument(doc).nodes.some(n=>n.type==='target'));
+    await act('undo',{ids:['b1']});
+    assert.equal(await readFile(doc,'utf8'),initial);
     const refs=()=>inspectDocument(doc).nodes.filter(n=>n.path.length===1&&n.content).flatMap(n=>n.content.filter(c=>c.kind==='reference').map(c=>c.label));
     const valid=async()=>{const c=await run(['check',doc,'--format','json']);assert.equal(c.validation.valid,true);assert.deepEqual(c.references.unresolved,[]);};
     await act('split',{ids:['b0'],line:1});
