@@ -281,7 +281,8 @@ function classifyLines(pages, profile, sheetPages = new Map()) {
   return { pages, all, body };
 }
 function convert(raw, excludedPages = [], profileName) {
-  const profile = profileOf(raw, profileName);
+  const selectedProfile = profileOf(raw, profileName);
+  const profile = selectedProfile.name === "sheet" ? profiles.generic : selectedProfile;
   let { pages } = raw;
   const { toc } = raw;
   if (
@@ -291,7 +292,7 @@ function convert(raw, excludedPages = [], profileName) {
     throw new Error("제외할 쪽 번호가 올바르지 않습니다.");
   const omitted = new Set(excludedPages);
   const sheetPages = new Map();
-  if (profile.name === "sheet") {
+  if (selectedProfile.name === "sheet") {
     pages.forEach((p,i)=>{
       if (p.footerTop == null || !p.raw.some(l=>l.tag) || omitted.has(i+1)) return;
       const lines = p.raw.map(l=>line(l,i)).filter(l=>l.plain);
@@ -299,7 +300,7 @@ function convert(raw, excludedPages = [], profileName) {
       sheetPages.set(i,{lines,...assembleSheet(p,lines)});
     });
   }
-  const classified = classifyLines(pages.map((p,i)=>sheetPages.has(i) ? {...p,raw:[],tables:[],figures:[],graphics:[]} : p), profile.name === "sheet" ? profiles.generic : profile, sheetPages);
+  const classified = classifyLines(pages.map((p,i)=>sheetPages.has(i) ? {...p,raw:[],tables:[],figures:[],graphics:[]} : p), profile, sheetPages);
   pages = classified.pages;
   let { all } = classified;
   const { body } = classified;
@@ -832,7 +833,7 @@ function convert(raw, excludedPages = [], profileName) {
       listIndents.push(x);
     b.level = listIndents.length;
   }
-  const stats = measure(pages, toc, all, blocks, start, body, joins, profile);
+  const stats = measure(pages, toc, all, blocks, start, body, joins, selectedProfile);
   stats.paragraphs.layout = {
     full_line_ratio: fullRatio,
     justified,
@@ -841,10 +842,10 @@ function convert(raw, excludedPages = [], profileName) {
   };
   stats.notes = blocks.filter((b) => b.kind === "note").length;
   stats.lists = { cross_page_joined: listJoins };
-  suspects(blocks, stats, profile);
+  suspects(blocks, stats, selectedProfile);
   for (const b of blocks) if(b.formula) b.warning={code:"formula-as-image",reason:"수식을 그림으로 둠"};
   for (const b of blocks) if (b.kind === "para") b.kind = "paragraph";
-  stats.references = findReferences(raw, blocks, profile);
+  stats.references = findReferences(raw, blocks, selectedProfile);
   if(sheetPages.size) stats.sheet={pages:sheetPages.size,layoutTables:[...sheetPages.values()].reduce((n,s)=>n+s.layoutCount,0),links:linkRequirements(blocks)};
   return {
     pages: pages.map((p) => ({ width: p.width, height: p.height })),
@@ -852,7 +853,7 @@ function convert(raw, excludedPages = [], profileName) {
     excluded,
     excludedPages: [...omitted].sort((a, b) => a - b),
     stats,
-    profile: profile.name,
+    profile: selectedProfile.name,
   };
 }
 function measure(pages, toc, all, blocks, start, body, joins, profile) {

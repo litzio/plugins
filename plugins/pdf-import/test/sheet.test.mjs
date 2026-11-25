@@ -105,3 +105,17 @@ test("T-06 low tag coverage leaves the page on the coordinate path", async () =>
   };
   assert.equal(await taggedMembership(page), null);
 });
+
+test("T-06 a page without linked tags keeps the generic annex heading rule", () => {
+  const mixed = structuredClone(raw);
+  const last = mixed.pages.at(-1);
+  const annex = structuredClone(last.raw.find(line => line.spans[0].text.includes("Observation")));
+  annex.spans = [{text:"Annex B", size:18, flags:16}];
+  annex.bbox = [55,140,165,158];
+  delete annex.tag;
+  last.raw = [annex];
+  last.nchars = 6;
+  const heading = convert(mixed).blocks.find(block => block.text === "Annex B");
+  assert.equal(heading.kind, "heading");
+  assert.equal(heading.level, 1);
+});
