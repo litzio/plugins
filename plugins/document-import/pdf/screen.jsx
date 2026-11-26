@@ -13,6 +13,7 @@ import { references } from "./corrections.mjs";
 import { pageFragments } from "./source-cells.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
 import { useContentEdit } from "../shared/content-edit.mjs";
+import { applyTracker } from "../shared/document-apply.mjs";
 const legend = ["heading", "paragraph", "list", "table", "figure", "footnote", "margin"];
 const none = [];
 function exclusionSummary(pages) {
@@ -78,6 +79,11 @@ function Screen({
     },
     [pdf],
   );
+  // The change a correction makes shows in the document view before its write (SDK 0.18.0).
+  const [apply, setApply] = useState(undefined);
+  const applying = useRef(null);
+  if (!applying.current) applying.current = applyTracker(setApply);
+  const onApplyStateChange = React.useCallback(s => applying.current.onState(s), []);
   const mappingRef = useRef(null), staleRef = useRef(false);
   mappingRef.current = mapping; staleRef.current = stale;
   // Content edits in the document view. The view saves them itself; the handler then checks the
@@ -86,7 +92,7 @@ function Screen({
     revision: mapping?.revision,
     enabled: !!mapping && !stale && !missingMapping && !picking,
     paused: () => editing.current,
-    follow: (revision, trigger) => invoke('follow', {document:file.document, revision, historyId:historyId.current}),
+    follow: (revision, trigger, saved) => invoke('follow', {document:file.document, revision, historyId:historyId.current, saved}),
     apply(outcome, r, trigger) {
       if (outcome.kind === 'error') { setError(outcome.message); return; }
       if (outcome.kind === 'stale') {
@@ -159,12 +165,17 @@ function Screen({
       setMapping(r.mapping);setDocumentStatus(r.status);setReloadKey(k=>k+1);setStatus('변환 완료 · 확인할 곳 '+r.mapping.blocks.filter(b=>b.warning).length);
     } catch(e){setError(e.message);setStatus('검토 상태 변경 실패');} finally{editing.current=false;setBusy(false);}
   }
-  async function runCorrection(input) {
+  // show(change): the change the correction makes, before its write. The write starts once the
+  // screen has it.
+  async function runCorrection(input, show) {
     const {jobId} = await invoke('correct',{...input,background:true});
+    let write = false;
     for (;;) {
-      const response = await invoke('correctionResult',{jobId});
+      const response = await invoke('correctionResult',{jobId,write});
+      write = false;
+      if (response.change) { if (applying.current.usable()) show(response.change); write = true; continue; }
       if (!response.pending) return response.result;
-      await new Promise(resolve=>setTimeout(resolve,150));
+      await new Promise(resolve=>setTimeout(resolve,50));
     }
   }
   // Joining tables asks first when a later table's caption goes, a reference breaks or undo cannot
@@ -185,7 +196,13 @@ function Screen({
     const before=mappingRef.current, oldSelection=selection, oldSelected=compare.current?.selected();
     compare.current?.stopFollow();
     setBusy(true); setError(''); setNote(''); setStatus('고치는 중'); setSplitting(false);
-    let started=performance.now();
+    let started=performance.now(), step=null;
+    // The document view shows the change while it is written, then takes over the written file.
+    const show=change=>{
+      step=applying.current.show(change,before.revision);
+      applying.current.shown(step).then(state=>{if(state==='pending')setStatus('저장 중');});
+    };
+    const kept=async()=>!!step&&await applying.current.shown(step)==='pending';
     try {
       const input={document:file.document,revision:before.revision,ids:blocks.map(b=>b.id),action,
         historyId:historyId.current,...extra};
@@ -198,19 +215,26 @@ function Screen({
         }
         input.confirmed=true;started=performance.now();
       }
-      let r=await runCorrection(input);
+      let r=await runCorrection(input,show);
       if(r.requiresConfirm&&action==='merge') {
         if(!await confirm({title:'표 잇기',message:joinMessage(r),confirmLabel:'표 잇기'})) {setStatus('취소됨');return;}
-        started=performance.now();r=await runCorrection({...input,confirmed:true});
+        started=performance.now();r=await runCorrection({...input,confirmed:true},show);
       }
       if(r.requiresConfirm&&action==='title') {
         if(!await confirm({title:'문서 제목 바꾸기',message:'이 문서에는 이미 제목 “'+r.title+'”이 있습니다. 고른 블록의 글자로 바꿀까요? 이전 제목은 본문으로 돌아오지 않습니다.',confirmLabel:'제목 바꾸기'})) {
           setStatus('취소됨');return;
         }
-        started=performance.now();r=await runCorrection({...input,confirmed:true});
+        started=performance.now();r=await runCorrection({...input,confirmed:true},show);
       }
-      if(r.stale) {setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;}
-      setMapping(r.mapping);setUndoCount(r.undoCount);setReloadKey(k=>k+1);setStale(r.mapping.stale);
+      const shown=await kept();
+      if(r.stale) {
+        // A write refused because the file changed elsewhere wrote nothing; the view goes back.
+        if(shown) applying.current.finish(step,r.written?{saved:r.written}:{failed:'밖에서 문서가 바뀌어 저장하지 않았습니다.'});
+        setMapping(before);setStale(true);setError(r.message);setStatus('문서가 바뀜');return;
+      }
+      setMapping(r.mapping);setUndoCount(r.undoCount);setStale(r.mapping.stale);
+      // A view that did not show the change (CLI corrections, a refusal) reads the saved file again.
+      if(shown) applying.current.finish(step,{saved:r.mapping.revision}); else setReloadKey(k=>k+1);
       if(keep) {
         setSelection(oldSelection);setNote(keep.note);
         if(oldSelected?.documentTitle) compare.current?.pick(oldSelected);
@@ -219,11 +243,20 @@ function Screen({
         const b=r.mapping.blocks.find(b=>b.id===r.targetId);
         setSelection(b?[b.id]:[]);compare.current?.show(b,focusSource);
       }
-      metrics.current.correction={started,timings:r.timings,action};
-      setError(r.message || '');setStatus(r.mapping.stale?'문서가 바뀜':r.brokenLinks?'고침 완료 · 이 제목을 가리키는 링크 '+r.brokenLinks+'개가 끊깁니다.':'고침 완료');
+      setError(r.message || '');
+      if(shown) {
+        const end=await applying.current.settled(step);
+        if(end.state!=='saved') setReloadKey(k=>k+1);
+        performance.measure('pdf-import-correction',{start:started,detail:{...r.timings,action,applied:end.state,
+          visibleMs:step.shownAt-started,savedMs:performance.now()-started}});
+      } else metrics.current.correction={started,timings:r.timings,action};
+      setStatus(r.mapping.stale?'문서가 바뀜':r.brokenLinks?'저장됨 · 이 제목을 가리키는 링크 '+r.brokenLinks+'개가 끊깁니다.':'저장됨');
     } catch(e) {
+      // The view shows why the write failed and goes back to the saved file.
+      const shown=await kept();
+      if(shown) applying.current.finish(step,{failed:e.message});
       setMapping(before);setSelection(oldSelection);compare.current?.pick(oldSelected);
-      setError(e.message);setStatus('고치기 실패');
+      setError(shown?'':e.message);setStatus(shown?'저장 실패':'고치기 실패');
     } finally {editing.current=false;setBusy(false);}
   }
   const frontPages = new Set([...excludedPages].map((p) => p - 1));
@@ -544,9 +577,12 @@ function Screen({
         });
       }
       // Another revision than the mapping's is checked: content changed in place keeps the mapping.
-      if (s.revision && mapping && s.revision !== mapping.revision && !content.onRead(s))
-        setStale(true);
-      if (s.state === "stale-target" && !(s.revision && content.onRead(s))) setStale(true);
+      // While the view shows a correction before its write, its reports carry the revision before it.
+      if (!applying.current.holding()) {
+        if (s.revision && mapping && s.revision !== mapping.revision && !content.onRead(s))
+          setStale(true);
+        if (s.state === "stale-target" && !(s.revision && content.onRead(s))) setStale(true);
+      }
       if (s.state === "error") setError("변환된 문서를 표시하지 못했습니다.");
     },
     [mapping, content.onRead],
@@ -574,7 +610,7 @@ function Screen({
           aria-describedby={picking&&pickerHelp?'pdf-picker-status-help':undefined} style={{position:'relative',display:'inline-flex',gap:'var(--space-2)',alignItems:'center'}}>
           {mapping&&!picking&&!error&&content.status
             ? <ui.Status tone={content.status.tone} label={content.status.label}/>
-            : <ui.Status tone={error?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":missingMapping&&!picking?"warning":mapping?"ok":"neutral"} label={status}/>}
+            : <ui.Status tone={error||status==="저장 실패"?"error":busy||(picking&&status==="뺄 쪽 제안 확인 중")?"progress":missingMapping&&!picking?"warning":mapping?"ok":"neutral"} label={status}/>}
           {mapping&&!picking&&statusLabel(documentStatus)&&<ui.Status tone={documentStatus==='approved'?'ok':'neutral'} label={statusLabel(documentStatus)}/>}
           {picking&&pickerHelp&&<span id="pdf-picker-status-help" role="tooltip" className="type-helper" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',top:'100%',width:300,maxWidth:'80vw',padding:'var(--space-2)',background:'var(--id-color-surface)',color:'var(--id-color-text)',border:'1px solid var(--id-color-border)',boxShadow:'var(--shadow-overlay)',zIndex:2}}>누르면 포함·제외가 바뀝니다. Shift와 함께 누르면 범위를 고릅니다.</span>}
         </span>
@@ -651,7 +687,7 @@ function Screen({
           document={file.document} revision={mapping.revision} reloadKey={reloadKey}
           checks={checks} legend={legend} sourceLabel="원본 PDF" busy={busy} stale={stale}
           guide={splitting ? "새 문단이 시작될 줄을 고르세요." : note || undefined}
-          onViewState={viewState} contentEdit={content}
+          onViewState={viewState} contentEdit={content} apply={apply} onApplyStateChange={onApplyStateChange}
           edit={{
             selection, editing, onSelect: selectBlock, onSelectMany: selectMany, onClear: clearSelection,
             menu: b => canEdit && ['paragraph','heading','list','admonition','table'].includes(b.documentKind) ? actionItems(selection.includes(b.id)?chosen:[b],true) : null,

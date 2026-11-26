@@ -56,7 +56,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const content = useContentEdit(React, {
     revision: source?.source?.revision,
     enabled: !!pdf && source?.state === "ready" && !followStale,
-    follow: revision => invoke("follow", { id: file.id, revision }),
+    follow: (revision, trigger, saved) => invoke("follow", { id: file.id, revision, saved }),
     apply(outcome, r, trigger) {
       if (outcome.kind === "error") { setError(outcome.message); return; }
       if (outcome.kind === "stale") { setFollowStale(true); setFollowNote(""); return; }

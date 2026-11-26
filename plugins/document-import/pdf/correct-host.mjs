@@ -1,15 +1,13 @@
-import { updateDocumentStatus, DOCUMENT_AUTHORING_LIMITS, parse, serialize } from '@litzio/plugin-sdk';
+import { updateDocumentStatus, DOCUMENT_AUTHORING_LIMITS, documentViewChange } from '@litzio/plugin-sdk';
 import { koreanTime } from "../shared/time.mjs";
 import { readFile, writeFile, rename, rm } from 'node:fs/promises';
-import { statSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { detachedTarget, assertMapping, previewCorrection, restoreMapping, splitOffset, splitContent, inlineLength, snapshotNodes, references, titleText, tableNotePlan } from './corrections.mjs';
 import { readDocument, writeDocument, FileChangedError } from '@litzio/plugin-sdk/node';
 import { inspectDocument, applyCorrections, fileRevision, documentRevision, snapshotOf } from './document-io.mjs';
 import { listPlan, tablePlan, unlistPlan, joinPlan, relabel, footnotePlan, tableRows, tableShapes } from './structure.mjs';
-import { changedRange, editedBlocks, keepHistory } from '../shared/follow.mjs';
+import { changedRange, editedBlocks, keepHistory, savedNodes } from '../shared/follow.mjs';
 const STALE = '문서가 바뀌어 대응을 표시할 수 없음';
 const topNodes = snapshotNodes;
 const listOf = (n, items = n.items) => ({ordered:n.ordered,...(n.checklist?{checklist:true}:{}),...(n.ordered?{start:n.start,style:n.style,delimiter:n.delimiter}:{}),items});
@@ -29,13 +27,12 @@ const tableOps = (t, cells, at) => [{command:'insert-table',at,cells},
 const contentUpdate = (n, content) => ({command:{paragraph:'update-paragraph',heading:'update-heading-content',admonition:'update-admonition-content'}[n.type],path:String(n.path[0]),content});
 const cellsOf = (nodes, p) => tableRows(nodes, p).map(r => r.map(c => c?.content || []));
 // Operations missing from the SDK use one official, revision-checked CLI batch.
-const CLI_ONLY = ['insert-target','insert-footnote','remove-footnote','insert-table-note','remove-table-note'];
+const CLI_ONLY = ['insert-target','insert-footnote','remove-footnote'];
 const needsCli = ops => ops.some(op => CLI_ONLY.includes(op.command));
-function applyWithCli(cli, doc, ops, revision, dryRun = false) {
+function applyWithCli(cli, doc, ops, revision) {
   return new Promise((resolve, reject) => {
-    const child = execFile(cli.bin, [...cli.args, 'apply-batch', doc, '--operations', '-', '--if-revision', revision, '--format', 'json',
-      ...(dryRun ? ['--dry-run'] : [])],
-      {windowsHide:true,maxBuffer:dryRun ? 6 * statSync(doc).size + 1024 * 1024 : 1024 * 1024}, (error, stdout) => {
+    const child = execFile(cli.bin, [...cli.args, 'apply-batch', doc, '--operations', '-', '--if-revision', revision, '--format', 'json'],
+      {windowsHide:true,maxBuffer:1024 * 1024}, (error, stdout) => {
         if (!error) {
           try { return resolve(JSON.parse(stdout)); } catch (e) { return reject(e); }
         }
@@ -44,21 +41,6 @@ function applyWithCli(cli, doc, ops, revision, dryRun = false) {
       });
     child.stdin.end(JSON.stringify(ops));
   });
-}
-// Table joins use SDK-only numbering edits and CLI-only note edits. Preview the latter
-// on an exclusive sibling so relative resources resolve, then commit once to the original.
-async function joinWithNotes(cli, doc, document, ops) {
-  const noteOps = ops.filter(op=>op.command==='insert-table-note');
-  const staged = applyCorrections(document,ops.filter(op=>op.command!=='insert-table-note'));
-  if (!noteOps.length) return staged;
-  const scratch = path.join(path.dirname(doc), '.table-notes-' + randomUUID() + '.md');
-  await writeFile(scratch,serialize(staged),{flag:'wx'});
-  try {
-    const {markdown} = await applyWithCli(cli,scratch,noteOps,fileRevision(scratch),true);
-    return parse(markdown);
-  } finally {
-    await rm(scratch,{force:true});
-  }
 }
 // Links to a heading's target in the nodes that stay. Inspect exposes table cell content on
 // separate paths; other supported containers carry their inline children on the top-level node.
@@ -76,8 +58,9 @@ const hasLabel = (value, labels) => !!value && typeof value === 'object' &&
 // write: the official revision-checked write; tests replace it to leave other content behind.
 export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT_AUTHORING_LIMITS} = {}) {
   const histories = new Map(), locks = new Set();
-  // The document as this handler last wrote it, for one document at a time. It stands in for
-  // reading the file again only while the file on disk still has exactly that revision.
+  // The document as this handler last read or wrote it, for one document at a time. It stands in
+  // for reading the file again only while the file on disk still has exactly that revision. After
+  // a save of the view it holds the nodes only (document null), and a correction reads the file.
   let memory = null, refused = null;
   const persist = async (side, m) => {
     const tmp = side + '.pending';
@@ -86,7 +69,7 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
   };
   function read(doc, timings) {
     const started = performance.now();
-    if (memory?.doc === doc && fileRevision(doc) === memory.snapshot.revision) {
+    if (memory?.doc === doc && memory.snapshot.document && fileRevision(doc) === memory.snapshot.revision) {
       timings.readMs = performance.now()-started; timings.remembered = true;
       return memory.snapshot;
     }
@@ -112,7 +95,9 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
     timings.checkMs = performance.now()-checking;
     return {receipt, snapshot, written};
   }
-  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,status,fragments,confirmed=false}) {
+  // shown(change) (optional): called with the change a Core correction makes, before its write;
+  // the write starts when the returned promise settles.
+  const correct = async function correct({document:doc,revision,ids=[],action,line,kind,level,historyId,status,fragments,confirmed=false}, {shown} = {}) {
     const time = koreanTime();
     if (!doc || path.extname(doc) !== '.md') throw Error('저장된 문서를 찾지 못했습니다.');
     if (locks.has(doc)) throw Error('이 문서를 고치는 중입니다.');
@@ -176,15 +161,8 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
             ...holders.map(n=>contentUpdate(n,n.content))];
           // Table alignment and some numbering are not in the inspected nodes; undo must give back
           // exactly the saved bytes, or the join asks first and clears the undo history.
-          if (needsCli(ops)) {
-            if (!cli) throw Error('공식 CLI를 찾지 못해 표 주석을 고칠 수 없습니다.');
-            forward = await joinWithNotes(cli,doc,current.document,ops);
-            try { irreversible = documentRevision(await joinWithNotes(cli,doc,forward,inverse)) !== current.revision; }
-            catch { irreversible = true; }
-          } else {
-            forward = applyCorrections(current.document,ops);
-            try { irreversible = documentRevision(applyCorrections(forward,inverse)) !== current.revision; } catch { irreversible = true; }
-          }
+          forward = applyCorrections(current.document,ops);
+          try { irreversible = documentRevision(applyCorrections(forward,inverse)) !== current.revision; } catch { irreversible = true; }
           if ((join.captions.length || join.broken || irreversible) && !confirmed)
             return {requiresConfirm:true,captions:join.captions,broken:join.broken,moved:join.moved,irreversible};
           brokenLinks = join.broken;
@@ -309,9 +287,8 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
           targetId = next.blocks.find(x=>x.id===b.id)?.id || next.blocks.find(x=>x.path[0]>=at)?.id || next.blocks.at(-1)?.id;
         }
       }
-      const noteJoin = needsCli(ops) && ops.some(op=>op.command==='insert-table');
-      const viaCli = needsCli(ops) && !noteJoin;
-      if ((viaCli || noteJoin) && !cli) throw Error('공식 CLI를 찾지 못해 표 주석·미주·이름표를 고칠 수 없습니다.');
+      const viaCli = needsCli(ops);
+      if (viaCli && !cli) throw Error('공식 CLI를 찾지 못해 미주·이름표를 고칠 수 없습니다.');
       let receipt, snapshot, written;
       try {
         const started = performance.now();
@@ -324,8 +301,17 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
           timings.inspectMs = performance.now()-checked;
           written = snapshot.revision === receipt.revision;
         } else {
-          const document = forward || (noteJoin ? await joinWithNotes(cli,doc,current.document,ops) : applyCorrections(current.document,ops));
+          const document = forward || applyCorrections(current.document,ops);
           timings.coreMs = performance.now()-started;
+          // The screen shows the change before the write; the write waits until it is handed over.
+          if (shown) {
+            const showing = performance.now();
+            let change = null;
+            try { change = documentViewChange(current.document,document); } catch {}
+            timings.changeMs = performance.now()-showing;
+            if (change) await shown(change);
+            timings.handMs = performance.now()-showing-timings.changeMs;
+          }
           ({receipt, snapshot, written} = commit(doc,document,before.revision,timings));
         }
         timings.operationMs = performance.now()-started;
@@ -358,7 +344,7 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
       next.stale = invalid;
       memory = invalid ? null : {doc,snapshot};
       try { await persist(side,next); }
-      catch { memory = null; return {stale:true,message:'문서는 고쳤지만 대응 자료를 기록하지 못했습니다. 문서를 다시 열어 주세요.'}; }
+      catch { memory = null; return {stale:true,written:receipt.revision,message:'문서는 고쳤지만 대응 자료를 기록하지 못했습니다. 문서를 다시 열어 주세요.'}; }
       if (undo) {stack.pop(); if(stack.length) stack.at(-1).revision = receipt.revision;}
       else if (irreversible || (endnote && !inverse.length)) stack.length = 0;
       else stack.push({before,forward:ops,inverse,revision:receipt.revision,targetId:before.blocks.find(b=>ids.includes(b.id))?.id,
@@ -374,7 +360,10 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
   // file when its blocks keep their number and kinds; otherwise it stops. revision: the revision
   // the mapping is at, for a save of the view the one the save started from. A file refused once
   // is not read again while it stays the same.
-  correct.follow = async ({document:doc,revision,historyId}) => {
+  // saved (optional): {revision, blocks} of the view's save, blocks being the top-level blocks it
+  // changed as the Host accepted them (onSave of SDK 0.17.0). They stand in for reading the file
+  // while it still holds that save and this handler knows the nodes before it.
+  correct.follow = async ({document:doc,revision,historyId,saved}) => {
     if (!doc || path.extname(doc) !== '.md') throw Error('저장된 문서를 찾지 못했습니다.');
     const t = performance.now(), timings = {};
     const disk = fileRevision(doc);
@@ -392,14 +381,18 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
       // The content before the change, when this handler still holds it, tells which blocks changed.
       const old = memory?.doc === doc && memory.snapshot.revision === revision ? memory.snapshot : null;
       memory = null;
-      // The view's save tells only its revisions: the saved file is read and parsed once (readMs),
-      // then projected to its nodes (nodesMs).
       started = performance.now();
-      const read = readDocument(doc);
-      timings.readMs = performance.now()-started;
-      started = performance.now();
-      const snapshot = snapshotOf(read.revision, read.document);
-      timings.nodesMs = performance.now()-started;
+      const nodes = saved?.revision === disk && old ? savedNodes(old.nodes,saved.blocks) : null;
+      let snapshot = nodes && {revision:disk,document:null,status:old.status,title:old.title,nodes};
+      if (snapshot) timings.blocksMs = performance.now()-started;
+      else {
+        // Otherwise the saved file is read and parsed once (readMs), then projected to its nodes (nodesMs).
+        const read = readDocument(doc);
+        timings.readMs = performance.now()-started;
+        started = performance.now();
+        snapshot = snapshotOf(read.revision, read.document);
+        timings.nodesMs = performance.now()-started;
+      }
       started = performance.now();
       try { assertMapping(before,snapshot); }
       catch {
@@ -428,5 +421,7 @@ export function correctionHandler({cli, write = writeDocument, limits = DOCUMENT
   };
   // Another document opened, or the screen closed: what was remembered goes.
   correct.forget = () => { memory = null; refused = null; };
+  // The document the screen opened, as read to check its correspondence.
+  correct.remember = (doc, snapshot) => { memory = {doc,snapshot}; };
   return correct;
 }

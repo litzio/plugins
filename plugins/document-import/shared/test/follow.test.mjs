@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { structureOf, sameStructure, changedRange, editedBlocks, keepHistory } from '../follow.mjs';
+import { structureOf, sameStructure, changedRange, editedBlocks, keepHistory, savedNodes, savedStructure, topsOf } from '../follow.mjs';
+import { applyTracker, SHOWN_WAIT_MS } from '../document-apply.mjs';
 import { followOutcome, editStatus, editReason } from '../content-edit.mjs';
 
 const p = (i, text, type = 'paragraph') => ({ path: [i], type, content: [{ kind: 'text', text }] });
@@ -80,4 +81,72 @@ test('header status and the reason structure corrections wait', () => {
   assert.match(editReason('unsaved', false), /다른 블록을 누르면 저장/);
   assert.match(editReason('clean', true), /저장하는 중/);
   assert.match(editReason('conflict', false), /다시 읽기/);
+});
+
+test('a save of the view: its blocks take the place of theirs without reading the file', () => {
+  // Top-level indexes need not start at 0.
+  const before = [p(1, 'a', 'heading'), { path: [2], type: 'table' }, cell(2, 0, 0, 'x'), { path: [2], type: 'caption' }, p(3, 'c')];
+  const blocks = [{ path: [2], nodes: [{ path: [2], type: 'table' }, cell(2, 0, 0, 'x = 1'), { path: [2], type: 'caption' }] }, { path: [3], nodes: [p(3, 'c!')] }];
+  const after = savedNodes(before, blocks);
+  assert.deepEqual(after, [p(1, 'a', 'heading'), ...blocks[0].nodes, p(3, 'c!')]);
+  assert.deepEqual(editedBlocks(before, after), [2, 3]);
+  assert.deepEqual(topsOf(before), [1, 2, 3]);
+  assert.deepEqual(savedStructure(structureOf(before), topsOf(before), blocks), ['heading', 'table', 'paragraph']);
+  // A kind the save reports differently shows as a different structure.
+  assert.deepEqual(savedStructure(['heading', 'table', 'paragraph'], [1, 2, 3], [{ path: [3], nodes: [p(3, 'c', 'heading')] }]), ['heading', 'table', 'heading']);
+  assert.deepEqual(savedNodes(before, []), before);
+  assert.equal(savedStructure(['heading'], [1, 2], []), null);
+});
+
+test('a save whose blocks are not top-level blocks of the document before is not used', () => {
+  const before = [p(0, 'a'), p(1, 'b')];
+  for (const blocks of [
+    [{ path: [2], nodes: [p(2, 'c')] }],
+    [{ path: [-1], nodes: [p(-1, 'c')] }],
+    [{ path: [1, 0], nodes: [p(1, 'b')] }],
+    [{ path: [1], nodes: [p(0, 'b')] }],
+    [{ path: [1], nodes: [cell(1, 0, 0, 'x')] }],
+    [{ path: [1], nodes: [{ path: [1], type: 'caption' }] }],
+    [{ path: [1] }],
+    [null],
+  ]) {
+    assert.equal(savedNodes(before, blocks), null, JSON.stringify(blocks));
+    assert.equal(savedStructure(structureOf(before), topsOf(before), blocks), null, JSON.stringify(blocks));
+  }
+});
+
+test('apply: a change waits for the view, then the write outcome goes to the same request', async () => {
+  let prop;
+  const set = v => { prop = typeof v === 'function' ? v(prop) : v; };
+  const tracker = applyTracker(set);
+  const change = { from: 1, removed: 2, blocks: [], document: {} };
+  const step = tracker.show(change, 'r0');
+  assert.deepEqual(prop, { request: 1, revision: 'r0', change });
+  assert.ok(tracker.holding());
+  tracker.onState({ request: 9, state: 'pending', revision: 'r0' });
+  tracker.onState({ request: 1, state: 'pending', revision: 'r0' });
+  assert.equal(await tracker.shown(step), 'pending');
+  assert.ok(step.shownAt > 0);
+  tracker.finish(step, { saved: 'r1' });
+  assert.deepEqual(prop, { request: 1, revision: 'r0', change, saved: 'r1' });
+  tracker.onState({ request: 1, state: 'saved', revision: 'r1' });
+  assert.equal((await tracker.settled(step)).state, 'saved');
+  assert.ok(!tracker.holding());
+  // A later request replaces the change; an outcome for the earlier one no longer applies.
+  const next = tracker.show(change, 'r1');
+  tracker.finish(step, { failed: 'late' });
+  assert.deepEqual(prop, { request: 2, revision: 'r1', change });
+  tracker.onState({ request: 2, state: 'refused', revision: 'r1', message: 'busy' });
+  assert.equal(await tracker.shown(next), 'refused');
+  assert.ok(!tracker.holding()); assert.ok(tracker.usable());
+});
+
+test('apply: a view that never answers stops holding after the wait', { timeout: SHOWN_WAIT_MS + 5000 }, async () => {
+  const tracker = applyTracker(() => {});
+  assert.ok(tracker.usable());
+  const step = tracker.show({}, 'r0');
+  assert.equal(await tracker.shown(step), 'timeout');
+  assert.ok(!tracker.holding());
+  // Later corrections read the saved file again without waiting.
+  assert.ok(!tracker.usable());
 });

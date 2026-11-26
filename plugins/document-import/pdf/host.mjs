@@ -13,11 +13,12 @@ import { correctionHandler } from "./correct-host.mjs";
 import { snapshotNodes, assertMapping } from "./corrections.mjs";
 import { tableShapes } from "./structure.mjs";
 const sha = (b) => createHash("sha256").update(b).digest("hex");
+const WRITE_WAIT_MS = 5000;
 export function activate(context = {}) {
   const correct = correctionHandler({cli:context.cli});
   const corrections = new Map();
-  const publicCorrection = async input => {
-    try { return await correct(input); }
+  const publicCorrection = async (input, options) => {
+    try { return await correct(input, options); }
     catch (e) { throw new PluginPublicError("pdf_import_failed", e.code ? "저장된 문서와 대응 자료를 읽거나 기록하지 못했습니다." : e.message); }
   };
   const inspect = inspectDocument;
@@ -29,11 +30,19 @@ export function activate(context = {}) {
       message: "준비됨",
     }),
     operations: {
+      // A background correction hands the change it makes to the screen before writing it: the
+      // write waits until the screen has collected the change (correctionResult with write), so the
+      // screen shows it while the write runs. A screen that does not collect it within WRITE_WAIT_MS
+      // gets the result only.
       correct: async (input) => {
         if (!input.background) return publicCorrection(input);
         const jobId = randomUUID(), job = {pending:true};
         corrections.set(jobId, job);
-        publicCorrection(input).then(
+        const shown = change => new Promise(resolve => {
+          job.change = change; job.write = resolve;
+          setTimeout(resolve, WRITE_WAIT_MS).unref();
+        });
+        publicCorrection(input, {shown}).then(
           result => { job.result = result; },
           error => { job.error = error; },
         ).finally(() => {
@@ -43,10 +52,16 @@ export function activate(context = {}) {
         });
         return {jobId};
       },
-      correctionResult: ({jobId}) => {
+      // write: the screen shows the change it got and the write may start.
+      correctionResult: ({jobId, write = false}) => {
         const job = corrections.get(jobId);
         if (!job) throw new PluginPublicError("pdf_import_failed", "고치기 결과를 찾지 못했습니다. 문서를 다시 열어 주세요.");
-        if (job.pending) return {pending:true};
+        if (write) job.write?.();
+        if (job.pending) {
+          if (!job.change || job.changeSent) return {pending:true};
+          job.changeSent = true;
+          return {pending:true, change:job.change};
+        }
         corrections.delete(jobId);
         if (job.error) throw job.error;
         return {result:job.result};
@@ -84,6 +99,7 @@ export function activate(context = {}) {
             cached = { ...s, stale: false };
             try { assertMapping(s,current); } catch { cached.stale=true; }
             if (!cached.stale) {
+              correct.remember(doc, current);
               cached.revision = current.revision;
               cached.snapshotNodes=snapshotNodes(current);
               cached.verificationPending=false;
@@ -244,6 +260,7 @@ export function activate(context = {}) {
           await unlink(pending).catch(() => {});
           throw e;
         }
+        correct.remember(s.doc, current);
         let cleanupError;
         try { await finishReplacement(s, data); }
         catch { cleanupError = "이전 변환 결과를 정리하지 못했습니다."; }

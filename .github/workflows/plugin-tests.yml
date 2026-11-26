@@ -55,7 +55,7 @@ jobs:
       - name: Install Litzio dependencies
         working-directory: litzio
         run: pnpm install --frozen-lockfile
-      - name: Run all nine SDK integration tests
+      - name: Run all ten SDK integration tests
         working-directory: plugins/document-import
         shell: bash
         run: |
@@ -67,6 +67,6 @@ jobs:
           PDF_IMPORT_TEST_CLI_ARGS=$(node -p 'JSON.stringify(process.argv.slice(1))' -- --import "$loader" "$litzio/packages/cli/src/cli.ts")
           report="$RUNNER_TEMP/pdf-import-sdk.tap"
           node --import "$loader" --test --test-reporter=tap pdf/test/corrections-host.test.mjs pdf/test/structure-host.test.mjs pdf/test/content-edit-host.test.mjs | tee "$report"
-          grep -Fx '# tests 9' "$report"
-          grep -Fx '# pass 9' "$report"
+          grep -Fx '# tests 10' "$report"
+          grep -Fx '# pass 10' "$report"
           grep -Fx '# skipped 0' "$report"

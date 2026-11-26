@@ -9,7 +9,7 @@ import { startImages, imageResult, disposeImages } from "./images.mjs";
 import { outputPaths, backupOutput, recordImages, finishReplacement, blockPaths, documentExists, sha } from "./output.mjs";
 import { listConverted } from "./recent.mjs";
 import { prepareSource } from "./source.mjs";
-import { structureOf, sameStructure } from "../shared/follow.mjs";
+import { structureOf, sameStructure, savedStructure, topsOf } from "../shared/follow.mjs";
 
 const fail = message => new PluginPublicError("word_import_failed", message);
 const STALE = "변환한 뒤 문서가 바뀌어 확인할 곳으로 이동할 수 없습니다. 다시 변환하면 새로 연결합니다.";
@@ -142,6 +142,7 @@ export function activate() {
           word: { name: path.basename(s.file), sha256: s.digest },
           revision: snapshot.revision,
           structure: structureOf(nodes),
+          tops: topsOf(nodes),
           convertedAt: new Date().toISOString(),
           warnings: s.final.warnings.map(w => ({ kind: w.kind, label: w.label, detail: w.detail, path: paths[w.block] })),
           ...(s.result.noteTables.size ? { noteAdmonitions: true } : {}),
@@ -178,7 +179,9 @@ export function activate() {
       // The comparison view saved content edits, or the file may have changed elsewhere. The places
       // to check and the source places stay with the file when its blocks keep their number and
       // kinds. revision: the one the places are at, for a save of the view the one it started from.
-      follow: async ({ id, revision }) => {
+      // saved (optional): {revision, blocks} of the view's save (onSave of SDK 0.17.0); its blocks
+      // stand in for reading the file while it still holds that save.
+      follow: async ({ id, revision, saved }) => {
         const s = session(id);
         const t = performance.now(), timings = {};
         const disk = sha(await readFile(s.doc));
@@ -191,33 +194,43 @@ export function activate() {
           const side = JSON.parse(await optional(readFile(s.side, "utf8")) ?? "null");
           // Places written before the kinds were kept: they are kept now, while the file is theirs.
           if (disk === revision) {
-            if (side?.revision === disk && !side.structure) await writeSide(s.side, { ...side, structure: structureOf(nodesOf(readDocument(s.doc))) });
+            if (side?.revision === disk && !side.structure) {
+              const nodes = nodesOf(readDocument(s.doc));
+              await writeSide(s.side, { ...side, structure: structureOf(nodes), tops: topsOf(nodes) });
+            }
             s.structureKnown = true;
             return { unchanged: true, timings };
           }
           if (side?.revision !== revision || !side.structure) return { stale: true, message: STALE, timings };
           let started = performance.now();
-          // The view's save tells only its revisions: the saved file is read and parsed once (readMs),
-          // then projected to its nodes (nodesMs).
-          const snapshot = readDocument(s.doc);
-          timings.readMs = performance.now() - started;
-          started = performance.now();
-          const structure = structureOf(nodesOf(snapshot));
-          timings.nodesMs = performance.now() - started;
+          // side.tops: the top-level index of each kind, kept with the kinds.
+          let structure = saved?.revision === disk ? savedStructure(side.structure, side.tops, saved.blocks) : null, current = disk, tops = side.tops;
+          if (structure) timings.blocksMs = performance.now() - started;
+          else {
+            // Otherwise the saved file is read and parsed once (readMs), then projected to its nodes (nodesMs).
+            const snapshot = readDocument(s.doc);
+            timings.readMs = performance.now() - started;
+            started = performance.now();
+            const nodes = nodesOf(snapshot);
+            structure = structureOf(nodes);
+            current = snapshot.revision;
+            tops = topsOf(nodes);
+            timings.nodesMs = performance.now() - started;
+          }
           if (!sameStructure(side.structure, structure)) {
-            s.refused = { revision: snapshot.revision, from: revision };
+            s.refused = { revision: current, from: revision };
             return { stale: true, message: STALE, timings };
           }
           started = performance.now();
-          const next = { ...side, revision: snapshot.revision, ...(side.source ? { source: { ...side.source, revision: snapshot.revision } } : {}) };
+          const next = { ...side, revision: current, tops, ...(side.source ? { source: { ...side.source, revision: current } } : {}) };
           await writeSide(s.side, next);
           timings.writeMs = performance.now() - started;
           const job = sources.get(s.side);
           if (job?.source) job.source = next.source;
-          if (s.converted) s.converted.revision = snapshot.revision;
+          if (s.converted) s.converted.revision = current;
           s.structureKnown = true;
           timings.totalMs = performance.now() - t;
-          return { revision: snapshot.revision, timings };
+          return { revision: current, timings };
         } finally { s.following = false; }
       },
       sourcePdf: async ({ id }) => {

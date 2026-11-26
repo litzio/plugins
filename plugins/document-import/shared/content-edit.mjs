@@ -27,7 +27,8 @@ export function followOutcome(result, viewRevision) {
   return { kind: 'moved', revision: result.revision, reload: result.revision !== viewRevision };
 }
 
-// follow(revision, trigger) → the handler's answer for the mapping at `revision`.
+// follow(revision, trigger, saved) → the handler's answer for the mapping at `revision`. saved: for a
+// save of the view, {revision, blocks} with the blocks the Host accepted (SDK 0.17.0), when it gave them.
 // apply(outcome, result, trigger) shows a stop, a move or an error. enabled: the correspondence is valid.
 // paused(): a correction is running; checks wait for it.
 export function useContentEdit(React, { follow, apply, revision, enabled, paused = () => false }) {
@@ -35,6 +36,8 @@ export function useContentEdit(React, { follow, apply, revision, enabled, paused
   const [state, setState] = useState('clean'), [confirming, setConfirming] = useState(0);
   const stateRef = useRef('clean'), revisionRef = useRef(revision), viewRevision = useRef(null);
   const queue = useRef(Promise.resolve()), queued = useRef(0);
+  // Saves told before the view turned to conflict may not be on disk: their blocks are not used.
+  const conflicts = useRef(0);
   const live = useRef({ follow, apply, enabled, paused });
   live.current = { follow, apply, enabled, paused };
   // An action that would close the view waits until its edits are saved and checked.
@@ -49,7 +52,8 @@ export function useContentEdit(React, { follow, apply, revision, enabled, paused
       if (save && save.revision === revisionRef.current) return;
       const started = performance.now();
       let result;
-      try { result = await live.current.follow(save ? save.previousRevision : revisionRef.current, trigger); }
+      const saved = save?.blocks && save.conflicts === conflicts.current ? { revision: save.revision, blocks: save.blocks } : undefined;
+      try { result = await live.current.follow(save ? save.previousRevision : revisionRef.current, trigger, saved); }
       catch (e) { result = { error: e }; }
       const outcome = result?.error ? { kind: 'error', message: result.error.message } : followOutcome(result, viewRevision.current);
       if (outcome.kind === 'moved') revisionRef.current = outcome.revision;
@@ -67,6 +71,7 @@ export function useContentEdit(React, { follow, apply, revision, enabled, paused
     return queue.current;
   };
   const onEditStateChange = useCallback(s => {
+    if (s.state === 'conflict') conflicts.current++;
     stateRef.current = s.state; viewRevision.current = s.revision;
     setState(s.state);
   }, []);
@@ -74,7 +79,7 @@ export function useContentEdit(React, { follow, apply, revision, enabled, paused
   const onSave = useCallback(s => {
     viewRevision.current = s.revision;
     if (s.revision === revisionRef.current) return;
-    run('save', s);
+    run('save', { ...s, conflicts: conflicts.current });
   }, []);
   // The view read the file: a revision other than the mapping's is checked at once.
   // → true when the revision is checked (or is being checked) instead of stopping at once.

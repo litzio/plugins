@@ -39,9 +39,11 @@ const helpStyle = { position: "absolute", top: "100%", left: 0, width: 300, padd
 // handle (optional ref): gets {selected(), stopFollow(), show(block, focus), pick(block), keepPlace()}.
 // contentEdit (optional): the document view's content editing from useContentEdit; its poll runs every
 //   POLL_MS while this screen is shown.
+// apply, onApplyStateChange (optional): a correction shown before its write (DocumentView apply).
 export default function Compare({
   React, ui, pdf, pages, blocks, excluded = [], excludedPages, document, revision, reloadKey,
   checks = [], legend, sourceLabel, busy = false, stale = false, guide, edit, handle, onViewState, onCheckViewed, contentEdit,
+  apply, onApplyStateChange,
 }) {
   const { useState, useRef, useEffect, useMemo, useLayoutEffect, useCallback } = React;
   const [browseScale, setBrowseScale] = useState(() => { try { const value = Number(localStorage.getItem(SCALE_KEY)); return browseScales.includes(value) ? value : 0.75; } catch { return 0.75; } });
@@ -551,6 +553,8 @@ export default function Compare({
           onVisibleBlockChange: documentVisible,
           onVisibleBlockLayoutChange: layout => { documentLayout.current = layout; },
           ...contentEdit?.documentProps,
+          apply,
+          onApplyStateChange,
         }}
         revision={revision}
         source={sourcePages}
