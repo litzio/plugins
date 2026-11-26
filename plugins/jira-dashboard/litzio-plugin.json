@@ -1,0 +1,122 @@
+{
+  "id": "local.jira-dashboard",
+  "name": "Jira Dashboard",
+  "version": "0.1.0",
+  "description": "Jira 이슈의 지표와 기한, 검색 결과를 확인합니다.",
+  "icon": "LayoutDashboard",
+  "entry": "host.mjs",
+  "screen": "screen.jsx",
+  "settingsSchema": {
+    "type": "object",
+    "properties": {
+      "baseUrl": {
+        "type": "string",
+        "title": "Base URL",
+        "maxLength": 512,
+        "pattern": "^https?://[^\\s]+$"
+      }
+    },
+    "additionalProperties": false
+  },
+  "secrets": [
+    {
+      "id": "pat",
+      "title": "Personal access token",
+      "scope": "connection"
+    }
+  ],
+  "healthCheck": "connection",
+  "operations": [
+    {
+      "id": "connection",
+      "effect": "read",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "ok",
+          "message"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    {
+      "id": "search-issues",
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "project"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,30}$"
+          },
+          "keyword": {
+            "type": "string",
+            "maxLength": 180
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "total",
+          "issues"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "issues": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "required": [
+                "key",
+                "summary",
+                "status",
+                "url"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
