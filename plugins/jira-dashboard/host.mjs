@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { PluginPublicError } from "@litzio/plugin-sdk";
 import { JiraClient, JiraError, normalizeBaseUrl } from "./jira.ts";
 import { createWorkspace } from "./workspace.mjs";
@@ -6,13 +7,14 @@ export function activate(context) {
   const token = context.secrets?.pat?.trim();
   const rawUrl = context.settings.baseUrl;
   const operations = new Map();
-  let client, workspace, invalidUrl = false;
+  let client, workspace, connectionUrl, invalidUrl = false;
   if (rawUrl) {
     try {
       const base = normalizeBaseUrl(rawUrl, false, true);
       if (token) {
         client = new JiraClient(base.href, { origin: base.origin, token }, { allowHttp: true });
         workspace = createWorkspace(client, base);
+        connectionUrl = base.href;
       }
     } catch { invalidUrl = true; }
   }
@@ -56,7 +58,11 @@ export function activate(context) {
     operations: {
       connection: () => connection(),
       configuration: () => ({ configured: Boolean(workspace), invalidUrl }),
-      identity: input => invoke((_input, signal) => workspace.identity(signal), input),
+      identity: input => invoke(async (_input, signal) => {
+        const account = await workspace.identity(signal);
+        const preferenceScope = createHash("sha256").update(JSON.stringify([connectionUrl, account.key])).digest("hex");
+        return { ...account, preferenceScope };
+      }, input),
       "search-issues": input => invoke(workspace?.agentSearch, { ...input, requestId: "agent-" + crypto.randomUUID() }),
       search: input => invoke(workspace?.search, input),
       overview: input => invoke(workspace?.overview, input),
