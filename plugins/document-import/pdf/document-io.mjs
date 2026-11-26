@@ -1,7 +1,8 @@
 import { machineNodes, getEditableDocument, mergeParagraphWithPrevious, splitParagraph, serialize,
   convertBlock, updateHeadingLevel, removeBlock, insertParagraph, insertHeading, insertList, updateList,
   insertAdmonition, insertTable, updateTableCaption, updateLabel, updateEnumerator, updateEnumeration,
-  updateDocumentTitle, updateParagraphInlineContent, updateHeadingInlineContent, updateAdmonitionInlineContent } from '@litzio/plugin-sdk';
+  updateDocumentTitle, updateParagraphInlineContent, updateHeadingInlineContent, updateAdmonitionInlineContent,
+  insertTableNote, removeTableNote } from '@litzio/plugin-sdk';
 import { readDocument } from '@litzio/plugin-sdk/node';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -48,6 +49,8 @@ export function applyCorrections(document, operations) {
       case 'update-paragraph': document=updateParagraphInlineContent(document,at(op.path),op.content); break;
       case 'update-heading-content': document=updateHeadingInlineContent(document,at(op.path),op.content); break;
       case 'update-admonition-content': document=updateAdmonitionInlineContent(document,at(op.path),op.content); break;
+      case 'insert-table-note': document=insertTableNote(document,at(op.path),op.at,op.content); break;
+      case 'remove-table-note': document=removeTableNote(document,at(op.path),op.at); break;
       case 'update-title': document=updateDocumentTitle(document,op.remove?null:op.text); break;
       case 'format': break;
       default: throw Error('지원하지 않는 고치기입니다.');

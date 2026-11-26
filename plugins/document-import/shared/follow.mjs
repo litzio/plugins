@@ -52,3 +52,44 @@ export function keepHistory(stack, edited, known = true) {
   }
   return stack;
 }
+
+// A save of the comparison view tells the top-level blocks it changed, as the Host accepted them:
+// [{path:[i], nodes}] with nodes in the inspect shape (DocumentView onSave, SDK 0.17.0). The index i
+// of such a block when it is one of the top-level indexes `tops`, or -1.
+function savedBlockAt(block, tops) {
+  const i = Array.isArray(block?.path) && block.path.length === 1 ? block.path[0] : -1;
+  if (!tops.includes(i) || !Array.isArray(block.nodes)) return -1;
+  if (!block.nodes.some(n => n?.path?.length === 1 && n.type !== 'caption')) return -1;
+  return block.nodes.every(n => Array.isArray(n?.path) && n.path[0] === i) ? i : -1;
+}
+
+// The nodes after such a save: the saved blocks' nodes take the place of their blocks' nodes.
+// null when a saved block is not one top-level block of nodes.
+export function savedNodes(nodes, blocks) {
+  const groups = new Map();
+  for (const n of nodes) {
+    if (!groups.has(n.path[0])) groups.set(n.path[0], []);
+    groups.get(n.path[0]).push(n);
+  }
+  const tops = [...groups.keys()];
+  for (const b of blocks || []) {
+    const i = savedBlockAt(b, tops);
+    if (i < 0) return null;
+    groups.set(i, b.nodes);
+  }
+  return [...groups.values()].flat();
+}
+
+// The top-level kinds (structureOf) after such a save, or null. tops: the top-level index of each kind.
+export function savedStructure(structure, tops, blocks) {
+  if (!Array.isArray(tops) || tops.length !== structure.length) return null;
+  const next = [...structure];
+  for (const b of blocks || []) {
+    const i = savedBlockAt(b, tops);
+    if (i < 0) return null;
+    next[tops.indexOf(i)] = b.nodes.find(n => n.path.length === 1 && n.type !== 'caption').type;
+  }
+  return next;
+}
+// The top-level index of each kind of structureOf.
+export const topsOf = nodes => nodes.filter(n => n.path.length === 1 && n.type !== 'caption').map(n => n.path[0]);
