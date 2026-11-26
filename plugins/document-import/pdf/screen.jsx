@@ -13,6 +13,7 @@ import { references } from "./corrections.mjs";
 import { pageFragments } from "./source-cells.mjs";
 import { rememberFolder } from "../shared/recent-folders.mjs";
 import { useContentEdit } from "../shared/content-edit.mjs";
+import { useFileHandoff } from "../shared/file-handoff.mjs";
 import { applyTracker } from "../shared/document-apply.mjs";
 const legend = ["heading", "paragraph", "list", "table", "figure", "footnote", "margin"];
 const none = [];
@@ -37,6 +38,7 @@ function Screen({
   openDocument,
   confirm,
   request,
+  handoff,
   onHome,
 }) {
   const { useState, useRef, useEffect, useMemo } = React;
@@ -51,9 +53,9 @@ function Screen({
     [fragments, setFragments] = useState({});
   const historyId = useRef(crypto.randomUUID()), editing = useRef(false), selectionAnchor = useRef(null);
   const [documentStatus,setDocumentStatus]=useState(undefined);
-  const [status, setStatus] = useState(""),
+  const [status, setStatus] = useState("PDF 읽는 중"),
     [conversion, setConversion] = useState(null),
-    [busy, setBusy] = useState(false),
+    [busy, setBusy] = useState(true),
     [error, setError] = useState(""),
     [file, setFile] = useState(null),
     [pdf, setPdf] = useState(null),
@@ -105,6 +107,7 @@ function Screen({
       setStatus(trigger === 'save' ? '저장됨' : '밖에서 고친 내용을 반영함');
     },
   });
+  useFileHandoff(React, handoff, busy, content);
   const warnings = mapping?.blocks.filter(b=>b.warning) || [];
   const checks = useMemo(() => warnings.map(b => ({flowId: b.id, blockId: b.id, reason: b.warning.reason})), [mapping]);
   const chosen = mapping?.blocks.filter(b => selection.includes(b.id)) || [];
@@ -595,7 +598,8 @@ function Screen({
     <ui.ScreenLayout
       fillHeight={Boolean(pdf && !picking && !missingMapping && !conversion)}
       back={file && !picking ? { label: "변환한 문서", onBack: returnHome, disabled: busy } : undefined}
-      description={
+      description="PDF에서 옮길 쪽을 고르고 변환한 문서를 원본과 대조합니다."
+      details={
         file
           ? file.name +
             (pdf && !picking ? " · " + pdf.numPages + "쪽" + (conversion && excludedPages.size ? " 중 " + (pdf.numPages - excludedPages.size) + "쪽" : "") : "") +

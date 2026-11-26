@@ -11,14 +11,36 @@ pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([workerSource
 const reviewTones = { "검토 중": "warning", "초안": "neutral", "검토 완료": "ok" };
 const listError = "변환한 문서 목록을 읽지 못했습니다.";
 
+function importKind(path) {
+  return /\.pdf$/i.test(path) ? "pdf" : /\.docx$/i.test(path) ? "word" : null;
+}
+
 export default function Screen(props) {
-  const { React, ui, invoke, pickPath } = props;
+  const { React, ui, invoke, pickPath, fileOpen } = props;
   const [request, setRequest] = React.useState(null);
   const [recent, setRecent] = React.useState(null);
   const [error, setError] = React.useState("");
   const [choosing, setChoosing] = React.useState(false);
   const content = React.useRef(null);
   const focusHome = React.useRef(false);
+  const handledFileOpens = React.useRef(new Set());
+  const fileRequest = fileOpen?.request;
+  const filePath = fileOpen?.path;
+  const fileAction = fileOpen?.actionId;
+  const handoff = React.useMemo(() => {
+    if (fileAction !== "convert" || handledFileOpens.current.has(fileRequest)) return null;
+    const kind = importKind(filePath);
+    if (!kind) return null;
+    return () => {
+      if (handledFileOpens.current.has(fileRequest)) return;
+      handledFileOpens.current.add(fileRequest);
+      setRequest({ kind, path: filePath, fileRequest });
+    };
+  }, [fileAction, fileRequest, filePath]);
+
+  React.useEffect(() => {
+    if (!request && !choosing) handoff?.();
+  }, [request, choosing, handoff]);
 
   React.useEffect(() => {
     if (request) return;
@@ -55,7 +77,7 @@ export default function Screen(props) {
     try {
       const picked = await pickPath({ kind: "file" });
       if (!picked) return;
-      const kind = /\.pdf$/i.test(picked.path) ? "pdf" : /\.docx$/i.test(picked.path) ? "word" : null;
+      const kind = importKind(picked.path);
       if (kind) setRequest({ kind, path: picked.path });
       else setError("PDF 또는 워드 문서(.docx)를 골라 주세요.");
     } catch (e) {
@@ -77,7 +99,8 @@ export default function Screen(props) {
 
   if (request) {
     const ImportScreen = request.kind === "pdf" ? PdfScreen : WordScreen;
-    return <ImportScreen {...props} request={request} onHome={home}
+    return <ImportScreen key={request.fileRequest} {...props} request={request} onHome={home}
+      handoff={handledFileOpens.current.has(fileRequest) ? null : handoff}
       invoke={(operation, input) => invoke(request.kind + "-" + operation, input)} />;
   }
 
