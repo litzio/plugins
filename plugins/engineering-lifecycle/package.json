@@ -1,0 +1,14 @@
+{
+  "name": "litzio-engineering-lifecycle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit false --rootDir domain --outDir runtime && node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

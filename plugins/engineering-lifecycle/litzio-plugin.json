@@ -1,0 +1,113 @@
+{
+  "id": "local.engineering-lifecycle",
+  "name": "Engineering Lifecycle",
+  "version": "0.1.0",
+  "description": "Follow customer documents through requirements, design and verification evidence.",
+  "icon": "LayoutDashboard",
+  "entry": "host.mjs",
+  "screen": "screen.jsx",
+  "fileActions": [
+    {
+      "id": "open-engineering-data",
+      "label": "Open engineering workspace",
+      "icon": "Folder",
+      "extensions": [
+        ".ell"
+      ],
+      "openByDefault": true
+    }
+  ],
+  "operations": [
+    {
+      "id": "investigate",
+      "effect": "read",
+      "scope": "host",
+      "assistant": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "project",
+          "release",
+          "question"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "type": "string",
+            "enum": [
+              "OBC-22",
+              "ITMC-08"
+            ]
+          },
+          "release": {
+            "type": "string",
+            "maxLength": 12
+          },
+          "baseline": {
+            "type": "string",
+            "maxLength": 48
+          },
+          "question": {
+            "type": "string",
+            "enum": [
+              "missing-trace",
+              "unverified",
+              "impact",
+              "failed-evidence",
+              "readiness",
+              "summary",
+              "trace"
+            ]
+          },
+          "target": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "process": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 40
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "project",
+          "release",
+          "scope",
+          "records"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "release": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    }
+  ],
+  "skills": [
+    {
+      "id": "engineering-review",
+      "directory": "skills/engineering-review"
+    }
+  ]
+}
