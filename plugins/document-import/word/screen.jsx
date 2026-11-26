@@ -4,6 +4,7 @@ import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import Flow, { FlowToggle } from "../shared/flow.jsx";
 import Compare from "../shared/compare.jsx";
 import { useContentEdit } from "../shared/content-edit.mjs";
+import { useFileHandoff } from "../shared/file-handoff.mjs";
 
 const STEPS = ["구조 읽기", "그림 만들기", "문서 저장"];
 const GROUPS = WARNING_KINDS.map(([id, title]) => ({ id, title, tone: "warning" }));
@@ -17,7 +18,7 @@ const LEGEND = ["heading", "paragraph", "list", "table", "figure", "margin"];
 const NOTE_LEGEND = ["heading", "paragraph", "list", "note", "table", "figure", "margin"];
 const key = path => path.join(".");
 
-function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, onHome }) {
+function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, handoff, onHome }) {
   const { useState, useEffect, useRef, useMemo, useCallback } = React;
   const [seen, setSeen] = useState(new Set());
   const markSeen = React.useCallback(id => setSeen(old => old.has(id) ? old : new Set([...old, id])), []);
@@ -26,6 +27,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const [file, setFile] = useState(null);
   const [saved, setSaved] = useState(null);
   const [run, setRun] = useState(null); // {step, progress, failed}
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [target, setTarget] = useState(null);
   const [viewState, setViewState] = useState(null);
@@ -37,7 +39,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   const [followStale, setFollowStale] = useState(false), [followNote, setFollowNote] = useState("");
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
-  const busy = !!run && !run.failed;
+  const busy = loading || (!!run && !run.failed);
   const done = !!file && !run && !!saved;
   const warnings = saved?.warnings || [];
   // Source boxes carry the first place to check of their block; every place stays in the order.
@@ -100,6 +102,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     return () => { gone = true; task?.destroy(); setPdf(null); setSource(null); };
   }, [done, file?.id, saved?.revision]);
 
+  useFileHandoff(React, handoff, busy, content);
   useEffect(() => { open(request.path); }, []);
 
   function home() {
@@ -118,6 +121,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
   }
 
   async function open(path) {
+    setLoading(true);
     setError(""); setTarget(null); setViewState(null); setFollowStale(false); setFollowNote("");
     let f;
     try { f = await invoke("load", { path }); }
@@ -125,6 +129,8 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
       const message = e.message || "워드 문서를 읽을 수 없습니다.";
       if (file) setError(message); else onHome(message);
       return;
+    } finally {
+      setLoading(false);
     }
     try { rememberFolder(f.folder); } catch {}
     setExpanded(false);
@@ -203,11 +209,13 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
 
   const chooseButton = (primary) => <ui.Button variant={primary ? "default" : "outline"} disabled={busy} onClick={() => content.afterSave(choose)}>워드 문서 고르기</ui.Button>;
 
-  if (!file) return null;
+  const description = "워드 문서를 변환하고 원본과 대조합니다.";
+  if (!file) return <ui.ScreenLayout description={description}
+    status={<ui.Status tone="progress" label="워드 문서 읽는 중" />} />;
 
   if (run) {
     return (
-      <ui.ScreenLayout width="full" back={{ label: "변환한 문서", onBack: home, disabled: busy }} description={file.name}
+      <ui.ScreenLayout width="full" back={{ label: "변환한 문서", onBack: home, disabled: busy }} details={file.name} description={description}
         status={<ui.Status tone={run.failed ? "error" : "progress"} label={run.failed ? STEPS[run.step] + " 실패" : STEPS[run.step] + " 중"} />}
         actions={run.failed ? chooseButton(true) : undefined}>
         <Flow React={React} ui={ui} mode="run" kind="word" phase={STEPS[run.step]} failed={run.failed} />
@@ -228,7 +236,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
         : followStale || (viewState === "stale-target" && !content.pending()) ? "변환한 뒤 문서가 바뀌어 확인할 곳으로 이동할 수 없습니다. 다시 변환하면 새로 연결합니다."
           : viewState === "target-not-found" ? "문서에서 이 블록을 찾을 수 없습니다." : "";
   return (
-    <ui.ScreenLayout fillHeight back={{ label: "변환한 문서", onBack: home }} description={file.name}
+    <ui.ScreenLayout fillHeight back={{ label: "변환한 문서", onBack: home, disabled: busy }} details={file.name} description={description}
       status={<span style={{ display: "inline-flex", gap: "var(--space-2)", alignItems: "center" }}>
         <ui.Status tone={saved ? (warnings.length ? "warning" : "ok") : "neutral"} label={saved ? "변환 완료 · 확인할 곳 " + warnings.length : "확인할 곳 목록 없음"} />
         {comparing && (content.status ? <ui.Status tone={content.status.tone} label={content.status.label} /> : followNote && <ui.Status tone="ok" label={followNote} />)}
