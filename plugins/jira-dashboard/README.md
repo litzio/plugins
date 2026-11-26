@@ -17,6 +17,7 @@ PAT는 Windows Host의 공식 비밀 저장소에 보관된다. Base URL과 PAT�
 - **Issues**에서 기본 필터나 서버 JQL로 검색한다. 담당자와 보고자는 두 글자부터 찾고, 표시 이름 아래 로그인 식별자를 확인한다. **Columns**에서 표시와 최소 너비를 조절한다. **Compact**는 표의 밀도를 바꾼다.
 - **Board**는 현재 결과 페이지를 상태별로 묶어서 보여 준다. 각 열에서 이미 읽은 카드를 펼치고, **Next issue page**로 다음 페이지를 조회한다.
 - 오른쪽 상세에서 댓글, 첨부 목록, 이력을 탭별로 펼친다. 원본 문서는 **Open in Jira**로 연다. 긴 이력을 읽으려면 Jira 원본을 사용한다.
-- **Saved views**와 최근 검색은 현재 화면 세션에서 유지된다. 이슈에 체크한 뒤 **Export selected on page**로 현재 페이지의 선택 이슈를 리치오 문서 표로 저장할 수 있다.
+- **검색** 또는 **Apply scope**로 적용한 마지막 필터와 정렬을 다음에 대시보드를 열 때 복원한다. **Saved views**도 같은 기기의 리치오 브라우저 프로필에 저장한다. 연결 주소와 Jira 계정별로 구분하고 데모는 별도로 저장한다. 최근 검색 목록은 현재 화면 세션에서 유지된다.
+- 이슈에 체크한 뒤 **Export selected on page**로 현재 페이지의 선택 이슈를 리치오 문서 표로 저장할 수 있다.
 
 [A안과 구현 화면](../../docs/jira-dashboard-design/README.md) · [개발·검증 기록](../../docs/jira-dashboard-design/implementation.md)

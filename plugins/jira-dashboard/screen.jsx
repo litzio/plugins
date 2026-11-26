@@ -3,6 +3,7 @@ import {
   people, priorities, projects, schema, searchDemo, shift, statuses, today, types,
 } from "./demo.mjs";
 import styles from "./style.mjs";
+import { persistLast, persistViews, preferenceKey, readPreferences } from "./preferences.mjs";
 
 const navigation = ["Overview", "Issues", "Board", "Analytics", "Saved views"];
 const defaultSort = { field: "updated", direction: "DESC" };
@@ -359,29 +360,36 @@ function Details({ React, ui, invoke, live, issue, close, inspect }) {
 export default function Screen(props) {
   const { React, invoke } = props;
   const [choice, setChoice] = React.useState(null);
+  const [retry, setRetry] = React.useState(0);
   const configuration = useJira(React, invoke, "configuration", {}, true);
   const source = choice ?? (configuration.value?.configured ? "jira" : "demo");
-  return <Dashboard key={source} {...props} live={source === "jira"}
+  const live = source === "jira";
+  const identity = useJira(React, invoke, "identity", { retry }, live);
+  const storageKey = preferenceKey(live, identity.value?.preferenceScope);
+  return <Dashboard key={storageKey ?? source} {...props} {...{ live, identity, storageKey }}
+    retryConnection={() => setRetry(current => current + 1)}
     changeSource={() => setChoice(source === "jira" ? "demo" : "jira")} />;
 }
 
-function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPath }) {
+function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnection, changeSource, saveDocument, pickPath }) {
+  const [preferences] = React.useState(() => readPreferences(storageKey));
+  const last = preferences.last;
   const startScope = live ? { created: [shift(new Date().toISOString().slice(0, 10), -30), ""] } : initial;
-  const [screen, setScreen] = React.useState("Overview");
-  const [filters, setFilters] = React.useState(startScope);
-  const [draft, setDraft] = React.useState(startScope);
-  const [sort, setSort] = React.useState(defaultSort);
-  const [mode, setMode] = React.useState("Basic");
-  const [jql, setJql] = React.useState("");
+  const [screen, setScreen] = React.useState(last?.screen ?? "Overview");
+  const [filters, setFilters] = React.useState(last?.filters ?? startScope);
+  const [draft, setDraft] = React.useState(last?.filters ?? startScope);
+  const [sort, setSort] = React.useState(last?.sort ?? defaultSort);
+  const [mode, setMode] = React.useState(last?.rawJql ? "JQL" : "Basic");
+  const [jql, setJql] = React.useState(last?.rawJql ?? "");
   const [error, setError] = React.useState("");
   const [recent, setRecent] = React.useState([]);
-  const [saved, setSaved] = React.useState([]);
+  const [saved, setSaved] = React.useState(preferences.views);
   const [offset, setOffset] = React.useState(0);
   const [pageHistory, setPageHistory] = React.useState([]);
-  const [activeJql, setActiveJql] = React.useState("");
+  const [activeJql, setActiveJql] = React.useState(last?.rawJql ?? "");
+  const [pendingJql, setPendingJql] = React.useState(null);
   const [known, setKnown] = React.useState({});
   const [refresh, setRefresh] = React.useState(0);
-  const [retry, setRetry] = React.useState(0);
   const [sampleLimit, setSampleLimit] = React.useState(50);
   const [selected, setSelected] = React.useState(null);
   const [refreshed, setRefreshed] = React.useState("");
@@ -390,7 +398,6 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
   const trigger = React.useRef(null);
   const activeScope = screen === "Overview" || screen === "Analytics";
   const hasProject = Boolean(filters.project?.length);
-  const identity = useJira(React, invoke, "identity", { retry }, live);
   const ready = live && Boolean(identity.value);
   const overview = useJira(React, invoke, "overview", { filters, refresh: Boolean(refresh), refreshRevision: refresh, extended: sampleLimit > 50 },
     ready && activeScope && hasProject);
@@ -404,6 +411,12 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
   const authFailed = [identity, network].some(result => result.code === "jira_http_401");
   const generated = createJql(draft, sort, live);
 
+  React.useEffect(() => {
+    if (!pendingJql || pendingJql.rawJql !== activeJql) return;
+    if (queried.value) persistLast(storageKey, pendingJql);
+    if (queried.value || queried.error) setPendingJql(null);
+  }, [pendingJql, activeJql, queried.value, queried.error, storageKey]);
+
   function inspect(issue, element) {
     if (!selected && element) trigger.current = element;
     setSelected(issue);
@@ -412,7 +425,7 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
     setSelected(null);
     requestAnimationFrame(() => trigger.current?.focus());
   }
-  function apply(filters, sort, remember, rawJql = "") {
+  function apply(filters, sort, remember, rawJql = "", target = screen) {
     setFilters(filters);
     setDraft(filters);
     setSort(sort);
@@ -422,6 +435,9 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
     setRefresh(0);
     setSelected(null);
     setError("");
+    const applied = { filters, sort, rawJql, screen: target };
+    setPendingJql(live && rawJql ? applied : null);
+    if (!live || !rawJql) persistLast(storageKey, applied);
     if (remember) {
       const title = rawJql || createJql(filters, sort, live);
       setRecent(list => [{ filters, sort, title, rawJql }, ...list.filter(item => item.title !== title)].slice(0, 8));
@@ -449,19 +465,23 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
     if (metric) next.metric = [metric];
     setScreen("Issues");
     setMode("Basic");
-    apply(next, sort, true);
+    apply(next, sort, true, "", "Issues");
   }
   function changeScreen(name) { setScreen(name); setSelected(null); setError(""); setRefresh(0); }
   function recall(item) {
-    apply(item.filters, item.sort, false, item.rawJql);
+    apply(item.filters, item.sort, false, item.rawJql, "Issues");
     setMode(item.rawJql ? "JQL" : "Basic");
     if (item.rawJql) setJql(item.rawJql);
     setScreen("Issues");
   }
   function save() {
     const title = activeJql || createJql(filters, sort, live);
-    setSaved(list => list.some(item => item.title === title) ? list : [...list, { title, filters, sort, rawJql: activeJql }]);
+    if (!saved.some(item => item.title === title)) updateViews([...saved, { title, filters, sort, rawJql: activeJql }]);
     setScreen("Saved views");
+  }
+  function updateViews(views) {
+    setSaved(views);
+    persistViews(storageKey, views);
   }
   async function exportRows(rows) {
     setExporting(true);
@@ -497,15 +517,15 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
     actions={<><ui.Button variant="ghost" onClick={changeSource}>{live ? "Use demo" : "Use Jira"}</ui.Button>
       <ui.Button onClick={() => {
         setRefreshed(new Date().toLocaleTimeString());
-        if (live && !connected) setRetry(current => current + 1);
+        if (live && !connected) retryConnection();
         setRefresh(current => current + 1);
       }}>Refresh</ui.Button></>}>
     <style>{styles}</style>
     <div className="jd">
       <Tabs label="Dashboard views" names={navigation} current={screen} select={changeScreen} />
-      {screen === "Saved views" ? <section className="panel pad"><h2>Saved views</h2><p>Available for this session</p>
+      {screen === "Saved views" ? <section className="panel pad"><h2>Saved views</h2><p>{storageKey ? "Stored on this device" : "Available for this session"}</p>
         {saved.length ? saved.map(item => <div key={item.title} className="between"><ui.Button variant="ghost" onClick={() => recall(item)}>{item.title}</ui.Button>
-          <ui.Button size="sm" onClick={() => setSaved(list => list.filter(other => other !== item))}>Remove</ui.Button></div>) : <p>No saved views.</p>}</section>
+          <ui.Button size="sm" onClick={() => updateViews(saved.filter(other => other !== item))}>Remove</ui.Button></div>) : <p>No saved views.</p>}</section>
         : <>
           <Filters {...{ React, ui, invoke, live, draft, setDraft, submit, mode, setMode, jql, setJql, generated, error, save, recent, recall, remember, known }} scopeOnly={activeScope} />
           {exportStatus && <ui.Notice tone={exportStatus.error ? "error" : "success"}>{exportStatus.text}</ui.Notice>}
@@ -525,7 +545,9 @@ function Dashboard({ React, ui, invoke, live, changeSource, saveDocument, pickPa
                 : <IssueTable {...resultsProps} {...{ exportRows, exporting }} sort={sort} selected={selected}
                   onSort={field => {
                     if (activeJql) { setError("Edit ORDER BY in the advanced search to sort these results."); return; }
-                    setSort({ field, direction: sort.field === field && sort.direction === "ASC" ? "DESC" : "ASC" });
+                    const sorting = { field, direction: sort.field === field && sort.direction === "ASC" ? "DESC" : "ASC" };
+                    setSort(sorting);
+                    persistLast(storageKey, { filters, sort: sorting, screen });
                     setOffset(0); setPageHistory([]); setRefresh(0);
                   }} />}
             </div>
