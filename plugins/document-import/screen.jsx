@@ -3,7 +3,7 @@ import Flow from "./shared/flow.jsx";
 import PdfScreen from "./pdf/screen.jsx";
 import WordScreen from "./word/screen.jsx";
 import workerSource from "./shared/worker-source.js";
-import { readFolders, saveFolders } from "./shared/recent-folders.mjs";
+import { readFolders, rememberFolder, saveFolders } from "./shared/recent-folders.mjs";
 import { recentDate } from "./shared/time.mjs";
 
 pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
@@ -16,10 +16,32 @@ function importKind(path) {
 }
 
 export default function Screen(props) {
-  const { React, ui, invoke, pickPath, fileOpen } = props;
+  const { React, ui, invoke, pickPath, fileOpen, storage } = props;
   const [request, setRequest] = React.useState(null);
   const [recent, setRecent] = React.useState(null);
   const [error, setError] = React.useState("");
+  const [foldersUnavailable, setFoldersUnavailable] = React.useState(false);
+  const folders = React.useRef([]);
+  const folderRead = React.useRef(null);
+  const folderNotice = foldersUnavailable
+    ? <ui.Notice tone="warning">최근 폴더 목록을 읽거나 보관하지 못했습니다.</ui.Notice> : null;
+  function loadFolders() {
+    folderRead.current ??= readFolders(storage, () => setFoldersUnavailable(true)).then(value => {
+      folders.current = value;
+    });
+    return folderRead.current;
+  }
+
+  function updateFolders(next) {
+    folders.current = next;
+    saveFolders(storage, next).then(() => setFoldersUnavailable(false), () => setFoldersUnavailable(true));
+  }
+
+  async function recordFolder(folder) {
+    await loadFolders();
+    updateFolders(rememberFolder(folders.current, folder));
+  }
+
   const [choosing, setChoosing] = React.useState(false);
   const content = React.useRef(null);
   const focusHome = React.useRef(false);
@@ -45,16 +67,23 @@ export default function Screen(props) {
   React.useEffect(() => {
     if (request) return;
     let gone = false;
-    invoke("recent", { folders: readFolders() }).then(found => {
+    async function listRecent() {
+      await loadFolders();
       if (gone) return;
-      setRecent(found.rows);
-      if (found.incomplete) setError(current => current || listError);
-      try { saveFolders(found.folders); } catch {}
-    }, () => {
-      if (gone) return;
-      setRecent([]);
-      setError(current => current || listError);
-    });
+      const listedFolders = folders.current;
+      try {
+        const found = await invoke("recent", { folders: listedFolders });
+        if (gone) return;
+        setRecent(found.rows);
+        if (found.incomplete) setError(current => current || listError);
+        else if (folders.current === listedFolders && found.folders.length < listedFolders.length) updateFolders(found.folders);
+      } catch {
+        if (gone) return;
+        setRecent([]);
+        setError(current => current || listError);
+      }
+    }
+    void listRecent();
     return () => { gone = true; };
   }, [request]);
 
@@ -99,7 +128,7 @@ export default function Screen(props) {
 
   if (request) {
     const ImportScreen = request.kind === "pdf" ? PdfScreen : WordScreen;
-    return <ImportScreen key={request.fileRequest} {...props} request={request} onHome={home}
+    return <ImportScreen key={request.fileRequest} {...props} request={request} onHome={home} recordFolder={recordFolder} folderNotice={folderNotice}
       handoff={handledFileOpens.current.has(fileRequest) ? null : handoff}
       invoke={(operation, input) => invoke(request.kind + "-" + operation, input)} />;
   }
@@ -130,6 +159,7 @@ export default function Screen(props) {
       status={recent === null ? <ui.Status tone="progress" label="변환한 문서 목록 읽는 중" /> : undefined}
       actions={items.length > 0 ? chooseButton : undefined}>
       <Flow React={React} ui={ui} />
+      {folderNotice}
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {recent !== null && (
         <section ref={content} aria-label="변환한 문서">

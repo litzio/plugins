@@ -4,7 +4,7 @@ PDF와 워드 문서(.docx)를 리치오 문서로 옮기고 저장된 문서와
 
 ## 공통 설치와 사용
 
-파일 동작과 머리의 파일 정보를 제공하는 리치오 Host `67719a0d` 이상(플러그인 SDK 0.20.0)이 필요합니다.
+최근 폴더를 플러그인 저장소에 보관하려면 리치오 Host `eb449e7a` 이상(플러그인 SDK 0.22.0)이 필요합니다.
 
 - GitHub에서 설치하려면 **설정 → 플러그인 → GitHub에서 추가…**에서 `https://github.com/litzio/plugins`의 **문서 가져오기**를 고릅니다. CLI로는 `litzio plugins install https://github.com/litzio/plugins/tree/master/plugins/document-import --host <Host 주소> --json`을 실행합니다. 리치오는 내려받은 폴더에서 의존성을 설치합니다.
 - 로컬 폴더에서 설치하려면 Node 24 환경에서 이 폴더의 `npm ci --omit=optional`을 실행하고 `litzio plugins install <이 폴더> --host <Host 주소> --json`으로 설치합니다. 이 폴더는 Host가 허용한 범위 안에 있어야 합니다.
@@ -62,7 +62,7 @@ PDF와 워드 문서의 대조 화면은 한 벌([`shared/compare.jsx`](shared/c
 
 ### 설치와 사용
 
-**필요한 Host는 SDK 0.18.0을 포함한 리치오(0f2dc01a 이후)입니다.** 처리 코드가 SDK 0.16.0의 표 주석 연산과 SDK 0.18.0의 `documentViewChange`를 가져오므로 그 전 Host에서는 플러그인이 올라오지 않습니다. 변환한 문서는 공개 `ui.ItemList`로 표시합니다. 대조 화면에는 공개 ContextMenu·Select hideLabel과 DocumentView의 스크롤·클릭·배치 보고·scale·`target.top`을 사용합니다. 플러그인 선언에는 최소 SDK 버전 필드가 없습니다.
+처리 코드가 SDK 0.16.0의 표 주석 연산과 SDK 0.18.0의 `documentViewChange`를 가져오므로 그 전 Host에서는 플러그인이 올라오지 않습니다. 변환한 문서는 공개 `ui.ItemList`로 표시합니다. 대조 화면에는 공개 ContextMenu·Select hideLabel과 DocumentView의 스크롤·클릭·배치 보고·scale·`target.top`을 사용합니다. 플러그인 선언에는 최소 SDK 버전 필드가 없습니다.
 
 PDF가 든 폴더를 리치오에서 열고 **문서 가져오기 → 문서 고르기**로 파일을 고릅니다. 다음은 전체 폭의 **뺄 쪽 고르기** 격자입니다. 격자는 제외 제안을 기다리지 않고 열립니다. 제안이 도착하면 직접 바꾸지 않은 쪽에만 적용합니다. 누르거나 Shift 범위로 바꾼 쪽은 사용자의 선택을 유지합니다. 제안 확인 중에도 변환을 누르면 그때 고른 대로 진행합니다. 이전 파일의 저장된 제외 선택은 바로 적용합니다. 128px 미리 보기를 누르면 포함·제외가 바뀌고 Shift로 범위를 고릅니다. 키보드 Enter·Space와 Shift도 같습니다. 쪽 번호 아래에는 그 쪽의 첫 책갈피 제목을 한 줄로 표시하며 hover·focus로 전체 제목을 확인합니다. 책갈피가 없으면 번호만 표시합니다. **취소**는 파일을 고르기 전으로 돌아갑니다.
 

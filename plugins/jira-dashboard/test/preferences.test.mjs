@@ -10,37 +10,58 @@ const alice = liveKey("server-a", "alice");
 const bob = liveKey("server-a", "bob");
 const other = liveKey("server-b", "alice");
 
-test("last applied filters and saved views restore independently per server, account and demo", () => {
+function fakeStorage() {
   const values = new Map();
-  globalThis.window = { localStorage: { getItem: key => values.get(key), setItem: (key, text) => values.set(key, text) } };
-  try {
-    persistLast(alice, { ...query, screen: "Board", ignoredData: "not stored" });
-    persistViews(alice, [{ ...query, title: "My view" }]);
-    persistLast(demo, { ...query, screen: "Overview" });
-    assert.deepEqual(readPreferences(alice), {
-      last: { ...query, screen: "Board" }, views: [{ ...query, title: "My view" }],
-    });
-    assert.equal(readPreferences(demo).last.screen, "Overview");
-    for (const key of [bob, other, preferenceKey(true, "server-a")]) {
-      assert.deepEqual(readPreferences(key), { last: null, views: [] });
-    }
-    assert.ok([...values.values()].every(text => !text.includes("ignoredData")));
-    persistViews(alice, []);
-    assert.deepEqual(readPreferences(alice).views, []);
-    assert.equal(readPreferences(alice).last.screen, "Board");
-  } finally {
-    delete globalThis.window;
+  return {
+    async get(key) { return structuredClone(values.get(key)); },
+    async set(key, value) { values.set(key, structuredClone(value)); },
+  };
+}
+
+test("last applied filters and saved views restore independently per server, account and demo", async () => {
+  const storage = fakeStorage();
+  await persistLast(storage, alice, { ...query, screen: "Board", ignoredData: "not stored" });
+  await persistViews(storage, alice, [{ ...query, title: "My view" }]);
+  await persistLast(storage, demo, { ...query, screen: "Overview" });
+  const { last, views } = await readPreferences(storage, alice);
+  assert.deepEqual(last, { ...query, screen: "Board" });
+  assert.deepEqual(views, [{ ...query, title: "My view" }]);
+  assert.equal((await readPreferences(storage, demo)).last.screen, "Overview");
+  for (const key of [bob, other, preferenceKey(true, "server-a")]) {
+    const value = await readPreferences(storage, key);
+    assert.equal(value.last, null);
+    assert.deepEqual(value.views, []);
   }
+  await persistViews(storage, alice, []);
+  assert.deepEqual((await readPreferences(storage, alice)).views, []);
+  assert.equal((await readPreferences(storage, alice)).last.screen, "Board");
 });
 
-test("malformed and unavailable browser storage fall back to default filters", () => {
-  globalThis.window = { localStorage: { getItem: key => key.endsWith(".last") ? '{"filters":{"unknown":["x"]}}' : "invalid" } };
-  try {
-    assert.deepEqual(readPreferences(demo), { last: null, views: [] });
-    Object.defineProperty(window, "localStorage", { get() { throw new Error("unavailable"); } });
-    assert.doesNotThrow(() => persistLast(demo, { ...query, screen: "Issues" }));
-    assert.deepEqual(readPreferences(demo), { last: null, views: [] });
-  } finally {
-    delete globalThis.window;
-  }
+test("migrates missing keys and preserves both the legacy copy and existing Host preferences", async t => {
+  const storage = fakeStorage();
+  const lastKey = demo + ".last";
+  const oldSearch = { ...query, screen: "Issues" };
+  const old = new Map([[lastKey, JSON.stringify(oldSearch)], [demo + ".views", JSON.stringify([{ ...query, title: "Old" }])]]);
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: { getItem: key => old.get(key) } });
+  t.after(() => delete globalThis.localStorage);
+  await persistViews(storage, demo, []);
+  const first = await readPreferences(storage, demo);
+  assert.deepEqual(first.last, oldSearch);
+  assert.deepEqual(first.views, []);
+  assert.equal(old.get(lastKey), JSON.stringify(oldSearch));
+  old.set(lastKey, "invalid");
+  assert.deepEqual((await readPreferences(storage, demo)).last, oldSearch);
+});
+
+test("reports malformed reads and rejected writes without losing the other preference", async () => {
+  const storage = fakeStorage();
+  await storage.set(demo + ".last", { filters: { unknown: ["x"] } });
+  await persistViews(storage, demo, [{ ...query, title: "Still available" }]);
+  const value = await readPreferences(storage, demo);
+  assert.equal(value.last, null);
+  assert.equal(value.failures.last, true);
+  assert.equal(value.views[0].title, "Still available");
+  const offline = { async get() { throw Error("offline"); }, async set() { throw Error("limit"); } };
+  assert.equal((await readPreferences(offline, demo)).failures.views, true);
+  await assert.rejects(persistLast(offline, demo, { ...query, screen: "Issues" }), /limit/);
 });
