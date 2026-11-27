@@ -1,5 +1,4 @@
 import { WARNING_KINDS } from "./rules.mjs";
-import { rememberFolder } from "../shared/recent-folders.mjs";
 import * as pdfjs from "pdfjs-dist/build/pdf.mjs";
 import Flow, { FlowToggle } from "../shared/flow.jsx";
 import Compare from "../shared/compare.jsx";
@@ -18,7 +17,7 @@ const LEGEND = ["heading", "paragraph", "list", "table", "figure", "margin"];
 const NOTE_LEGEND = ["heading", "paragraph", "list", "note", "table", "figure", "margin"];
 const key = path => path.join(".");
 
-function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, handoff, onHome }) {
+function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confirm, request, handoff, onHome, recordFolder, folderNotice }) {
   const { useState, useEffect, useRef, useMemo, useCallback } = React;
   const [seen, setSeen] = useState(new Set());
   const markSeen = React.useCallback(id => setSeen(old => old.has(id) ? old : new Set([...old, id])), []);
@@ -132,7 +131,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
     } finally {
       setLoading(false);
     }
-    try { rememberFolder(f.folder); } catch {}
+    void recordFolder(f.folder);
     setExpanded(false);
     setSeen(new Set());
     setFile(f);
@@ -221,6 +220,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
         <Flow React={React} ui={ui} mode="run" kind="word" phase={STEPS[run.step]} failed={run.failed} />
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)", margin: "var(--space-8) 0" }}>
           <ui.Steps steps={STEPS} current={run.step} />
+          {folderNotice}
           {run.failed ? <ui.Notice tone="error">{error}</ui.Notice> : <ui.Progress value={run.progress?.value} label={run.progress?.label || STEPS[run.step]} />}
         </div>
       </ui.ScreenLayout>
@@ -254,6 +254,7 @@ function Screen({ React, ui, invoke, pickPath, saveDocument, openDocument, confi
 @media (max-width:800px){.word-import-pair{flex-direction:column}.word-import-checks{flex:0 0 auto;max-height:40%}}
 `}</style>
       <Flow React={React} ui={ui} mode="compare" {...flow} expanded={expanded} controls={flowId} />
+      {folderNotice}
       {error && <ui.Notice tone="error">{error}</ui.Notice>}
       {notice && <ui.Notice tone="warning">{notice}</ui.Notice>}
       {comparing ? <Compare onCheckViewed={markSeen} React={React} ui={ui} pdf={pdf} pages={source.source.pages} blocks={blocks}

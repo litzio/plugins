@@ -366,13 +366,39 @@ export default function Screen(props) {
   const live = source === "jira";
   const identity = useJira(React, invoke, "identity", { retry }, live);
   const storageKey = preferenceKey(live, identity.value?.preferenceScope);
-  return <Dashboard key={storageKey ?? source} {...props} {...{ live, identity, storageKey }}
+  if ((choice === null && configuration.loading) || (live && !storageKey && identity.loading)) {
+    return <LoadingPreferences ui={props.ui} />;
+  }
+  return <DashboardPreferences key={storageKey ?? source} {...props} {...{ live, identity, storageKey }}
     retryConnection={() => setRetry(current => current + 1)}
     changeSource={() => setChoice(source === "jira" ? "demo" : "jira")} />;
 }
 
-function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnection, changeSource, saveDocument, pickPath }) {
-  const [preferences] = React.useState(() => readPreferences(storageKey));
+function LoadingPreferences({ ui }) {
+  return <ui.ScreenLayout status={<ui.Status tone="progress" label="Loading dashboard preferences" />} />;
+}
+
+function DashboardPreferences(props) {
+  const { React, ui, storage, storageKey } = props;
+  const [preferences, setPreferences] = React.useState(null);
+  React.useEffect(() => {
+    let active = true;
+    readPreferences(storage, storageKey).then(value => {
+      if (active) setPreferences(value);
+    });
+    return () => { active = false; };
+  }, [storage, storageKey]);
+  return preferences ? <Dashboard {...props} preferences={preferences} /> : <LoadingPreferences ui={ui} />;
+}
+
+function Dashboard({ React, ui, invoke, live, identity, storage, storageKey, preferences, retryConnection, changeSource, saveDocument, pickPath }) {
+  const [storageFailures, setStorageFailures] = React.useState(preferences.failures);
+  function savePreference(name, write, value) {
+    write(storage, storageKey, value).then(
+      () => setStorageFailures(current => ({ ...current, [name]: false })),
+      () => setStorageFailures(current => ({ ...current, [name]: true })),
+    );
+  }
   const last = preferences.last;
   const startScope = live ? { created: [shift(new Date().toISOString().slice(0, 10), -30), ""] } : initial;
   const [screen, setScreen] = React.useState(last?.screen ?? "Overview");
@@ -413,7 +439,7 @@ function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnect
 
   React.useEffect(() => {
     if (!pendingJql || pendingJql.rawJql !== activeJql) return;
-    if (queried.value) persistLast(storageKey, pendingJql);
+    if (queried.value) savePreference("last", persistLast, pendingJql);
     if (queried.value || queried.error) setPendingJql(null);
   }, [pendingJql, activeJql, queried.value, queried.error, storageKey]);
 
@@ -437,7 +463,7 @@ function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnect
     setError("");
     const applied = { filters, sort, rawJql, screen: target };
     setPendingJql(live && rawJql ? applied : null);
-    if (!live || !rawJql) persistLast(storageKey, applied);
+    if (!live || !rawJql) savePreference("last", persistLast, applied);
     if (remember) {
       const title = rawJql || createJql(filters, sort, live);
       setRecent(list => [{ filters, sort, title, rawJql }, ...list.filter(item => item.title !== title)].slice(0, 8));
@@ -481,7 +507,7 @@ function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnect
   }
   function updateViews(views) {
     setSaved(views);
-    persistViews(storageKey, views);
+    savePreference("views", persistViews, views);
   }
   async function exportRows(rows) {
     setExporting(true);
@@ -522,8 +548,10 @@ function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnect
       }}>Refresh</ui.Button></>}>
     <style>{styles}</style>
     <div className="jd">
+      {storageFailures.last && <ui.Notice tone="warning">Could not restore or remember the last search.</ui.Notice>}
+      {storageFailures.views && <ui.Notice tone="warning">Could not restore or remember saved views.</ui.Notice>}
       <Tabs label="Dashboard views" names={navigation} current={screen} select={changeScreen} />
-      {screen === "Saved views" ? <section className="panel pad"><h2>Saved views</h2><p>{storageKey ? "Stored on this device" : "Available for this session"}</p>
+      {screen === "Saved views" ? <section className="panel pad"><h2>Saved views</h2><p>{storageKey && !storageFailures.views ? "Stored on this Litzio Host" : "Available for this session"}</p>
         {saved.length ? saved.map(item => <div key={item.title} className="between"><ui.Button variant="ghost" onClick={() => recall(item)}>{item.title}</ui.Button>
           <ui.Button size="sm" onClick={() => updateViews(saved.filter(other => other !== item))}>Remove</ui.Button></div>) : <p>No saved views.</p>}</section>
         : <>
@@ -547,7 +575,7 @@ function Dashboard({ React, ui, invoke, live, identity, storageKey, retryConnect
                     if (activeJql) { setError("Edit ORDER BY in the advanced search to sort these results."); return; }
                     const sorting = { field, direction: sort.field === field && sort.direction === "ASC" ? "DESC" : "ASC" };
                     setSort(sorting);
-                    persistLast(storageKey, { filters, sort: sorting, screen });
+                    savePreference("last", persistLast, { filters, sort: sorting, screen });
                     setOffset(0); setPageHistory([]); setRefresh(0);
                   }} />}
             </div>

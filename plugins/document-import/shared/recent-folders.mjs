@@ -1,18 +1,28 @@
 const key = "document-import-recent-folders";
 
-export function readFolders() {
+export async function readFolders(storage, onError) {
   try {
-    const value = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(value) ? value : [];
+    const stored = await storage.get(key);
+    const raw = stored === undefined ? globalThis.localStorage?.getItem(key) : null;
+    const value = stored === undefined ? (raw == null ? [] : JSON.parse(raw)) : stored;
+    if (!Array.isArray(value) || value.some(folder => typeof folder !== "string" || !folder)) {
+      throw new Error("Invalid recent folders");
+    }
+    if (raw != null) {
+      try { await saveFolders(storage, value); }
+      catch { onError(); }
+    }
+    return value;
   } catch {
+    onError();
     return [];
   }
 }
 
-export function saveFolders(folders) {
-  localStorage.setItem(key, JSON.stringify(folders));
+export async function saveFolders(storage, folders) {
+  await storage.set(key, folders);
 }
 
-export function rememberFolder(folder) {
-  saveFolders([...new Set([folder, ...readFolders()])].slice(0, 10));
+export function rememberFolder(folders, folder) {
+  return [...new Set([folder, ...folders])].slice(0, 10);
 }

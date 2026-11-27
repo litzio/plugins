@@ -11,7 +11,6 @@ import { togglePageRange, readPageTitles, applyPageSuggestion } from "./page-sel
 import { authoring } from "./authoring.mjs";
 import { references } from "./corrections.mjs";
 import { pageFragments } from "./source-cells.mjs";
-import { rememberFolder } from "../shared/recent-folders.mjs";
 import { useContentEdit } from "../shared/content-edit.mjs";
 import { useFileHandoff } from "../shared/file-handoff.mjs";
 import { applyTracker } from "../shared/document-apply.mjs";
@@ -38,6 +37,8 @@ function Screen({
   openDocument,
   confirm,
   request,
+  recordFolder,
+  folderNotice,
   handoff,
   onHome,
 }) {
@@ -313,11 +314,7 @@ function Screen({
       const suggestionPromise=f.cached||f.missingMapping?null:invoke("suggest",{id:f.id}).then(
         value=>({value,ms:performance.now()-suggestStarted}),error=>({error}));
       const pdfStarted=performance.now();
-      try {
-        rememberFolder(f.folder);
-      } catch {
-        setError("최근 폴더 목록을 보관하지 못했습니다.");
-      }
+      void recordFolder(f.folder);
       setFile(f);
       const binary=atob(f.base64), bytes=new Uint8Array(binary.length);
       for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
@@ -673,6 +670,7 @@ function Screen({
 `}</style>
       {(conversion || (mapping && !picking)) && <Flow key={conversion ? "run" : "compare"} React={React} ui={ui}
         mode={conversion ? "run" : "compare"} {...flow} controls={flowId} expanded={conversion ? undefined : expanded} />}
+      {folderNotice}
       {!conversion && error && <ui.Notice tone="error">{error}</ui.Notice>}
       {conversion && <div style={{width:'min(100%, 560px)',margin:'var(--space-8) auto',display:'flex',flexDirection:'column',gap:'var(--space-4)'}}>
         <ui.Steps steps={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결']} current={[...(conversion.replacing ? ['이전 문서 정리'] : []),'구조 분석','그림 만들기','문서 저장','원본 연결'].indexOf(conversion.key)}/>
